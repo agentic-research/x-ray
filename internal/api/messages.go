@@ -1,0 +1,29 @@
+package api
+
+// Message type constants for WebSocket communication.
+const (
+	MsgDOMSnapshot   = "DOM_SNAPSHOT"
+	MsgSchemaReady   = "SCHEMA_READY"
+	MsgExecuteAction = "EXECUTE_ACTION"
+	MsgNavigate      = "NAVIGATE"
+	MsgStatus        = "STATUS"
+)
+
+// InboundMessage is the envelope for all browser -> server messages.
+type InboundMessage struct {
+	Type       string `json:"type"`
+	URL        string `json:"url,omitempty"`
+	Summary    string `json:"summary,omitempty"`
+	Screenshot string `json:"screenshot,omitempty"` // base64-encoded PNG
+	Intent     string `json:"intent,omitempty"`
+}
+
+// OutboundMessage is the envelope for all server -> browser messages.
+type OutboundMessage struct {
+	Type    string `json:"type"`
+	Schema  any    `json:"schema,omitempty"`
+	MacheID string `json:"mache_id,omitempty"`
+	Action  string `json:"action,omitempty"`
+	Message string `json:"message,omitempty"`
+	Stage   string `json:"stage,omitempty"`
+}

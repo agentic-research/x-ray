@@ -12,21 +12,27 @@ function injectMacheIDs() {
   });
 }
 
-function sanitizeDOM(htmlString) {
-  // Simple regex-based strip for prototype, ideally use DOMParser
-  return htmlString
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-    .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '<svg>...</svg>'); // Minimize SVGs
+function generateSummary() {
+  const nodes = document.querySelectorAll('[data-mache-id]');
+  let summary = "Interactive Elements:\n";
+  let count = 0;
+  nodes.forEach(node => {
+    if (count >= 300) return;
+    let text = (node.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 60);
+    if (!text && node.tagName.toLowerCase() === 'input') {
+      text = node.placeholder || node.name || 'input';
+    }
+    summary += `ID: ${node.getAttribute('data-mache-id')} | Tag: ${node.tagName.toLowerCase()} | Text: "${text}"\n`;
+    count++;
+  });
+  return summary;
 }
 
 function captureSnapshot() {
   injectMacheIDs();
-  const rawHTML = sanitizeDOM(document.documentElement.outerHTML);
-  // Note: Capturing screenshot from content script requires messaging background.js
-
-  console.log("X-Ray: Captured semantic snapshot with", idCounter, "nodes.");
-  return rawHTML;
+  const summary = generateSummary();
+  console.log("X-Ray: Captured snapshot with", idCounter, "tagged nodes.");
+  return { summary, url: window.location.href };
 }
 
 function executeAction(macheId, actionType) {
@@ -35,7 +41,6 @@ function executeAction(macheId, actionType) {
     console.error("X-Ray: Element not found for ID:", macheId);
     return;
   }
-
   console.log(`X-Ray: Executing ${actionType} on`, el);
   if (actionType === 'click') {
     el.click();
@@ -44,8 +49,19 @@ function executeAction(macheId, actionType) {
   }
 }
 
+// Listen for messages from background.js
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  switch (message.type) {
+    case 'CAPTURE_SNAPSHOT':
+      sendResponse(captureSnapshot());
+      return true;
+
+    case 'EXECUTE_ACTION':
+      executeAction(message.mache_id, message.action);
+      sendResponse({ success: true });
+      return true;
+  }
+});
+
 // Initial tag on load
 injectMacheIDs();
-
-// TODO: Set up MutationObserver to re-tag dynamically added nodes.
-// TODO: Listen for messages from background.js to execute actions.

@@ -37,8 +37,9 @@ go.work.sum
 # Claude Code CLI
 .claude/
 
-# Built binary (root level only)
+# Built binaries
 /mache
+/agentd
 
 # Agent communication and logs
 _agent_log/
@@ -53,3 +54,4 @@ experiments/
 .task/
 .mache-mount/
 bin/
+node_modules/

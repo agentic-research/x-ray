@@ -1,29 +1,202 @@
 package navigator
 
 import (
+	"context"
+	"fmt"
 	"log"
+	"strings"
+
+	"github.com/jamesgardner/x-ray/internal/mache"
+	"google.golang.org/genai"
 )
 
-// Agent represents Stage 2: The Navigator
-// A Gemini Live/Voice agent that explores the projected Mache filesystem and takes actions.
+// ActionResult is returned when the Navigator decides to act on an element.
+type ActionResult struct {
+	MacheID string `json:"mache_id"`
+	Action  string `json:"action"`
+	Path    string `json:"path"`
+}
+
+// Agent represents Stage 2: The Navigator.
 type Agent struct {
-	// Gemini Live/Voice client goes here
-	// Mache FS client goes here
+	client *genai.Client
+	model  string
+	engine *mache.Engine
 }
 
-func NewAgent() *Agent {
-	return &Agent{}
+func NewAgent(client *genai.Client, model string, engine *mache.Engine) *Agent {
+	if model == "" {
+		model = "gemini-2.5-flash"
+	}
+	return &Agent{client: client, model: model, engine: engine}
 }
 
-// HandleIntent processes a user intent string by navigating the virtual FS.
-func (a *Agent) HandleIntent(intent string) error {
+// SetEngine updates the engine when a new schema is applied.
+func (a *Agent) SetEngine(engine *mache.Engine) {
+	a.engine = engine
+}
+
+func toolDefinitions() []*genai.Tool {
+	return []*genai.Tool{{
+		FunctionDeclarations: []*genai.FunctionDeclaration{
+			{
+				Name:        "ls",
+				Description: "List the contents of a directory in the semantic filesystem. Returns file and directory names. Always start with ls(\"/\") to see the top-level zones.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"path": {Type: genai.TypeString, Description: "Directory path, e.g. '/' or '/header/nav'"},
+					},
+					Required: []string{"path"},
+				},
+			},
+			{
+				Name:        "cat",
+				Description: "Read the contents of a file in the semantic filesystem. Use this to read 'description' files for context about a zone.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"path": {Type: genai.TypeString, Description: "File path, e.g. '/header/nav/description'"},
+					},
+					Required: []string{"path"},
+				},
+			},
+			{
+				Name:        "act",
+				Description: "Execute a browser action on the element at this virtual path. This triggers a real click/focus in the browser.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"path":   {Type: genai.TypeString, Description: "Virtual path to the element, e.g. '/main/trending'"},
+						"action": {Type: genai.TypeString, Description: "Action type: 'click' or 'focus'"},
+					},
+					Required: []string{"path", "action"},
+				},
+			},
+		},
+	}}
+}
+
+// HandleIntent processes a user intent by navigating the semantic FS.
+// Returns an ActionResult if the agent acts, or a text response otherwise.
+func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult, string, error) {
 	log.Printf("Navigator: Handling intent: %s", intent)
 
-	// TODO:
-	// 1. Agent is provided with tools: ls(path), read(path), act(path, actionType)
-	// 2. Agent interacts with the internal/mache virtual filesystem to find the target.
-	// 3. Agent calls act(), which resolves to a data-mache-id.
-	// 4. Action is sent via WebSocket to the Browser Extension to execute.
+	config := &genai.GenerateContentConfig{
+		SystemInstruction: &genai.Content{
+			Parts: []*genai.Part{{Text: navigatorSystemPrompt}},
+		},
+		Tools:       toolDefinitions(),
+		Temperature: genai.Ptr(float32(0.1)),
+	}
 
-	return nil
+	history := []*genai.Content{
+		{Role: "user", Parts: []*genai.Part{{Text: intent}}},
+	}
+
+	for i := range 5 {
+		log.Printf("Navigator: tool-use iteration %d/5", i+1)
+
+		res, err := a.client.Models.GenerateContent(ctx, a.model, history, config)
+		if err != nil {
+			return nil, "", fmt.Errorf("GenerateContent failed: %w", err)
+		}
+		if len(res.Candidates) == 0 {
+			return nil, "", fmt.Errorf("no candidates returned")
+		}
+
+		part := res.Candidates[0].Content.Parts[0]
+
+		if part.Text != "" {
+			return nil, part.Text, nil
+		}
+
+		if part.FunctionCall != nil {
+			fc := part.FunctionCall
+			history = append(history, &genai.Content{
+				Role:  "model",
+				Parts: []*genai.Part{{FunctionCall: fc}},
+			})
+
+			result, action := a.executeTool(fc)
+
+			if action != nil {
+				return action, "", nil
+			}
+
+			history = append(history, &genai.Content{
+				Role: "user",
+				Parts: []*genai.Part{{
+					FunctionResponse: &genai.FunctionResponse{
+						Name:     fc.Name,
+						Response: map[string]any{"output": result},
+					},
+				}},
+			})
+			continue
+		}
+
+		return nil, "", fmt.Errorf("unexpected response part type at iteration %d", i)
+	}
+
+	return nil, "", fmt.Errorf("tool-use loop exceeded 5 iterations without resolution")
 }
+
+func (a *Agent) executeTool(fc *genai.FunctionCall) (string, *ActionResult) {
+	args := fc.Args
+	switch fc.Name {
+	case "ls":
+		p, _ := args["path"].(string)
+		entries, err := a.engine.ListDir(p)
+		if err != nil {
+			return fmt.Sprintf("Error: %v", err), nil
+		}
+		return strings.Join(entries, "\n"), nil
+
+	case "cat":
+		p, _ := args["path"].(string)
+		content, err := a.engine.ReadFile(p)
+		if err != nil {
+			return fmt.Sprintf("Error: %v", err), nil
+		}
+		return content, nil
+
+	case "act":
+		p, _ := args["path"].(string)
+		action, _ := args["action"].(string)
+		if action == "" {
+			action = "click"
+		}
+		macheID, err := a.engine.ResolveMacheID(p)
+		if err != nil {
+			return fmt.Sprintf("Error: %v", err), nil
+		}
+		return fmt.Sprintf("Executing %s on %s (mache_id: %s)", action, p, macheID),
+			&ActionResult{MacheID: macheID, Action: action, Path: p}
+
+	default:
+		return fmt.Sprintf("Unknown tool: %s", fc.Name), nil
+	}
+}
+
+const navigatorSystemPrompt = `You are 'The Navigator', an agent that helps users interact with web pages through a semantic filesystem.
+
+You have access to a semantic filesystem that represents the current web page. The filesystem organizes interactive elements into logical zones (e.g., /header/nav, /main/content, /sidebar/filters).
+
+Your tools:
+- ls(path): List directory contents. Always start with ls("/") to see the top-level zones.
+- cat(path): Read a file. Use this to read "description" files to understand what a zone contains.
+- act(path, action): Execute a browser action on the element at this path. Actions: "click", "focus".
+
+CRITICAL CONSTRAINTS:
+- Do NOT hallucinate tools or paths. Only use paths that you have confirmed exist via ls().
+- Never guess a path. Always ls() a directory before trying to cat() or act() on its children.
+- You have exactly three tools: ls, cat, act. Do not attempt to use any other tool.
+
+Strategy:
+1. ls("/") to see the page structure.
+2. Navigate into the most relevant zone based on the user's intent.
+3. Read the "description" file to confirm you've found the right element.
+4. Call act() to execute the action.
+
+Be decisive. If the user says "click the first trending repo", navigate to the most likely zone and act. Do not over-explore.`

@@ -5,8 +5,12 @@
   "description": "Injects IDs and syncs DOM with X-Ray Agentd.",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
+  "action": {
+    "default_title": "X-Ray: Capture Snapshot"
+  },
   "background": {
     "service_worker": "background.js"
   },
