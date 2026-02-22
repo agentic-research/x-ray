@@ -1,0 +1,112 @@
+version: '3'
+
+vars:
+  BINARY_NAME: bin/agentd
+  # fuse-t configuration for macOS
+  FUSE_T_HEADERS: /Library/Frameworks/fuse_t.framework/Versions/Current/Headers
+  FUSE_T_FRAMEWORK: /Library/Frameworks
+
+env:
+  # Set CGO flags for fuse-t on macOS (no-op on other platforms)
+  CGO_CFLAGS: '{{if eq OS "darwin"}}-I{{.FUSE_T_HEADERS}}{{end}}'
+  CGO_LDFLAGS: '{{if eq OS "darwin"}}-F{{.FUSE_T_FRAMEWORK}} -framework fuse_t -Wl,-rpath,{{.FUSE_T_FRAMEWORK}}{{end}}'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  check-fuse-t:
+    desc: Check if fuse-t is installed (macOS only)
+    silent: true
+    cmds:
+      - |
+        if [ "$(uname)" = "Darwin" ]; then
+          if [ ! -d "{{.FUSE_T_HEADERS}}" ]; then
+            echo "❌ fuse-t not found. Run 'task setup' to install."
+            exit 1
+          else
+            echo "✅ fuse-t found at {{.FUSE_T_HEADERS}}"
+          fi
+        else
+          echo "ℹ️  fuse-t check skipped (not macOS)"
+        fi
+
+  setup:
+    desc: Install system dependencies (e.g. fuse-t on macOS)
+    cmds:
+      - |
+        if [ "$(uname)" = "Darwin" ]; then
+          if [ ! -d "{{.FUSE_T_HEADERS}}" ]; then
+            echo "Installing fuse-t via Homebrew..."
+            brew install --cask fuse-t
+          else
+            echo "✅ fuse-t is already installed."
+          fi
+        fi
+
+  build:
+    desc: Build and codesign agentd
+    deps: [check-fuse-t]
+    cmds:
+      - go build -o {{.BINARY_NAME}} ./cmd/agentd
+      - cmd: codesign -s - --force --deep --entitlements entitlements.plist ./{{.BINARY_NAME}}
+        platforms: [darwin]
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+      - entitlements.plist
+    generates:
+      - "{{.BINARY_NAME}}"
+
+  gate:
+    desc: Run the 48-hour gate test on the mock dummy page
+    cmds:
+      - go run ./cmd/gate
+
+  gate-real:
+    desc: Run the 48-hour gate test on all captured real pages
+    cmds:
+      - echo "Running gate test on Hacker News..."
+      - go run ./cmd/gate testdata/hackernews/page.html testdata/hackernews/page.png
+      - echo "Running gate test on GitHub..."
+      - go run ./cmd/gate testdata/github/page.html testdata/github/page.png
+      - echo "Running gate test on Wikipedia..."
+      - go run ./cmd/gate testdata/wikipedia/page.html testdata/wikipedia/page.png
+      - echo "Running gate test on Lobsters..."
+      - go run ./cmd/gate testdata/lobsters/page.html testdata/lobsters/page.png
+      - echo "Running gate test on eBay (Ecommerce)..."
+      - go run ./cmd/gate testdata/ecommerce/page.html testdata/ecommerce/page.png
+
+  test:
+    desc: Run all tests
+    deps: [check-fuse-t]
+    cmds:
+      - go test -race -v ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...
+
+  fmt:
+    desc: Format code with gofumpt
+    cmds:
+      - gofumpt -w -extra .
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  tidy:
+    desc: Tidy go modules
+    cmds:
+      - go mod tidy
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -f {{.BINARY_NAME}}

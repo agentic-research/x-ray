@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "X-Ray Semantic Projector",
+  "version": "1.0",
+  "description": "Injects IDs and syncs DOM with X-Ray Agentd.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "host_permissions": [
+    "ws://localhost:8080/*"
+  ]
+}
