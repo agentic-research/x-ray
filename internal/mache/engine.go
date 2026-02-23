@@ -43,6 +43,11 @@ func NewEngine() *Engine {
 	}
 }
 
+// HasSchema reports whether at least one mount has been applied.
+func (e *Engine) HasSchema() bool {
+	return len(e.mounts) > 0
+}
+
 // ApplySchema parses the Cartographer JSON and builds the virtual FS.
 func (e *Engine) ApplySchema(schemaJSON string) error {
 	var output CartographerOutput

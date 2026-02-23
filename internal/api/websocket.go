@@ -15,6 +15,7 @@ import (
 	"github.com/jamesgardner/x-ray/internal/cartographer"
 	"github.com/jamesgardner/x-ray/internal/mache"
 	"github.com/jamesgardner/x-ray/internal/navigator"
+	"google.golang.org/genai"
 )
 
 var upgrader = websocket.Upgrader{
@@ -26,16 +27,20 @@ type Handler struct {
 	Cartographer *cartographer.Agent
 	Navigator    *navigator.Agent
 	Engine       *mache.Engine
+	Client       *genai.Client
+	LiveModel    string
 
 	mu   sync.Mutex
 	conn *websocket.Conn
 }
 
-func NewHandler(cart *cartographer.Agent, nav *navigator.Agent, engine *mache.Engine) *Handler {
+func NewHandler(cart *cartographer.Agent, nav *navigator.Agent, engine *mache.Engine, client *genai.Client, liveModel string) *Handler {
 	return &Handler{
 		Cartographer: cart,
 		Navigator:    nav,
 		Engine:       engine,
+		Client:       client,
+		LiveModel:    liveModel,
 	}
 }
 
@@ -190,6 +195,23 @@ func (h *Handler) sendMessage(conn *websocket.Conn, msg OutboundMessage) {
 	if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
 		log.Printf("Failed to send message: %v", err)
 	}
+}
+
+// SendActionToExtension sends an EXECUTE_ACTION message over the extension WebSocket.
+// Used by the voice handler to dispatch act() results to the browser.
+func (h *Handler) SendActionToExtension(macheID, action string) {
+	h.mu.Lock()
+	conn := h.conn
+	h.mu.Unlock()
+	if conn == nil {
+		log.Println("Voice: no extension WebSocket connected, cannot dispatch action")
+		return
+	}
+	h.sendMessage(conn, OutboundMessage{
+		Type:    MsgExecuteAction,
+		MacheID: macheID,
+		Action:  action,
+	})
 }
 
 // HandleNavigateHTTP provides a POST /navigate endpoint for curl/UI testing.

@@ -153,6 +153,79 @@ Both agents run at temperature 0.1. This ensures near-deterministic behavior: th
 ### ID Injection Strategy
 The extension tags `<a>`, `<button>`, `<input>`, `<select>`, `<textarea>`, and `[role="button"]` elements. Structural containers (`<main>`, `<section>`, `<nav>`, etc.) are tagged only if they contain 2+ interactive children. This balances completeness with signal-to-noise ratio — the Cartographer sees meaningful containers, not every wrapper div.
 
+## Voice Mode (Gemini Live API)
+
+X-Ray supports voice interaction via the Gemini Live API. The user speaks into a browser mic, audio streams through agentd to Gemini Live, tool calls execute locally, and Gemini's spoken response streams back for playback.
+
+### Voice Data Flow
+
+```mermaid
+sequenceDiagram
+    participant B as Browser (voice.html)
+    participant A as Agentd (/voice)
+    participant G as Gemini Live API
+    participant E as Extension (content.js)
+
+    B->>A: ws://host:8080/voice (connect)
+    A->>G: Live.Connect(model, tools, audio modality)
+    G-->>A: SetupComplete
+    A-->>B: {"type":"ready"}
+
+    loop Audio streaming
+        B->>A: Binary frame (16kHz PCM)
+        A->>G: SendRealtimeInput(audio)
+    end
+
+    G-->>A: ToolCall: ls("/")
+    A->>A: engine.ListDir("/")
+    A->>G: SendToolResponse("header/ main/ footer/")
+
+    G-->>A: ToolCall: act("/main/story/_c/mache-13", "click")
+    A->>A: engine.ResolveMacheID → "mache-13"
+    A->>E: EXECUTE_ACTION via extension WS
+    E->>E: element.click()
+    A->>G: SendToolResponse("Executing click on mache-13")
+
+    G-->>A: ServerContent (audio response)
+    A-->>B: Binary frame (24kHz PCM)
+    G-->>A: OutputTranscription
+    A-->>B: {"type":"output_transcription","text":"Done! I clicked..."}
+```
+
+### Voice Architecture
+
+```
+Browser (mic + speaker)
+  │
+  ├── ws://host:8080/ws ──── Extension WebSocket (DOM snapshots, execute actions)
+  │
+  └── ws://host:8080/voice ── Voice audio streaming
+      │
+      ▼
+  Agentd Backend
+      │
+      ├── Proxies PCM audio chunks to Gemini Live API (Go SDK)
+      ├── Receives tool calls (ls, cat, act) from Gemini Live
+      ├── Executes tools locally against Mache Engine
+      ├── Sends tool responses back to Gemini Live
+      ├── Streams Gemini's audio response back to browser
+      └── When act() fires → sends EXECUTE_ACTION over extension WS
+```
+
+### Audio Formats
+
+| Leg | Format | Sample Rate |
+|-----|--------|-------------|
+| Browser → Agentd | 16-bit PCM, mono | 16 kHz |
+| Agentd → Gemini Live | Same (proxied) | 16 kHz |
+| Gemini Live → Agentd | 16-bit PCM, mono | 24 kHz |
+| Agentd → Browser | Same (proxied) | 24 kHz |
+
+### Voice UI
+
+Served at `http://host:8080/voice-ui` — a standalone HTML page with mic button, AudioContext playback, and live transcription display. No extension permissions needed.
+
 ### Google Cloud Services Used
 - **Gemini 2.5 Flash** via the GenAI Go SDK (`google.golang.org/genai`)
+- **Gemini Live API** (native audio) for real-time voice interaction
 - **Cloud Run** for hosting the agentd backend

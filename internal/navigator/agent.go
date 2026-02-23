@@ -36,7 +36,8 @@ func (a *Agent) SetEngine(engine *mache.Engine) {
 	a.engine = engine
 }
 
-func toolDefinitions() []*genai.Tool {
+// ToolDefinitions returns the tool declarations for ls/cat/act.
+func ToolDefinitions() []*genai.Tool {
 	return []*genai.Tool{{
 		FunctionDeclarations: []*genai.FunctionDeclaration{
 			{
@@ -84,9 +85,9 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 
 	config := &genai.GenerateContentConfig{
 		SystemInstruction: &genai.Content{
-			Parts: []*genai.Part{{Text: navigatorSystemPrompt}},
+			Parts: []*genai.Part{{Text: NavigatorSystemPrompt}},
 		},
-		Tools:       toolDefinitions(),
+		Tools:       ToolDefinitions(),
 		Temperature: genai.Ptr(float32(0.1)),
 	}
 
@@ -118,7 +119,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 				Parts: []*genai.Part{{FunctionCall: fc}},
 			})
 
-			result, action := a.executeTool(fc)
+			result, action := a.ExecuteTool(fc)
 			log.Printf("Navigator: tool=%s args=%v result=%q", fc.Name, fc.Args, result)
 
 			if action != nil {
@@ -143,7 +144,9 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 	return nil, "", fmt.Errorf("tool-use loop exceeded 5 iterations without resolution")
 }
 
-func (a *Agent) executeTool(fc *genai.FunctionCall) (string, *ActionResult) {
+// ExecuteTool dispatches a function call to the Mache engine and returns the
+// result string and an optional ActionResult (non-nil when act() fires).
+func (a *Agent) ExecuteTool(fc *genai.FunctionCall) (string, *ActionResult) {
 	args := fc.Args
 	switch fc.Name {
 	case "ls":
@@ -180,7 +183,8 @@ func (a *Agent) executeTool(fc *genai.FunctionCall) (string, *ActionResult) {
 	}
 }
 
-const navigatorSystemPrompt = `You are 'The Navigator', an agent that helps users interact with web pages through a semantic filesystem.
+// NavigatorSystemPrompt is the system instruction shared by text and voice modes.
+const NavigatorSystemPrompt = `You are 'The Navigator', an agent that helps users interact with web pages through a semantic filesystem.
 
 You have access to a semantic filesystem that represents the current web page. The filesystem organizes interactive elements into logical zones (e.g., /header/nav, /main/content, /sidebar/filters).
 

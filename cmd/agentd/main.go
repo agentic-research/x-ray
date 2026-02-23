@@ -28,19 +28,34 @@ func main() {
 		log.Fatalf("Failed to initialize Gemini client: %v", err)
 	}
 
+	// Live API requires APIVersion to be set. Create a dedicated client.
+	liveClient, err := genai.NewClient(ctx, &genai.ClientConfig{
+		HTTPOptions: genai.HTTPOptions{APIVersion: "v1alpha"},
+	})
+	if err != nil {
+		log.Fatalf("Failed to initialize Gemini Live client: %v", err)
+	}
+
 	model := os.Getenv("GEMINI_MODEL")
 	if model == "" {
 		model = "gemini-2.5-flash"
+	}
+
+	liveModel := os.Getenv("GEMINI_LIVE_MODEL")
+	if liveModel == "" {
+		liveModel = "gemini-2.5-flash-native-audio-preview-12-2025"
 	}
 
 	engine := mache.NewEngine()
 	cart := cartographer.NewAgent(client, model)
 	nav := navigator.NewAgent(client, model, engine)
 
-	handler := api.NewHandler(cart, nav, engine)
+	handler := api.NewHandler(cart, nav, engine, liveClient, liveModel)
 
 	http.HandleFunc("/ws", handler.HandleWebSocket)
 	http.HandleFunc("/navigate", handler.HandleNavigateHTTP)
+	http.HandleFunc("/voice", handler.HandleVoice)
+	http.HandleFunc("/voice-ui", serveVoiceUI)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -51,4 +66,8 @@ func main() {
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+func serveVoiceUI(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "static/voice.html")
 }
