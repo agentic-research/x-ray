@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/jamesgardner/x-ray/internal/cartographer"
 	"github.com/jamesgardner/x-ray/internal/mache"
 	"github.com/jamesgardner/x-ray/internal/navigator"
 	"google.golang.org/genai"
@@ -33,12 +32,12 @@ type pendingAction struct {
 type TabSession struct {
 	TabID     int
 	Engine    *mache.Engine
-	Navigator *navigator.Agent
+	Navigator IntentHandler
 }
 
 // Handler holds the dependencies for the WebSocket handler.
 type Handler struct {
-	Cartographer *cartographer.Agent
+	Cartographer SchemaGenerator
 	Client       *genai.Client // standard client (text mode + navigator creation)
 	LiveClient   *genai.Client // Live API client (voice mode)
 	Model        string        // model name for creating per-tab Navigators
@@ -50,7 +49,7 @@ type Handler struct {
 	sessions map[int]*TabSession
 }
 
-func NewHandler(cart *cartographer.Agent, client, liveClient *genai.Client, model, liveModel string) *Handler {
+func NewHandler(cart SchemaGenerator, client, liveClient *genai.Client, model, liveModel string) *Handler {
 	return &Handler{
 		Cartographer: cart,
 		Client:       client,

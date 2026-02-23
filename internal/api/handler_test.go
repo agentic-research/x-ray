@@ -1,21 +1,26 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
-
-	"github.com/jamesgardner/x-ray/internal/cartographer"
 )
+
+// stubCartographer is a no-op SchemaGenerator for unit tests.
+type stubCartographer struct{}
+
+func (s *stubCartographer) GenerateSchema(ctx context.Context, screenshot []byte, mimeType, summary string) (string, error) {
+	return `{"mounts":[]}`, nil
+}
 
 // newTestHandler builds a Handler suitable for unit tests. Gemini clients are
 // nil — only getSession / session isolation / message plumbing are exercised.
 func newTestHandler() *Handler {
-	cart := &cartographer.Agent{} // unused in these tests
-	return NewHandler(cart, nil, nil, "test-model", "test-live-model")
+	return NewHandler(&stubCartographer{}, nil, nil, "test-model", "test-live-model")
 }
 
 func TestGetSessionCreatesNew(t *testing.T) {
