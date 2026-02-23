@@ -6,6 +6,7 @@
   "permissions": [
     "activeTab",
     "scripting",
+    "storage",
     "tabs"
   ],
   "action": {
@@ -21,6 +22,6 @@
     }
   ],
   "host_permissions": [
-    "ws://localhost:8080/*"
+    "<all_urls>"
   ]
 }

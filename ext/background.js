@@ -1,12 +1,32 @@
 // background.js - Service worker for X-Ray extension
 
+const DEFAULT_WS_URL = 'ws://localhost:8080/ws';
+
 let ws = null;
 let reconnectTimer = null;
+let wsUrl = DEFAULT_WS_URL;
+
+// Load configured WebSocket URL, then connect.
+chrome.storage.local.get({ wsUrl: DEFAULT_WS_URL }, (items) => {
+  wsUrl = items.wsUrl;
+  console.log('X-Ray: Using WebSocket URL:', wsUrl);
+  connectWebSocket();
+});
+
+// Re-connect when the URL is changed at runtime.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.wsUrl) {
+    wsUrl = changes.wsUrl.newValue || DEFAULT_WS_URL;
+    console.log('X-Ray: WebSocket URL changed to:', wsUrl);
+    if (ws) ws.close();
+    connectWebSocket();
+  }
+});
 
 function connectWebSocket() {
   if (ws && ws.readyState === WebSocket.OPEN) return;
 
-  ws = new WebSocket('ws://localhost:8080/ws');
+  ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
     console.log('X-Ray: Connected to agentd');
@@ -99,6 +119,3 @@ function captureAndSend(tabId) {
 chrome.action.onClicked.addListener((tab) => {
   captureAndSend(tab.id);
 });
-
-// Connect on startup
-connectWebSocket();
