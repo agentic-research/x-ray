@@ -14,6 +14,8 @@ DO NOT enumerate individual interactive elements (like every link in a list or e
 Your job is to define the high-level zones (e.g., /header/nav, /main/content, /sidebar/widgets, /footer).
 The Mache engine will automatically parse the children of these zones.
 
+CRITICAL: If there are pagination controls, 'Next Page' buttons, or 'Load More' links, you MUST map them into their own distinct semantic zone (e.g., /main/pagination). Do not skip them.
+
 Find the single element (and its data-mache-id) from the provided list that best represents the root or first element in each major semantic zone.
 
 Output a valid JSON object representing this high-level mapping, adhering strictly to the provided schema format.
