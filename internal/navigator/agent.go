@@ -122,7 +122,11 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 			return nil, "", fmt.Errorf("no candidates returned")
 		}
 
-		part := res.Candidates[0].Content.Parts[0]
+		candidate := res.Candidates[0]
+		if candidate.Content == nil || len(candidate.Content.Parts) == 0 {
+			return nil, "", fmt.Errorf("empty response from model (finish_reason: %v)", candidate.FinishReason)
+		}
+		part := candidate.Content.Parts[0]
 
 		if part.Text != "" {
 			return nil, part.Text, nil
