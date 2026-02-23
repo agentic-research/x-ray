@@ -48,6 +48,22 @@ func (e *Engine) HasSchema() bool {
 	return len(e.mounts) > 0
 }
 
+// ValidateSchema checks that every mache_id in the schema actually exists in
+// the DOM summary. Returns a list of hallucinated IDs (empty = all valid).
+func ValidateSchema(schemaJSON, summary string) []string {
+	var output CartographerOutput
+	if err := json.Unmarshal([]byte(schemaJSON), &output); err != nil {
+		return nil
+	}
+	var bad []string
+	for _, m := range output.Mounts {
+		if !strings.Contains(summary, "ID: "+m.MacheID+" ") {
+			bad = append(bad, m.MacheID)
+		}
+	}
+	return bad
+}
+
 // ApplySchema parses the Cartographer JSON and builds the virtual FS.
 func (e *Engine) ApplySchema(schemaJSON string) error {
 	var output CartographerOutput

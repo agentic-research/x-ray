@@ -113,6 +113,26 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 
 	log.Printf("Cartographer generated schema: %s", schemaJSON)
 
+	// Validate: every mache_id must exist in the DOM summary.
+	if bad := mache.ValidateSchema(schemaJSON, msg.Summary); len(bad) > 0 {
+		log.Printf("Cartographer hallucinated IDs: %v — regenerating", bad)
+		h.sendMessage(conn, OutboundMessage{
+			Type: MsgStatus, Message: "Schema had invalid IDs, retrying...", Stage: "cartographer",
+		})
+		schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, msg.Summary)
+		if err != nil {
+			log.Printf("Cartographer retry failed: %v", err)
+			h.sendMessage(conn, OutboundMessage{
+				Type: MsgStatus, Message: "Schema retry failed: " + err.Error(), Stage: "error",
+			})
+			return
+		}
+		log.Printf("Cartographer retry schema: %s", schemaJSON)
+		if bad2 := mache.ValidateSchema(schemaJSON, msg.Summary); len(bad2) > 0 {
+			log.Printf("Cartographer still hallucinating after retry: %v", bad2)
+		}
+	}
+
 	// Save schema to disk for reference
 	saveLog("schema", msg.URL, schemaJSON)
 
