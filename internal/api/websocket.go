@@ -30,9 +30,10 @@ type pendingAction struct {
 
 // TabSession holds per-tab state: its own Engine and Navigator.
 type TabSession struct {
-	TabID     int
-	Engine    *mache.Engine
-	Navigator IntentHandler
+	TabID       int
+	Engine      *mache.Engine
+	Navigator   IntentHandler
+	SchemaReady chan struct{} // closed when schema is applied
 }
 
 // Handler holds the dependencies for the WebSocket handler.
@@ -72,9 +73,10 @@ func (h *Handler) getSession(tabID int) *TabSession {
 	engine := mache.NewEngine()
 	nav := navigator.NewAgent(h.Client, h.Model, engine)
 	sess := &TabSession{
-		TabID:     tabID,
-		Engine:    engine,
-		Navigator: nav,
+		TabID:       tabID,
+		Engine:      engine,
+		Navigator:   nav,
+		SchemaReady: make(chan struct{}),
 	}
 	h.sessions[tabID] = sess
 	log.Printf("Session: created new session for tab %d", tabID)
@@ -219,6 +221,14 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	sess.Engine.LoadChildren(msg.Summary)
 	sess.Navigator.SetEngine(sess.Engine)
 
+	// Signal that schema is ready — unblocks any waiting handleNavigate.
+	select {
+	case <-sess.SchemaReady:
+		// Already closed from a previous snapshot — fine, schema replaced in-place.
+	default:
+		close(sess.SchemaReady)
+	}
+
 	var schema any
 	if err := json.Unmarshal([]byte(schemaJSON), &schema); err != nil {
 		log.Printf("Failed to parse schema JSON for response: %v", err)
@@ -229,6 +239,24 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 	ctx := context.Background()
 	sess := h.getSession(msg.TabID)
+
+	// Wait for schema if it hasn't arrived yet (intent queued before snapshot finished).
+	if !sess.Engine.HasSchema() {
+		log.Printf("Navigator: waiting for schema (tab %d) before handling: %s", msg.TabID, msg.Intent)
+		h.sendMessage(conn, OutboundMessage{
+			Type: MsgStatus, TabID: msg.TabID, Message: "Waiting for schema...", Stage: "navigator",
+		})
+		select {
+		case <-sess.SchemaReady:
+			log.Printf("Navigator: schema ready, proceeding (tab %d)", msg.TabID)
+		case <-time.After(30 * time.Second):
+			log.Printf("Navigator: timed out waiting for schema (tab %d)", msg.TabID)
+			h.sendMessage(conn, OutboundMessage{
+				Type: MsgStatus, TabID: msg.TabID, Message: "Timed out waiting for schema", Stage: "error",
+			})
+			return
+		}
+	}
 
 	h.sendMessage(conn, OutboundMessage{
 		Type: MsgStatus, TabID: msg.TabID, Message: "Navigating: " + msg.Intent, Stage: "navigator",
@@ -329,6 +357,17 @@ func (h *Handler) HandleNavigateHTTP(w http.ResponseWriter, r *http.Request) {
 
 	sess := h.getSession(req.TabID)
 	ctx := context.Background()
+
+	// Wait for schema if needed.
+	if !sess.Engine.HasSchema() {
+		select {
+		case <-sess.SchemaReady:
+		case <-time.After(30 * time.Second):
+			http.Error(w, "timed out waiting for schema", http.StatusServiceUnavailable)
+			return
+		}
+	}
+
 	action, textResponse, err := sess.Navigator.HandleIntent(ctx, req.Intent)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
