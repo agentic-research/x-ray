@@ -213,6 +213,7 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 
 	// Save schema to disk for reference
 	saveLog("schema", msg.URL, schemaJSON)
+	saveLog("summary", msg.URL, msg.Summary)
 
 	if err := sess.Engine.ApplySchema(schemaJSON); err != nil {
 		log.Printf("Engine apply failed: %v", err)
@@ -301,6 +302,7 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 // handleDOMUpdate receives an updated summary from the browser after a scroll.
 // It signals the waiting scrollPage goroutine via the session's DOMUpdateCh.
 func (h *Handler) handleDOMUpdate(msg InboundMessage) {
+	saveLog("summary-scroll", fmt.Sprintf("tab-%d", msg.TabID), msg.Summary)
 	sess := h.getSession(msg.TabID)
 	select {
 	case sess.DOMUpdateCh <- msg.Summary:
