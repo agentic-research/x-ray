@@ -269,6 +269,145 @@ func TestLoadChildrenCap(t *testing.T) {
 	}
 }
 
+func TestFormatByPrimaryItems(t *testing.T) {
+	tests := []struct {
+		name         string
+		descendants  []SummaryElement
+		primaryItems []string
+		wantItems    int    // number of "--- Item N ---" headers
+		wantContains string // substring that must appear
+	}{
+		{
+			name: "HN-like: story titles as primary items",
+			descendants: []SummaryElement{
+				{ID: "m-1", Tag: "span", Text: ""},       // upvote arrow
+				{ID: "m-2", Tag: "a", Text: "Story One"}, // primary
+				{ID: "m-3", Tag: "a", Text: "(example.com)"},
+				{ID: "m-4", Tag: "span", Text: ""},       // upvote arrow
+				{ID: "m-5", Tag: "a", Text: "Story Two"}, // primary
+				{ID: "m-6", Tag: "a", Text: "(other.com)"},
+			},
+			primaryItems: []string{"m-2", "m-5"},
+			wantItems:    3, // preamble (m-1) + Item 2 (m-2,m-3) + Item 3 (m-5,m-6)
+			wantContains: "--- Item 2 ---",
+		},
+		{
+			name: "no preamble: first element is primary",
+			descendants: []SummaryElement{
+				{ID: "m-10", Tag: "a", Text: "First"},
+				{ID: "m-11", Tag: "span", Text: "meta"},
+				{ID: "m-12", Tag: "a", Text: "Second"},
+			},
+			primaryItems: []string{"m-10", "m-12"},
+			wantItems:    2,
+			wantContains: "--- Item 1 ---",
+		},
+		{
+			name: "skips structural tags",
+			descendants: []SummaryElement{
+				{ID: "m-20", Tag: "a", Text: "Title"},
+				{ID: "m-21", Tag: "tbody", Text: ""},
+				{ID: "m-22", Tag: "a", Text: "Link"},
+			},
+			primaryItems: []string{"m-20"},
+			wantItems:    1,
+			wantContains: `m-22 | a | "Link"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatByPrimaryItems(tt.descendants, tt.primaryItems)
+			gotItems := strings.Count(got, "--- Item ")
+			if gotItems != tt.wantItems {
+				t.Errorf("expected %d item headers, got %d\noutput:\n%s", tt.wantItems, gotItems, got)
+			}
+			if !strings.Contains(got, tt.wantContains) {
+				t.Errorf("output missing %q\noutput:\n%s", tt.wantContains, got)
+			}
+		})
+	}
+}
+
+func TestFormatGroupedChildrenDispatch(t *testing.T) {
+	// Need enough non-empty elements so emptyCount (2) < len/2 (4) triggers heuristic
+	descendants := []SummaryElement{
+		{ID: "m-1", Tag: "span", Text: ""},
+		{ID: "m-2", Tag: "a", Text: "Story"},
+		{ID: "m-3", Tag: "a", Text: "meta1"},
+		{ID: "m-4", Tag: "span", Text: ""},
+		{ID: "m-5", Tag: "a", Text: "Another"},
+		{ID: "m-6", Tag: "a", Text: "meta2"},
+	}
+
+	// With primary items: should use primary-item grouping
+	withPrimary := formatGroupedChildren(descendants, []string{"m-2", "m-5"})
+	if !strings.Contains(withPrimary, "--- Item ") {
+		t.Errorf("expected item headers with primary items, got:\n%s", withPrimary)
+	}
+	if !strings.Contains(withPrimary, `"Story"`) {
+		t.Errorf("primary item text missing:\n%s", withPrimary)
+	}
+
+	// With nil primary items: should fall back to empty-separator heuristic
+	withHeuristic := formatGroupedChildren(descendants, nil)
+	if !strings.Contains(withHeuristic, "--- Item ") {
+		t.Errorf("expected item headers from heuristic fallback, got:\n%s", withHeuristic)
+	}
+
+	// With empty slice: same fallback
+	withEmpty := formatGroupedChildren(descendants, []string{})
+	if withEmpty != withHeuristic {
+		t.Errorf("empty slice should behave same as nil\nempty: %s\nnil: %s", withEmpty, withHeuristic)
+	}
+}
+
+func TestLoadChildrenWithPrimaryItems(t *testing.T) {
+	schema := `{
+  "mounts": [
+    {
+      "virtual_path": "/main/stories",
+      "mache_id": "mache-10",
+      "description": "Story list",
+      "primary_items": ["mache-11", "mache-13"]
+    }
+  ]
+}`
+	summary := `Interactive Elements:
+ID: mache-10 | Parent: none | Tag: div | Text: "Stories"
+ID: mache-11 | Parent: mache-10 | Tag: a | Text: "First Story"
+ID: mache-12 | Parent: mache-10 | Tag: span | Text: "(example.com)"
+ID: mache-13 | Parent: mache-10 | Tag: a | Text: "Second Story"
+ID: mache-14 | Parent: mache-10 | Tag: span | Text: "(other.com)"
+`
+
+	e := NewEngine()
+	if err := e.ApplySchema(schema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+	e.LoadChildren(summary)
+
+	content, err := e.ReadFile("/main/stories/children")
+	if err != nil {
+		t.Fatalf("ReadFile children failed: %v", err)
+	}
+
+	// Should have 2 items grouped by primary items
+	if strings.Count(content, "--- Item ") != 2 {
+		t.Errorf("expected 2 item groups, got:\n%s", content)
+	}
+
+	// First item should contain the story title
+	if !strings.Contains(content, `"First Story"`) {
+		t.Errorf("missing First Story in output:\n%s", content)
+	}
+
+	// Metadata should be indented under the item
+	if !strings.Contains(content, `"(example.com)"`) {
+		t.Errorf("missing metadata in output:\n%s", content)
+	}
+}
+
 func TestResolveMacheIDChild(t *testing.T) {
 	e := NewEngine()
 	if err := e.ApplySchema(sampleSchema); err != nil {
