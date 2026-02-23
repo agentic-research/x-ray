@@ -368,6 +368,40 @@ func formatByEmptySeparator(descendants []SummaryElement) string {
 	return strings.TrimRight(sb.String(), "\n")
 }
 
+// collectByPrimaryItems finds primary items and their sibling elements directly
+// from the full element list. This bypasses BFS depth limits for sites with
+// deeply nested DOMs (e.g., Reddit) where primary items may be many levels
+// below the zone root.
+func collectByPrimaryItems(elements []SummaryElement, primaryItems []string) []SummaryElement {
+	primarySet := make(map[string]bool, len(primaryItems))
+	for _, id := range primaryItems {
+		primarySet[id] = true
+	}
+
+	// Find parents of primary items to also include their siblings.
+	primaryParents := make(map[string]bool)
+	elementByID := make(map[string]SummaryElement, len(elements))
+	for _, el := range elements {
+		elementByID[el.ID] = el
+		if primarySet[el.ID] {
+			primaryParents[el.ParentID] = true
+		}
+	}
+
+	// Collect: primary items + elements sharing a parent with a primary item.
+	var result []SummaryElement
+	seen := make(map[string]bool)
+	for _, el := range elements {
+		if primarySet[el.ID] || primaryParents[el.ParentID] {
+			if !seen[el.ID] {
+				result = append(result, el)
+				seen[el.ID] = true
+			}
+		}
+	}
+	return result
+}
+
 // LoadChildren parses the summary and populates children/_ c/ for each mounted zone.
 func (e *Engine) LoadChildren(summary string) {
 	elements := parseSummary(summary)
@@ -377,7 +411,20 @@ func (e *Engine) LoadChildren(summary string) {
 	parentMap := buildParentMap(elements)
 
 	for _, m := range e.mounts {
-		descendants := collectDescendants(parentMap, m.MacheID, 2)
+		var descendants []SummaryElement
+
+		// When primary items are provided, find them directly from the full
+		// element list instead of relying on BFS depth (which fails on deeply
+		// nested DOMs like Reddit).
+		if len(m.PrimaryItems) > 0 {
+			descendants = collectByPrimaryItems(elements, m.PrimaryItems)
+		}
+
+		// Fall back to BFS from zone root.
+		if len(descendants) == 0 {
+			descendants = collectDescendants(parentMap, m.MacheID, 2)
+		}
+
 		if len(descendants) == 0 {
 			continue
 		}
