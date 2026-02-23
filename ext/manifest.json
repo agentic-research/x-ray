@@ -6,6 +6,7 @@
   "permissions": [
     "activeTab",
     "alarms",
+    "debugger",
     "offscreen",
     "scripting",
     "storage",

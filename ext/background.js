@@ -118,40 +118,175 @@ function connectWebSocket() {
   };
 }
 
+// --- Accessibility Tree via CDP ---
+
+// Capture the full accessibility tree and map AX nodes to mache-ids.
+// Returns { axMap, axSummary } where axMap is Map<macheId, {role, name, properties}>
+// and axSummary is a compact text representation of the tree.
+async function captureAccessibilityData(tabId) {
+  try {
+    await chrome.debugger.attach({ tabId }, '1.3');
+  } catch (e) {
+    console.warn('X-Ray: debugger attach failed (tab may already be attached):', e.message);
+    return { axMap: new Map(), axSummary: '' };
+  }
+
+  try {
+    // 1. Get full AX tree
+    const { nodes: axNodes } = await chrome.debugger.sendCommand(
+      { tabId }, 'Accessibility.getFullAXTree', {}
+    );
+
+    // 2. Get DOM document root
+    const { root } = await chrome.debugger.sendCommand(
+      { tabId }, 'DOM.getDocument', { depth: 0 }
+    );
+
+    // 3. Find all data-mache-id elements via CDP querySelectorAll
+    const { nodeIds } = await chrome.debugger.sendCommand(
+      { tabId }, 'DOM.querySelectorAll',
+      { nodeId: root.nodeId, selector: '[data-mache-id]' }
+    );
+
+    // 4. Batch DOM.describeNode calls with Promise.all for concurrency
+    const descriptions = await Promise.all(
+      nodeIds.map(nid =>
+        chrome.debugger.sendCommand({ tabId }, 'DOM.describeNode', { nodeId: nid })
+      )
+    );
+
+    // 5. Build macheId → backendNodeId mapping
+    const macheToBackend = new Map();
+    for (const { node } of descriptions) {
+      const attrs = node.attributes || [];
+      for (let i = 0; i < attrs.length; i += 2) {
+        if (attrs[i] === 'data-mache-id') {
+          macheToBackend.set(attrs[i + 1], node.backendNodeId);
+          break;
+        }
+      }
+    }
+
+    // 6. Build backendNodeId → AX node lookup
+    const backendToAX = new Map();
+    for (const ax of axNodes) {
+      if (ax.backendDOMNodeId) backendToAX.set(ax.backendDOMNodeId, ax);
+    }
+
+    // 7. Join: macheId → {role, name, properties}
+    const axMap = new Map();
+    for (const [macheId, backendId] of macheToBackend) {
+      const ax = backendToAX.get(backendId);
+      if (ax) {
+        axMap.set(macheId, {
+          role: ax.role?.value || '',
+          name: ax.name?.value || '',
+          properties: (ax.properties || [])
+            .filter(p => ['disabled', 'expanded', 'checked', 'selected'].includes(p.name))
+            .map(p => `${p.name}=${p.value?.value}`)
+        });
+      }
+    }
+
+    // 8. Build compact AX summary for the server
+    const axSummary = formatAXTree(axNodes);
+
+    console.log(`X-Ray: AX tree captured — ${axNodes.length} nodes, ${axMap.size} mapped to mache-ids`);
+    return { axMap, axSummary };
+  } finally {
+    try {
+      await chrome.debugger.detach({ tabId });
+    } catch (_) { /* already detached */ }
+  }
+}
+
+// Format the AX tree into a compact text representation for the Cartographer.
+// Only includes nodes with meaningful roles (skips generic/none/ignored).
+function formatAXTree(axNodes) {
+  const skipRoles = new Set(['none', 'generic', 'InlineTextBox', 'StaticText', 'ignored']);
+  const lines = [];
+  for (const ax of axNodes) {
+    const role = ax.role?.value || '';
+    if (skipRoles.has(role) || !role) continue;
+    const name = ax.name?.value || '';
+    const props = (ax.properties || [])
+      .filter(p => p.value?.value === true || p.value?.value === 'true')
+      .map(p => p.name)
+      .join(',');
+    let line = `${role}`;
+    if (name) line += `: "${name.substring(0, 80)}"`;
+    if (props) line += ` [${props}]`;
+    lines.push(line);
+    if (lines.length >= 200) break; // Cap for prompt size
+  }
+  return lines.join('\n');
+}
+
+// Enrich summary lines with AX data from the CDP mapping.
+// Appends AXRole and AXName to lines that have a matching mache-id.
+function enrichSummaryWithAX(summary, axMap) {
+  return summary.split('\n').map(line => {
+    const match = line.match(/^ID:\s*(mache-\d+)/);
+    if (match && axMap.has(match[1])) {
+      const ax = axMap.get(match[1]);
+      let enriched = line;
+      if (ax.role) enriched += ` | AXRole: ${ax.role}`;
+      if (ax.name) enriched += ` | AXName: "${ax.name.substring(0, 80)}"`;
+      return enriched;
+    }
+    return line;
+  }).join('\n');
+}
+
 // Capture snapshot from the given tab and send to server with tab_id.
-function captureAndSend(tabId) {
-  chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' }, (response) => {
-    if (chrome.runtime.lastError) {
-      console.error('X-Ray: Content script error', chrome.runtime.lastError);
-      return;
+// Enriches the summary with accessibility tree data from CDP.
+async function captureAndSend(tabId) {
+  // Get summary from content script
+  let response;
+  try {
+    response = await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
+  } catch (e) {
+    console.error('X-Ray: Content script error', e);
+    return;
+  }
+  if (!response || !response.summary) {
+    console.error('X-Ray: No summary from content script');
+    return;
+  }
+
+  // Capture screenshot and AX tree in parallel
+  const [dataUrl, axData] = await Promise.all([
+    chrome.tabs.captureVisibleTab(null, { format: 'png' }),
+    captureAccessibilityData(tabId).catch(e => {
+      console.warn('X-Ray: AX tree capture failed, sending without it:', e);
+      return { axMap: new Map(), axSummary: '' };
+    })
+  ]);
+
+  const base64Data = dataUrl.split(',')[1];
+
+  // Enrich summary with AX data
+  const enrichedSummary = axData.axMap.size > 0
+    ? enrichSummaryWithAX(response.summary, axData.axMap)
+    : response.summary;
+
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    const msg = {
+      type: 'DOM_SNAPSHOT',
+      tab_id: tabId,
+      url: response.url,
+      summary: enrichedSummary,
+      screenshot: base64Data
+    };
+    if (axData.axSummary) {
+      msg.ax_tree = axData.axSummary;
     }
-    if (!response || !response.summary) {
-      console.error('X-Ray: No summary from content script');
-      return;
-    }
-
-    chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
-      if (chrome.runtime.lastError) {
-        console.error('X-Ray: Screenshot error', chrome.runtime.lastError);
-        return;
-      }
-
-      const base64Data = dataUrl.split(',')[1];
-
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'DOM_SNAPSHOT',
-          tab_id: tabId,
-          url: response.url,
-          summary: response.summary,
-          screenshot: base64Data
-        }));
-        console.log('X-Ray: Sent DOM_SNAPSHOT for tab', tabId);
-      } else {
-        console.error('X-Ray: WebSocket not connected');
-      }
-    });
-  });
+    ws.send(JSON.stringify(msg));
+    console.log('X-Ray: Sent DOM_SNAPSHOT for tab', tabId,
+      axData.axMap.size > 0 ? `(${axData.axMap.size} AX-enriched elements)` : '(no AX data)');
+  } else {
+    console.error('X-Ray: WebSocket not connected');
+  }
 }
 
 // --- Voice session lifecycle ---

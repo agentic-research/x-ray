@@ -175,10 +175,13 @@ type SummaryElement struct {
 	ParentID string
 	Tag      string
 	Text     string
+	AXRole   string // from CDP accessibility tree (optional)
+	AXName   string // from CDP accessibility tree (optional)
 }
 
 // parseSummary extracts structured elements from the summary text.
 // Expected format: ID: mache-X | Parent: mache-Y | Tag: a | Text: "..."
+// Optional AX fields: ... | AXRole: navigation | AXName: "Primary nav"
 func parseSummary(summary string) []SummaryElement {
 	var elements []SummaryElement
 	for _, line := range strings.Split(summary, "\n") {
@@ -186,6 +189,8 @@ func parseSummary(summary string) []SummaryElement {
 		if !strings.HasPrefix(line, "ID: ") {
 			continue
 		}
+		// Split first 4 fields (ID, Parent, Tag, Text+rest).
+		// Use SplitN to keep Text intact if it contains " | ".
 		parts := strings.SplitN(line, " | ", 4)
 		if len(parts) < 4 {
 			continue
@@ -193,11 +198,36 @@ func parseSummary(summary string) []SummaryElement {
 		id := strings.TrimPrefix(parts[0], "ID: ")
 		parentID := strings.TrimPrefix(parts[1], "Parent: ")
 		tag := strings.TrimPrefix(parts[2], "Tag: ")
-		text := strings.TrimPrefix(parts[3], "Text: ")
-		text = strings.Trim(text, "\"")
-		elements = append(elements, SummaryElement{
-			ID: id, ParentID: parentID, Tag: tag, Text: text,
-		})
+
+		// parts[3] = Text: "..." possibly followed by | AXRole: ... | AXName: "..."
+		// Find the closing quote of the Text value to split off AX fields.
+		rest := strings.TrimPrefix(parts[3], "Text: ")
+		var text string
+		var trailing string
+		if strings.HasPrefix(rest, "\"") {
+			if end := strings.Index(rest[1:], "\""); end >= 0 {
+				text = rest[1 : end+1]
+				trailing = rest[end+2:] // everything after closing quote
+			} else {
+				text = strings.Trim(rest, "\"")
+			}
+		} else {
+			text = rest
+		}
+
+		el := SummaryElement{ID: id, ParentID: parentID, Tag: tag, Text: text}
+
+		// Parse optional AX fields from trailing content
+		for _, segment := range strings.Split(trailing, " | ") {
+			segment = strings.TrimSpace(segment)
+			if v, ok := strings.CutPrefix(segment, "AXRole: "); ok {
+				el.AXRole = v
+			} else if v, ok := strings.CutPrefix(segment, "AXName: "); ok {
+				el.AXName = strings.Trim(v, "\"")
+			}
+		}
+
+		elements = append(elements, el)
 	}
 	return elements
 }

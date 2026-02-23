@@ -423,3 +423,68 @@ func TestResolveMacheIDChild(t *testing.T) {
 		t.Errorf("expected mache-16, got %q", id)
 	}
 }
+
+func TestParseSummaryWithAXFields(t *testing.T) {
+	summary := `Interactive Elements:
+ID: mache-0 | Parent: none | Tag: nav | Text: "Site Navigation" | AXRole: navigation | AXName: "Primary navigation"
+ID: mache-1 | Parent: mache-0 | Tag: a | Text: "Home" | AXRole: link | AXName: "Home"
+ID: mache-2 | Parent: mache-0 | Tag: a | Text: "About" | AXRole: link
+`
+	elements := parseSummary(summary)
+	if len(elements) != 3 {
+		t.Fatalf("expected 3 elements, got %d", len(elements))
+	}
+
+	// First element: full AX data
+	if elements[0].AXRole != "navigation" {
+		t.Errorf("expected AXRole 'navigation', got %q", elements[0].AXRole)
+	}
+	if elements[0].AXName != "Primary navigation" {
+		t.Errorf("expected AXName 'Primary navigation', got %q", elements[0].AXName)
+	}
+
+	// Second element: both AX fields
+	if elements[1].AXRole != "link" {
+		t.Errorf("expected AXRole 'link', got %q", elements[1].AXRole)
+	}
+	if elements[1].AXName != "Home" {
+		t.Errorf("expected AXName 'Home', got %q", elements[1].AXName)
+	}
+
+	// Third element: AXRole only, no AXName
+	if elements[2].AXRole != "link" {
+		t.Errorf("expected AXRole 'link', got %q", elements[2].AXRole)
+	}
+	if elements[2].AXName != "" {
+		t.Errorf("expected empty AXName, got %q", elements[2].AXName)
+	}
+
+	// Core fields still parsed correctly
+	if elements[0].ID != "mache-0" || elements[0].Tag != "nav" || elements[0].Text != "Site Navigation" {
+		t.Errorf("core fields wrong: %+v", elements[0])
+	}
+}
+
+func TestParseSummaryBackwardCompat(t *testing.T) {
+	// Old format without AX fields — must still work
+	elements := parseSummary(sampleSummary)
+	if len(elements) != 8 {
+		t.Fatalf("expected 8 elements, got %d", len(elements))
+	}
+	// All AX fields should be empty
+	for i, el := range elements {
+		if el.AXRole != "" {
+			t.Errorf("element %d: expected empty AXRole, got %q", i, el.AXRole)
+		}
+		if el.AXName != "" {
+			t.Errorf("element %d: expected empty AXName, got %q", i, el.AXName)
+		}
+	}
+	// Spot check core parsing still works
+	if elements[0].ID != "mache-0" || elements[0].Tag != "nav" {
+		t.Errorf("element 0 core fields wrong: %+v", elements[0])
+	}
+	if elements[4].Text != "First Story Title" {
+		t.Errorf("element 4 text wrong: %q", elements[4].Text)
+	}
+}

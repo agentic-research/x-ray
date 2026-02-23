@@ -15,6 +15,7 @@ type InboundMessage struct {
 	TabID      int    `json:"tab_id,omitempty"`
 	URL        string `json:"url,omitempty"`
 	Summary    string `json:"summary,omitempty"`
+	AXTree     string `json:"ax_tree,omitempty"`    // compact accessibility tree from CDP
 	Screenshot string `json:"screenshot,omitempty"` // base64-encoded PNG
 	Intent     string `json:"intent,omitempty"`
 }
