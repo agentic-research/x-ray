@@ -419,7 +419,22 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 	}
 	parentMap := buildParentMap(elements)
 
+	// Index all elements by ID for O(1) lookup (used by primary item fallback).
+	byID := make(map[string]SummaryElement, len(elements))
+	for _, el := range elements {
+		byID[el.ID] = el
+	}
+
 	for _, m := range e.mounts {
+		// Use browser-resolved items (from CSS selector) if available,
+		// otherwise fall back to the schema's static primary items.
+		effectivePrimary := m.PrimaryItems
+		if resolvedItems != nil {
+			if resolved, ok := resolvedItems[m.MacheID]; ok && len(resolved) > 0 {
+				effectivePrimary = resolved
+			}
+		}
+
 		// Collect all elements in this zone by walking parent chains to the
 		// zone root. Handles arbitrarily deep nesting and picks up new
 		// elements loaded after scrolling.
@@ -429,6 +444,18 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 		// reach the zone root due to untagged intermediate containers).
 		if len(descendants) == 0 {
 			descendants = collectDescendants(parentMap, m.MacheID, 2)
+		}
+
+		// Third fallback: zone root is a leaf element (e.g., on HN the
+		// Cartographer picks the first story <a> as zone root, but other
+		// stories are siblings, not descendants). Collect primary items
+		// directly from parsed elements.
+		if len(descendants) == 0 && len(effectivePrimary) > 0 {
+			for _, id := range effectivePrimary {
+				if el, ok := byID[id]; ok {
+					descendants = append(descendants, el)
+				}
+			}
 		}
 
 		if len(descendants) == 0 {
@@ -443,15 +470,6 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 		zoneEntry, err := e.resolve(m.VirtualPath)
 		if err != nil || !zoneEntry.IsDir {
 			continue
-		}
-
-		// Use browser-resolved items (from CSS selector) if available,
-		// otherwise fall back to the schema's static primary items.
-		effectivePrimary := m.PrimaryItems
-		if resolvedItems != nil {
-			if resolved, ok := resolvedItems[m.MacheID]; ok && len(resolved) > 0 {
-				effectivePrimary = resolved
-			}
 		}
 
 		zoneEntry.Children["children"] = &Entry{

@@ -630,3 +630,65 @@ func TestZoneSelectors(t *testing.T) {
 		t.Error("mache-0 should not have a selector")
 	}
 }
+
+func TestLoadChildrenLeafZoneRoot(t *testing.T) {
+	// Simulates HN: the Cartographer picks the first story link (mache-13)
+	// as the zone root. Stories are siblings in a table, not descendants
+	// of mache-13. The engine should fall back to collecting primary items
+	// directly from the parsed summary.
+	schema := `{
+  "mounts": [
+    {
+      "virtual_path": "/main/stories",
+      "mache_id": "mache-13",
+      "description": "News stories",
+      "primary_items": ["mache-13", "mache-20", "mache-27"]
+    }
+  ]
+}`
+	// Stories are siblings under different parents (table rows),
+	// NOT descendants of mache-13.
+	summary := `Interactive Elements:
+ID: mache-10 | Parent: none | Tag: table | Text: ""
+ID: mache-11 | Parent: mache-10 | Tag: tr | Text: ""
+ID: mache-13 | Parent: mache-11 | Tag: a | Text: "First Story"
+ID: mache-18 | Parent: mache-10 | Tag: tr | Text: ""
+ID: mache-20 | Parent: mache-18 | Tag: a | Text: "Second Story"
+ID: mache-25 | Parent: mache-10 | Tag: tr | Text: ""
+ID: mache-27 | Parent: mache-25 | Tag: a | Text: "Third Story"
+`
+	e := NewEngine()
+	if err := e.ApplySchema(schema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+	e.LoadChildren(summary, nil)
+
+	// children file should exist (primary item fallback kicks in)
+	content, err := e.ReadFile("/main/stories/children")
+	if err != nil {
+		t.Fatalf("children file missing (leaf zone root fallback failed): %v", err)
+	}
+
+	// All 3 primary items should appear
+	if !strings.Contains(content, `"First Story"`) {
+		t.Errorf("missing First Story:\n%s", content)
+	}
+	if !strings.Contains(content, `"Second Story"`) {
+		t.Errorf("missing Second Story:\n%s", content)
+	}
+	if !strings.Contains(content, `"Third Story"`) {
+		t.Errorf("missing Third Story:\n%s", content)
+	}
+	if strings.Count(content, "Item ") != 3 {
+		t.Errorf("expected 3 items, got:\n%s", content)
+	}
+
+	// _c/ should also be populated
+	cEntries, err := e.ListDir("/main/stories/_c")
+	if err != nil {
+		t.Fatalf("_c/ dir missing: %v", err)
+	}
+	if len(cEntries) != 3 {
+		t.Errorf("expected 3 child dirs, got %d: %v", len(cEntries), cEntries)
+	}
+}
