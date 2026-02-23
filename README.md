@@ -19,3 +19,106 @@ Worse, websites change constantly. A simple layout update breaks these locators,
 ## The Fix: Dynamic Semantic Projection
 
 X-Ray bridges the physical reality of the DOM and the conceptual intent of the user using a Two-Stage Agent Architecture:
+
+### Stage 1: The Cartographer (Vision + Structure)
+
+When a user visits a page, the X-Ray Chrome extension injects a tiny `data-mache-id` into every interactive element. It captures a viewport screenshot and generates a flattened text summary of those tagged IDs.
+
+This payload goes to Gemini. Because Gemini is natively multimodal, it instantly understands the visual layout (e.g., "The top bar is navigation, the left side is filters"). It outputs a strict JSON schema projecting these visual zones onto the tagged DOM nodes. For list zones, it also identifies the **primary items** — the main clickable element in each repeating item (e.g., story titles, product cards).
+
+### Stage 2: The Navigator (Voice + Action)
+
+That JSON schema feeds into the Mache Engine, which instantly mounts a virtual, in-memory filesystem tailored to that exact page.
+
+Now, the Gemini Live agent doesn't see `div[4]/span/button`. It runs `ls /` and sees a clean, human-readable structure:
+
+- `/header/global_nav/`
+- `/main/trending_repositories/`
+- `/footer/legal/`
+
+When the user says, "Click the first trending repository," the Navigator traverses the filesystem using standard POSIX tools (`ls`, `cat`) and safely executes the action (`act`).
+
+## Project Structure
+
+```text
+x-ray/
+├── cmd/
+│   ├── agentd/          # Main backend server (WebSocket + HTTP)
+│   └── gate/            # Offline accuracy gate test
+├── internal/
+│   ├── api/             # WebSocket handler, message types
+│   ├── cartographer/    # Stage 1: Gemini Vision → semantic schema
+│   ├── mache/           # Virtual filesystem engine
+│   └── navigator/       # Stage 2: Gemini Tool-Use → browser actions
+├── ext/                 # Chrome extension (content.js, background.js)
+├── testdata/            # Captured page snapshots for gate tests
+├── deploy/              # Dockerfile + Cloud Run deploy script
+└── docs/                # Architecture documentation
+
+Getting Started
+Prerequisites
+ * Go 1.25+ — go.dev/dl
+ * Task (task runner) — taskfile.dev/installation
+ * Chrome or Chromium-based browser
+ * Gemini API Key — ai.google.dev
+1. Environment Setup
+Create a .envrc file in the project root:
+export GEMINI_API_KEY="your-gemini-api-key"
+# Optional: override the default model (gemini-2.5-flash)
+# export GEMINI_MODEL="gemini-2.5-pro"
+
+If you use direnv, run direnv allow. Otherwise the backend loads .envrc automatically via godotenv.
+2. Running the Backend
+task run
+
+This builds, codesigns (macOS), and starts the server on :8080.
+3. Loading the Chrome Extension
+ * Open Chrome and navigate to chrome://extensions/.
+ * Enable Developer mode (top right toggle).
+ * Click Load unpacked and select the ext/ directory.
+ * Grant the extension permission to capture screenshots when prompted.
+After making changes to extension code, click the reload icon on chrome://extensions/ and refresh the target tab.
+4. Using X-Ray
+ * Navigate to any webpage in Chrome.
+ * Click the X-Ray extension icon — this captures a screenshot + DOM summary and sends it to the backend.
+ * The Cartographer analyzes the page and generates a semantic schema.
+ * Send navigation intents via the /navigate HTTP endpoint:
+<!-- end list -->
+curl -X POST http://localhost:8080/navigate \
+  -H "Content-Type: application/json" \
+  -d '{"intent": "click the first story"}'
+
+Task Commands
+| Command | Description |
+|---|---|
+| task run | Build, codesign, and run agentd |
+| task build | Build and codesign the binary |
+| task test | Run all tests (go test -race -v ./...) |
+| task gate | Run accuracy gate on mock dummy page |
+| task gate-real | Run accuracy gate on all captured real pages |
+| task lint | Run golangci-lint |
+| task fmt | Format with gofumpt |
+| task vet | Run go vet |
+| task tidy | Run go mod tidy |
+| task setup | Install system dependencies (fuse-t on macOS) |
+Architecture
+See docs/ARCHITECTURE.md for the full system diagram, data flow, and component descriptions.
+Highlights
+ * Zero Hallucinated IDs: The Cartographer is constrained to select from the pre-tagged data-mache-id set. Structured JSON output with a strict schema prevents the model from inventing non-existent DOM pointers.
+ * Semantic Filesystem: Instead of brittle XPaths or coordinate guessing, the agent interacts with a logical directory structure mapped dynamically to the page in under 10 seconds.
+ * LLM-Powered Item Grouping: For list zones, the Cartographer identifies primary items (story titles, product cards) so ordinal counting ("click the 3rd story") works correctly across any site.
+ * Temperature 0.1: Both Cartographer and Navigator run at near-deterministic temperature for reproducible results.
+Deployment
+X-Ray deploys to Google Cloud Run. See deploy/ for the Dockerfile and deploy script.
+# Set required env vars
+export GCP_PROJECT_ID="your-project"
+export GOOGLE_API_KEY="your-key"
+
+# Build and deploy
+./deploy/deploy.sh
+
+License
+MIT
+Built for the Gemini Live Agent Challenge — UI Navigator category.
+
+
