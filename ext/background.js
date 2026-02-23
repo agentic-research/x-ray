@@ -53,6 +53,9 @@ function connectWebSocket() {
 
   ws.onopen = () => {
     console.log('X-Ray: Connected to agentd');
+    // Server state is fresh on reconnect — clear stale schema tracking
+    schemaReadyTabs.clear();
+    pendingIntents.clear();
     if (reconnectTimer) {
       clearInterval(reconnectTimer);
       reconnectTimer = null;
