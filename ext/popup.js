@@ -6,37 +6,6 @@ const killBtn = document.getElementById('kill-btn');
 const sessionDot = document.getElementById('session-dot');
 const statusEl = document.getElementById('status');
 
-let schemaReady = false;
-let schemaPollTimer = null;
-
-function setIntentEnabled(enabled) {
-  intentInput.disabled = !enabled;
-  intentBtn.disabled = !enabled;
-  if (enabled) {
-    intentInput.placeholder = 'Type a command...';
-    intentInput.focus();
-  } else {
-    intentInput.placeholder = 'Waiting for schema...';
-  }
-}
-
-function pollForSchema() {
-  if (schemaPollTimer) return;
-  schemaPollTimer = setInterval(() => {
-    chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
-      if (chrome.runtime.lastError) return;
-      if (resp?.hasSchema) {
-        clearInterval(schemaPollTimer);
-        schemaPollTimer = null;
-        schemaReady = true;
-        setIntentEnabled(true);
-        statusEl.textContent = 'Ready — type a command or use voice';
-        statusEl.className = 'connected';
-      }
-    });
-  }, 1000);
-}
-
 // Poll initial state, auto-snapshot if no schema exists for this tab.
 chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
   if (chrome.runtime.lastError) return;
@@ -50,13 +19,11 @@ chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
   chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
     if (chrome.runtime.lastError) return;
     if (resp?.hasSchema) {
-      schemaReady = true;
-      setIntentEnabled(true);
+      intentInput.placeholder = 'Type a command...';
       statusEl.textContent = 'Ready — type a command or use voice';
       statusEl.className = 'connected';
     } else {
-      // Disable input until schema arrives.
-      setIntentEnabled(false);
+      intentInput.placeholder = 'Type now — runs when ready...';
       // Auto-trigger snapshot.
       snapshotBtn.textContent = 'Capturing...';
       snapshotBtn.disabled = true;
@@ -69,7 +36,6 @@ chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
         } else {
           statusEl.textContent = 'Generating schema...';
           statusEl.className = '';
-          pollForSchema();
         }
         snapshotBtn.textContent = 'Snapshot';
         snapshotBtn.disabled = false;
@@ -78,11 +44,13 @@ chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
   });
 });
 
+// Focus input immediately so user can start typing.
+intentInput.focus();
+
 snapshotBtn.addEventListener('click', () => {
   snapshotBtn.textContent = 'Capturing...';
   snapshotBtn.disabled = true;
-  schemaReady = false;
-  setIntentEnabled(false);
+  intentInput.placeholder = 'Type now — runs when ready...';
   chrome.runtime.sendMessage({ type: 'TRIGGER_SNAPSHOT' }, (resp) => {
     if (chrome.runtime.lastError || !resp?.ok) {
       statusEl.textContent = resp?.error || 'Snapshot failed';
@@ -90,7 +58,6 @@ snapshotBtn.addEventListener('click', () => {
     } else {
       statusEl.textContent = 'Generating schema...';
       statusEl.className = '';
-      pollForSchema();
     }
     snapshotBtn.textContent = 'Snapshot';
     snapshotBtn.disabled = false;
@@ -102,7 +69,7 @@ function sendIntent() {
   if (!intent) return;
   intentBtn.disabled = true;
   intentInput.disabled = true;
-  statusEl.textContent = 'Navigating...';
+  statusEl.textContent = 'Sending...';
   statusEl.className = '';
   chrome.runtime.sendMessage({ type: 'SEND_INTENT', intent }, (resp) => {
     intentBtn.disabled = false;

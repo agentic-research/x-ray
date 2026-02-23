@@ -19,6 +19,7 @@ let sessionReady = false;   // True once Gemini Live setup is complete.
 let micActive = false;      // True when mic is streaming audio.
 let pendingAutoMic = false; // When true, auto-enable mic once session is ready (one-click flow).
 const schemaReadyTabs = new Set();
+const pendingIntents = new Map(); // tabId → intent string (queued before schema ready)
 
 // Keep-alive: Chrome MV3 service workers die after ~30s of inactivity.
 chrome.alarms.create('keepalive', { periodInMinutes: 0.4 }); // ~24s
@@ -89,6 +90,14 @@ function connectWebSocket() {
         const tabId = msg.tab_id;
         console.log('X-Ray: Schema ready (tab', tabId, ')');
         if (tabId) schemaReadyTabs.add(tabId);
+
+        // Flush any queued intent for this tab.
+        if (tabId && pendingIntents.has(tabId) && ws && ws.readyState === WebSocket.OPEN) {
+          const intent = pendingIntents.get(tabId);
+          pendingIntents.delete(tabId);
+          console.log('X-Ray: Flushing queued intent for tab', tabId, ':', intent);
+          ws.send(JSON.stringify({ type: 'NAVIGATE', tab_id: tabId, intent }));
+        }
 
         // Auto-start voice session when schema arrives (if no session exists yet).
         if (tabId && sessionTabId === null) {
@@ -415,7 +424,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return;
         }
         if (!schemaReadyTabs.has(tabId)) {
-          sendResponse({ ok: false, error: 'No schema — click Snapshot first' });
+          // Queue intent — it will be sent when SCHEMA_READY arrives.
+          pendingIntents.set(tabId, msg.intent);
+          console.log('X-Ray: Queued intent for tab', tabId, '(waiting for schema):', msg.intent);
+          sendResponse({ ok: true, message: 'Queued — will run when schema is ready' });
           return;
         }
         ws.send(JSON.stringify({
