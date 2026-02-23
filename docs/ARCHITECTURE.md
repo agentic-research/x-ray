@@ -2,217 +2,196 @@
 
 ## System Diagram
 
-```
-┌─────────────────────────────────────────────────┐
-│  Chrome Extension (ext/)                         │
-│  ┌───────────────┐  ┌────────────────────────┐  │
-│  │ content.js     │  │ background.js          │  │
-│  │ • Tag IDs      │  │ • WebSocket client     │  │
-│  │ • DOM summary  │  │ • Screenshot capture   │  │
-│  │ • Execute acts │  │ • Action dispatch      │  │
-│  └───────────────┘  └──────────┬─────────────┘  │
-└─────────────────────────────────┼────────────────┘
-                                  │ WebSocket
-                                  │ ws://host:8080/ws
-                                  ▼
-┌──────────────────────────────────────────────────┐
-│  Agentd Backend (cmd/agentd)                      │
-│                                                    │
-│  ┌──────────────────────┐                          │
-│  │ WebSocket Handler     │  (internal/api/)        │
-│  │ • DOM_SNAPSHOT intake │                          │
-│  │ • NAVIGATE dispatch   │                          │
-│  │ • EXECUTE_ACTION send │                          │
-│  └──────────┬───────────┘                          │
-│             │                                       │
-│  ┌──────────▼───────────┐  ┌─────────────────────┐│
-│  │ Cartographer          │  │ Navigator            ││
-│  │ (Stage 1)             │  │ (Stage 2)            ││
-│  │                       │  │                      ││
-│  │ • Screenshot + DOM    │  │ • ls / cat / act     ││
-│  │ • Gemini Vision       │  │ • Gemini Tool-Use    ││
-│  │ • Structured JSON out │  │ • Intent → Action    ││
-│  └──────────┬───────────┘  └──────────┬───────────┘│
-│             │                          │             │
-│  ┌──────────▼──────────────────────────▼───────────┐│
-│  │ Mache Engine (internal/mache/)                   ││
-│  │ • ApplySchema() → virtual filesystem tree        ││
-│  │ • LoadChildren() → zone child resolution         ││
-│  │ • ResolveMacheID() → DOM element ID              ││
-│  └──────────────────────────────────────────────────┘│
-└───────────────────────────────────────────────────────┘
-                            │
-                            ▼ Gemini API
-               ┌──────────────────────────┐
-               │ Google Cloud              │
-               │ • Gemini 2.5 Flash        │
-               │ • Cloud Run (hosting)     │
-               └──────────────────────────┘
+```mermaid
+graph TB
+    subgraph Chrome["Chrome Extension (ext/)"]
+        CS[content.js<br/>Tag IDs, DOM summary,<br/>Execute actions]
+        BG[background.js<br/>WebSocket client,<br/>Screenshot capture]
+        POP[popup.html/js<br/>Snapshot + Mic toggle]
+        OFF[offscreen.js<br/>Voice audio bridge]
+        CS <--> BG
+        POP --> BG
+        OFF <--> BG
+    end
+
+    subgraph Agentd["Agentd Backend (cmd/agentd)"]
+        WS[WebSocket Handler<br/>internal/api/]
+        VOICE[Voice Handler<br/>/voice endpoint]
+        CART[Cartographer<br/>Stage 1]
+        NAV[Navigator<br/>Stage 2]
+        ENG[Mache Engine<br/>Virtual Filesystem]
+        SESS[Per-Tab Sessions<br/>map tab_id → session]
+
+        WS --> SESS
+        VOICE --> SESS
+        SESS --> CART
+        SESS --> NAV
+        CART --> ENG
+        NAV --> ENG
+    end
+
+    subgraph GCP["Google Cloud"]
+        GEMINI[Gemini 2.5 Flash<br/>Vision + Tool-Use]
+        LIVE[Gemini Live API<br/>Native Audio]
+        CR[Cloud Run<br/>Hosting]
+    end
+
+    BG <-->|"ws://host/ws<br/>DOM_SNAPSHOT, EXECUTE_ACTION"| WS
+    OFF <-->|"ws://host/voice?tab=N<br/>PCM audio + JSON"| VOICE
+    CART -->|"Screenshot + Summary<br/>→ Semantic JSON"| GEMINI
+    NAV -->|"ls / cat / act<br/>Tool-use loop"| GEMINI
+    VOICE <-->|"Audio stream<br/>+ Tool calls"| LIVE
+    Agentd -.->|"Deployed on"| CR
 ```
 
 ## Data Flow (Per Interaction)
 
-A single user interaction flows through these stages:
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant E as Extension
+    participant A as Agentd
+    participant C as Cartographer
+    participant M as Mache Engine
+    participant N as Navigator
+    participant G as Gemini
 
-### 1. Capture (Extension → Backend)
-1. User clicks the X-Ray extension icon on any webpage.
-2. `content.js` injects `data-mache-id` attributes into every interactive element (`<a>`, `<button>`, `<input>`, etc.) and structural containers holding 2+ interactive children.
-3. `content.js` generates a flattened text summary: `ID: mache-X | Parent: mache-Y | Tag: a | Text: "..."` (capped at 300 elements).
-4. `background.js` captures a viewport screenshot via `chrome.tabs.captureVisibleTab()`.
-5. The screenshot (base64 PNG) + summary are sent as a `DOM_SNAPSHOT` message over WebSocket.
+    U->>E: Click X-Ray icon
+    E->>E: Inject data-mache-id tags
+    E->>E: Generate DOM summary
+    E->>E: Capture screenshot (PNG)
+    E->>A: DOM_SNAPSHOT {tab_id, summary, screenshot}
 
-### 2. Schema Generation (Cartographer)
-6. The **Cartographer** receives the screenshot + summary and calls Gemini Vision.
-7. Gemini analyzes the visual layout and maps it to 3-7 semantic zones, selecting one `data-mache-id` per zone as the root.
-8. Output is structured JSON via Gemini's `ResponseSchema` constraint — the model cannot hallucinate IDs or invent fields.
-9. The schema is saved to `logs/schema/` for debugging.
+    A->>C: GenerateSchema(screenshot, summary)
+    C->>G: Gemini Vision (structured output)
+    G-->>C: JSON schema {mounts: [...]}
+    C-->>A: Schema JSON
 
-### 3. Filesystem Construction (Mache Engine)
-10. `Engine.ApplySchema()` parses the JSON and builds a virtual directory tree.
-11. `Engine.LoadChildren()` parses the DOM summary, performs BFS from each zone's root ID (max depth 2), and populates `children` files and `_c/` subdirectories with individual elements.
-12. Each zone directory contains: `mache_id`, `description`, `children`, and `_c/<mache-id>/` subdirs.
+    A->>M: ApplySchema(json)
+    A->>M: LoadChildren(summary)
+    A-->>E: SCHEMA_READY {tab_id, schema}
 
-### 4. Navigation (Navigator)
-13. User sends an intent (e.g., "click the first story") via WebSocket (`NAVIGATE`) or HTTP POST (`/navigate`).
-14. The **Navigator** receives the intent and enters a tool-use loop (max 5 iterations):
-    - `ls("/")` → sees top-level zones
-    - `ls("/main/story_list")` → sees `_c/`, `children`, `description`, `mache_id`
-    - `cat("/main/story_list/children")` → reads child elements with their IDs and text
-    - `act("/main/story_list/_c/mache-13", "click")` → resolves to a real `data-mache-id`
-15. The resolved action is sent back as `EXECUTE_ACTION` via WebSocket.
+    U->>A: "Click the first story"
+    A->>N: HandleIntent(intent)
 
-### 5. Execution (Backend → Extension)
-16. `background.js` receives `EXECUTE_ACTION` and forwards it to `content.js`.
-17. `content.js` finds the DOM element by `data-mache-id` and calls `element.click()` or `element.focus()`.
+    loop Tool-use (max 5 iterations)
+        N->>G: GenerateContent(history + tools)
+        G-->>N: FunctionCall: ls("/")
+        N->>M: ListDir("/")
+        M-->>N: ["header/", "main/", "footer/"]
+        N->>G: ToolResponse("header/ main/ footer/")
 
-## Components
+        G-->>N: FunctionCall: cat("/main/story_list/children")
+        N->>M: ReadFile(path)
+        M-->>N: "--- Item 1 ---\n  mache-13 | a | ..."
+        N->>G: ToolResponse(content)
 
-### Chrome Extension (`ext/`)
+        G-->>N: FunctionCall: act("/main/story_list/_c/mache-13", "click")
+        N->>M: ResolveMacheID(path)
+        M-->>N: "mache-13"
+    end
 
-Three files, no build step, no dependencies.
+    N-->>A: ActionResult{MacheID: "mache-13", Action: "click"}
+    A->>E: EXECUTE_ACTION {tab_id, mache_id, action}
+    E->>E: element.click()
+```
 
-- **`content.js`**: Injected into every page. Tags interactive elements with `data-mache-id` (monotonic counter), generates the flat text summary, and executes browser actions (`click`, `focus`) on command.
-- **`background.js`**: Service worker. Manages the WebSocket connection to agentd with auto-reconnect. Captures screenshots via `chrome.tabs.captureVisibleTab()`. Routes `EXECUTE_ACTION` messages from the backend to the active tab's content script.
-- **`manifest.json`**: Manifest V3. Permissions: `activeTab`, `scripting`, `tabs`. Host permission for the WebSocket endpoint.
-
-### WebSocket Handler (`internal/api/`)
-
-Bidirectional communication layer between the extension and the AI agents.
-
-- **Inbound messages**: `DOM_SNAPSHOT` (screenshot + summary), `NAVIGATE` (user intent).
-- **Outbound messages**: `SCHEMA_READY` (schema JSON), `EXECUTE_ACTION` (mache_id + action), `STATUS` (progress updates).
-- Also exposes `POST /navigate` for curl/testing without the extension.
-
-### Cartographer (`internal/cartographer/`)
-
-Stage 1 agent. Takes a screenshot + DOM summary and produces a semantic JSON schema.
-
-- Uses Gemini Vision with structured output (`ResponseSchema` + `ResponseMIMEType: "application/json"`).
-- System prompt constrains output to 3-7 top-level zones — no individual element enumeration.
-- Temperature 0.1 for near-deterministic results.
-- Output format: `{"mounts": [{"virtual_path": "/header/nav", "mache_id": "mache-42", "description": "..."}]}`.
-
-### Navigator (`internal/navigator/`)
-
-Stage 2 agent. Takes a user intent and resolves it to a browser action via filesystem traversal.
-
-- Three tools: `ls` (list directory), `cat` (read file), `act` (execute action).
-- Tool-use loop: max 5 iterations. Typical resolution: 3-4 tool calls.
-- System prompt enforces: never guess paths, always `ls` before `cat`/`act`, never hallucinate tools.
-- Temperature 0.1.
-- Returns `ActionResult{MacheID, Action, Path}` or a text explanation if the intent can't be resolved.
-
-### Mache Engine (`internal/mache/`)
-
-In-memory virtual filesystem that maps Cartographer output to navigable paths.
-
-- `ApplySchema()`: Parses Cartographer JSON, builds directory tree with `mache_id` and `description` files at each zone.
-- `LoadChildren()`: Parses the DOM summary, performs BFS from each zone root (max depth 2, max 30 children), creates `children` summary file and `_c/<id>/` subdirectories.
-- `ListDir()` / `ReadFile()` / `ResolveMacheID()`: Standard filesystem operations used by the Navigator's tools.
-- Built on the [mache](https://github.com/agentic-research/mache) schema types (`api.Topology`, `api.Node`).
-
-### Gate Test (`cmd/gate/`)
-
-Offline accuracy validation. Runs the Cartographer + Mache Engine against captured page snapshots (HTML + screenshot) and verifies the generated schema makes sense. Used for regression testing without live browser interaction.
-
-## Technical Details (Judging-Relevant)
-
-### Zero-Hallucination Gate
-The Cartographer uses Gemini's structured output mode (`ResponseSchema` + `ResponseMIMEType`). The model must output valid JSON matching the declared schema — it cannot invent fields or produce free-form text. The `mache_id` values are cross-referenced against the DOM summary to ensure they exist.
-
-### Temperature Control
-Both agents run at temperature 0.1. This ensures near-deterministic behavior: the same page + intent produces the same action across runs. This is critical for reliability in a voice-driven UI navigation context.
-
-### Latency Budget
-- Extension capture: ~100ms (DOM tagging + screenshot)
-- Cartographer (Gemini Vision): ~3-5s
-- Mache engine build: <1ms (in-memory tree construction)
-- Navigator tool-use loop: ~2-4s (3-4 Gemini calls)
-- Total: **under 10 seconds** from click to action
-
-### ID Injection Strategy
-The extension tags `<a>`, `<button>`, `<input>`, `<select>`, `<textarea>`, and `[role="button"]` elements. Structural containers (`<main>`, `<section>`, `<nav>`, etc.) are tagged only if they contain 2+ interactive children. This balances completeness with signal-to-noise ratio — the Cartographer sees meaningful containers, not every wrapper div.
-
-## Voice Mode (Gemini Live API)
-
-X-Ray supports voice interaction via the Gemini Live API. The user speaks into a browser mic, audio streams through agentd to Gemini Live, tool calls execute locally, and Gemini's spoken response streams back for playback.
-
-### Voice Data Flow
+## Voice Data Flow
 
 ```mermaid
 sequenceDiagram
-    participant B as Browser (voice.html)
+    participant B as Browser (offscreen.js)
     participant A as Agentd (/voice)
     participant G as Gemini Live API
     participant E as Extension (content.js)
 
-    B->>A: ws://host:8080/voice (connect)
+    B->>A: ws://host/voice?tab=123
     A->>G: Live.Connect(model, tools, audio modality)
     G-->>A: SetupComplete
     A-->>B: {"type":"ready"}
+
+    Note over B,A: Mic ON — always-on, Gemini handles VAD
 
     loop Audio streaming
         B->>A: Binary frame (16kHz PCM)
         A->>G: SendRealtimeInput(audio)
     end
 
+    G-->>A: InputTranscription: "click the first story"
+    A-->>B: {"type":"input_transcription"}
+
     G-->>A: ToolCall: ls("/")
     A->>A: engine.ListDir("/")
     A->>G: SendToolResponse("header/ main/ footer/")
+
+    Note over A: Audio suppressed during tool loop
 
     G-->>A: ToolCall: act("/main/story/_c/mache-13", "click")
     A->>A: engine.ResolveMacheID → "mache-13"
     A->>E: EXECUTE_ACTION via extension WS
     E->>E: element.click()
-    A->>G: SendToolResponse("Executing click on mache-13")
+    A->>G: SendToolResponse("Clicked mache-13")
 
-    G-->>A: ServerContent (audio response)
+    G-->>A: ServerContent (audio: "Done!")
     A-->>B: Binary frame (24kHz PCM)
-    G-->>A: OutputTranscription
-    A-->>B: {"type":"output_transcription","text":"Done! I clicked..."}
+    G-->>A: OutputTranscription: "Done, I clicked the first story."
+    A-->>B: {"type":"output_transcription"}
 ```
 
-### Voice Architecture
+## Per-Tab Session Architecture
+
+```mermaid
+graph LR
+    subgraph Handler
+        SM["sessions map[int]*TabSession"]
+    end
+
+    subgraph Tab_A["Tab A (id: 123)"]
+        EA[Engine A]
+        NA[Navigator A]
+    end
+
+    subgraph Tab_B["Tab B (id: 456)"]
+        EB[Engine B]
+        NB[Navigator B]
+    end
+
+    SM -->|"getSession(123)"| Tab_A
+    SM -->|"getSession(456)"| Tab_B
+
+    CART[Cartographer<br/>Shared / Stateless] --> EA
+    CART --> EB
+```
+
+## Virtual Filesystem Layout
+
+After the Cartographer maps a page and the engine loads children:
 
 ```
-Browser (mic + speaker)
-  │
-  ├── ws://host:8080/ws ──── Extension WebSocket (DOM snapshots, execute actions)
-  │
-  └── ws://host:8080/voice ── Voice audio streaming
-      │
-      ▼
-  Agentd Backend
-      │
-      ├── Proxies PCM audio chunks to Gemini Live API (Go SDK)
-      ├── Receives tool calls (ls, cat, act) from Gemini Live
-      ├── Executes tools locally against Mache Engine
-      ├── Sends tool responses back to Gemini Live
-      ├── Streams Gemini's audio response back to browser
-      └── When act() fires → sends EXECUTE_ACTION over extension WS
+/
+├── header/
+│   └── global_nav/
+│       ├── mache_id          → "mache-0"
+│       └── description       → "Top navigation bar"
+├── main/
+│   └── story_list/
+│       ├── mache_id          → "mache-15"
+│       ├── description       → "List of news stories"
+│       ├── children           → "--- Item 1 ---\n  mache-13 | a | \"First Story\"..."
+│       └── _c/
+│           ├── mache-13/
+│           │   ├── mache_id  → "mache-13"
+│           │   ├── tag       → "a"
+│           │   └── text      → "First Story Title"
+│           ├── mache-14/
+│           └── ...
+└── footer/
+    └── links/
+        ├── mache_id          → "mache-200"
+        └── description       → "Footer with legal links"
 ```
 
-### Audio Formats
+## Audio Formats
 
 | Leg | Format | Sample Rate |
 |-----|--------|-------------|
@@ -221,11 +200,54 @@ Browser (mic + speaker)
 | Gemini Live → Agentd | 16-bit PCM, mono | 24 kHz |
 | Agentd → Browser | Same (proxied) | 24 kHz |
 
-### Voice UI
+## Components
 
-Served at `http://host:8080/voice-ui` — a standalone HTML page with mic button, AudioContext playback, and live transcription display. No extension permissions needed.
+### Chrome Extension (`ext/`)
 
-### Google Cloud Services Used
-- **Gemini 2.5 Flash** via the GenAI Go SDK (`google.golang.org/genai`)
-- **Gemini Live API** (native audio) for real-time voice interaction
-- **Cloud Run** for hosting the agentd backend
+Six files, no build step, no dependencies.
+
+- **`content.js`**: Injected into every page. Tags interactive elements with `data-mache-id`, generates flat text summary, executes browser actions on command.
+- **`background.js`**: Service worker. WebSocket to agentd, screenshot capture, offscreen doc lifecycle, per-tab schema tracking.
+- **`popup.html/js`**: Extension popup. Snapshot button, mic toggle, session kill button.
+- **`offscreen.html/js`**: Persistent voice audio bridge. Mic capture (48→16kHz downsample), PCM streaming, audio playback (24kHz).
+- **`manifest.json`**: Manifest V3. Permissions: `activeTab`, `scripting`, `tabs`, `offscreen`.
+
+### WebSocket Handler (`internal/api/`)
+
+- Per-tab session registry (`sessions map[int]*TabSession`)
+- Inbound: `DOM_SNAPSHOT` (screenshot + summary + tab_id), `NAVIGATE` (intent + tab_id)
+- Outbound: `SCHEMA_READY`, `EXECUTE_ACTION`, `STATUS` — all include `tab_id`
+- Voice handler: `/voice?tab=N` — Gemini Live proxy with server-side audio suppression during tool loops
+- `POST /navigate` for curl/testing
+
+### Cartographer (`internal/cartographer/`)
+
+Stage 1. Screenshot + DOM summary → semantic JSON schema.
+
+- Gemini Vision with structured output (`ResponseSchema`)
+- 3-7 zones, primary items for list zones
+- Temperature 0.1, validation + retry on hallucination
+
+### Navigator (`internal/navigator/`)
+
+Stage 2. User intent → browser action via filesystem traversal.
+
+- Three tools: `ls`, `cat`, `act`
+- Max 5 tool-use iterations (typical: 3-4)
+- Temperature 0.1
+- Returns `ActionResult{MacheID, Action, Path}` or text explanation
+
+### Mache Engine (`internal/mache/`)
+
+In-memory virtual filesystem from Cartographer output.
+
+- `ApplySchema()` → directory tree
+- `LoadChildren()` → BFS from zone roots, max depth 2, max 30 children
+- `ListDir()` / `ReadFile()` / `ResolveMacheID()` — Navigator's tool implementations
+
+## Google Cloud Services
+
+- **Gemini 2.5 Flash** via GenAI Go SDK (`google.golang.org/genai`) — Cartographer + Navigator
+- **Gemini Live API** (native audio, `v1alpha`) — real-time voice interaction
+- **Cloud Run** — serverless hosting for agentd backend
+- **Cloud Build** — container image builds from source

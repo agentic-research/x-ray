@@ -58,3 +58,12 @@ node_modules/
 
 # Runtime logs
 logs/
+
+# Terraform state (local)
+deploy/.terraform/
+deploy/.terraform.lock.hcl
+deploy/terraform.tfstate*
+
+# Submission tracking (local)
+RUBRIC.md
+DEVPOST.md

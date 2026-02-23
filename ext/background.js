@@ -17,6 +17,7 @@ let wsUrl = DEFAULT_WS_URL;
 let sessionTabId = null;    // Tab ID with an active voice session (null = no session).
 let sessionReady = false;   // True once Gemini Live setup is complete.
 let micActive = false;      // True when mic is streaming audio.
+let pendingAutoMic = false; // When true, auto-enable mic once session is ready (one-click flow).
 const schemaReadyTabs = new Set();
 
 // Keep-alive: Chrome MV3 service workers die after ~30s of inactivity.
@@ -180,6 +181,7 @@ async function startSession(tabId) {
     justification: 'Voice navigator needs microphone and audio playback'
   });
   console.log('X-Ray: Voice session starting for tab', tabId);
+  updateBadge();
 }
 
 async function killSession() {
@@ -194,6 +196,8 @@ async function killSession() {
   sessionTabId = null;
   sessionReady = false;
   micActive = false;
+  pendingAutoMic = false;
+  updateBadge();
 }
 
 function setMic(on) {
@@ -201,6 +205,23 @@ function setMic(on) {
   try {
     chrome.runtime.sendMessage({ type: on ? 'MIC_ON' : 'MIC_OFF' });
   } catch (_) {}
+  updateBadge();
+}
+
+// Badge on extension icon reflects session/mic state at a glance.
+function updateBadge() {
+  if (micActive) {
+    chrome.action.setBadgeText({ text: 'MIC' });
+    chrome.action.setBadgeBackgroundColor({ color: '#22c55e' }); // green
+  } else if (sessionTabId !== null && sessionReady) {
+    chrome.action.setBadgeText({ text: 'ON' });
+    chrome.action.setBadgeBackgroundColor({ color: '#3b82f6' }); // blue
+  } else if (sessionTabId !== null) {
+    chrome.action.setBadgeText({ text: '...' });
+    chrome.action.setBadgeBackgroundColor({ color: '#eab308' }); // yellow
+  } else {
+    chrome.action.setBadgeText({ text: '' });
+  }
 }
 
 function getState() {
@@ -220,7 +241,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case 'TRIGGER_SNAPSHOT':
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) {
+          pendingAutoMic = true; // One-click flow: auto-enable mic once session is ready.
           captureAndSend(tabs[0].id);
+          updateBadge();
           sendResponse({ ok: true, tabId: tabs[0].id });
         } else {
           sendResponse({ ok: false, error: 'No active tab' });
@@ -253,11 +276,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       console.log('X-Ray: Voice status:', msg.status, msg.text);
       if (msg.status === 'ready') {
         sessionReady = true;
+        // One-click flow: snapshot set pendingAutoMic, now session is ready — turn on mic.
+        if (pendingAutoMic) {
+          pendingAutoMic = false;
+          setMic(true);
+        }
       } else if (msg.status === 'disconnected' || msg.status === 'error') {
         sessionTabId = null;
         sessionReady = false;
         micActive = false;
+        pendingAutoMic = false;
       }
+      updateBadge();
       break;
   }
 });

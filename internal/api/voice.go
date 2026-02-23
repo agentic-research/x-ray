@@ -158,6 +158,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				if sc.TurnComplete {
 					inToolLoop = false
 					if bufferedTranscript != "" {
+						log.Printf("Voice [tab %d] Navigator: %s", tabID, bufferedTranscript)
 						sendVoiceJSON(conn, &wsMu, voiceMessage{
 							Type: "output_transcription", Text: bufferedTranscript,
 						})
@@ -191,11 +192,13 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 
 			// Transcriptions.
 			if sc.InputTranscription != nil && sc.InputTranscription.Text != "" {
+				log.Printf("Voice [tab %d] User: %s", tabID, sc.InputTranscription.Text)
 				sendVoiceJSON(conn, &wsMu, voiceMessage{
 					Type: "input_transcription", Text: sc.InputTranscription.Text,
 				})
 			}
 			if sc.OutputTranscription != nil && sc.OutputTranscription.Text != "" {
+				log.Printf("Voice [tab %d] Navigator: %s", tabID, sc.OutputTranscription.Text)
 				sendVoiceJSON(conn, &wsMu, voiceMessage{
 					Type: "output_transcription", Text: sc.OutputTranscription.Text,
 				})

@@ -8,11 +8,11 @@ Powered by [`agentic-research/mache`](https://github.com/agentic-research/mache)
 
 ## The Problem: LLMs Understand Semantics, but Lack Topology
 
-When building web-navigating agents, the standard approach is to feed them raw HTML or rely on pixel-coordinate guessing. But HTML is a 1D delivery mechanism for browsers, not a semantic map for reasoning agents. 
+When building web-navigating agents, the standard approach is to feed them raw HTML or rely on pixel-coordinate guessing. But HTML is a 1D delivery mechanism for browsers, not a semantic map for reasoning agents.
 
-An LLM already knows what a "Checkout" button *means* (semantics), but when you dump a 10,000-line DOM tree into its context window, it loses all spatial awareness of *where* it is or how it relates to the elements around it (topology). 
+An LLM already knows what a "Checkout" button *means* (semantics), but when you dump a 10,000-line DOM tree into its context window, it loses all spatial awareness of *where* it is or how it relates to the elements around it (topology).
 
-Finding a simple button might require navigating a brittle path like `/html/body/div[4]/main/section/div[2]/span/button`. Giving a voice-driven LLM tools to find that path is like asking someone to locate a specific book by reading the library's structural blueprints. 
+Finding a simple button might require navigating a brittle path like `/html/body/div[4]/main/section/div[2]/span/button`. Giving a voice-driven LLM tools to find that path is like asking someone to locate a specific book by reading the library's structural blueprints.
 
 Worse, websites change constantly. A simple layout update breaks these locators, and static schemas can't map the entire internet.
 
@@ -145,10 +145,6 @@ export GOOGLE_API_KEY="your-key"
 # Build and deploy
 ./deploy/deploy.sh
 ```
-
-## License
-
-MIT
 
 ---
 
