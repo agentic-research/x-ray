@@ -147,6 +147,124 @@ func (e *Engine) ToTopology() *api.Topology {
 	return topo
 }
 
+// SummaryElement represents one parsed line from the DOM summary.
+type SummaryElement struct {
+	ID       string
+	ParentID string
+	Tag      string
+	Text     string
+}
+
+// parseSummary extracts structured elements from the summary text.
+// Expected format: ID: mache-X | Parent: mache-Y | Tag: a | Text: "..."
+func parseSummary(summary string) []SummaryElement {
+	var elements []SummaryElement
+	for _, line := range strings.Split(summary, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "ID: ") {
+			continue
+		}
+		parts := strings.SplitN(line, " | ", 4)
+		if len(parts) < 4 {
+			continue
+		}
+		id := strings.TrimPrefix(parts[0], "ID: ")
+		parentID := strings.TrimPrefix(parts[1], "Parent: ")
+		tag := strings.TrimPrefix(parts[2], "Tag: ")
+		text := strings.TrimPrefix(parts[3], "Text: ")
+		text = strings.Trim(text, "\"")
+		elements = append(elements, SummaryElement{
+			ID: id, ParentID: parentID, Tag: tag, Text: text,
+		})
+	}
+	return elements
+}
+
+// buildParentMap buckets children by their parent ID.
+func buildParentMap(elements []SummaryElement) map[string][]SummaryElement {
+	pm := make(map[string][]SummaryElement)
+	for _, el := range elements {
+		pm[el.ParentID] = append(pm[el.ParentID], el)
+	}
+	return pm
+}
+
+// collectDescendants performs BFS from rootID to maxDepth, returning all descendants.
+func collectDescendants(parentMap map[string][]SummaryElement, rootID string, maxDepth int) []SummaryElement {
+	var result []SummaryElement
+	type item struct {
+		id    string
+		depth int
+	}
+	queue := []item{{id: rootID, depth: 0}}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		children := parentMap[cur.id]
+		for _, child := range children {
+			result = append(result, child)
+			if cur.depth+1 < maxDepth {
+				queue = append(queue, item{id: child.ID, depth: cur.depth + 1})
+			}
+		}
+	}
+	return result
+}
+
+const maxChildrenPerZone = 30
+
+// LoadChildren parses the summary and populates children/_ c/ for each mounted zone.
+func (e *Engine) LoadChildren(summary string) {
+	elements := parseSummary(summary)
+	if len(elements) == 0 {
+		return
+	}
+	parentMap := buildParentMap(elements)
+
+	for _, m := range e.mounts {
+		descendants := collectDescendants(parentMap, m.MacheID, 2)
+		if len(descendants) == 0 {
+			continue
+		}
+		// Cap at maxChildrenPerZone
+		if len(descendants) > maxChildrenPerZone {
+			descendants = descendants[:maxChildrenPerZone]
+		}
+
+		// Resolve the zone directory
+		zoneEntry, err := e.resolve(m.VirtualPath)
+		if err != nil || !zoneEntry.IsDir {
+			continue
+		}
+
+		// Build "children" file content
+		var lines []string
+		for _, d := range descendants {
+			lines = append(lines, fmt.Sprintf("%s | %s | \"%s\"", d.ID, d.Tag, d.Text))
+		}
+		zoneEntry.Children["children"] = &Entry{
+			Name:    "children",
+			Content: strings.Join(lines, "\n"),
+		}
+
+		// Build "_c/" directory with per-child subdirs
+		cDir := &Entry{Name: "_c", IsDir: true, Children: make(map[string]*Entry)}
+		for _, d := range descendants {
+			childDir := &Entry{
+				Name:     d.ID,
+				IsDir:    true,
+				MacheID:  d.ID,
+				Children: make(map[string]*Entry),
+			}
+			childDir.Children["mache_id"] = &Entry{Name: "mache_id", Content: d.ID}
+			childDir.Children["tag"] = &Entry{Name: "tag", Content: d.Tag}
+			childDir.Children["text"] = &Entry{Name: "text", Content: d.Text}
+			cDir.Children[d.ID] = childDir
+		}
+		zoneEntry.Children["_c"] = cDir
+	}
+}
+
 // resolve navigates the tree to find the entry at the given path.
 func (e *Engine) resolve(p string) (*Entry, error) {
 	p = path.Clean(p)

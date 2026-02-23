@@ -119,6 +119,7 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 		return
 	}
 
+	h.Engine.LoadChildren(msg.Summary)
 	h.Navigator.SetEngine(h.Engine)
 
 	var schema any

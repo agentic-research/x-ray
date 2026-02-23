@@ -61,6 +61,12 @@ tasks:
     generates:
       - "{{.BINARY_NAME}}"
 
+  run:
+    desc: Build and run agentd
+    deps: [build]
+    cmds:
+      - ./{{.BINARY_NAME}}
+
   gate:
     desc: Run the 48-hour gate test on the mock dummy page
     cmds:
