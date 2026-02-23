@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -24,7 +25,17 @@ type voiceMessage struct {
 // HandleVoice upgrades to WebSocket and proxies audio between the browser and
 // Gemini's Live API. Tool calls (ls/cat/act) are executed locally against the
 // Mache engine; act() results are dispatched to the extension WebSocket.
+//
+// Query param: ?tab=<tabId> associates this voice session with a tab's schema.
 func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
+	// Parse tab ID from query string.
+	tabID := 0
+	if s := r.URL.Query().Get("tab"); s != "" {
+		if id, err := strconv.Atoi(s); err == nil {
+			tabID = id
+		}
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("Voice: WebSocket upgrade failed: %v", err)
@@ -33,13 +44,14 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = conn.Close() }()
 
 	ctx := r.Context()
-	log.Println("Voice: browser connected")
+	sess := h.getSession(tabID)
+	log.Printf("Voice: browser connected (tab %d)", tabID)
 
 	// Wait for schema to be ready (extension must send DOM_SNAPSHOT first).
-	if !h.Engine.HasSchema() {
+	if !sess.Engine.HasSchema() {
 		sendVoiceJSON(conn, nil, voiceMessage{Type: "waiting", Text: "Waiting for page schema... Click the X-Ray extension icon first."})
-		log.Println("Voice: waiting for schema...")
-		for !h.Engine.HasSchema() {
+		log.Printf("Voice: waiting for schema (tab %d)...", tabID)
+		for !sess.Engine.HasSchema() {
 			time.Sleep(500 * time.Millisecond)
 			// Check if the browser disconnected while waiting.
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
@@ -47,12 +59,12 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		log.Println("Voice: schema ready, proceeding")
+		log.Printf("Voice: schema ready (tab %d), proceeding", tabID)
 		sendVoiceJSON(conn, nil, voiceMessage{Type: "schema_ready", Text: "Schema loaded. Connecting to Gemini..."})
 	}
 
 	// Open Gemini Live session with voice-optimized prompt.
-	session, err := h.Client.Live.Connect(ctx, h.LiveModel, &genai.LiveConnectConfig{
+	session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, &genai.LiveConnectConfig{
 		ResponseModalities: []genai.Modality{genai.ModalityAudio},
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{{Text: voiceSystemPrompt}},
@@ -67,7 +79,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = session.Close() }()
-	log.Println("Voice: Gemini Live session established")
+	log.Printf("Voice: Gemini Live session established (tab %d)", tabID)
 
 	// Mutex protects writes to the browser WS (two goroutines: gemini→browser
 	// and tool-response paths both write).
@@ -198,19 +210,19 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// ToolCall — execute ls/cat/act locally.
+		// ToolCall — execute ls/cat/act locally against this tab's session.
 		if tc := msg.ToolCall; tc != nil {
 			inToolLoop = true
 
 			var responses []*genai.FunctionResponse
 			for _, fc := range tc.FunctionCalls {
-				log.Printf("Voice: tool call %s(%v)", fc.Name, fc.Args)
-				result, action := h.Navigator.ExecuteTool(fc)
+				log.Printf("Voice: tool call %s(%v) (tab %d)", fc.Name, fc.Args, tabID)
+				result, action := sess.Navigator.ExecuteTool(fc)
 				log.Printf("Voice: tool result: %q", result)
 
 				// If act() returned an action, dispatch to the extension.
 				if action != nil {
-					h.SendActionToExtension(action.MacheID, action.Action)
+					h.SendActionToExtension(tabID, action.MacheID, action.Action)
 					sendVoiceJSON(conn, &wsMu, voiceMessage{
 						Type:    MsgExecuteAction,
 						MacheID: action.MacheID,
@@ -243,7 +255,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Println("Voice: session ended")
+	log.Printf("Voice: session ended (tab %d)", tabID)
 }
 
 const voiceSystemPrompt = `You navigate web pages via a semantic filesystem. You are a VOICE agent — be silent while working, only speak to announce results.

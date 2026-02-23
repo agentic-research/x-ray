@@ -8,8 +8,6 @@ import (
 
 	"github.com/jamesgardner/x-ray/internal/api"
 	"github.com/jamesgardner/x-ray/internal/cartographer"
-	"github.com/jamesgardner/x-ray/internal/mache"
-	"github.com/jamesgardner/x-ray/internal/navigator"
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )
@@ -46,11 +44,11 @@ func main() {
 		liveModel = "gemini-2.5-flash-native-audio-preview-12-2025"
 	}
 
-	engine := mache.NewEngine()
+	// Cartographer is stateless — shared across all tabs.
 	cart := cartographer.NewAgent(client, model)
-	nav := navigator.NewAgent(client, model, engine)
 
-	handler := api.NewHandler(cart, nav, engine, liveClient, liveModel)
+	// Per-tab Engine + Navigator are created on demand inside Handler.
+	handler := api.NewHandler(cart, client, liveClient, model, liveModel)
 
 	http.HandleFunc("/ws", handler.HandleWebSocket)
 	http.HandleFunc("/navigate", handler.HandleNavigateHTTP)

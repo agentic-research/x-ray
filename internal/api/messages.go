@@ -12,6 +12,7 @@ const (
 // InboundMessage is the envelope for all browser -> server messages.
 type InboundMessage struct {
 	Type       string `json:"type"`
+	TabID      int    `json:"tab_id,omitempty"`
 	URL        string `json:"url,omitempty"`
 	Summary    string `json:"summary,omitempty"`
 	Screenshot string `json:"screenshot,omitempty"` // base64-encoded PNG
@@ -21,6 +22,7 @@ type InboundMessage struct {
 // OutboundMessage is the envelope for all server -> browser messages.
 type OutboundMessage struct {
 	Type    string `json:"type"`
+	TabID   int    `json:"tab_id,omitempty"`
 	Schema  any    `json:"schema,omitempty"`
 	MacheID string `json:"mache_id,omitempty"`
 	Action  string `json:"action,omitempty"`

@@ -1,14 +1,25 @@
 // background.js - Service worker for X-Ray extension
+//
+// Voice session lifecycle:
+//   1. User clicks Snapshot → schema generates on server
+//   2. SCHEMA_READY arrives → offscreen doc auto-created, Gemini Live session starts (no mic yet)
+//   3. User toggles Mic ON → audio streams to Gemini
+//   4. User toggles Mic OFF → audio stops, session stays alive
+//   5. User clicks kill (power) button → session torn down
 
 const DEFAULT_WS_URL = 'ws://localhost:8080/ws';
 
 let ws = null;
 let reconnectTimer = null;
 let wsUrl = DEFAULT_WS_URL;
-let targetTabId = null; // Tab that was last snapshotted — actions go here.
+
+// Voice state: session can be alive while mic is off.
+let sessionTabId = null;    // Tab ID with an active voice session (null = no session).
+let sessionReady = false;   // True once Gemini Live setup is complete.
+let micActive = false;      // True when mic is streaming audio.
+const schemaReadyTabs = new Set();
 
 // Keep-alive: Chrome MV3 service workers die after ~30s of inactivity.
-// A periodic alarm wakes us up so the WebSocket stays connected.
 chrome.alarms.create('keepalive', { periodInMinutes: 0.4 }); // ~24s
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'keepalive' && ws && ws.readyState === WebSocket.OPEN) {
@@ -51,15 +62,15 @@ function connectWebSocket() {
     console.log('X-Ray: Received', msg.type, msg);
 
     switch (msg.type) {
-      case 'EXECUTE_ACTION':
-        if (targetTabId != null) {
-          chrome.tabs.sendMessage(targetTabId, {
+      case 'EXECUTE_ACTION': {
+        const targetTab = msg.tab_id || null;
+        if (targetTab != null) {
+          chrome.tabs.sendMessage(targetTab, {
             type: 'EXECUTE_ACTION',
             mache_id: msg.mache_id,
             action: msg.action
           });
         } else {
-          // Fallback: try active tab if no snapshot tab recorded.
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
               chrome.tabs.sendMessage(tabs[0].id, {
@@ -71,10 +82,20 @@ function connectWebSocket() {
           });
         }
         break;
+      }
 
-      case 'SCHEMA_READY':
-        console.log('X-Ray: Schema ready', msg.schema);
+      case 'SCHEMA_READY': {
+        const tabId = msg.tab_id;
+        console.log('X-Ray: Schema ready (tab', tabId, ')');
+        if (tabId) schemaReadyTabs.add(tabId);
+
+        // Auto-start voice session when schema arrives (if no session exists yet).
+        if (tabId && sessionTabId === null) {
+          console.log('X-Ray: Auto-starting voice session for tab', tabId);
+          startSession(tabId);
+        }
         break;
+      }
 
       case 'STATUS':
         console.log('X-Ray: Status -', msg.stage, msg.message);
@@ -96,8 +117,7 @@ function connectWebSocket() {
   };
 }
 
-// Capture snapshot from the active tab and send to server.
-// Only called explicitly — NOT on reconnect.
+// Capture snapshot from the given tab and send to server with tab_id.
 function captureAndSend(tabId) {
   chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' }, (response) => {
     if (chrome.runtime.lastError) {
@@ -109,24 +129,23 @@ function captureAndSend(tabId) {
       return;
     }
 
-    // captureVisibleTab only available in service worker
     chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
       if (chrome.runtime.lastError) {
         console.error('X-Ray: Screenshot error', chrome.runtime.lastError);
         return;
       }
 
-      // dataUrl is "data:image/png;base64,<base64data>"
       const base64Data = dataUrl.split(',')[1];
 
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
           type: 'DOM_SNAPSHOT',
+          tab_id: tabId,
           url: response.url,
           summary: response.summary,
           screenshot: base64Data
         }));
-        console.log('X-Ray: Sent DOM_SNAPSHOT to server');
+        console.log('X-Ray: Sent DOM_SNAPSHOT for tab', tabId);
       } else {
         console.error('X-Ray: WebSocket not connected');
       }
@@ -134,9 +153,121 @@ function captureAndSend(tabId) {
   });
 }
 
-// Manual trigger: extension icon click
-chrome.action.onClicked.addListener((tab) => {
-  targetTabId = tab.id;
-  console.log('X-Ray: Target tab set to', tab.id, tab.url);
-  captureAndSend(tab.id);
+// --- Voice session lifecycle ---
+
+async function hasOffscreen() {
+  const contexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT']
+  });
+  return contexts.length > 0;
+}
+
+// Start a voice session for the given tab. Mic starts OFF — user toggles it.
+async function startSession(tabId) {
+  // Tear down any existing session first.
+  if (await hasOffscreen()) {
+    try { chrome.runtime.sendMessage({ type: 'VOICE_STOP' }); } catch (_) {}
+    await chrome.offscreen.closeDocument();
+  }
+
+  sessionTabId = tabId;
+  sessionReady = false;
+  micActive = false;
+
+  await chrome.offscreen.createDocument({
+    url: 'offscreen.html#tab=' + tabId,
+    reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'],
+    justification: 'Voice navigator needs microphone and audio playback'
+  });
+  console.log('X-Ray: Voice session starting for tab', tabId);
+}
+
+async function killSession() {
+  if (await hasOffscreen()) {
+    try { chrome.runtime.sendMessage({ type: 'VOICE_STOP' }); } catch (_) {}
+    setTimeout(async () => {
+      try {
+        if (await hasOffscreen()) await chrome.offscreen.closeDocument();
+      } catch (_) {}
+    }, 200);
+  }
+  sessionTabId = null;
+  sessionReady = false;
+  micActive = false;
+}
+
+function setMic(on) {
+  micActive = on;
+  try {
+    chrome.runtime.sendMessage({ type: on ? 'MIC_ON' : 'MIC_OFF' });
+  } catch (_) {}
+}
+
+function getState() {
+  return {
+    session: sessionTabId !== null,
+    sessionConnecting: sessionTabId !== null && !sessionReady,
+    sessionTabId,
+    mic: micActive,
+    wsConnected: ws && ws.readyState === WebSocket.OPEN,
+  };
+}
+
+// --- Message handlers from popup and offscreen ---
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  switch (msg.type) {
+    case 'TRIGGER_SNAPSHOT':
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          captureAndSend(tabs[0].id);
+          sendResponse({ ok: true, tabId: tabs[0].id });
+        } else {
+          sendResponse({ ok: false, error: 'No active tab' });
+        }
+      });
+      return true;
+
+    case 'TOGGLE_MIC':
+      if (sessionTabId === null) {
+        sendResponse({ ok: false, error: 'No voice session — click Snapshot first' });
+      } else if (!sessionReady) {
+        sendResponse({ ok: false, error: 'Session connecting...' });
+      } else {
+        setMic(!micActive);
+        sendResponse({ ok: true, ...getState() });
+      }
+      return false;
+
+    case 'KILL_SESSION':
+      killSession().then(() => {
+        sendResponse(getState());
+      });
+      return true;
+
+    case 'GET_VOICE_STATE':
+      sendResponse(getState());
+      return false;
+
+    case 'VOICE_STATUS':
+      console.log('X-Ray: Voice status:', msg.status, msg.text);
+      if (msg.status === 'ready') {
+        sessionReady = true;
+      } else if (msg.status === 'disconnected' || msg.status === 'error') {
+        sessionTabId = null;
+        sessionReady = false;
+        micActive = false;
+      }
+      break;
+  }
+});
+
+// --- Keyboard shortcut: Alt+V toggles mic ---
+
+chrome.commands.onCommand.addListener((command) => {
+  if (command === 'toggle-voice') {
+    if (sessionTabId !== null && sessionReady) {
+      setMic(!micActive);
+    }
+  }
 });

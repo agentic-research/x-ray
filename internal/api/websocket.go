@@ -24,31 +24,62 @@ var upgrader = websocket.Upgrader{
 
 // pendingAction is an action queued for dispatch when the extension reconnects.
 type pendingAction struct {
+	TabID   int
 	MacheID string
 	Action  string
+}
+
+// TabSession holds per-tab state: its own Engine and Navigator.
+type TabSession struct {
+	TabID     int
+	Engine    *mache.Engine
+	Navigator *navigator.Agent
 }
 
 // Handler holds the dependencies for the WebSocket handler.
 type Handler struct {
 	Cartographer *cartographer.Agent
-	Navigator    *navigator.Agent
-	Engine       *mache.Engine
-	Client       *genai.Client
-	LiveModel    string
+	Client       *genai.Client // standard client (text mode + navigator creation)
+	LiveClient   *genai.Client // Live API client (voice mode)
+	Model        string        // model name for creating per-tab Navigators
+	LiveModel    string        // model name for voice sessions
 
-	mu      sync.Mutex
-	conn    *websocket.Conn
-	pending []pendingAction // actions queued while extension was disconnected
+	mu       sync.Mutex
+	conn     *websocket.Conn
+	pending  []pendingAction
+	sessions map[int]*TabSession
 }
 
-func NewHandler(cart *cartographer.Agent, nav *navigator.Agent, engine *mache.Engine, client *genai.Client, liveModel string) *Handler {
+func NewHandler(cart *cartographer.Agent, client, liveClient *genai.Client, model, liveModel string) *Handler {
 	return &Handler{
 		Cartographer: cart,
-		Navigator:    nav,
-		Engine:       engine,
 		Client:       client,
+		LiveClient:   liveClient,
+		Model:        model,
 		LiveModel:    liveModel,
+		sessions:     make(map[int]*TabSession),
 	}
+}
+
+// getSession returns the TabSession for the given tab, creating one if needed.
+func (h *Handler) getSession(tabID int) *TabSession {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if sess, ok := h.sessions[tabID]; ok {
+		return sess
+	}
+
+	engine := mache.NewEngine()
+	nav := navigator.NewAgent(h.Client, h.Model, engine)
+	sess := &TabSession{
+		TabID:     tabID,
+		Engine:    engine,
+		Navigator: nav,
+	}
+	h.sessions[tabID] = sess
+	log.Printf("Session: created new session for tab %d", tabID)
+	return sess
 }
 
 // HandleWebSocket upgrades the HTTP connection and processes messages.
@@ -70,9 +101,10 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// Flush any actions that were queued while the extension was disconnected.
 	for _, a := range queued {
-		log.Printf("WebSocket: flushing queued action: %s on %s", a.Action, a.MacheID)
+		log.Printf("WebSocket: flushing queued action: %s on %s (tab %d)", a.Action, a.MacheID, a.TabID)
 		h.sendMessage(conn, OutboundMessage{
 			Type:    MsgExecuteAction,
+			TabID:   a.TabID,
 			MacheID: a.MacheID,
 			Action:  a.Action,
 		})
@@ -125,9 +157,10 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	ctx := context.Background()
+	sess := h.getSession(msg.TabID)
 
 	h.sendMessage(conn, OutboundMessage{
-		Type: MsgStatus, Message: "Generating semantic schema...", Stage: "cartographer",
+		Type: MsgStatus, TabID: msg.TabID, Message: "Generating semantic schema...", Stage: "cartographer",
 	})
 
 	// Decode screenshot from base64
@@ -146,24 +179,24 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	if err != nil {
 		log.Printf("Cartographer failed: %v", err)
 		h.sendMessage(conn, OutboundMessage{
-			Type: MsgStatus, Message: "Schema generation failed: " + err.Error(), Stage: "error",
+			Type: MsgStatus, TabID: msg.TabID, Message: "Schema generation failed: " + err.Error(), Stage: "error",
 		})
 		return
 	}
 
-	log.Printf("Cartographer generated schema: %s", schemaJSON)
+	log.Printf("Cartographer generated schema (tab %d): %s", msg.TabID, schemaJSON)
 
 	// Validate: every mache_id must exist in the DOM summary.
 	if bad := mache.ValidateSchema(schemaJSON, msg.Summary); len(bad) > 0 {
 		log.Printf("Cartographer hallucinated IDs: %v — regenerating", bad)
 		h.sendMessage(conn, OutboundMessage{
-			Type: MsgStatus, Message: "Schema had invalid IDs, retrying...", Stage: "cartographer",
+			Type: MsgStatus, TabID: msg.TabID, Message: "Schema had invalid IDs, retrying...", Stage: "cartographer",
 		})
 		schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, msg.Summary)
 		if err != nil {
 			log.Printf("Cartographer retry failed: %v", err)
 			h.sendMessage(conn, OutboundMessage{
-				Type: MsgStatus, Message: "Schema retry failed: " + err.Error(), Stage: "error",
+				Type: MsgStatus, TabID: msg.TabID, Message: "Schema retry failed: " + err.Error(), Stage: "error",
 			})
 			return
 		}
@@ -176,36 +209,37 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	// Save schema to disk for reference
 	saveLog("schema", msg.URL, schemaJSON)
 
-	if err := h.Engine.ApplySchema(schemaJSON); err != nil {
+	if err := sess.Engine.ApplySchema(schemaJSON); err != nil {
 		log.Printf("Engine apply failed: %v", err)
 		h.sendMessage(conn, OutboundMessage{
-			Type: MsgStatus, Message: "Engine failed: " + err.Error(), Stage: "error",
+			Type: MsgStatus, TabID: msg.TabID, Message: "Engine failed: " + err.Error(), Stage: "error",
 		})
 		return
 	}
 
-	h.Engine.LoadChildren(msg.Summary)
-	h.Navigator.SetEngine(h.Engine)
+	sess.Engine.LoadChildren(msg.Summary)
+	sess.Navigator.SetEngine(sess.Engine)
 
 	var schema any
 	if err := json.Unmarshal([]byte(schemaJSON), &schema); err != nil {
 		log.Printf("Failed to parse schema JSON for response: %v", err)
 	}
-	h.sendMessage(conn, OutboundMessage{Type: MsgSchemaReady, Schema: schema})
+	h.sendMessage(conn, OutboundMessage{Type: MsgSchemaReady, TabID: msg.TabID, Schema: schema})
 }
 
 func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 	ctx := context.Background()
+	sess := h.getSession(msg.TabID)
 
 	h.sendMessage(conn, OutboundMessage{
-		Type: MsgStatus, Message: "Navigating: " + msg.Intent, Stage: "navigator",
+		Type: MsgStatus, TabID: msg.TabID, Message: "Navigating: " + msg.Intent, Stage: "navigator",
 	})
 
-	action, textResponse, err := h.Navigator.HandleIntent(ctx, msg.Intent)
+	action, textResponse, err := sess.Navigator.HandleIntent(ctx, msg.Intent)
 	if err != nil {
 		log.Printf("Navigator failed: %v", err)
 		h.sendMessage(conn, OutboundMessage{
-			Type: MsgStatus, Message: "Navigation failed: " + err.Error(), Stage: "error",
+			Type: MsgStatus, TabID: msg.TabID, Message: "Navigation failed: " + err.Error(), Stage: "error",
 		})
 		return
 	}
@@ -215,13 +249,14 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 		saveLog("navigate", msg.Intent, string(result))
 		h.sendMessage(conn, OutboundMessage{
 			Type:    MsgExecuteAction,
+			TabID:   msg.TabID,
 			MacheID: action.MacheID,
 			Action:  action.Action,
 		})
 	} else if textResponse != "" {
 		saveLog("navigate", msg.Intent, textResponse)
 		h.sendMessage(conn, OutboundMessage{
-			Type: MsgStatus, Message: textResponse, Stage: "navigator",
+			Type: MsgStatus, TabID: msg.TabID, Message: textResponse, Stage: "navigator",
 		})
 	}
 }
@@ -260,18 +295,19 @@ func (h *Handler) sendMessage(conn *websocket.Conn, msg OutboundMessage) {
 // SendActionToExtension sends an EXECUTE_ACTION message over the extension WebSocket.
 // Used by the voice handler to dispatch act() results to the browser.
 // If the extension is disconnected, the action is queued and flushed on reconnect.
-func (h *Handler) SendActionToExtension(macheID, action string) {
+func (h *Handler) SendActionToExtension(tabID int, macheID, action string) {
 	h.mu.Lock()
 	conn := h.conn
 	if conn == nil {
-		h.pending = append(h.pending, pendingAction{MacheID: macheID, Action: action})
+		h.pending = append(h.pending, pendingAction{TabID: tabID, MacheID: macheID, Action: action})
 		h.mu.Unlock()
-		log.Printf("Voice: extension disconnected, queued action: %s on %s", action, macheID)
+		log.Printf("Voice: extension disconnected, queued action: %s on %s (tab %d)", action, macheID, tabID)
 		return
 	}
 	h.mu.Unlock()
 	h.sendMessage(conn, OutboundMessage{
 		Type:    MsgExecuteAction,
+		TabID:   tabID,
 		MacheID: macheID,
 		Action:  action,
 	})
@@ -285,29 +321,24 @@ func (h *Handler) HandleNavigateHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		Intent string `json:"intent"`
+		TabID  int    `json:"tab_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 
+	sess := h.getSession(req.TabID)
 	ctx := context.Background()
-	action, textResponse, err := h.Navigator.HandleIntent(ctx, req.Intent)
+	action, textResponse, err := sess.Navigator.HandleIntent(ctx, req.Intent)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// If there's an action, also send it to the browser via WebSocket
-	h.mu.Lock()
-	conn := h.conn
-	h.mu.Unlock()
-	if action != nil && conn != nil {
-		h.sendMessage(conn, OutboundMessage{
-			Type:    MsgExecuteAction,
-			MacheID: action.MacheID,
-			Action:  action.Action,
-		})
+	if action != nil {
+		h.SendActionToExtension(req.TabID, action.MacheID, action.Action)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
