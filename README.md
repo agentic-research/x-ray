@@ -40,7 +40,7 @@ When the user says, "Click the first trending repository," the Navigator travers
 
 ## Project Structure
 
-```text
+```
 x-ray/
 ├── cmd/
 │   ├── agentd/          # Main backend server (WebSocket + HTTP)
@@ -54,71 +54,102 @@ x-ray/
 ├── testdata/            # Captured page snapshots for gate tests
 ├── deploy/              # Dockerfile + Cloud Run deploy script
 └── docs/                # Architecture documentation
+```
 
-Getting Started
-Prerequisites
- * Go 1.25+ — go.dev/dl
- * Task (task runner) — taskfile.dev/installation
- * Chrome or Chromium-based browser
- * Gemini API Key — ai.google.dev
-1. Environment Setup
-Create a .envrc file in the project root:
+## Getting Started
+
+### Prerequisites
+
+- **Go 1.25+** — [go.dev/dl](https://go.dev/dl/)
+- **Task** (task runner) — [taskfile.dev/installation](https://taskfile.dev/installation/)
+- **Chrome** or Chromium-based browser
+- **Gemini API Key** — [ai.google.dev](https://ai.google.dev/)
+
+### 1. Environment Setup
+
+Create a `.envrc` file in the project root:
+
+```bash
 export GEMINI_API_KEY="your-gemini-api-key"
 # Optional: override the default model (gemini-2.5-flash)
 # export GEMINI_MODEL="gemini-2.5-pro"
+```
 
-If you use direnv, run direnv allow. Otherwise the backend loads .envrc automatically via godotenv.
-2. Running the Backend
+If you use [direnv](https://direnv.net/), run `direnv allow`. Otherwise the backend loads `.envrc` automatically via godotenv.
+
+### 2. Running the Backend
+
+```bash
 task run
+```
 
-This builds, codesigns (macOS), and starts the server on :8080.
-3. Loading the Chrome Extension
- * Open Chrome and navigate to chrome://extensions/.
- * Enable Developer mode (top right toggle).
- * Click Load unpacked and select the ext/ directory.
- * Grant the extension permission to capture screenshots when prompted.
-After making changes to extension code, click the reload icon on chrome://extensions/ and refresh the target tab.
-4. Using X-Ray
- * Navigate to any webpage in Chrome.
- * Click the X-Ray extension icon — this captures a screenshot + DOM summary and sends it to the backend.
- * The Cartographer analyzes the page and generates a semantic schema.
- * Send navigation intents via the /navigate HTTP endpoint:
-<!-- end list -->
+This builds, codesigns (macOS), and starts the server on `:8080`.
+
+### 3. Loading the Chrome Extension
+
+1. Open Chrome and navigate to `chrome://extensions/`.
+2. Enable **Developer mode** (top right toggle).
+3. Click **Load unpacked** and select the `ext/` directory.
+4. Grant the extension permission to capture screenshots when prompted.
+
+After making changes to extension code, click the reload icon on `chrome://extensions/` and refresh the target tab.
+
+### 4. Using X-Ray
+
+1. Navigate to any webpage in Chrome.
+2. Click the X-Ray extension icon — this captures a screenshot + DOM summary and sends it to the backend.
+3. The Cartographer analyzes the page and generates a semantic schema.
+4. Send navigation intents via the `/navigate` HTTP endpoint:
+
+```bash
 curl -X POST http://localhost:8080/navigate \
   -H "Content-Type: application/json" \
   -d '{"intent": "click the first story"}'
+```
 
-Task Commands
+## Task Commands
+
 | Command | Description |
-|---|---|
-| task run | Build, codesign, and run agentd |
-| task build | Build and codesign the binary |
-| task test | Run all tests (go test -race -v ./...) |
-| task gate | Run accuracy gate on mock dummy page |
-| task gate-real | Run accuracy gate on all captured real pages |
-| task lint | Run golangci-lint |
-| task fmt | Format with gofumpt |
-| task vet | Run go vet |
-| task tidy | Run go mod tidy |
-| task setup | Install system dependencies (fuse-t on macOS) |
-Architecture
-See docs/ARCHITECTURE.md for the full system diagram, data flow, and component descriptions.
-Highlights
- * Zero Hallucinated IDs: The Cartographer is constrained to select from the pre-tagged data-mache-id set. Structured JSON output with a strict schema prevents the model from inventing non-existent DOM pointers.
- * Semantic Filesystem: Instead of brittle XPaths or coordinate guessing, the agent interacts with a logical directory structure mapped dynamically to the page in under 10 seconds.
- * LLM-Powered Item Grouping: For list zones, the Cartographer identifies primary items (story titles, product cards) so ordinal counting ("click the 3rd story") works correctly across any site.
- * Temperature 0.1: Both Cartographer and Navigator run at near-deterministic temperature for reproducible results.
-Deployment
-X-Ray deploys to Google Cloud Run. See deploy/ for the Dockerfile and deploy script.
+|---------|-------------|
+| `task run` | Build, codesign, and run agentd |
+| `task build` | Build and codesign the binary |
+| `task test` | Run all tests (`go test -race -v ./...`) |
+| `task gate` | Run accuracy gate on mock dummy page |
+| `task gate-real` | Run accuracy gate on all captured real pages |
+| `task lint` | Run golangci-lint |
+| `task fmt` | Format with gofumpt |
+| `task vet` | Run go vet |
+| `task tidy` | Run go mod tidy |
+| `task setup` | Install system dependencies (fuse-t on macOS) |
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system diagram, data flow, and component descriptions.
+
+### Highlights
+
+- **Zero Hallucinated IDs**: The Cartographer is constrained to select from the pre-tagged `data-mache-id` set. Structured JSON output with a strict schema prevents the model from inventing non-existent DOM pointers.
+- **Semantic Filesystem**: Instead of brittle XPaths or coordinate guessing, the agent interacts with a logical directory structure mapped dynamically to the page in under 10 seconds.
+- **LLM-Powered Item Grouping**: For list zones, the Cartographer identifies primary items (story titles, product cards) so ordinal counting ("click the 3rd story") works correctly across any site.
+- **Temperature 0.1**: Both Cartographer and Navigator run at near-deterministic temperature for reproducible results.
+
+## Deployment
+
+X-Ray deploys to Google Cloud Run. See [`deploy/`](deploy/) for the Dockerfile and deploy script.
+
+```bash
 # Set required env vars
 export GCP_PROJECT_ID="your-project"
 export GOOGLE_API_KEY="your-key"
 
 # Build and deploy
 ./deploy/deploy.sh
+```
 
-License
+## License
+
 MIT
-Built for the Gemini Live Agent Challenge — UI Navigator category.
 
+---
 
+*Built for the [Gemini Live Agent Challenge](https://ai.google.dev/competition/gemini-live-agent-challenge) — UI Navigator category.*
