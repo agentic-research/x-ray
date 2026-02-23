@@ -12,9 +12,10 @@ import (
 
 // Mount represents one entry from the Cartographer's output.
 type Mount struct {
-	VirtualPath string `json:"virtual_path"`
-	MacheID     string `json:"mache_id"`
-	Description string `json:"description"`
+	VirtualPath  string   `json:"virtual_path"`
+	MacheID      string   `json:"mache_id"`
+	Description  string   `json:"description"`
+	PrimaryItems []string `json:"primary_items"`
 }
 
 // CartographerOutput is the top-level JSON from the Cartographer.
@@ -234,31 +235,72 @@ func collectDescendants(parentMap map[string][]SummaryElement, rootID string, ma
 
 const maxChildrenPerZone = 30
 
-// formatGroupedChildren detects repeating item groups in a flat list of
-// descendants and formats them with numbered headers. Groups are delimited by
-// elements with empty text (common pattern: upvote arrows, bullet icons, etc.).
-// If no groups are detected, falls back to a flat numbered list.
-func formatGroupedChildren(descendants []SummaryElement) string {
-	// Detect if there are empty-text elements that could be group separators.
+// formatGroupedChildren formats descendants into numbered item groups.
+// If primaryItems is non-empty (LLM-identified primary clickable elements),
+// each primary item starts a new group with subsequent elements as metadata.
+// Otherwise falls back to the empty-separator heuristic.
+func formatGroupedChildren(descendants []SummaryElement, primaryItems []string) string {
+	if len(primaryItems) > 0 {
+		return formatByPrimaryItems(descendants, primaryItems)
+	}
+
+	// Heuristic fallback: detect empty-text separators.
 	var emptyCount int
 	for _, d := range descendants {
 		if d.Text == "" {
 			emptyCount++
 		}
 	}
-
-	// If we have at least 2 empty-text separators and they aren't the majority,
-	// use them as group boundaries.
 	if emptyCount >= 2 && emptyCount < len(descendants)/2 {
 		return formatByEmptySeparator(descendants)
 	}
 
-	// Fallback: flat list.
+	// Flat list fallback.
 	var lines []string
 	for _, d := range descendants {
 		lines = append(lines, fmt.Sprintf("%s | %s | \"%s\"", d.ID, d.Tag, d.Text))
 	}
 	return strings.Join(lines, "\n")
+}
+
+// formatByPrimaryItems groups descendants using LLM-identified primary items.
+// Each primary item starts a new numbered group; non-primary elements between
+// them are indented as metadata.
+func formatByPrimaryItems(descendants []SummaryElement, primaryItems []string) string {
+	primarySet := make(map[string]bool, len(primaryItems))
+	for _, id := range primaryItems {
+		primarySet[id] = true
+	}
+
+	var sb strings.Builder
+	itemNum := 0
+	inGroup := false
+
+	for _, d := range descendants {
+		if primarySet[d.ID] {
+			itemNum++
+			if inGroup {
+				sb.WriteString("\n")
+			}
+			fmt.Fprintf(&sb, "--- Item %d ---\n", itemNum)
+			fmt.Fprintf(&sb, "  %s | %s | \"%s\"\n", d.ID, d.Tag, d.Text)
+			inGroup = true
+			continue
+		}
+
+		if d.Tag == "tbody" || d.Tag == "thead" || d.Tag == "table" {
+			continue
+		}
+
+		if !inGroup {
+			// Elements before the first primary item — start a preamble group.
+			itemNum++
+			fmt.Fprintf(&sb, "--- Item %d ---\n", itemNum)
+			inGroup = true
+		}
+		fmt.Fprintf(&sb, "  %s | %s | \"%s\"\n", d.ID, d.Tag, d.Text)
+	}
+	return strings.TrimRight(sb.String(), "\n")
 }
 
 // formatByEmptySeparator groups elements: each empty-text element starts a new
@@ -321,13 +363,11 @@ func (e *Engine) LoadChildren(summary string) {
 		}
 
 		// Build "children" file content with numbered item groups.
-		// Items are separated by detecting repeating patterns: an element with
-		// empty text (e.g., an upvote arrow or bullet icon) marks the start of
-		// a new item group. This lets the LLM count "the 3rd story" correctly
-		// instead of counting individual links.
+		// If the Cartographer identified primary items (LLM-powered), use those
+		// as group boundaries. Otherwise fall back to the empty-text heuristic.
 		zoneEntry.Children["children"] = &Entry{
 			Name:    "children",
-			Content: formatGroupedChildren(descendants),
+			Content: formatGroupedChildren(descendants, m.PrimaryItems),
 		}
 
 		// Build "_c/" directory with per-child subdirs

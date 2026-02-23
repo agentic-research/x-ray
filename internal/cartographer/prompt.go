@@ -16,6 +16,8 @@ The Mache engine will automatically parse the children of these zones.
 
 CRITICAL: If there are pagination controls, 'Next Page' buttons, or 'Load More' links, you MUST map them into their own distinct semantic zone (e.g., /main/pagination). Do not skip them.
 
+For zones that contain repeating content (e.g., a list of stories, products, search results), include 'primary_items' — an array of mache_ids for the main clickable element in each repeating item (e.g., the story title link, not the domain or metadata links). Leave empty for non-list zones.
+
 Find the single element (and its data-mache-id) from the provided list that best represents the root or first element in each major semantic zone.
 
 Output a valid JSON object representing this high-level mapping, adhering strictly to the provided schema format.
@@ -42,6 +44,11 @@ func GetSchemaDefinition() *genai.Schema {
 						"description": {
 							Type:        genai.TypeString,
 							Description: "Semantic description of the element's purpose",
+						},
+						"primary_items": {
+							Type:        genai.TypeArray,
+							Items:       &genai.Schema{Type: genai.TypeString},
+							Description: "For list zones: mache_ids of the primary clickable item in each repeat (e.g., story titles). Empty for non-list zones.",
 						},
 					},
 					Required: []string{"virtual_path", "mache_id", "description"},
