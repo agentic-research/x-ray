@@ -4,7 +4,7 @@
 
 **Agents shouldn't read raw HTML.**
 
-Powered by [`agentic-research/mache`](https://github.com/agentic-research/mache), X-Ray uses Gemini's multimodal vision to project any webpage into a clean, semantic filesystem. Agents navigate the DOM deterministically via `ls` and `cat` — no pixel guessing, no fragile XPaths.
+Powered by [`agentic-research/mache`](https://github.com/agentic-research/mache) — an agent-computer interface that projects structured data into virtual filesystems — X-Ray uses Gemini's multimodal vision to project any webpage into a clean, semantic filesystem. Agents navigate the DOM deterministically via `ls` and `cat` — no pixel guessing, no fragile XPaths.
 
 ## The Problem: The DOM is Not an Interface
 
@@ -12,23 +12,23 @@ When building web-navigating agents, the standard approach is to feed them raw H
 
 Raw HTML ASTs are deeply nested and full of visual noise. Finding a simple "Checkout" button might require navigating a brittle path like `/html/body/div[4]/main/section/div[2]/span/button`. Giving a voice-driven LLM tools to find that path is like asking someone to locate a book by reading the library's architectural blueprints.
 
-Worse, websites change constantly. A simple layout update breaks these locators. We realized we couldn't just write static schemas to map the entire internet.
+Worse, websites change constantly. A simple layout update breaks these locators. Static schemas can't map the entire internet.
 
 ## The Fix: Dynamic Semantic Projection
 
-We needed a bridge between the physical reality of the DOM and the conceptual intent of the user. X-Ray solves this using a Two-Stage Agent Architecture:
+X-Ray bridges the physical reality of the DOM and the conceptual intent of the user using a Two-Stage Agent Architecture:
 
 ### Stage 1: The Cartographer (Vision + Structure)
 
 When a user visits a page, the X-Ray Chrome extension injects a tiny `data-mache-id` into every interactive element. It captures a viewport screenshot and generates a flattened text summary of those tagged IDs.
 
-We send this payload to Gemini. Because Gemini is natively multimodal, it instantly understands the visual layout (e.g., "The top bar is navigation, the left side is filters"). It outputs a strict JSON schema projecting these visual zones onto the tagged DOM nodes.
+This payload goes to Gemini. Because Gemini is natively multimodal, it instantly understands the visual layout (e.g., "The top bar is navigation, the left side is filters"). It outputs a strict JSON schema projecting these visual zones onto the tagged DOM nodes. For list zones, it also identifies the **primary items** — the main clickable element in each repeating item (e.g., story titles, product cards).
 
 ### Stage 2: The Navigator (Voice + Action)
 
-We feed that JSON schema into our Mache Engine, which instantly mounts a virtual, in-memory filesystem tailored to that exact page.
+That JSON schema feeds into the Mache Engine, which instantly mounts a virtual, in-memory filesystem tailored to that exact page.
 
-Now, our Gemini Live agent doesn't see `div[4]/span/button`. It runs `ls /` and sees a clean, human-readable structure:
+Now, the Gemini Live agent doesn't see `div[4]/span/button`. It runs `ls /` and sees a clean, human-readable structure:
 
 - `/header/global_nav/`
 - `/main/trending_repositories/`
@@ -128,6 +128,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system diagram, da
 
 - **Zero Hallucinated IDs**: The Cartographer is constrained to select from the pre-tagged `data-mache-id` set. Structured JSON output with a strict schema prevents the model from inventing non-existent DOM pointers.
 - **Semantic Filesystem**: Instead of brittle XPaths or coordinate guessing, the agent interacts with a logical directory structure mapped dynamically to the page in under 10 seconds.
+- **LLM-Powered Item Grouping**: For list zones, the Cartographer identifies primary items (story titles, product cards) so ordinal counting ("click the 3rd story") works correctly across any site.
 - **Temperature 0.1**: Both Cartographer and Navigator run at near-deterministic temperature for reproducible results.
 
 ## Deployment
