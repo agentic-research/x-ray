@@ -368,35 +368,39 @@ func formatByEmptySeparator(descendants []SummaryElement) string {
 	return strings.TrimRight(sb.String(), "\n")
 }
 
-// collectByPrimaryItems finds primary items and their sibling elements directly
-// from the full element list. This bypasses BFS depth limits for sites with
-// deeply nested DOMs (e.g., Reddit) where primary items may be many levels
-// below the zone root.
-func collectByPrimaryItems(elements []SummaryElement, primaryItems []string) []SummaryElement {
-	primarySet := make(map[string]bool, len(primaryItems))
-	for _, id := range primaryItems {
-		primarySet[id] = true
+// collectZoneMembers returns all elements that are descendants of the zone root,
+// determined by walking each element's parent chain. This handles arbitrarily
+// deep nesting (e.g., Reddit's virtual scroll containers) and picks up new
+// elements loaded after scrolling, unlike collectByPrimaryItems which only
+// matches the original primary item IDs.
+func collectZoneMembers(elements []SummaryElement, zoneRootID string) []SummaryElement {
+	parentOf := make(map[string]string, len(elements))
+	for _, el := range elements {
+		parentOf[el.ID] = el.ParentID
 	}
 
-	// Find parents of primary items to also include their siblings.
-	primaryParents := make(map[string]bool)
-	elementByID := make(map[string]SummaryElement, len(elements))
-	for _, el := range elements {
-		elementByID[el.ID] = el
-		if primarySet[el.ID] {
-			primaryParents[el.ParentID] = true
+	// Memoized zone membership with depth cap to prevent cycles.
+	cache := make(map[string]bool)
+	var inZone func(string, int) bool
+	inZone = func(id string, depth int) bool {
+		if depth > 20 || id == "" || id == "none" {
+			return false
 		}
+		if id == zoneRootID {
+			return true
+		}
+		if cached, ok := cache[id]; ok {
+			return cached
+		}
+		result := inZone(parentOf[id], depth+1)
+		cache[id] = result
+		return result
 	}
 
-	// Collect: primary items + elements sharing a parent with a primary item.
 	var result []SummaryElement
-	seen := make(map[string]bool)
 	for _, el := range elements {
-		if primarySet[el.ID] || primaryParents[el.ParentID] {
-			if !seen[el.ID] {
-				result = append(result, el)
-				seen[el.ID] = true
-			}
+		if el.ID != zoneRootID && inZone(el.ID, 0) {
+			result = append(result, el)
 		}
 	}
 	return result
@@ -411,16 +415,13 @@ func (e *Engine) LoadChildren(summary string) {
 	parentMap := buildParentMap(elements)
 
 	for _, m := range e.mounts {
-		var descendants []SummaryElement
+		// Collect all elements in this zone by walking parent chains to the
+		// zone root. Handles arbitrarily deep nesting and picks up new
+		// elements loaded after scrolling.
+		descendants := collectZoneMembers(elements, m.MacheID)
 
-		// When primary items are provided, find them directly from the full
-		// element list instead of relying on BFS depth (which fails on deeply
-		// nested DOMs like Reddit).
-		if len(m.PrimaryItems) > 0 {
-			descendants = collectByPrimaryItems(elements, m.PrimaryItems)
-		}
-
-		// Fall back to BFS from zone root.
+		// Fall back to BFS from zone root (in case parent chains don't
+		// reach the zone root due to untagged intermediate containers).
 		if len(descendants) == 0 {
 			descendants = collectDescendants(parentMap, m.MacheID, 2)
 		}
