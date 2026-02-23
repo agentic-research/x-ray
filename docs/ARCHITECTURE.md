@@ -60,7 +60,9 @@ sequenceDiagram
     E->>E: Inject data-mache-id tags
     E->>E: Generate DOM summary
     E->>E: Capture screenshot (PNG)
-    E->>A: DOM_SNAPSHOT {tab_id, summary, screenshot}
+    E->>E: CDP: Accessibility.getFullAXTree
+    E->>E: Enrich summary with AXRole/AXName
+    E->>A: DOM_SNAPSHOT {tab_id, summary, ax_tree, screenshot}
 
     A->>C: GenerateSchema(screenshot, summary)
     C->>G: Gemini Vision (structured output)
@@ -207,15 +209,28 @@ After the Cartographer maps a page and the engine loads children:
 Six files, no build step, no dependencies.
 
 - **`content.js`**: Injected into every page. Tags interactive elements with `data-mache-id`, generates flat text summary, executes browser actions on command.
-- **`background.js`**: Service worker. WebSocket to agentd, screenshot capture, offscreen doc lifecycle, per-tab schema tracking.
+- **`background.js`**: Service worker. WebSocket to agentd, screenshot capture, CDP accessibility tree capture + AX-to-mache-id mapping, offscreen doc lifecycle, per-tab schema tracking.
 - **`popup.html/js`**: Extension popup. Snapshot button, mic toggle, session kill button.
 - **`offscreen.html/js`**: Persistent voice audio bridge. Mic capture (48→16kHz downsample), PCM streaming, audio playback (24kHz).
-- **`manifest.json`**: Manifest V3. Permissions: `activeTab`, `scripting`, `tabs`, `offscreen`.
+- **`manifest.json`**: Manifest V3. Permissions: `activeTab`, `debugger`, `scripting`, `tabs`, `offscreen`.
+
+#### Accessibility Tree Enrichment (CDP)
+
+During snapshot capture, `background.js` attaches the Chrome DevTools Protocol debugger to the active tab and:
+
+1. Calls `Accessibility.getFullAXTree` for the browser's computed AX tree
+2. Calls `DOM.querySelectorAll('[data-mache-id]')` + `DOM.describeNode` (batched via `Promise.all`) to map mache-ids to backend DOM node IDs
+3. Joins AX nodes with mache-ids via `backendDOMNodeId`
+4. Enriches each summary line with `AXRole` and `AXName` (e.g., `| AXRole: navigation | AXName: "Primary nav"`)
+5. Sends a compact `ax_tree` field alongside the enriched summary in `DOM_SNAPSHOT`
+
+This gives the Cartographer the browser's semantic truth — implicit roles (`<button>` → `button`), computed accessible names, CSS-visibility-aware filtering — rather than raw `aria-*` attribute scraping.
 
 ### WebSocket Handler (`internal/api/`)
 
 - Per-tab session registry (`sessions map[int]*TabSession`)
-- Inbound: `DOM_SNAPSHOT` (screenshot + summary + tab_id), `NAVIGATE` (intent + tab_id)
+- `SchemaGenerator` and `IntentHandler` interfaces decouple Cartographer/Navigator for testability
+- Inbound: `DOM_SNAPSHOT` (screenshot + summary + ax_tree + tab_id), `NAVIGATE` (intent + tab_id)
 - Outbound: `SCHEMA_READY`, `EXECUTE_ACTION`, `STATUS` — all include `tab_id`
 - Voice handler: `/voice?tab=N` — Gemini Live proxy with server-side audio suppression during tool loops
 - `POST /navigate` for curl/testing
@@ -244,6 +259,7 @@ In-memory virtual filesystem from Cartographer output.
 - `ApplySchema()` → directory tree
 - `LoadChildren()` → BFS from zone roots, max depth 2, max 30 children
 - `ListDir()` / `ReadFile()` / `ResolveMacheID()` — Navigator's tool implementations
+- `parseSummary()` handles optional `AXRole`/`AXName` fields (backward-compatible with old format)
 
 ## Google Cloud Services
 

@@ -46,11 +46,11 @@ x-ray/
 │   ├── agentd/          # Main backend server (WebSocket + HTTP)
 │   └── gate/            # Offline accuracy gate test
 ├── internal/
-│   ├── api/             # WebSocket handler, message types
+│   ├── api/             # WebSocket handler, message types, interfaces
 │   ├── cartographer/    # Stage 1: Gemini Vision → semantic schema
 │   ├── mache/           # Virtual filesystem engine
 │   └── navigator/       # Stage 2: Gemini Tool-Use → browser actions
-├── ext/                 # Chrome extension (content.js, background.js)
+├── ext/                 # Chrome extension (content.js, background.js, CDP AX tree)
 ├── testdata/            # Captured page snapshots for gate tests
 ├── deploy/              # Dockerfile + Cloud Run deploy script
 └── docs/                # Architecture documentation
@@ -107,6 +107,61 @@ curl -X POST http://localhost:8080/navigate \
   -d '{"intent": "click the first story"}'
 ```
 
+## Testing
+
+All commands use [Task](https://taskfile.dev) as the task runner. Install it first:
+
+```bash
+# macOS
+brew install go-task
+
+# Linux / other
+sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+```
+
+### Running the full test suite
+
+```bash
+task test
+```
+
+This runs `go test -race -v ./...` with the required CGO flags for fuse-t. **Do not use `go test` directly on macOS** — the CGO environment is set by the Taskfile.
+
+### Running a single test
+
+```bash
+task test -- -run TestExecuteToolLs
+```
+
+### Test coverage
+
+The test suite covers three packages with 40+ tests:
+
+| Package | What's tested |
+|---------|---------------|
+| `internal/mache/` | Schema parsing, directory listing, file reading, mache-id resolution, children grouping (primary items + heuristic), BFS traversal, AX-enriched summary parsing, backward compat |
+| `internal/navigator/` | `ExecuteTool` dispatch (ls/cat/act), default action, error paths, unknown tool; full HN-style integration chain (ls → cat children → act on child) |
+| `internal/api/` | Session creation/isolation/concurrency, message serialization, action queuing; WebSocket integration (snapshot → schema flow, action routing, reconnect flush, multi-tab isolation); voice protocol serialization |
+
+The WebSocket integration tests use mock `SchemaGenerator`/`IntentHandler` interfaces — no Gemini API key required.
+
+### Accuracy gate tests
+
+```bash
+task gate           # Mock dummy page
+task gate-real      # All captured real pages (HN, GitHub, Wikipedia, Lobsters, eBay)
+```
+
+Gate tests require a `GEMINI_API_KEY` — they call the real Cartographer against captured page snapshots.
+
+### Lint and format
+
+```bash
+task lint           # golangci-lint
+task fmt            # gofumpt (stricter than gofmt)
+task vet            # go vet
+```
+
 ## Task Commands
 
 | Command | Description |
@@ -129,6 +184,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system diagram, da
 ### Highlights
 
 - **Zero Hallucinated IDs**: The Cartographer is constrained to select from the pre-tagged `data-mache-id` set. Structured JSON output with a strict schema prevents the model from inventing non-existent DOM pointers.
+- **Accessibility Tree Enrichment**: The extension captures the browser's computed accessibility tree via `chrome.debugger` + CDP (`Accessibility.getFullAXTree`). Each summary line is enriched with `AXRole` and `AXName` — the semantic truth the browser computes from implicit roles, CSS visibility, and ARIA attributes.
 - **Semantic Filesystem**: Instead of brittle XPaths or coordinate guessing, the agent interacts with a logical directory structure mapped dynamically to the page in under 10 seconds.
 - **LLM-Powered Item Grouping**: For list zones, the Cartographer identifies primary items (story titles, product cards) so ordinal counting ("click the 3rd story") works correctly across any site.
 - **Temperature 0.1**: Both Cartographer and Navigator run at near-deterministic temperature for reproducible results.
