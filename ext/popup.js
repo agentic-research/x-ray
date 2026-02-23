@@ -6,6 +6,37 @@ const killBtn = document.getElementById('kill-btn');
 const sessionDot = document.getElementById('session-dot');
 const statusEl = document.getElementById('status');
 
+let schemaReady = false;
+let schemaPollTimer = null;
+
+function setIntentEnabled(enabled) {
+  intentInput.disabled = !enabled;
+  intentBtn.disabled = !enabled;
+  if (enabled) {
+    intentInput.placeholder = 'Type a command...';
+    intentInput.focus();
+  } else {
+    intentInput.placeholder = 'Waiting for schema...';
+  }
+}
+
+function pollForSchema() {
+  if (schemaPollTimer) return;
+  schemaPollTimer = setInterval(() => {
+    chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
+      if (chrome.runtime.lastError) return;
+      if (resp?.hasSchema) {
+        clearInterval(schemaPollTimer);
+        schemaPollTimer = null;
+        schemaReady = true;
+        setIntentEnabled(true);
+        statusEl.textContent = 'Ready — type a command or use voice';
+        statusEl.className = 'connected';
+      }
+    });
+  }, 1000);
+}
+
 // Poll initial state, auto-snapshot if no schema exists for this tab.
 chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
   if (chrome.runtime.lastError) return;
@@ -19,9 +50,13 @@ chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
   chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
     if (chrome.runtime.lastError) return;
     if (resp?.hasSchema) {
+      schemaReady = true;
+      setIntentEnabled(true);
       statusEl.textContent = 'Ready — type a command or use voice';
       statusEl.className = 'connected';
     } else {
+      // Disable input until schema arrives.
+      setIntentEnabled(false);
       // Auto-trigger snapshot.
       snapshotBtn.textContent = 'Capturing...';
       snapshotBtn.disabled = true;
@@ -32,8 +67,9 @@ chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
           statusEl.textContent = snapResp?.error || 'Snapshot failed';
           statusEl.className = 'error';
         } else {
-          statusEl.textContent = 'Snapshot sent — generating schema...';
-          statusEl.className = 'connected';
+          statusEl.textContent = 'Generating schema...';
+          statusEl.className = '';
+          pollForSchema();
         }
         snapshotBtn.textContent = 'Snapshot';
         snapshotBtn.disabled = false;
@@ -45,13 +81,16 @@ chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
 snapshotBtn.addEventListener('click', () => {
   snapshotBtn.textContent = 'Capturing...';
   snapshotBtn.disabled = true;
+  schemaReady = false;
+  setIntentEnabled(false);
   chrome.runtime.sendMessage({ type: 'TRIGGER_SNAPSHOT' }, (resp) => {
     if (chrome.runtime.lastError || !resp?.ok) {
       statusEl.textContent = resp?.error || 'Snapshot failed';
       statusEl.className = 'error';
     } else {
-      statusEl.textContent = 'Snapshot sent (tab ' + resp.tabId + ')';
-      statusEl.className = 'connected';
+      statusEl.textContent = 'Generating schema...';
+      statusEl.className = '';
+      pollForSchema();
     }
     snapshotBtn.textContent = 'Snapshot';
     snapshotBtn.disabled = false;
