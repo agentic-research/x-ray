@@ -7,6 +7,8 @@ const (
 	MsgExecuteAction = "EXECUTE_ACTION"
 	MsgNavigate      = "NAVIGATE"
 	MsgStatus        = "STATUS"
+	MsgScroll        = "SCROLL"
+	MsgDOMUpdate     = "DOM_UPDATE"
 )
 
 // InboundMessage is the envelope for all browser -> server messages.
@@ -22,11 +24,12 @@ type InboundMessage struct {
 
 // OutboundMessage is the envelope for all server -> browser messages.
 type OutboundMessage struct {
-	Type    string `json:"type"`
-	TabID   int    `json:"tab_id,omitempty"`
-	Schema  any    `json:"schema,omitempty"`
-	MacheID string `json:"mache_id,omitempty"`
-	Action  string `json:"action,omitempty"`
-	Message string `json:"message,omitempty"`
-	Stage   string `json:"stage,omitempty"`
+	Type      string `json:"type"`
+	TabID     int    `json:"tab_id,omitempty"`
+	Schema    any    `json:"schema,omitempty"`
+	MacheID   string `json:"mache_id,omitempty"`
+	Action    string `json:"action,omitempty"`
+	Message   string `json:"message,omitempty"`
+	Stage     string `json:"stage,omitempty"`
+	Direction string `json:"direction,omitempty"`
 }

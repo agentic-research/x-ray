@@ -1,6 +1,7 @@
 package navigator
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -78,7 +79,7 @@ func TestToolChainLsRoot(t *testing.T) {
 	engine := buildHNEngine(t)
 	agent := &Agent{engine: engine}
 
-	result, _ := agent.ExecuteTool(&genai.FunctionCall{
+	result, _ := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "ls", Args: map[string]any{"path": "/"},
 	})
 
@@ -94,7 +95,7 @@ func TestToolChainLsToChildren(t *testing.T) {
 	agent := &Agent{engine: engine}
 
 	// ls the story list zone
-	result, _ := agent.ExecuteTool(&genai.FunctionCall{
+	result, _ := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "ls", Args: map[string]any{"path": "/main/story_list"},
 	})
 
@@ -103,7 +104,7 @@ func TestToolChainLsToChildren(t *testing.T) {
 	}
 
 	// cat the children file
-	result, _ = agent.ExecuteTool(&genai.FunctionCall{
+	result, _ = agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "cat", Args: map[string]any{"path": "/main/story_list/children"},
 	})
 
@@ -124,7 +125,7 @@ func TestToolChainActOnChild(t *testing.T) {
 	agent := &Agent{engine: engine}
 
 	// Simulate the Navigator workflow: ls → cat children → act on specific child
-	_, action := agent.ExecuteTool(&genai.FunctionCall{
+	_, action := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "act", Args: map[string]any{
 			"path":   "/main/story_list/_c/mache-11",
 			"action": "click",
@@ -147,7 +148,7 @@ func TestToolChainActOnZone(t *testing.T) {
 	agent := &Agent{engine: engine}
 
 	// Act directly on a zone (e.g. footer "More" link)
-	_, action := agent.ExecuteTool(&genai.FunctionCall{
+	_, action := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "act", Args: map[string]any{
 			"path":   "/footer/actions",
 			"action": "click",
@@ -166,7 +167,7 @@ func TestToolChainNavDescription(t *testing.T) {
 	engine := buildHNEngine(t)
 	agent := &Agent{engine: engine}
 
-	result, _ := agent.ExecuteTool(&genai.FunctionCall{
+	result, _ := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "cat", Args: map[string]any{"path": "/header/nav/description"},
 	})
 
@@ -181,7 +182,7 @@ func TestToolChainFullWorkflow(t *testing.T) {
 	agent := &Agent{engine: engine}
 
 	// Step 1: ls("/")
-	root, _ := agent.ExecuteTool(&genai.FunctionCall{
+	root, _ := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "ls", Args: map[string]any{"path": "/"},
 	})
 	if !strings.Contains(root, "main/") {
@@ -189,7 +190,7 @@ func TestToolChainFullWorkflow(t *testing.T) {
 	}
 
 	// Step 2: ls("/main/story_list")
-	zone, _ := agent.ExecuteTool(&genai.FunctionCall{
+	zone, _ := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "ls", Args: map[string]any{"path": "/main/story_list"},
 	})
 	if !strings.Contains(zone, "children") {
@@ -197,7 +198,7 @@ func TestToolChainFullWorkflow(t *testing.T) {
 	}
 
 	// Step 3: cat("/main/story_list/children")
-	children, _ := agent.ExecuteTool(&genai.FunctionCall{
+	children, _ := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "cat", Args: map[string]any{"path": "/main/story_list/children"},
 	})
 	if !strings.Contains(children, "mache-18") {
@@ -205,7 +206,7 @@ func TestToolChainFullWorkflow(t *testing.T) {
 	}
 
 	// Step 4: act on the second story
-	result, action := agent.ExecuteTool(&genai.FunctionCall{
+	result, action := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "act", Args: map[string]any{
 			"path":   "/main/story_list/_c/mache-18",
 			"action": "click",

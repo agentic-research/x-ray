@@ -220,7 +220,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			var responses []*genai.FunctionResponse
 			for _, fc := range tc.FunctionCalls {
 				log.Printf("Voice: tool call %s(%v) (tab %d)", fc.Name, fc.Args, tabID)
-				result, action := sess.Navigator.ExecuteTool(fc)
+				result, action := sess.Navigator.ExecuteTool(ctx, fc)
 				log.Printf("Voice: tool result: %q", result)
 
 				// If act() returned an action, dispatch to the extension.

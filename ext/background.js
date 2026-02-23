@@ -86,6 +86,30 @@ function connectWebSocket() {
         break;
       }
 
+      case 'SCROLL': {
+        const targetTab = msg.tab_id;
+        const direction = msg.direction || 'down';
+        if (targetTab) {
+          chrome.tabs.sendMessage(targetTab, { type: 'SCROLL', direction }, (response) => {
+            if (chrome.runtime.lastError || !response) {
+              console.error('X-Ray: Scroll failed', chrome.runtime.lastError);
+              return;
+            }
+            // Send updated summary back to server
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'DOM_UPDATE',
+                tab_id: targetTab,
+                summary: response.summary,
+                url: response.url
+              }));
+              console.log('X-Ray: Scroll', direction, '— sent DOM_UPDATE for tab', targetTab);
+            }
+          });
+        }
+        break;
+      }
+
       case 'SCHEMA_READY': {
         const tabId = msg.tab_id;
         console.log('X-Ray: Schema ready (tab', tabId, ')');

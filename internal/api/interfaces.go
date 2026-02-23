@@ -16,6 +16,7 @@ type SchemaGenerator interface {
 // IntentHandler abstracts the Navigator for testing.
 type IntentHandler interface {
 	HandleIntent(ctx context.Context, intent string) (*navigator.ActionResult, string, error)
-	ExecuteTool(fc *genai.FunctionCall) (string, *navigator.ActionResult)
+	ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string, *navigator.ActionResult)
 	SetEngine(engine *mache.Engine)
+	SetScrollFunc(fn func(ctx context.Context, direction string) error)
 }

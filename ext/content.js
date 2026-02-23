@@ -81,6 +81,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       executeAction(message.mache_id, message.action);
       sendResponse({ success: true });
       return true;
+
+    case 'SCROLL': {
+      const distance = message.direction === 'up' ? -window.innerHeight : window.innerHeight;
+      window.scrollBy({ top: distance, behavior: 'smooth' });
+      // Wait for scroll animation + lazy-loaded content, then re-tag and re-summarize
+      setTimeout(() => {
+        injectMacheIDs();
+        const summary = generateSummary();
+        sendResponse({ summary, url: window.location.href });
+      }, 1500);
+      return true;
+    }
   }
 });
 

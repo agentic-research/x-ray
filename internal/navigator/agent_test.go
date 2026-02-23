@@ -1,6 +1,7 @@
 package navigator
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -54,7 +55,7 @@ func TestExecuteToolLs(t *testing.T) {
 	agent := newTestAgent()
 	fc := &genai.FunctionCall{Name: "ls", Args: map[string]any{"path": "/"}}
 
-	result, action := agent.ExecuteTool(fc)
+	result, action := agent.ExecuteTool(context.Background(), fc)
 	if action != nil {
 		t.Fatal("ls should not return an action")
 	}
@@ -70,7 +71,7 @@ func TestExecuteToolLsSubdir(t *testing.T) {
 	agent := newTestAgent()
 	fc := &genai.FunctionCall{Name: "ls", Args: map[string]any{"path": "/main/stories"}}
 
-	result, action := agent.ExecuteTool(fc)
+	result, action := agent.ExecuteTool(context.Background(), fc)
 	if action != nil {
 		t.Fatal("ls should not return an action")
 	}
@@ -86,7 +87,7 @@ func TestExecuteToolCat(t *testing.T) {
 	agent := newTestAgent()
 	fc := &genai.FunctionCall{Name: "cat", Args: map[string]any{"path": "/header/nav/description"}}
 
-	result, action := agent.ExecuteTool(fc)
+	result, action := agent.ExecuteTool(context.Background(), fc)
 	if action != nil {
 		t.Fatal("cat should not return an action")
 	}
@@ -99,7 +100,7 @@ func TestExecuteToolCatChildren(t *testing.T) {
 	agent := newTestAgent()
 	fc := &genai.FunctionCall{Name: "cat", Args: map[string]any{"path": "/main/stories/children"}}
 
-	result, action := agent.ExecuteTool(fc)
+	result, action := agent.ExecuteTool(context.Background(), fc)
 	if action != nil {
 		t.Fatal("cat should not return an action")
 	}
@@ -119,7 +120,7 @@ func TestExecuteToolAct(t *testing.T) {
 		"action": "click",
 	}}
 
-	result, action := agent.ExecuteTool(fc)
+	result, action := agent.ExecuteTool(context.Background(), fc)
 	if action == nil {
 		t.Fatal("act should return an ActionResult")
 	}
@@ -141,7 +142,7 @@ func TestExecuteToolActDefaultAction(t *testing.T) {
 		"action": "",
 	}}
 
-	_, action := agent.ExecuteTool(fc)
+	_, action := agent.ExecuteTool(context.Background(), fc)
 	if action == nil {
 		t.Fatal("act should return an ActionResult")
 	}
@@ -157,7 +158,7 @@ func TestExecuteToolActBadPath(t *testing.T) {
 		"action": "click",
 	}}
 
-	result, action := agent.ExecuteTool(fc)
+	result, action := agent.ExecuteTool(context.Background(), fc)
 	if action != nil {
 		t.Fatal("bad path should not return an action")
 	}
@@ -170,11 +171,63 @@ func TestExecuteToolUnknown(t *testing.T) {
 	agent := newTestAgent()
 	fc := &genai.FunctionCall{Name: "delete", Args: map[string]any{"path": "/"}}
 
-	result, action := agent.ExecuteTool(fc)
+	result, action := agent.ExecuteTool(context.Background(), fc)
 	if action != nil {
 		t.Fatal("unknown tool should not return an action")
 	}
 	if !strings.Contains(result, "Unknown tool") {
 		t.Errorf("expected 'Unknown tool' message, got %q", result)
+	}
+}
+
+func TestExecuteToolScrollNoFunc(t *testing.T) {
+	agent := newTestAgent()
+	fc := &genai.FunctionCall{Name: "scroll", Args: map[string]any{"direction": "down"}}
+
+	result, action := agent.ExecuteTool(context.Background(), fc)
+	if action != nil {
+		t.Fatal("scroll should not return an action")
+	}
+	if !strings.Contains(result, "not available") {
+		t.Errorf("expected 'not available' error, got %q", result)
+	}
+}
+
+func TestExecuteToolScrollWithFunc(t *testing.T) {
+	agent := newTestAgent()
+	scrollCalled := false
+	agent.SetScrollFunc(func(_ context.Context, direction string) error {
+		scrollCalled = true
+		if direction != "down" {
+			t.Errorf("expected direction 'down', got %q", direction)
+		}
+		return nil
+	})
+
+	fc := &genai.FunctionCall{Name: "scroll", Args: map[string]any{"direction": "down"}}
+	result, action := agent.ExecuteTool(context.Background(), fc)
+	if action != nil {
+		t.Fatal("scroll should not return an action")
+	}
+	if !scrollCalled {
+		t.Error("scroll function was not called")
+	}
+	if !strings.Contains(result, "Scrolled down") {
+		t.Errorf("expected 'Scrolled down' message, got %q", result)
+	}
+}
+
+func TestExecuteToolScrollDefaultDirection(t *testing.T) {
+	agent := newTestAgent()
+	var gotDirection string
+	agent.SetScrollFunc(func(_ context.Context, direction string) error {
+		gotDirection = direction
+		return nil
+	})
+
+	fc := &genai.FunctionCall{Name: "scroll", Args: map[string]any{}}
+	agent.ExecuteTool(context.Background(), fc)
+	if gotDirection != "down" {
+		t.Errorf("expected default direction 'down', got %q", gotDirection)
 	}
 }

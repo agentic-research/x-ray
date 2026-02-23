@@ -34,6 +34,7 @@ type TabSession struct {
 	Engine      *mache.Engine
 	Navigator   IntentHandler
 	SchemaReady chan struct{} // closed when schema is applied
+	DOMUpdateCh chan string   // receives new summary after scroll
 }
 
 // Handler holds the dependencies for the WebSocket handler.
@@ -77,6 +78,7 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		Engine:      engine,
 		Navigator:   nav,
 		SchemaReady: make(chan struct{}),
+		DOMUpdateCh: make(chan string, 1),
 	}
 	h.sessions[tabID] = sess
 	log.Printf("Session: created new session for tab %d", tabID)
@@ -150,6 +152,8 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			go h.handleDOMSnapshot(conn, msg)
 		case MsgNavigate:
 			go h.handleNavigate(conn, msg)
+		case MsgDOMUpdate:
+			h.handleDOMUpdate(msg)
 		default:
 			log.Printf("WebSocket: unknown message type: %s", msg.Type)
 		}
@@ -262,6 +266,12 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 		Type: MsgStatus, TabID: msg.TabID, Message: "Navigating: " + msg.Intent, Stage: "navigator",
 	})
 
+	// Inject scroll capability so the Navigator can request page scrolling mid-loop.
+	sess.Navigator.SetScrollFunc(func(scrollCtx context.Context, direction string) error {
+		return h.scrollPage(scrollCtx, conn, sess, msg.TabID, direction)
+	})
+	defer sess.Navigator.SetScrollFunc(nil)
+
 	action, textResponse, err := sess.Navigator.HandleIntent(ctx, msg.Intent)
 	if err != nil {
 		log.Printf("Navigator failed: %v", err)
@@ -285,6 +295,38 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 		h.sendMessage(conn, OutboundMessage{
 			Type: MsgStatus, TabID: msg.TabID, Message: textResponse, Stage: "navigator",
 		})
+	}
+}
+
+// handleDOMUpdate receives an updated summary from the browser after a scroll.
+// It signals the waiting scrollPage goroutine via the session's DOMUpdateCh.
+func (h *Handler) handleDOMUpdate(msg InboundMessage) {
+	sess := h.getSession(msg.TabID)
+	select {
+	case sess.DOMUpdateCh <- msg.Summary:
+		log.Printf("Scroll: received DOM_UPDATE for tab %d (%d bytes)", msg.TabID, len(msg.Summary))
+	default:
+		log.Printf("Scroll: DOM_UPDATE for tab %d but no listener, discarding", msg.TabID)
+	}
+}
+
+// scrollPage sends a SCROLL command to the browser and blocks until the
+// updated DOM summary arrives. It then re-runs LoadChildren on the Engine.
+func (h *Handler) scrollPage(ctx context.Context, conn *websocket.Conn, sess *TabSession, tabID int, direction string) error {
+	log.Printf("Scroll: requesting %s for tab %d", direction, tabID)
+	h.sendMessage(conn, OutboundMessage{
+		Type: MsgScroll, TabID: tabID, Direction: direction,
+	})
+
+	select {
+	case summary := <-sess.DOMUpdateCh:
+		sess.Engine.LoadChildren(summary)
+		log.Printf("Scroll: updated children for tab %d after scroll %s", tabID, direction)
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(10 * time.Second):
+		return fmt.Errorf("scroll timed out waiting for DOM update")
 	}
 }
 
