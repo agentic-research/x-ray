@@ -234,6 +234,68 @@ func collectDescendants(parentMap map[string][]SummaryElement, rootID string, ma
 
 const maxChildrenPerZone = 30
 
+// formatGroupedChildren detects repeating item groups in a flat list of
+// descendants and formats them with numbered headers. Groups are delimited by
+// elements with empty text (common pattern: upvote arrows, bullet icons, etc.).
+// If no groups are detected, falls back to a flat numbered list.
+func formatGroupedChildren(descendants []SummaryElement) string {
+	// Detect if there are empty-text elements that could be group separators.
+	var emptyCount int
+	for _, d := range descendants {
+		if d.Text == "" {
+			emptyCount++
+		}
+	}
+
+	// If we have at least 2 empty-text separators and they aren't the majority,
+	// use them as group boundaries.
+	if emptyCount >= 2 && emptyCount < len(descendants)/2 {
+		return formatByEmptySeparator(descendants)
+	}
+
+	// Fallback: flat list.
+	var lines []string
+	for _, d := range descendants {
+		lines = append(lines, fmt.Sprintf("%s | %s | \"%s\"", d.ID, d.Tag, d.Text))
+	}
+	return strings.Join(lines, "\n")
+}
+
+// formatByEmptySeparator groups elements: each empty-text element starts a new
+// numbered item group.
+func formatByEmptySeparator(descendants []SummaryElement) string {
+	var sb strings.Builder
+	itemNum := 0
+	inGroup := false
+
+	for _, d := range descendants {
+		if d.Text == "" {
+			// Empty text = start of new item group.
+			itemNum++
+			if inGroup {
+				sb.WriteString("\n")
+			}
+			fmt.Fprintf(&sb, "--- Item %d ---\n", itemNum)
+			inGroup = true
+			continue
+		}
+
+		// Skip structural containers (tbody, etc.) — they aren't actionable.
+		if d.Tag == "tbody" || d.Tag == "thead" || d.Tag == "table" {
+			continue
+		}
+
+		if !inGroup {
+			// Elements before the first separator get their own group.
+			itemNum++
+			fmt.Fprintf(&sb, "--- Item %d ---\n", itemNum)
+			inGroup = true
+		}
+		fmt.Fprintf(&sb, "  %s | %s | \"%s\"\n", d.ID, d.Tag, d.Text)
+	}
+	return strings.TrimRight(sb.String(), "\n")
+}
+
 // LoadChildren parses the summary and populates children/_ c/ for each mounted zone.
 func (e *Engine) LoadChildren(summary string) {
 	elements := parseSummary(summary)
@@ -258,14 +320,14 @@ func (e *Engine) LoadChildren(summary string) {
 			continue
 		}
 
-		// Build "children" file content
-		var lines []string
-		for _, d := range descendants {
-			lines = append(lines, fmt.Sprintf("%s | %s | \"%s\"", d.ID, d.Tag, d.Text))
-		}
+		// Build "children" file content with numbered item groups.
+		// Items are separated by detecting repeating patterns: an element with
+		// empty text (e.g., an upvote arrow or bullet icon) marks the start of
+		// a new item group. This lets the LLM count "the 3rd story" correctly
+		// instead of counting individual links.
 		zoneEntry.Children["children"] = &Entry{
 			Name:    "children",
-			Content: strings.Join(lines, "\n"),
+			Content: formatGroupedChildren(descendants),
 		}
 
 		// Build "_c/" directory with per-child subdirs

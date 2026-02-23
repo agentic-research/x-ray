@@ -263,6 +263,8 @@ NAVIGATION PATTERN:
 - If a zone has NO children (only description + mache_id): the zone itself IS the clickable element. Use act("/zone/path", "click") directly.
 - Zone descriptions tell you what they contain. Use them to pick the right zone fast.
 
+COUNTING ITEMS: The children file groups elements into numbered items (--- Item 1 ---, --- Item 2 ---, etc). When the user says "click the 3rd story" or "the 14th item", count by ITEM GROUPS, not individual elements. Each group is one content item (a story, a link, a card, etc).
+
 Example — "click the first story":
   ls("/") → ls("/main/news_feed") → cat("/main/news_feed/children") → act("/main/news_feed/_c/mache-13", "click")
   Then say: "Done."
