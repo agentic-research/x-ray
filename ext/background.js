@@ -427,6 +427,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       });
       return true;
 
+    case 'CHECK_SCHEMA':
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs[0]?.id;
+        sendResponse({ hasSchema: tabId ? schemaReadyTabs.has(tabId) : false, tabId });
+      });
+      return true;
+
     case 'GET_VOICE_STATE':
       sendResponse(getState());
       return false;

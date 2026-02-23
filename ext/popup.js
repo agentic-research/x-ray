@@ -6,17 +6,40 @@ const killBtn = document.getElementById('kill-btn');
 const sessionDot = document.getElementById('session-dot');
 const statusEl = document.getElementById('status');
 
-// Poll initial state.
+// Poll initial state, auto-snapshot if no schema exists for this tab.
 chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
   if (chrome.runtime.lastError) return;
   updateUI(state);
-  if (state.wsConnected) {
-    statusEl.textContent = 'Connected to agentd';
-    statusEl.className = 'connected';
-  } else {
+  if (!state.wsConnected) {
     statusEl.textContent = 'Not connected to agentd';
     statusEl.className = 'error';
+    return;
   }
+  // Check if active tab already has a schema — if not, auto-snapshot.
+  chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
+    if (chrome.runtime.lastError) return;
+    if (resp?.hasSchema) {
+      statusEl.textContent = 'Ready — type a command or use voice';
+      statusEl.className = 'connected';
+    } else {
+      // Auto-trigger snapshot.
+      snapshotBtn.textContent = 'Capturing...';
+      snapshotBtn.disabled = true;
+      statusEl.textContent = 'Auto-capturing page...';
+      statusEl.className = '';
+      chrome.runtime.sendMessage({ type: 'TRIGGER_SNAPSHOT' }, (snapResp) => {
+        if (chrome.runtime.lastError || !snapResp?.ok) {
+          statusEl.textContent = snapResp?.error || 'Snapshot failed';
+          statusEl.className = 'error';
+        } else {
+          statusEl.textContent = 'Snapshot sent — generating schema...';
+          statusEl.className = 'connected';
+        }
+        snapshotBtn.textContent = 'Snapshot';
+        snapshotBtn.disabled = false;
+      });
+    }
+  });
 });
 
 snapshotBtn.addEventListener('click', () => {
