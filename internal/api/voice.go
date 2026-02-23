@@ -111,6 +111,14 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// --- goroutine 2 (this goroutine): Gemini → browser ---
+	//
+	// inToolLoop suppresses audio/narration while the model is working through
+	// tool calls. The native audio model narrates its thought process despite
+	// system-prompt instructions — we mute it server-side and only forward the
+	// final spoken result after all tools complete.
+	var inToolLoop bool
+	var bufferedTranscript string
+
 	for {
 		msg, err := session.Receive()
 		if err != nil {
@@ -127,7 +135,33 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 
 		// ServerContent — audio data and/or transcription.
 		if sc := msg.ServerContent; sc != nil {
-			// Forward audio parts as binary frames.
+			if inToolLoop {
+				// Suppress audio and narration while tools are executing.
+				// Buffer the final transcript so we can show the result text.
+				if sc.OutputTranscription != nil && sc.OutputTranscription.Text != "" {
+					bufferedTranscript += sc.OutputTranscription.Text
+				}
+
+				// TurnComplete after tool work — flush buffered transcript.
+				if sc.TurnComplete {
+					inToolLoop = false
+					if bufferedTranscript != "" {
+						sendVoiceJSON(conn, &wsMu, voiceMessage{
+							Type: "output_transcription", Text: bufferedTranscript,
+						})
+						bufferedTranscript = ""
+					}
+					sendVoiceJSON(conn, &wsMu, voiceMessage{Type: "turn_complete"})
+				}
+				if sc.Interrupted {
+					inToolLoop = false
+					bufferedTranscript = ""
+					sendVoiceJSON(conn, &wsMu, voiceMessage{Type: "interrupted"})
+				}
+				continue
+			}
+
+			// Normal path (no active tool loop): forward audio and transcription.
 			if sc.ModelTurn != nil {
 				for _, part := range sc.ModelTurn.Parts {
 					if part.InlineData != nil && len(part.InlineData.Data) > 0 {
@@ -166,6 +200,8 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 
 		// ToolCall — execute ls/cat/act locally.
 		if tc := msg.ToolCall; tc != nil {
+			inToolLoop = true
+
 			var responses []*genai.FunctionResponse
 			for _, fc := range tc.FunctionCalls {
 				log.Printf("Voice: tool call %s(%v)", fc.Name, fc.Args)
@@ -201,6 +237,8 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 		// ToolCallCancellation — log and move on.
 		if msg.ToolCallCancellation != nil {
 			log.Printf("Voice: tool call cancelled: %v", msg.ToolCallCancellation)
+			inToolLoop = false
+			bufferedTranscript = ""
 			continue
 		}
 	}
