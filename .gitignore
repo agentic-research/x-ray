@@ -55,3 +55,6 @@ experiments/
 .mache-mount/
 bin/
 node_modules/
+
+# Runtime logs
+logs/

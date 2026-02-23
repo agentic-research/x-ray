@@ -119,6 +119,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 			})
 
 			result, action := a.executeTool(fc)
+			log.Printf("Navigator: tool=%s args=%v result=%q", fc.Name, fc.Args, result)
 
 			if action != nil {
 				return action, "", nil
@@ -197,6 +198,9 @@ Strategy:
 1. ls("/") to see the page structure.
 2. Navigate into the most relevant zone based on the user's intent.
 3. Read the "description" file to confirm you've found the right element.
-4. Call act() to execute the action.
+4. Call act() on that zone's path to execute the action.
 
-Be decisive. If the user says "click the first trending repo", navigate to the most likely zone and act. Do not over-explore.`
+IMPORTANT: Each zone in the filesystem represents a DOM element with a mache_id. The zone IS the clickable target.
+If the user says "click the first story" and you see /main/story_list/, act on "/main/story_list" — do NOT look for individual story entries inside it. The filesystem maps zones, not individual items.
+
+Be decisive. Two or three tool calls should be enough: ls → cat description → act.`

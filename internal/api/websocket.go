@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/jamesgardner/x-ray/internal/cartographer"
@@ -105,6 +108,9 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 
 	log.Printf("Cartographer generated schema: %s", schemaJSON)
 
+	// Save schema to disk for reference
+	saveLog("schema", msg.URL, schemaJSON)
+
 	if err := h.Engine.ApplySchema(schemaJSON); err != nil {
 		log.Printf("Engine apply failed: %v", err)
 		h.sendMessage(conn, OutboundMessage{
@@ -139,15 +145,36 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 	}
 
 	if action != nil {
+		result, _ := json.MarshalIndent(action, "", "  ")
+		saveLog("navigate", msg.Intent, string(result))
 		h.sendMessage(conn, OutboundMessage{
 			Type:    MsgExecuteAction,
 			MacheID: action.MacheID,
 			Action:  action.Action,
 		})
 	} else if textResponse != "" {
+		saveLog("navigate", msg.Intent, textResponse)
 		h.sendMessage(conn, OutboundMessage{
 			Type: MsgStatus, Message: textResponse, Stage: "navigator",
 		})
+	}
+}
+
+// saveLog writes a timestamped log entry to logs/<kind>/.
+func saveLog(kind, label, content string) {
+	dir := fmt.Sprintf("logs/%s", kind)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		log.Printf("Failed to create log dir: %v", err)
+		return
+	}
+	ts := time.Now().Format("2006-01-02T15-04-05")
+	filename := fmt.Sprintf("%s/%s.json", dir, ts)
+	entry := map[string]string{"label": label, "content": content, "timestamp": time.Now().Format(time.RFC3339)}
+	data, _ := json.MarshalIndent(entry, "", "  ")
+	if err := os.WriteFile(filename, data, 0o644); err != nil {
+		log.Printf("Failed to write log: %v", err)
+	} else {
+		log.Printf("Saved %s log to %s", kind, filename)
 	}
 }
 
