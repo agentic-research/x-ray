@@ -41,6 +41,18 @@
   }
   .session-dot.live { background: #4a8a4a; }
   .session-dot.connecting { background: #8a8a2a; }
+  .intent-row {
+    display: flex; gap: 4px; margin-bottom: 8px;
+  }
+  .intent-row input {
+    flex: 1; padding: 8px 10px;
+    border: 1px solid #333; border-radius: 6px;
+    background: #222; color: #ccc;
+    font-size: 13px; outline: none;
+  }
+  .intent-row input:focus { border-color: #555; }
+  .intent-row input::placeholder { color: #555; }
+  .intent-row .btn { width: 48px; margin-bottom: 0; text-align: center; flex-shrink: 0; }
   #status {
     font-size: 11px; color: #555; margin-top: 8px;
     min-height: 14px; line-height: 1.3;
@@ -53,6 +65,10 @@
 
 <h1>X-RAY</h1>
 <button id="snapshot-btn" class="btn">Snapshot</button>
+<div class="intent-row">
+  <input id="intent-input" type="text" placeholder="Type a command...">
+  <button id="intent-btn" class="btn">Go</button>
+</div>
 <div class="row">
   <button id="mic-btn" class="btn grow"><span id="session-dot" class="session-dot"></span>Mic: OFF</button>
   <button id="kill-btn" class="btn kill" title="End voice session">&#x23FB;</button>

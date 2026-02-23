@@ -1,4 +1,6 @@
 const snapshotBtn = document.getElementById('snapshot-btn');
+const intentInput = document.getElementById('intent-input');
+const intentBtn = document.getElementById('intent-btn');
 const micBtn = document.getElementById('mic-btn');
 const killBtn = document.getElementById('kill-btn');
 const sessionDot = document.getElementById('session-dot');
@@ -31,6 +33,33 @@ snapshotBtn.addEventListener('click', () => {
     snapshotBtn.textContent = 'Snapshot';
     snapshotBtn.disabled = false;
   });
+});
+
+function sendIntent() {
+  const intent = intentInput.value.trim();
+  if (!intent) return;
+  intentBtn.disabled = true;
+  intentInput.disabled = true;
+  statusEl.textContent = 'Navigating...';
+  statusEl.className = '';
+  chrome.runtime.sendMessage({ type: 'SEND_INTENT', intent }, (resp) => {
+    intentBtn.disabled = false;
+    intentInput.disabled = false;
+    intentInput.focus();
+    if (chrome.runtime.lastError || !resp?.ok) {
+      statusEl.textContent = resp?.error || 'Intent failed';
+      statusEl.className = 'error';
+    } else {
+      statusEl.textContent = resp.message || 'Intent sent';
+      statusEl.className = 'connected';
+      intentInput.value = '';
+    }
+  });
+}
+
+intentBtn.addEventListener('click', sendIntent);
+intentInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendIntent();
 });
 
 micBtn.addEventListener('click', () => {

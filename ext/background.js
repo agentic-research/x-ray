@@ -403,6 +403,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       });
       return true;
 
+    case 'SEND_INTENT':
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        sendResponse({ ok: false, error: 'Not connected to agentd' });
+        return false;
+      }
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs[0]?.id;
+        if (!tabId) {
+          sendResponse({ ok: false, error: 'No active tab' });
+          return;
+        }
+        if (!schemaReadyTabs.has(tabId)) {
+          sendResponse({ ok: false, error: 'No schema — click Snapshot first' });
+          return;
+        }
+        ws.send(JSON.stringify({
+          type: 'NAVIGATE',
+          tab_id: tabId,
+          intent: msg.intent
+        }));
+        sendResponse({ ok: true, message: 'Sent: ' + msg.intent });
+      });
+      return true;
+
     case 'GET_VOICE_STATE':
       sendResponse(getState());
       return false;
