@@ -288,8 +288,8 @@ func TestFormatByPrimaryItems(t *testing.T) {
 				{ID: "m-6", Tag: "a", Text: "(other.com)"},
 			},
 			primaryItems: []string{"m-2", "m-5"},
-			wantItems:    3, // preamble (m-1) + Item 2 (m-2,m-3) + Item 3 (m-5,m-6)
-			wantContains: "--- Item 2 ---",
+			wantItems:    2, // Item 1 (m-2,m-3) + Item 2 (m-5,m-6); preamble (m-1) skipped
+			wantContains: "--- Item 1 ---",
 		},
 		{
 			name: "no preamble: first element is primary",

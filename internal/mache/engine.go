@@ -323,10 +323,10 @@ func formatByPrimaryItems(descendants []SummaryElement, primaryItems []string) s
 		}
 
 		if !inGroup {
-			// Elements before the first primary item — start a preamble group.
-			itemNum++
-			fmt.Fprintf(&sb, "--- Item %d ---\n", itemNum)
-			inGroup = true
+			// Elements before the first primary item — skip them.
+			// They're structural noise (upvote arrows, spacers) that would
+			// shift item numbering and cause off-by-one errors.
+			continue
 		}
 		fmt.Fprintf(&sb, "  %s | %s | \"%s\"\n", d.ID, d.Tag, d.Text)
 	}
