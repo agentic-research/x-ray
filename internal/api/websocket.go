@@ -22,6 +22,12 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+// pendingAction is an action queued for dispatch when the extension reconnects.
+type pendingAction struct {
+	MacheID string
+	Action  string
+}
+
 // Handler holds the dependencies for the WebSocket handler.
 type Handler struct {
 	Cartographer *cartographer.Agent
@@ -30,8 +36,9 @@ type Handler struct {
 	Client       *genai.Client
 	LiveModel    string
 
-	mu   sync.Mutex
-	conn *websocket.Conn
+	mu      sync.Mutex
+	conn    *websocket.Conn
+	pending []pendingAction // actions queued while extension was disconnected
 }
 
 func NewHandler(cart *cartographer.Agent, nav *navigator.Agent, engine *mache.Engine, client *genai.Client, liveModel string) *Handler {
@@ -55,9 +62,42 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	h.mu.Lock()
 	h.conn = conn
+	queued := h.pending
+	h.pending = nil
 	h.mu.Unlock()
 
 	log.Println("WebSocket: Client connected")
+
+	// Flush any actions that were queued while the extension was disconnected.
+	for _, a := range queued {
+		log.Printf("WebSocket: flushing queued action: %s on %s", a.Action, a.MacheID)
+		h.sendMessage(conn, OutboundMessage{
+			Type:    MsgExecuteAction,
+			MacheID: a.MacheID,
+			Action:  a.Action,
+		})
+	}
+
+	// Keep-alive: ping every 20s to prevent Chrome MV3 service worker from going idle.
+	pingDone := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(20 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				h.mu.Lock()
+				err := conn.WriteMessage(websocket.PingMessage, nil)
+				h.mu.Unlock()
+				if err != nil {
+					return
+				}
+			case <-pingDone:
+				return
+			}
+		}
+	}()
+	defer close(pingDone)
 
 	for {
 		_, msgBytes, err := conn.ReadMessage()
@@ -219,14 +259,17 @@ func (h *Handler) sendMessage(conn *websocket.Conn, msg OutboundMessage) {
 
 // SendActionToExtension sends an EXECUTE_ACTION message over the extension WebSocket.
 // Used by the voice handler to dispatch act() results to the browser.
+// If the extension is disconnected, the action is queued and flushed on reconnect.
 func (h *Handler) SendActionToExtension(macheID, action string) {
 	h.mu.Lock()
 	conn := h.conn
-	h.mu.Unlock()
 	if conn == nil {
-		log.Println("Voice: no extension WebSocket connected, cannot dispatch action")
+		h.pending = append(h.pending, pendingAction{MacheID: macheID, Action: action})
+		h.mu.Unlock()
+		log.Printf("Voice: extension disconnected, queued action: %s on %s", action, macheID)
 		return
 	}
+	h.mu.Unlock()
 	h.sendMessage(conn, OutboundMessage{
 		Type:    MsgExecuteAction,
 		MacheID: macheID,

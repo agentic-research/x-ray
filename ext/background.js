@@ -6,6 +6,15 @@ let ws = null;
 let reconnectTimer = null;
 let wsUrl = DEFAULT_WS_URL;
 
+// Keep-alive: Chrome MV3 service workers die after ~30s of inactivity.
+// A periodic alarm wakes us up so the WebSocket stays connected.
+chrome.alarms.create('keepalive', { periodInMinutes: 0.4 }); // ~24s
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'keepalive' && ws && ws.readyState === WebSocket.OPEN) {
+    // No-op — just being awake keeps the service worker alive.
+  }
+});
+
 // Load configured WebSocket URL, then connect.
 chrome.storage.local.get({ wsUrl: DEFAULT_WS_URL }, (items) => {
   wsUrl = items.wsUrl;
