@@ -5,6 +5,7 @@ const DEFAULT_WS_URL = 'ws://localhost:8080/ws';
 let ws = null;
 let reconnectTimer = null;
 let wsUrl = DEFAULT_WS_URL;
+let targetTabId = null; // Tab that was last snapshotted — actions go here.
 
 // Keep-alive: Chrome MV3 service workers die after ~30s of inactivity.
 // A periodic alarm wakes us up so the WebSocket stays connected.
@@ -51,15 +52,24 @@ function connectWebSocket() {
 
     switch (msg.type) {
       case 'EXECUTE_ACTION':
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs[0]) {
-            chrome.tabs.sendMessage(tabs[0].id, {
-              type: 'EXECUTE_ACTION',
-              mache_id: msg.mache_id,
-              action: msg.action
-            });
-          }
-        });
+        if (targetTabId != null) {
+          chrome.tabs.sendMessage(targetTabId, {
+            type: 'EXECUTE_ACTION',
+            mache_id: msg.mache_id,
+            action: msg.action
+          });
+        } else {
+          // Fallback: try active tab if no snapshot tab recorded.
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+              chrome.tabs.sendMessage(tabs[0].id, {
+                type: 'EXECUTE_ACTION',
+                mache_id: msg.mache_id,
+                action: msg.action
+              });
+            }
+          });
+        }
         break;
 
       case 'SCHEMA_READY':
@@ -126,5 +136,7 @@ function captureAndSend(tabId) {
 
 // Manual trigger: extension icon click
 chrome.action.onClicked.addListener((tab) => {
+  targetTabId = tab.id;
+  console.log('X-Ray: Target tab set to', tab.id, tab.url);
   captureAndSend(tab.id);
 });
