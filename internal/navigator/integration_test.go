@@ -71,7 +71,7 @@ func buildHNEngine(t *testing.T) *mache.Engine {
 	if err := engine.ApplySchema(hnSchema); err != nil {
 		t.Fatalf("ApplySchema failed: %v", err)
 	}
-	engine.LoadChildren(hnSummary)
+	engine.LoadChildren(hnSummary, nil)
 	return engine
 }
 
@@ -108,15 +108,18 @@ func TestToolChainLsToChildren(t *testing.T) {
 		Name: "cat", Args: map[string]any{"path": "/main/story_list/children"},
 	})
 
-	// Should have item grouping from primary_items
-	if !strings.Contains(result, "--- Item") {
-		t.Errorf("children missing item grouping: %s", result)
+	// Should have compact primary items listing
+	if !strings.Contains(result, "Item 1:") {
+		t.Errorf("children missing Item 1: %s", result)
 	}
 	if !strings.Contains(result, "Timeframe") {
 		t.Errorf("children missing first story: %s", result)
 	}
 	if !strings.Contains(result, "Global Intelligence Crisis") {
 		t.Errorf("children missing second story: %s", result)
+	}
+	if !strings.Contains(result, "Item 3:") {
+		t.Errorf("children missing Item 3: %s", result)
 	}
 }
 

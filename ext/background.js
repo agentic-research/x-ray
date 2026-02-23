@@ -93,20 +93,26 @@ function connectWebSocket() {
         const targetTab = msg.tab_id;
         const direction = msg.direction || 'down';
         if (targetTab) {
-          chrome.tabs.sendMessage(targetTab, { type: 'SCROLL', direction }, (response) => {
+          chrome.tabs.sendMessage(targetTab, {
+            type: 'SCROLL',
+            direction,
+            selectors: msg.selectors || {}
+          }, (response) => {
             if (chrome.runtime.lastError || !response) {
               console.error('X-Ray: Scroll failed', chrome.runtime.lastError);
               return;
             }
-            // Send updated summary back to server
+            // Send updated summary + resolved items back to server
             if (ws && ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({
                 type: 'DOM_UPDATE',
                 tab_id: targetTab,
                 summary: response.summary,
-                url: response.url
+                url: response.url,
+                resolved_items: response.resolved_items || {}
               }));
-              console.log('X-Ray: Scroll', direction, '— sent DOM_UPDATE for tab', targetTab);
+              console.log('X-Ray: Scroll', direction, '— sent DOM_UPDATE for tab', targetTab,
+                'resolved:', Object.keys(response.resolved_items || {}).length, 'zones');
             }
           });
         }
@@ -126,11 +132,9 @@ function connectWebSocket() {
           ws.send(JSON.stringify({ type: 'NAVIGATE', tab_id: tabId, intent }));
         }
 
-        // Auto-start voice session when schema arrives (if no session exists yet).
-        if (tabId && sessionTabId === null) {
-          console.log('X-Ray: Auto-starting voice session for tab', tabId);
-          startSession(tabId);
-        }
+        // Voice session is NOT auto-started. The user must explicitly activate
+        // it (e.g., via extension icon click or keyboard shortcut) to avoid
+        // unexpected mic access and audio streaming to Gemini Live API.
         break;
       }
 
@@ -154,61 +158,61 @@ function connectWebSocket() {
   };
 }
 
-// --- CDP capture: full-page screenshot + accessibility tree ---
+// --- CDP capture: scaled screenshot + AX enrichment ---
 
-const CDP_MAX_HEIGHT = 16384; // Cap to avoid enormous images on infinite-scroll pages
+const CDP_MAX_HEIGHT = 16384;  // Cap for infinite-scroll pages
+const CDP_TARGET_WIDTH = 800;  // Scaled-down width for Gemini (topology, not pixels)
+const CDP_JPEG_QUALITY = 60;   // Low quality is fine for zone identification
 
-// Single CDP session that captures full-page screenshot + AX tree + mache-id mapping.
-// Falls back to viewport-only screenshot (captureVisibleTab) if debugger attach fails.
+// Single CDP session: scaled full-page JPEG screenshot + AX-to-mache-id mapping.
+// Falls back to viewport-only screenshot if debugger attach fails.
 async function captureWithCDP(tabId) {
   try {
     await chrome.debugger.attach({ tabId }, '1.3');
   } catch (e) {
     console.warn('X-Ray: debugger attach failed, falling back to viewport screenshot:', e.message);
-    const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
-    return { screenshot: dataUrl.split(',')[1], axMap: new Map(), axSummary: '' };
+    const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: CDP_JPEG_QUALITY });
+    return { screenshot: dataUrl.split(',')[1], axMap: new Map() };
   }
 
   try {
-    // 1. Full-page screenshot via CDP
+    // 1. Get page dimensions and capture scaled JPEG
     const { cssContentSize } = await chrome.debugger.sendCommand(
       { tabId }, 'Page.getLayoutMetrics', {}
     );
     const captureWidth = cssContentSize.width;
     const captureHeight = Math.min(cssContentSize.height, CDP_MAX_HEIGHT);
+    const scale = Math.min(1, CDP_TARGET_WIDTH / captureWidth);
 
     const { data: screenshot } = await chrome.debugger.sendCommand(
       { tabId }, 'Page.captureScreenshot', {
-        format: 'png',
+        format: 'jpeg',
+        quality: CDP_JPEG_QUALITY,
         captureBeyondViewport: true,
-        clip: { x: 0, y: 0, width: captureWidth, height: captureHeight, scale: 1 }
+        clip: { x: 0, y: 0, width: captureWidth, height: captureHeight, scale }
       }
     );
 
-    // 2. Get full AX tree
+    // 2. Get full AX tree (needed for per-element role/name enrichment)
     const { nodes: axNodes } = await chrome.debugger.sendCommand(
       { tabId }, 'Accessibility.getFullAXTree', {}
     );
 
-    // 3. Get DOM document root
+    // 3. Get DOM document root + find all tagged elements
     const { root } = await chrome.debugger.sendCommand(
       { tabId }, 'DOM.getDocument', { depth: 0 }
     );
-
-    // 4. Find all data-mache-id elements via CDP querySelectorAll
     const { nodeIds } = await chrome.debugger.sendCommand(
       { tabId }, 'DOM.querySelectorAll',
       { nodeId: root.nodeId, selector: '[data-mache-id]' }
     );
 
-    // 5. Batch DOM.describeNode calls with Promise.all for concurrency
+    // 4. Batch resolve macheId → backendNodeId
     const descriptions = await Promise.all(
       nodeIds.map(nid =>
         chrome.debugger.sendCommand({ tabId }, 'DOM.describeNode', { nodeId: nid })
       )
     );
-
-    // 6. Build macheId → backendNodeId mapping
     const macheToBackend = new Map();
     for (const { node } of descriptions) {
       const attrs = node.attributes || [];
@@ -220,13 +224,11 @@ async function captureWithCDP(tabId) {
       }
     }
 
-    // 7. Build backendNodeId → AX node lookup
+    // 5. Build backendNodeId → AX node lookup, then join
     const backendToAX = new Map();
     for (const ax of axNodes) {
       if (ax.backendDOMNodeId) backendToAX.set(ax.backendDOMNodeId, ax);
     }
-
-    // 8. Join: macheId → {role, name, properties}
     const axMap = new Map();
     for (const [macheId, backendId] of macheToBackend) {
       const ax = backendToAX.get(backendId);
@@ -241,38 +243,15 @@ async function captureWithCDP(tabId) {
       }
     }
 
-    // 9. Build compact AX summary for the server
-    const axSummary = formatAXTree(axNodes);
-
-    console.log(`X-Ray: CDP capture — full-page ${captureWidth}x${captureHeight}px, ${axNodes.length} AX nodes, ${axMap.size} mapped`);
-    return { screenshot, axMap, axSummary };
+    const scaledW = Math.round(captureWidth * scale);
+    const scaledH = Math.round(captureHeight * scale);
+    console.log(`X-Ray: CDP capture — ${scaledW}x${scaledH}px JPEG (q${CDP_JPEG_QUALITY}), ${axMap.size} AX-mapped`);
+    return { screenshot, axMap };
   } finally {
     try {
       await chrome.debugger.detach({ tabId });
     } catch (_) { /* already detached */ }
   }
-}
-
-// Format the AX tree into a compact text representation for the Cartographer.
-// Only includes nodes with meaningful roles (skips generic/none/ignored).
-function formatAXTree(axNodes) {
-  const skipRoles = new Set(['none', 'generic', 'InlineTextBox', 'StaticText', 'ignored']);
-  const lines = [];
-  for (const ax of axNodes) {
-    const role = ax.role?.value || '';
-    if (skipRoles.has(role) || !role) continue;
-    const name = ax.name?.value || '';
-    const props = (ax.properties || [])
-      .filter(p => p.value?.value === true || p.value?.value === 'true')
-      .map(p => p.name)
-      .join(',');
-    let line = `${role}`;
-    if (name) line += `: "${name.substring(0, 80)}"`;
-    if (props) line += ` [${props}]`;
-    lines.push(line);
-    if (lines.length >= 200) break; // Cap for prompt size
-  }
-  return lines.join('\n');
 }
 
 // Enrich summary lines with AX data from the CDP mapping.
@@ -307,31 +286,27 @@ async function captureAndSend(tabId) {
     return;
   }
 
-  // Single CDP session: full-page screenshot + AX tree + mache-id mapping
+  // Single CDP session: scaled JPEG screenshot + AX enrichment
   const cdpData = await captureWithCDP(tabId).catch(e => {
     console.warn('X-Ray: CDP capture failed, sending without screenshot:', e);
-    return { screenshot: '', axMap: new Map(), axSummary: '' };
+    return { screenshot: '', axMap: new Map() };
   });
 
-  // Enrich summary with AX data
+  // Enrich summary with per-element AX roles/names
   const enrichedSummary = cdpData.axMap.size > 0
     ? enrichSummaryWithAX(response.summary, cdpData.axMap)
     : response.summary;
 
   if (ws && ws.readyState === WebSocket.OPEN) {
-    const msg = {
+    ws.send(JSON.stringify({
       type: 'DOM_SNAPSHOT',
       tab_id: tabId,
       url: response.url,
       summary: enrichedSummary,
       screenshot: cdpData.screenshot
-    };
-    if (cdpData.axSummary) {
-      msg.ax_tree = cdpData.axSummary;
-    }
-    ws.send(JSON.stringify(msg));
+    }));
     console.log('X-Ray: Sent DOM_SNAPSHOT for tab', tabId,
-      cdpData.axMap.size > 0 ? `(${cdpData.axMap.size} AX-enriched elements)` : '(no AX data)');
+      cdpData.axMap.size > 0 ? `(${cdpData.axMap.size} AX-enriched)` : '(no AX)');
   } else {
     console.error('X-Ray: WebSocket not connected');
   }

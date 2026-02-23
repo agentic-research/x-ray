@@ -47,7 +47,7 @@ func newTestAgent() *Agent {
 	if err := engine.ApplySchema(testSchema); err != nil {
 		panic(err)
 	}
-	engine.LoadChildren(testSummary)
+	engine.LoadChildren(testSummary, nil)
 	return &Agent{engine: engine}
 }
 
@@ -104,12 +104,15 @@ func TestExecuteToolCatChildren(t *testing.T) {
 	if action != nil {
 		t.Fatal("cat should not return an action")
 	}
-	// Children file should have item grouping with primary items
-	if !strings.Contains(result, "--- Item") {
-		t.Errorf("children file missing item grouping: %s", result)
+	// Children file should list primary items in compact format
+	if !strings.Contains(result, "Item 1:") {
+		t.Errorf("children file missing Item 1: %s", result)
 	}
 	if !strings.Contains(result, "First Story Title") {
 		t.Errorf("children file missing story title: %s", result)
+	}
+	if !strings.Contains(result, "Item 2:") {
+		t.Errorf("children file missing Item 2: %s", result)
 	}
 }
 

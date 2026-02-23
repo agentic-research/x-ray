@@ -28,13 +28,19 @@ type pendingAction struct {
 	Action  string
 }
 
+// DOMUpdate carries the post-scroll summary and any browser-resolved primary items.
+type DOMUpdate struct {
+	Summary       string
+	ResolvedItems map[string][]string
+}
+
 // TabSession holds per-tab state: its own Engine and Navigator.
 type TabSession struct {
 	TabID       int
 	Engine      *mache.Engine
 	Navigator   IntentHandler
-	SchemaReady chan struct{} // closed when schema is applied
-	DOMUpdateCh chan string   // receives new summary after scroll
+	SchemaReady chan struct{}  // closed when schema is applied
+	DOMUpdateCh chan DOMUpdate // receives summary + resolved items after scroll
 }
 
 // Handler holds the dependencies for the WebSocket handler.
@@ -78,7 +84,7 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		Engine:      engine,
 		Navigator:   nav,
 		SchemaReady: make(chan struct{}),
-		DOMUpdateCh: make(chan string, 1),
+		DOMUpdateCh: make(chan DOMUpdate, 1),
 	}
 	h.sessions[tabID] = sess
 	log.Printf("Session: created new session for tab %d", tabID)
@@ -178,7 +184,7 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 		}
 	}
 
-	mimeType := "image/png"
+	mimeType := "image/jpeg"
 
 	schemaJSON, err := h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, msg.Summary)
 	if err != nil {
@@ -223,7 +229,7 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 		return
 	}
 
-	sess.Engine.LoadChildren(msg.Summary)
+	sess.Engine.LoadChildren(msg.Summary, nil)
 	sess.Navigator.SetEngine(sess.Engine)
 
 	// Signal that schema is ready — unblocks any waiting handleNavigate.
@@ -304,9 +310,14 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 func (h *Handler) handleDOMUpdate(msg InboundMessage) {
 	saveLog("summary-scroll", fmt.Sprintf("tab-%d", msg.TabID), msg.Summary)
 	sess := h.getSession(msg.TabID)
+	update := DOMUpdate{
+		Summary:       msg.Summary,
+		ResolvedItems: msg.ResolvedItems,
+	}
 	select {
-	case sess.DOMUpdateCh <- msg.Summary:
-		log.Printf("Scroll: received DOM_UPDATE for tab %d (%d bytes)", msg.TabID, len(msg.Summary))
+	case sess.DOMUpdateCh <- update:
+		log.Printf("Scroll: received DOM_UPDATE for tab %d (%d bytes, %d zones resolved)",
+			msg.TabID, len(msg.Summary), len(msg.ResolvedItems))
 	default:
 		log.Printf("Scroll: DOM_UPDATE for tab %d but no listener, discarding", msg.TabID)
 	}
@@ -316,14 +327,18 @@ func (h *Handler) handleDOMUpdate(msg InboundMessage) {
 // updated DOM summary arrives. It then re-runs LoadChildren on the Engine.
 func (h *Handler) scrollPage(ctx context.Context, conn *websocket.Conn, sess *TabSession, tabID int, direction string) error {
 	log.Printf("Scroll: requesting %s for tab %d", direction, tabID)
+
+	selectors := sess.Engine.ZoneSelectors()
+
 	h.sendMessage(conn, OutboundMessage{
-		Type: MsgScroll, TabID: tabID, Direction: direction,
+		Type: MsgScroll, TabID: tabID, Direction: direction, Selectors: selectors,
 	})
 
 	select {
-	case summary := <-sess.DOMUpdateCh:
-		sess.Engine.LoadChildren(summary)
-		log.Printf("Scroll: updated children for tab %d after scroll %s", tabID, direction)
+	case update := <-sess.DOMUpdateCh:
+		sess.Engine.LoadChildren(update.Summary, update.ResolvedItems)
+		log.Printf("Scroll: updated children for tab %d after scroll %s (%d zones resolved)",
+			tabID, direction, len(update.ResolvedItems))
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

@@ -16,6 +16,7 @@ type Mount struct {
 	MacheID      string   `json:"mache_id"`
 	Description  string   `json:"description"`
 	PrimaryItems []string `json:"primary_items"`
+	ItemSelector string   `json:"item_selector,omitempty"`
 }
 
 // CartographerOutput is the top-level JSON from the Cartographer.
@@ -169,12 +170,26 @@ func (e *Engine) ToTopology() *api.Topology {
 	return topo
 }
 
+// ZoneSelectors returns a map of zone mache-id → CSS item_selector for
+// all mounts that have a dynamic selector defined. Used by scrollPage to
+// send selectors to the browser for re-evaluation after scroll.
+func (e *Engine) ZoneSelectors() map[string]string {
+	selectors := make(map[string]string)
+	for _, m := range e.mounts {
+		if m.ItemSelector != "" {
+			selectors[m.MacheID] = m.ItemSelector
+		}
+	}
+	return selectors
+}
+
 // SummaryElement represents one parsed line from the DOM summary.
 type SummaryElement struct {
 	ID       string
 	ParentID string
 	Tag      string
 	Text     string
+	Path     string // DOM breadcrumb path (optional, e.g., "div.post > h3.title > a")
 	AXRole   string // from CDP accessibility tree (optional)
 	AXName   string // from CDP accessibility tree (optional)
 }
@@ -217,13 +232,15 @@ func parseSummary(summary string) []SummaryElement {
 
 		el := SummaryElement{ID: id, ParentID: parentID, Tag: tag, Text: text}
 
-		// Parse optional AX fields from trailing content
+		// Parse optional trailing fields (Path, AXRole, AXName)
 		for _, segment := range strings.Split(trailing, " | ") {
 			segment = strings.TrimSpace(segment)
 			if v, ok := strings.CutPrefix(segment, "AXRole: "); ok {
 				el.AXRole = v
 			} else if v, ok := strings.CutPrefix(segment, "AXName: "); ok {
 				el.AXName = strings.Trim(v, "\"")
+			} else if v, ok := strings.CutPrefix(segment, "Path: "); ok {
+				el.Path = v
 			}
 		}
 
@@ -263,7 +280,7 @@ func collectDescendants(parentMap map[string][]SummaryElement, rootID string, ma
 	return result
 }
 
-const maxChildrenPerZone = 30
+const maxChildrenPerZone = 200
 
 // formatGroupedChildren formats descendants into numbered item groups.
 // If primaryItems is non-empty (LLM-identified primary clickable elements),
@@ -293,43 +310,28 @@ func formatGroupedChildren(descendants []SummaryElement, primaryItems []string) 
 	return strings.Join(lines, "\n")
 }
 
-// formatByPrimaryItems groups descendants using LLM-identified primary items.
-// Each primary item starts a new numbered group; non-primary elements between
-// them are indented as metadata.
+// formatByPrimaryItems outputs a compact numbered list of primary items.
+// Only includes items from the provided primary list (either from the
+// Cartographer's schema or browser-resolved via CSS selectors after scroll).
 func formatByPrimaryItems(descendants []SummaryElement, primaryItems []string) string {
-	primarySet := make(map[string]bool, len(primaryItems))
-	for _, id := range primaryItems {
-		primarySet[id] = true
+	// Index descendants by ID for O(1) lookup.
+	byID := make(map[string]SummaryElement, len(descendants))
+	for _, d := range descendants {
+		byID[d.ID] = d
 	}
 
 	var sb strings.Builder
 	itemNum := 0
-	inGroup := false
 
-	for _, d := range descendants {
-		if primarySet[d.ID] {
-			itemNum++
-			if inGroup {
-				sb.WriteString("\n")
-			}
-			fmt.Fprintf(&sb, "--- Item %d ---\n", itemNum)
-			fmt.Fprintf(&sb, "  %s | %s | \"%s\"\n", d.ID, d.Tag, d.Text)
-			inGroup = true
+	for _, id := range primaryItems {
+		d, ok := byID[id]
+		if !ok {
 			continue
 		}
-
-		if d.Tag == "tbody" || d.Tag == "thead" || d.Tag == "table" {
-			continue
-		}
-
-		if !inGroup {
-			// Elements before the first primary item — skip them.
-			// They're structural noise (upvote arrows, spacers) that would
-			// shift item numbering and cause off-by-one errors.
-			continue
-		}
-		fmt.Fprintf(&sb, "  %s | %s | \"%s\"\n", d.ID, d.Tag, d.Text)
+		itemNum++
+		fmt.Fprintf(&sb, "Item %d: %s | %s | \"%s\"\n", itemNum, d.ID, d.Tag, d.Text)
 	}
+
 	return strings.TrimRight(sb.String(), "\n")
 }
 
@@ -406,8 +408,11 @@ func collectZoneMembers(elements []SummaryElement, zoneRootID string) []SummaryE
 	return result
 }
 
-// LoadChildren parses the summary and populates children/_ c/ for each mounted zone.
-func (e *Engine) LoadChildren(summary string) {
+// LoadChildren parses the summary and populates children/_c/ for each mounted zone.
+// resolvedItems is an optional map of zone mache-id → fresh primary item IDs resolved
+// by the browser via CSS selectors after scroll. When present, these override the
+// schema's static PrimaryItems for that zone.
+func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string) {
 	elements := parseSummary(summary)
 	if len(elements) == 0 {
 		return
@@ -440,12 +445,18 @@ func (e *Engine) LoadChildren(summary string) {
 			continue
 		}
 
-		// Build "children" file content with numbered item groups.
-		// If the Cartographer identified primary items (LLM-powered), use those
-		// as group boundaries. Otherwise fall back to the empty-text heuristic.
+		// Use browser-resolved items (from CSS selector) if available,
+		// otherwise fall back to the schema's static primary items.
+		effectivePrimary := m.PrimaryItems
+		if resolvedItems != nil {
+			if resolved, ok := resolvedItems[m.MacheID]; ok && len(resolved) > 0 {
+				effectivePrimary = resolved
+			}
+		}
+
 		zoneEntry.Children["children"] = &Entry{
 			Name:    "children",
-			Content: formatGroupedChildren(descendants, m.PrimaryItems),
+			Content: formatGroupedChildren(descendants, effectivePrimary),
 		}
 
 		// Build "_c/" directory with per-child subdirs

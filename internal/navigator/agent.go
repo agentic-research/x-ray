@@ -107,8 +107,21 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 		Temperature: genai.Ptr(float32(0.1)),
 	}
 
+	// Pre-fill ls("/") so the model starts with knowledge of the page structure.
+	// This saves one full API round-trip (~0.5-1s) since the agent always starts here.
+	rootEntries, _ := a.engine.ListDir("/")
+	rootListing := strings.Join(rootEntries, "\n")
+	log.Printf("Navigator: pre-filled ls(\"/\") → %s", rootListing)
+
 	history := []*genai.Content{
 		{Role: "user", Parts: []*genai.Part{{Text: intent}}},
+		{Role: "model", Parts: []*genai.Part{{FunctionCall: &genai.FunctionCall{
+			Name: "ls", Args: map[string]any{"path": "/"},
+		}}}},
+		{Role: "user", Parts: []*genai.Part{{FunctionResponse: &genai.FunctionResponse{
+			Name:     "ls",
+			Response: map[string]any{"output": rootListing},
+		}}}},
 	}
 
 	for i := range 8 {
@@ -124,6 +137,16 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 
 		candidate := res.Candidates[0]
 		if candidate.Content == nil || len(candidate.Content.Parts) == 0 {
+			// MALFORMED_FUNCTION_CALL: Gemini tried to call a tool but produced
+			// invalid JSON. Nudge it to retry rather than aborting.
+			if candidate.FinishReason == genai.FinishReasonMalformedFunctionCall {
+				log.Printf("Navigator: malformed function call at iteration %d, retrying", i+1)
+				history = append(history, &genai.Content{
+					Role:  "user",
+					Parts: []*genai.Part{{Text: "Your function call was malformed. Please try again with valid JSON arguments."}},
+				})
+				continue
+			}
 			return nil, "", fmt.Errorf("empty response from model (finish_reason: %v)", candidate.FinishReason)
 		}
 		part := candidate.Content.Parts[0]

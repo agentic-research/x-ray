@@ -23,9 +23,9 @@ X-Ray bridges the physical reality of the DOM and the conceptual intent of the u
 
 ### Stage 1: The Cartographer (Vision + Structure)
 
-When a user visits a page, the X-Ray Chrome extension injects a tiny `data-mache-id` into every interactive element. It captures a viewport screenshot and generates a flattened text summary of those tagged IDs.
+When a user visits a page, the X-Ray Chrome extension injects a tiny `data-mache-id` into every interactive element. It captures a scaled viewport screenshot (JPEG, quality 60) and generates a flattened text summary of those tagged IDs — each line enriched with DOM breadcrumb paths for structural context.
 
-This payload goes to Gemini. Because Gemini is natively multimodal, it instantly understands the visual layout (e.g., "The top bar is navigation, the left side is filters"). It outputs a strict JSON schema projecting these visual zones onto the tagged DOM nodes. For list zones, it also identifies the **primary items** — the main clickable element in each repeating item (e.g., story titles, product cards).
+This payload goes to Gemini. Because Gemini is natively multimodal, it instantly understands the visual layout (e.g., "The top bar is navigation, the left side is filters"). It outputs a strict JSON schema projecting these visual zones onto the tagged DOM nodes. For list zones, it identifies both **primary items** (the main clickable element in each repeating item) and a **CSS `item_selector`** — a structural query derived from DOM breadcrumb paths in the summary. After scrolling, the browser evaluates this selector via `querySelectorAll` to discover fresh content without another LLM call.
 
 ### Stage 2: The Navigator (Voice + Action)
 
@@ -137,12 +137,12 @@ task test -- -run TestExecuteToolLs
 
 ### Test coverage
 
-The test suite covers three packages with 42 tests:
+The test suite covers three packages with 61 tests:
 
 | Package | What's tested |
 |---------|---------------|
-| `internal/mache/` | Schema parsing, directory listing, file reading, mache-id resolution, children grouping (primary items + heuristic), BFS traversal, AX-enriched summary parsing, backward compat |
-| `internal/navigator/` | `ExecuteTool` dispatch (ls/cat/act), default action, error paths, unknown tool; full HN-style integration chain (ls → cat children → act on child) |
+| `internal/mache/` | Schema parsing, directory listing, file reading, mache-id resolution, children grouping (primary items + heuristic), BFS traversal, zone membership via parent chains, AX-enriched summary parsing, Path/breadcrumb parsing, dynamic CSS selector resolution (`ZoneSelectors`, `LoadChildren` with `resolvedItems`), backward compat |
+| `internal/navigator/` | `ExecuteTool` dispatch (ls/cat/act/scroll), default action, error paths, unknown tool, scroll with/without callback, default direction; full HN-style integration chain (ls → cat children → act on child) |
 | `internal/api/` | Session creation/isolation/concurrency, message serialization, action queuing; WebSocket integration (snapshot → schema flow, action routing, reconnect flush, multi-tab isolation); voice protocol serialization |
 
 The WebSocket integration tests use mock `SchemaGenerator`/`IntentHandler` interfaces — no Gemini API key required.
@@ -186,7 +186,7 @@ GitHub Actions runs on every push and PR to `main`:
 - **Test**: `go test -race -v ./...` on Ubuntu and macOS
 - **Lint**: `go vet` + `golangci-lint`
 
-No Gemini API key or FUSE required — all 42 tests use mock interfaces.
+No Gemini API key or FUSE required — all 61 tests use mock interfaces.
 
 ## Architecture
 
@@ -196,8 +196,11 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system diagram, da
 
 - **Zero Hallucinated IDs**: The Cartographer is constrained to select from the pre-tagged `data-mache-id` set. Structured JSON output with a strict schema prevents the model from inventing non-existent DOM pointers.
 - **Accessibility Tree Enrichment**: The extension captures the browser's computed accessibility tree via `chrome.debugger` + CDP (`Accessibility.getFullAXTree`). Each summary line is enriched with `AXRole` and `AXName` — the semantic truth the browser computes from implicit roles, CSS visibility, and ARIA attributes.
+- **DOM Breadcrumb Injection**: Each summary line includes a `Path` field with 2-3 levels of DOM ancestry and CSS classes (e.g., `div.post > h3.title > a`). The Cartographer uses these structural patterns to synthesize CSS selectors per zone.
+- **Dynamic CSS Selectors**: For list zones, the Cartographer outputs an `item_selector` — a CSS query that the browser evaluates natively via `querySelectorAll` after scrolling. This discovers fresh content without another LLM call, replacing stale hardcoded IDs.
 - **Semantic Filesystem**: Instead of brittle XPaths or coordinate guessing, the agent interacts with a logical directory structure mapped dynamically to the page in under 10 seconds.
 - **LLM-Powered Item Grouping**: For list zones, the Cartographer identifies primary items (story titles, product cards) so ordinal counting ("click the 3rd story") works correctly across any site.
+- **Scroll Support**: The Navigator's `scroll` tool triggers page scrolling, CSS selector re-evaluation, and children file refresh — enabling "click the 15th post" workflows that span beyond the initial viewport.
 - **Temperature 0.1**: Both Cartographer and Navigator run at near-deterministic temperature for reproducible results.
 
 ## Deployment
