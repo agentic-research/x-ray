@@ -1,6 +1,7 @@
 # X-Ray: Gemini-Powered Web Navigation via Mache
 
 [![Gemini Live Agent Challenge](https://img.shields.io/badge/Gemini%20Live%20Agent%20Challenge-UI%20Navigator-4285F4?logo=google&logoColor=white)](https://ai.google.dev/competition/gemini-live-agent-challenge)
+[![CI](https://github.com/agentic-research/x-ray/actions/workflows/ci.yml/badge.svg)](https://github.com/agentic-research/x-ray/actions/workflows/ci.yml)
 
 > **"Topology is the missing half of semantics."**
 
@@ -42,6 +43,7 @@ When the user says, "Click the first trending repository," the Navigator travers
 
 ```
 x-ray/
+├── .github/workflows/   # CI: test (Ubuntu + macOS) + lint
 ├── cmd/
 │   ├── agentd/          # Main backend server (WebSocket + HTTP)
 │   └── gate/            # Offline accuracy gate test
@@ -125,7 +127,7 @@ sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
 task test
 ```
 
-This runs `go test -race -v ./...` with the required CGO flags for fuse-t. **Do not use `go test` directly on macOS** — the CGO environment is set by the Taskfile.
+This runs `go test -race -v ./...`. You can also run `go test` directly — X-Ray has no CGO/FUSE dependency (it only imports `mache/api` types).
 
 ### Running a single test
 
@@ -135,7 +137,7 @@ task test -- -run TestExecuteToolLs
 
 ### Test coverage
 
-The test suite covers three packages with 40+ tests:
+The test suite covers three packages with 42 tests:
 
 | Package | What's tested |
 |---------|---------------|
@@ -176,6 +178,15 @@ task vet            # go vet
 | `task vet` | Run go vet |
 | `task tidy` | Run go mod tidy |
 | `task setup` | Install system dependencies (fuse-t on macOS) |
+
+## CI
+
+GitHub Actions runs on every push and PR to `main`:
+
+- **Test**: `go test -race -v ./...` on Ubuntu and macOS
+- **Lint**: `go vet` + `golangci-lint`
+
+No Gemini API key or FUSE required — all 42 tests use mock interfaces.
 
 ## Architecture
 
