@@ -97,7 +97,7 @@ function sendIntent() {
       statusEl.className = 'error';
     } else {
       statusEl.textContent = resp.message || 'Intent sent';
-      statusEl.className = 'connected';
+      statusEl.className = resp.message?.startsWith('Queued') ? '' : 'connected';
       intentInput.value = '';
     }
   });

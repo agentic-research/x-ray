@@ -410,7 +410,7 @@ func formatByPrimaryItems(descendants []SummaryElement, primaryItems []string) s
 			continue
 		}
 		itemNum++
-		fmt.Fprintf(&sb, "Item %d: %s | %s | \"%s\"\n", itemNum, d.ID, d.Tag, d.Text)
+		fmt.Fprintf(&sb, "[%d] \"%s\" → _c/%s\n", itemNum, d.Text, d.ID)
 	}
 
 	return strings.TrimRight(sb.String(), "\n")

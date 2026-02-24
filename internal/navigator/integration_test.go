@@ -109,8 +109,8 @@ func TestToolChainLsToChildren(t *testing.T) {
 	})
 
 	// Should have compact primary items listing
-	if !strings.Contains(result, "Item 1:") {
-		t.Errorf("children missing Item 1: %s", result)
+	if !strings.Contains(result, "[1]") {
+		t.Errorf("children missing [1]: %s", result)
 	}
 	if !strings.Contains(result, "Timeframe") {
 		t.Errorf("children missing first story: %s", result)
@@ -118,8 +118,8 @@ func TestToolChainLsToChildren(t *testing.T) {
 	if !strings.Contains(result, "Global Intelligence Crisis") {
 		t.Errorf("children missing second story: %s", result)
 	}
-	if !strings.Contains(result, "Item 3:") {
-		t.Errorf("children missing Item 3: %s", result)
+	if !strings.Contains(result, "[3]") {
+		t.Errorf("children missing [3]: %s", result)
 	}
 }
 

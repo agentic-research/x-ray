@@ -268,17 +268,19 @@ Strategy:
 2. Navigate into the most relevant zone based on the user's intent.
 3. Read the "description" file to confirm you've found the right zone.
 4. If the user needs a specific element inside the zone (e.g., "click the first story"):
-   a. cat the zone's "children" file to see individual elements listed as: mache-ID | tag | "text"
-   b. act on "_c/<mache-id>" inside that zone to target the specific child element.
+   a. cat the zone's "children" file. Each line is: [N] "text" → _c/mache-ID
+   b. The number in brackets is the position. The path after → is what you pass to act().
+      Example: to click the 3rd item, find [3], read the path after →, and use that.
+   c. act on "_c/<mache-id>" inside that zone to target the specific child element.
 5. If the zone has no "children" file, or the zone itself is the target, act on the zone path directly.
 6. If the user asks for an item beyond what's visible (e.g., "click the 10th post" but only 3 shown), scroll("down") to load more content, then cat the children file again.
 
 Example workflow for "click the first story" on a news page:
   ls("/")                              → header/  main/  footer/
   ls("/main/story_list")               → _c/  children  description  mache_id
-  cat("/main/story_list/children")     → mache-13 | a | "First Story Title"
-                                         mache-14 | a | "(example.com)"
-  act("/main/story_list/_c/mache-13", "click")  → clicks the specific story link
+  cat("/main/story_list/children")     → [1] "First Story Title" → _c/mache-13
+                                         [2] "Second Story Title" → _c/mache-20
+  act("/main/story_list/_c/mache-13", "click")  → clicks the first story
 
 Be decisive. Three to four tool calls should be enough: ls → ls zone → cat children → act.
 If you need more items, add scroll → cat children → act (up to 8 iterations total).`

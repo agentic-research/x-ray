@@ -105,14 +105,14 @@ func TestExecuteToolCatChildren(t *testing.T) {
 		t.Fatal("cat should not return an action")
 	}
 	// Children file should list primary items in compact format
-	if !strings.Contains(result, "Item 1:") {
-		t.Errorf("children file missing Item 1: %s", result)
+	if !strings.Contains(result, "[1]") {
+		t.Errorf("children file missing [1]: %s", result)
 	}
 	if !strings.Contains(result, "First Story Title") {
 		t.Errorf("children file missing story title: %s", result)
 	}
-	if !strings.Contains(result, "Item 2:") {
-		t.Errorf("children file missing Item 2: %s", result)
+	if !strings.Contains(result, "[2]") {
+		t.Errorf("children file missing [2]: %s", result)
 	}
 }
 

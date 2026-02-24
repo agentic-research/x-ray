@@ -289,7 +289,7 @@ func TestFormatByPrimaryItems(t *testing.T) {
 			},
 			primaryItems: []string{"m-2", "m-5"},
 			wantItems:    2, // only primary items
-			wantContains: "Item 1:",
+			wantContains: `[1] "Story One"`,
 		},
 		{
 			name: "non-primary descendants excluded",
@@ -301,7 +301,7 @@ func TestFormatByPrimaryItems(t *testing.T) {
 			},
 			primaryItems: []string{"m-10", "m-12"},
 			wantItems:    2, // only primary, m-13 excluded
-			wantContains: "Item 1:",
+			wantContains: `[1] "First"`,
 		},
 		{
 			name: "missing primary items skipped gracefully",
@@ -310,14 +310,14 @@ func TestFormatByPrimaryItems(t *testing.T) {
 			},
 			primaryItems: []string{"m-20", "m-99"},
 			wantItems:    1, // m-99 not in descendants
-			wantContains: `m-20 | a | "Title"`,
+			wantContains: `"Title" → _c/m-20`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := formatByPrimaryItems(tt.descendants, tt.primaryItems)
-			gotItems := strings.Count(got, "Item ")
+			gotItems := strings.Count(got, "] \"")
 			if gotItems != tt.wantItems {
 				t.Errorf("expected %d items, got %d\noutput:\n%s", tt.wantItems, gotItems, got)
 			}
@@ -341,13 +341,13 @@ func TestFormatGroupedChildrenDispatch(t *testing.T) {
 
 	// With primary items: should use compact primary-item listing (only primaries)
 	withPrimary := formatGroupedChildren(descendants, []string{"m-2", "m-5"})
-	if !strings.Contains(withPrimary, "Item 1:") {
+	if !strings.Contains(withPrimary, "[1]") {
 		t.Errorf("expected item listing with primary items, got:\n%s", withPrimary)
 	}
 	if !strings.Contains(withPrimary, `"Story"`) {
 		t.Errorf("primary item text missing:\n%s", withPrimary)
 	}
-	if strings.Count(withPrimary, "Item ") != 2 {
+	if strings.Count(withPrimary, "] \"") != 2 {
 		t.Errorf("expected only 2 primary items, got:\n%s", withPrimary)
 	}
 
@@ -395,7 +395,7 @@ ID: mache-14 | Parent: mache-10 | Tag: span | Text: "(other.com)"
 	}
 
 	// 2 primary items; non-primary elements are <span> so not included
-	if strings.Count(content, "Item ") != 2 {
+	if strings.Count(content, "] \"") != 2 {
 		t.Errorf("expected 2 items, got:\n%s", content)
 	}
 
@@ -578,7 +578,7 @@ ID: mache-15 | Parent: mache-10 | Tag: a | Text: "Fourth Story (new after scroll
 		t.Errorf("missing Fourth Story (resolved item):\n%s", content)
 	}
 	// Should have 4 primary items (resolved), mache-12 is <span> so not appended
-	if strings.Count(content, "Item ") != 4 {
+	if strings.Count(content, "] \"") != 4 {
 		t.Errorf("expected 4 items from resolved items, got:\n%s", content)
 	}
 }
@@ -679,7 +679,7 @@ ID: mache-27 | Parent: mache-25 | Tag: a | Text: "Third Story"
 	if !strings.Contains(content, `"Third Story"`) {
 		t.Errorf("missing Third Story:\n%s", content)
 	}
-	if strings.Count(content, "Item ") != 3 {
+	if strings.Count(content, "] \"") != 3 {
 		t.Errorf("expected 3 items, got:\n%s", content)
 	}
 
