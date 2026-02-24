@@ -280,16 +280,30 @@ function enrichSummaryWithAX(summary, axMap) {
 // Capture snapshot from the given tab and send to server with tab_id.
 // Uses a single CDP session for full-page screenshot + AX tree enrichment.
 async function captureAndSend(tabId) {
-  // Get summary from content script
+  // Get summary from content script. If the content script isn't loaded
+  // (extension reloaded while tab was open), inject it first.
   let response;
   try {
     response = await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
   } catch (e) {
-    console.error('X-Ray: Content script error', e);
-    return;
+    console.log('X-Ray: Content script not ready, injecting into tab', tabId);
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content.js']
+      });
+      // Brief delay for script to initialize, then retry.
+      await new Promise(r => setTimeout(r, 200));
+      response = await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
+    } catch (retryErr) {
+      console.error('X-Ray: Content script inject/retry failed', retryErr);
+      pendingSnapshots.delete(tabId);
+      return;
+    }
   }
   if (!response || !response.summary) {
     console.error('X-Ray: No summary from content script');
+    pendingSnapshots.delete(tabId);
     return;
   }
 
