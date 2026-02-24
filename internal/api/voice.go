@@ -47,20 +47,12 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	sess := h.getSession(tabID)
 	log.Printf("Voice: browser connected (tab %d)", tabID)
 
-	// Wait for schema to be ready (extension must send DOM_SNAPSHOT first).
+	// Connect to Gemini Live immediately — don't block on schema.
+	// Tools (ls/cat/act) will return "no schema yet" if called before schema arrives.
+	// Schema typically arrives within seconds via the concurrent snapshot flow.
 	if !sess.Engine.HasSchema() {
-		sendVoiceJSON(conn, nil, voiceMessage{Type: "waiting", Text: "Waiting for page schema... Click the X-Ray extension icon first."})
-		log.Printf("Voice: waiting for schema (tab %d)...", tabID)
-		for !sess.Engine.HasSchema() {
-			time.Sleep(500 * time.Millisecond)
-			// Check if the browser disconnected while waiting.
-			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Println("Voice: browser disconnected while waiting for schema")
-				return
-			}
-		}
-		log.Printf("Voice: schema ready (tab %d), proceeding", tabID)
-		sendVoiceJSON(conn, nil, voiceMessage{Type: "schema_ready", Text: "Schema loaded. Connecting to Gemini..."})
+		log.Printf("Voice: schema not ready yet (tab %d), connecting to Gemini anyway", tabID)
+		sendVoiceJSON(conn, nil, voiceMessage{Type: "waiting", Text: "Connecting to voice... schema loading in background"})
 	}
 
 	// Open Gemini Live session with voice-optimized prompt.
@@ -87,6 +79,9 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 
 	// --- goroutine 1: browser → Gemini (audio chunks) ---
 	go func() {
+		var audioChunks int
+		var audioBytes int
+		lastLog := time.Now()
 		for {
 			msgType, data, err := conn.ReadMessage()
 			if err != nil {
@@ -96,6 +91,15 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			}
 			switch msgType {
 			case websocket.BinaryMessage:
+				audioChunks++
+				audioBytes += len(data)
+				// Log audio activity every 5 seconds so you can see mic data flowing.
+				if time.Since(lastLog) >= 5*time.Second {
+					log.Printf("Voice [tab %d]: receiving audio — %d chunks, %d bytes in last 5s", tabID, audioChunks, audioBytes)
+					audioChunks = 0
+					audioBytes = 0
+					lastLog = time.Now()
+				}
 				// Raw PCM audio from browser mic.
 				if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
 					Audio: &genai.Blob{

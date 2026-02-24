@@ -22,6 +22,12 @@ chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
       intentInput.placeholder = 'Type a command...';
       statusEl.textContent = 'Ready — type a command or use voice';
       statusEl.className = 'connected';
+    } else if (resp?.pending) {
+      intentInput.placeholder = 'Type now — runs when ready...';
+      snapshotBtn.textContent = 'Capturing...';
+      snapshotBtn.disabled = true;
+      statusEl.textContent = 'Generating schema...';
+      statusEl.className = '';
     } else {
       intentInput.placeholder = 'Type now — runs when ready...';
       // Auto-trigger snapshot.
@@ -46,6 +52,17 @@ chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
 
 // Focus input immediately so user can start typing.
 intentInput.focus();
+
+// Listen for SCHEMA_READY broadcast from background.
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === 'SCHEMA_READY_EVENT') {
+    intentInput.placeholder = 'Type a command...';
+    statusEl.textContent = 'Ready — type a command or use voice';
+    statusEl.className = 'connected';
+    snapshotBtn.textContent = 'Snapshot';
+    snapshotBtn.disabled = false;
+  }
+});
 
 snapshotBtn.addEventListener('click', () => {
   snapshotBtn.textContent = 'Capturing...';
@@ -91,8 +108,24 @@ intentInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendIntent();
 });
 
-micBtn.addEventListener('click', () => {
+// Mic button: pre-grant mic permission in popup context (visible, user gesture),
+// then send TOGGLE_MIC to background which creates the offscreen doc.
+// All chrome-extension:// contexts share the same origin, so the permission
+// grant persists to offscreen.js's getUserMedia call.
+micBtn.addEventListener('click', async () => {
   micBtn.disabled = true;
+
+  // Pre-grant mic permission (one-time — Chrome remembers for the extension origin).
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(t => t.stop());
+  } catch (err) {
+    statusEl.textContent = 'Mic permission denied: ' + err.message;
+    statusEl.className = 'error';
+    micBtn.disabled = false;
+    return;
+  }
+
   chrome.runtime.sendMessage({ type: 'TOGGLE_MIC' }, (resp) => {
     if (chrome.runtime.lastError || !resp?.ok) {
       statusEl.textContent = resp?.error || 'Mic toggle failed';

@@ -19,6 +19,7 @@ let sessionReady = false;   // True once Gemini Live setup is complete.
 let micActive = false;      // True when mic is streaming audio.
 let pendingAutoMic = false; // When true, auto-enable mic once session is ready (one-click flow).
 const schemaReadyTabs = new Set();
+const pendingSnapshots = new Set();
 const pendingIntents = new Map(); // tabId → intent string (queued before schema ready)
 
 // Keep-alive: Chrome MV3 service workers die after ~30s of inactivity.
@@ -122,7 +123,13 @@ function connectWebSocket() {
       case 'SCHEMA_READY': {
         const tabId = msg.tab_id;
         console.log('X-Ray: Schema ready (tab', tabId, ')');
-        if (tabId) schemaReadyTabs.add(tabId);
+        if (tabId) {
+          schemaReadyTabs.add(tabId);
+          pendingSnapshots.delete(tabId);
+          try {
+            chrome.runtime.sendMessage({ type: 'SCHEMA_READY_EVENT', tabId });
+          } catch (_) {}
+        }
 
         // Flush any queued intent for this tab.
         if (tabId && pendingIntents.has(tabId) && ws && ws.readyState === WebSocket.OPEN) {
@@ -399,10 +406,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case 'TRIGGER_SNAPSHOT':
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) {
-          pendingAutoMic = true; // One-click flow: auto-enable mic once session is ready.
-          captureAndSend(tabs[0].id);
+          const tabId = tabs[0].id;
+          if (pendingSnapshots.has(tabId)) {
+            sendResponse({ ok: true, tabId });
+            return;
+          }
+          pendingSnapshots.add(tabId);
+          captureAndSend(tabId);
           updateBadge();
-          sendResponse({ ok: true, tabId: tabs[0].id });
+          sendResponse({ ok: true, tabId });
         } else {
           sendResponse({ ok: false, error: 'No active tab' });
         }
@@ -411,7 +423,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     case 'TOGGLE_MIC':
       if (sessionTabId === null) {
-        sendResponse({ ok: false, error: 'No voice session — click Snapshot first' });
+        // No session yet — start one for the active tab.
+        chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+          if (tabs[0]) {
+            await startSession(tabs[0].id);
+            sendResponse({ ok: true, ...getState() });
+          } else {
+            sendResponse({ ok: false, error: 'No active tab' });
+          }
+        });
+        return true;
       } else if (!sessionReady) {
         sendResponse({ ok: false, error: 'Session connecting...' });
       } else {
@@ -456,7 +477,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case 'CHECK_SCHEMA':
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tabId = tabs[0]?.id;
-        sendResponse({ hasSchema: tabId ? schemaReadyTabs.has(tabId) : false, tabId });
+        sendResponse({
+          hasSchema: tabId ? schemaReadyTabs.has(tabId) : false,
+          pending: tabId ? pendingSnapshots.has(tabId) : false,
+          tabId
+        });
       });
       return true;
 

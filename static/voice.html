@@ -69,7 +69,10 @@ const OUTPUT_RATE = 24000;
 
 // Resolve WS URL: works whether served from agentd or opened directly.
 const HOST = location.host || 'localhost:8080';
-const WS_URL = `ws://${HOST}/voice`;
+// Accept ?tab=<id> from extension to bind voice to the right schema.
+const urlParams = new URLSearchParams(location.search);
+const tabParam = urlParams.get('tab');
+const WS_URL = tabParam ? `ws://${HOST}/voice?tab=${tabParam}` : `ws://${HOST}/voice`;
 
 let ws = null;
 let audioCtx = null;
