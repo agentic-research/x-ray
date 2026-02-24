@@ -1,0 +1,13 @@
+.envrc
+.env
+.terraform/
+deploy/.terraform/
+logs/
+node_modules/
+ext/
+_agent_log/
+testdata/
+experiments/
+bin/
+*.md
+!static/

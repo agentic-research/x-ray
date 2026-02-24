@@ -3,7 +3,7 @@
 # Usage:
 #   cd deploy
 #   terraform init
-#   terraform apply -var="project_id=your-project" -var="gemini_api_key=your-key"
+#   terraform apply -var="project_id=your-project"
 #
 # Or with deploy.sh for a quick gcloud-only deploy.
 
@@ -18,10 +18,10 @@ variable "region" {
   default     = "us-central1"
 }
 
-variable "gemini_api_key" {
-  description = "Gemini API key"
+variable "gemini_api_key_secret" {
+  description = "Secret Manager secret name for Gemini API key"
   type        = string
-  sensitive   = true
+  default     = "gemini-api-key"
 }
 
 variable "image" {
@@ -58,6 +58,10 @@ resource "google_project_service" "build" {
   service = "cloudbuild.googleapis.com"
 }
 
+resource "google_project_service" "secretmanager" {
+  service = "secretmanager.googleapis.com"
+}
+
 # Cloud Run service
 resource "google_cloud_run_v2_service" "agentd" {
   name     = local.service_name
@@ -74,8 +78,13 @@ resource "google_cloud_run_v2_service" "agentd" {
       }
 
       env {
-        name  = "GOOGLE_API_KEY"
-        value = var.gemini_api_key
+        name = "GOOGLE_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.gemini_api_key_secret
+            version = "latest"
+          }
+        }
       }
 
       resources {
@@ -85,10 +94,10 @@ resource "google_cloud_run_v2_service" "agentd" {
         }
       }
 
-      # WebSocket sessions need longer timeouts.
+      # TCP probe — agentd has no HTTP health endpoint, just check the port is listening.
       startup_probe {
-        http_get {
-          path = "/"
+        tcp_socket {
+          port = 8080
         }
         initial_delay_seconds = 0
         period_seconds        = 3

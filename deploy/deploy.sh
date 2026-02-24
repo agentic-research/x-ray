@@ -4,14 +4,16 @@
 #
 # Prerequisites:
 #   export GCP_PROJECT_ID="your-project"
-#   export GOOGLE_API_KEY="your-gemini-key"
 #   gcloud auth login
+#   # Create the secret once:
+#   echo -n "your-gemini-key" | gcloud secrets create gemini-api-key --data-file=-
 
 set -euo pipefail
 
 PROJECT_ID="${GCP_PROJECT_ID:?Set GCP_PROJECT_ID}"
 REGION="${GCP_REGION:-us-central1}"
 SERVICE_NAME="x-ray-agentd"
+SECRET_NAME="${GEMINI_SECRET_NAME:-gemini-api-key}"
 
 echo "Building and pushing via Cloud Build..."
 gcloud builds submit --tag "gcr.io/$PROJECT_ID/$SERVICE_NAME" \
@@ -23,7 +25,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --platform managed \
   --region "$REGION" \
   --allow-unauthenticated \
-  --set-env-vars "GOOGLE_API_KEY=$GOOGLE_API_KEY" \
+  --set-secrets "GOOGLE_API_KEY=$SECRET_NAME:latest" \
   --port 8080 \
   --project "$PROJECT_ID"
 
