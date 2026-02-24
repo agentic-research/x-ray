@@ -8,6 +8,7 @@ import (
 
 	"github.com/jamesgardner/x-ray/internal/api"
 	"github.com/jamesgardner/x-ray/internal/cartographer"
+	"github.com/jamesgardner/x-ray/internal/navigator"
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )
@@ -47,8 +48,21 @@ func main() {
 	// Cartographer is stateless — shared across all tabs.
 	cart := cartographer.NewAgent(client, model)
 
+	// Navigator model: default to Gemini, override with NAVIGATOR_ENDPOINT for local SLM.
+	var navGen navigator.ContentGenerator = &navigator.GeminiGenerator{Client: client}
+	navModel := model
+
+	if ep := os.Getenv("NAVIGATOR_ENDPOINT"); ep != "" {
+		navModel = os.Getenv("NAVIGATOR_MODEL")
+		if navModel == "" {
+			navModel = "llama3.2"
+		}
+		navGen = &navigator.OllamaGenerator{Endpoint: ep, Model: navModel}
+		log.Printf("Navigator: using local model %s at %s", navModel, ep)
+	}
+
 	// Per-tab Engine + Navigator are created on demand inside Handler.
-	handler := api.NewHandler(cart, client, liveClient, model, liveModel)
+	handler := api.NewHandler(cart, navGen, liveClient, navModel, liveModel)
 
 	http.HandleFunc("/ws", handler.HandleWebSocket)
 	http.HandleFunc("/navigate", handler.HandleNavigateHTTP)

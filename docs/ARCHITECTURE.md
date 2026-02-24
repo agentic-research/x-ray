@@ -36,10 +36,15 @@ graph TB
         CR[Cloud Run<br/>Hosting]
     end
 
+    subgraph Local["Local (optional)"]
+        OLLAMA[Ollama / OpenAI-compat<br/>e.g. llama3.2]
+    end
+
     BG <-->|"ws://host/ws<br/>DOM_SNAPSHOT, EXECUTE_ACTION"| WS
     OFF <-->|"ws://host/voice?tab=N<br/>PCM audio + JSON"| VOICE
     CART -->|"Screenshot + Summary<br/>→ Semantic JSON"| GEMINI
-    NAV -->|"ls / cat / act / scroll<br/>Tool-use loop"| GEMINI
+    NAV -->|"ContentGenerator interface"| GEMINI
+    NAV -.->|"NAVIGATOR_ENDPOINT set"| OLLAMA
     VOICE <-->|"Audio stream<br/>+ Tool calls"| LIVE
     Agentd -.->|"Deployed on"| CR
 ```
@@ -262,7 +267,7 @@ This gives the Cartographer the browser's semantic truth — implicit roles (`<b
 ### WebSocket Handler (`internal/api/`)
 
 - Per-tab session registry (`sessions map[int]*TabSession`)
-- `SchemaGenerator` and `IntentHandler` interfaces decouple Cartographer/Navigator for testability
+- `SchemaGenerator`, `IntentHandler`, and `ContentGenerator` interfaces decouple Cartographer/Navigator/LLM for testability
 - Inbound: `DOM_SNAPSHOT` (screenshot + summary + ax_tree + tab_id), `DOM_UPDATE` (summary + resolved_items), `NAVIGATE` (intent + tab_id)
 - Outbound: `SCHEMA_READY`, `EXECUTE_ACTION`, `SCROLL` (direction + selectors), `STATUS` — all include `tab_id`
 - Voice handler: `/voice?tab=N` — Gemini Live proxy with server-side audio suppression during tool loops
@@ -281,10 +286,19 @@ Stage 1. Screenshot + DOM summary → semantic JSON schema.
 
 Stage 2. User intent → browser action via filesystem traversal.
 
+- **`ContentGenerator` interface** (`model.go`): Abstracts the LLM call so Navigator can use Gemini, Ollama, or a mock
+  - `GeminiGenerator`: Wraps `genai.Client.Models.GenerateContent()` (default)
+  - `OllamaGenerator`: Talks OpenAI wire format (`/v1/chat/completions`); translates genai types ↔ OpenAI messages/tools/tool_calls. Used when `NAVIGATOR_ENDPOINT` env var is set
 - Four tools: `ls`, `cat`, `act`, `scroll`
 - Max 8 tool-use iterations (typical: 3-4; scroll workflows use more)
 - Temperature 0.1
 - Returns `ActionResult{MacheID, Action, Path}` or text explanation
+
+**Env vars for local model override:**
+```
+NAVIGATOR_ENDPOINT=http://localhost:11434/v1   # empty = use Gemini cloud
+NAVIGATOR_MODEL=llama3.2                       # empty = use GEMINI_MODEL
+```
 
 ### Mache Engine (`internal/mache/`)
 
@@ -298,7 +312,7 @@ In-memory virtual filesystem from Cartographer output.
 
 ## Google Cloud Services
 
-- **Gemini 2.5 Flash** via GenAI Go SDK (`google.golang.org/genai`) — Cartographer + Navigator
+- **Gemini 2.5 Flash** via GenAI Go SDK (`google.golang.org/genai`) — Cartographer + Navigator (default; Navigator swappable via `ContentGenerator` interface)
 - **Gemini Live API** (native audio, `v1alpha`) — real-time voice interaction
 - **Cloud Run** — serverless hosting for agentd backend
 - **Cloud Build** — container image builds from source

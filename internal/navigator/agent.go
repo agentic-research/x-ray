@@ -10,6 +10,9 @@ import (
 	"google.golang.org/genai"
 )
 
+// Compile-time check: GeminiGenerator implements ContentGenerator.
+var _ ContentGenerator = (*GeminiGenerator)(nil)
+
 // ActionResult is returned when the Navigator decides to act on an element.
 type ActionResult struct {
 	MacheID string `json:"mache_id"`
@@ -19,17 +22,17 @@ type ActionResult struct {
 
 // Agent represents Stage 2: The Navigator.
 type Agent struct {
-	client   *genai.Client
-	model    string
-	engine   *mache.Engine
-	scrollFn func(ctx context.Context, direction string) error
+	generator ContentGenerator
+	model     string
+	engine    *mache.Engine
+	scrollFn  func(ctx context.Context, direction string) error
 }
 
-func NewAgent(client *genai.Client, model string, engine *mache.Engine) *Agent {
+func NewAgent(gen ContentGenerator, model string, engine *mache.Engine) *Agent {
 	if model == "" {
 		model = "gemini-2.5-flash"
 	}
-	return &Agent{client: client, model: model, engine: engine}
+	return &Agent{generator: gen, model: model, engine: engine}
 }
 
 // SetEngine updates the engine when a new schema is applied.
@@ -127,7 +130,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 	for i := range 8 {
 		log.Printf("Navigator: tool-use iteration %d/8", i+1)
 
-		res, err := a.client.Models.GenerateContent(ctx, a.model, history, config)
+		res, err := a.generator.GenerateContent(ctx, a.model, history, config)
 		if err != nil {
 			return nil, "", fmt.Errorf("GenerateContent failed: %w", err)
 		}

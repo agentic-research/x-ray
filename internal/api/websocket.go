@@ -46,10 +46,10 @@ type TabSession struct {
 // Handler holds the dependencies for the WebSocket handler.
 type Handler struct {
 	Cartographer SchemaGenerator
-	Client       *genai.Client // standard client (text mode + navigator creation)
-	LiveClient   *genai.Client // Live API client (voice mode)
-	Model        string        // model name for creating per-tab Navigators
-	LiveModel    string        // model name for voice sessions
+	NavGen       navigator.ContentGenerator // for creating per-tab Navigators
+	LiveClient   *genai.Client              // Live API client (voice mode)
+	NavModel     string                     // model name for creating per-tab Navigators
+	LiveModel    string                     // model name for voice sessions
 
 	mu       sync.Mutex
 	conn     *websocket.Conn
@@ -57,12 +57,12 @@ type Handler struct {
 	sessions map[int]*TabSession
 }
 
-func NewHandler(cart SchemaGenerator, client, liveClient *genai.Client, model, liveModel string) *Handler {
+func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveClient *genai.Client, navModel, liveModel string) *Handler {
 	return &Handler{
 		Cartographer: cart,
-		Client:       client,
+		NavGen:       navGen,
 		LiveClient:   liveClient,
-		Model:        model,
+		NavModel:     navModel,
 		LiveModel:    liveModel,
 		sessions:     make(map[int]*TabSession),
 	}
@@ -78,7 +78,7 @@ func (h *Handler) getSession(tabID int) *TabSession {
 	}
 
 	engine := mache.NewEngine()
-	nav := navigator.NewAgent(h.Client, h.Model, engine)
+	nav := navigator.NewAgent(h.NavGen, h.NavModel, engine)
 	sess := &TabSession{
 		TabID:       tabID,
 		Engine:      engine,
