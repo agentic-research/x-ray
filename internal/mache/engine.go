@@ -3,11 +3,13 @@ package mache
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"path"
 	"sort"
 	"strings"
 
 	"github.com/agentic-research/mache/api"
+	"github.com/agentic-research/mache/graph"
 )
 
 // Mount represents one entry from the Cartographer's output.
@@ -24,25 +26,27 @@ type CartographerOutput struct {
 	Mounts []Mount `json:"mounts"`
 }
 
-// Entry represents a node in the virtual filesystem.
-type Entry struct {
-	Name     string
-	IsDir    bool
-	Content  string
-	Children map[string]*Entry
-	MacheID  string
-}
-
-// Engine holds the virtual semantic filesystem.
+// Engine holds the virtual semantic filesystem backed by a mache MemoryStore.
 type Engine struct {
-	root   *Entry
+	store  *graph.MemoryStore
 	mounts []Mount
 }
 
 func NewEngine() *Engine {
 	return &Engine{
-		root: &Entry{Name: "/", IsDir: true, Children: make(map[string]*Entry)},
+		store: graph.NewMemoryStore(),
 	}
+}
+
+// cleanPath normalizes a virtual path to a MemoryStore node ID.
+// Strips leading slash and cleans ".." etc. Root becomes "".
+func cleanPath(p string) string {
+	p = path.Clean(p)
+	p = strings.TrimPrefix(p, "/")
+	if p == "." {
+		return ""
+	}
+	return p
 }
 
 // HasSchema reports whether at least one mount has been applied.
@@ -73,8 +77,7 @@ func (e *Engine) ApplySchema(schemaJSON string) error {
 		return fmt.Errorf("parse cartographer output: %w", err)
 	}
 	e.mounts = output.Mounts
-
-	e.root = &Entry{Name: "/", IsDir: true, Children: make(map[string]*Entry)}
+	e.store = graph.NewMemoryStore()
 
 	for _, m := range output.Mounts {
 		e.insertMount(m)
@@ -82,45 +85,107 @@ func (e *Engine) ApplySchema(schemaJSON string) error {
 	return nil
 }
 
-// insertMount creates directory entries along the path and leaf files.
+// insertMount creates directory nodes along the path and leaf file nodes.
 func (e *Engine) insertMount(m Mount) {
 	p := strings.TrimPrefix(m.VirtualPath, "/")
 	parts := strings.Split(p, "/")
 
-	current := e.root
-	for _, part := range parts {
+	// Create intermediate directory nodes along the path.
+	for i, part := range parts {
 		if part == "" {
 			continue
 		}
-		child, ok := current.Children[part]
-		if !ok {
-			child = &Entry{Name: part, IsDir: true, Children: make(map[string]*Entry)}
-			current.Children[part] = child
+		nodeID := strings.Join(parts[:i+1], "/")
+
+		if _, err := e.store.GetNode(nodeID); err == nil {
+			continue // already exists
 		}
-		current = child
+
+		node := &graph.Node{
+			ID:       nodeID,
+			Mode:     fs.ModeDir,
+			Children: []string{},
+		}
+
+		if i == 0 {
+			e.store.AddRoot(node)
+		} else {
+			e.store.AddNode(node)
+			// Register as child of parent directory.
+			parentID := strings.Join(parts[:i], "/")
+			if parent, err := e.store.GetNode(parentID); err == nil {
+				parent.Children = appendUnique(parent.Children, nodeID)
+			}
+		}
 	}
 
-	current.MacheID = m.MacheID
-	current.Children["mache_id"] = &Entry{Name: "mache_id", Content: m.MacheID}
-	current.Children["description"] = &Entry{Name: "description", Content: m.Description}
+	// The mount point directory already exists from the loop above.
+	mountNode, err := e.store.GetNode(p)
+	if err != nil {
+		return
+	}
+
+	// Store mache_id as a property on the directory node.
+	if mountNode.Properties == nil {
+		mountNode.Properties = make(map[string][]byte)
+	}
+	mountNode.Properties["mache_id"] = []byte(m.MacheID)
+
+	// Add mache_id leaf file.
+	macheIDFile := p + "/mache_id"
+	e.store.AddNode(&graph.Node{ID: macheIDFile, Data: []byte(m.MacheID)})
+	mountNode.Children = appendUnique(mountNode.Children, macheIDFile)
+
+	// Add description leaf file.
+	descFile := p + "/description"
+	e.store.AddNode(&graph.Node{ID: descFile, Data: []byte(m.Description)})
+	mountNode.Children = appendUnique(mountNode.Children, descFile)
+}
+
+// appendUnique appends val to slice only if not already present.
+func appendUnique(slice []string, val string) []string {
+	for _, v := range slice {
+		if v == val {
+			return slice
+		}
+	}
+	return append(slice, val)
 }
 
 // ListDir returns child names at the given path.
 func (e *Engine) ListDir(dirPath string) ([]string, error) {
-	entry, err := e.resolve(dirPath)
-	if err != nil {
-		return nil, err
-	}
-	if !entry.IsDir {
-		return nil, fmt.Errorf("%s is not a directory", dirPath)
-	}
-	names := make([]string, 0, len(entry.Children))
-	for name, child := range entry.Children {
-		display := name
-		if child.IsDir {
-			display += "/"
+	p := cleanPath(dirPath)
+
+	var childIDs []string
+	if p == "" {
+		// Root listing via MemoryStore roots.
+		var err error
+		childIDs, err = e.store.ListChildren("")
+		if err != nil {
+			return nil, err
 		}
-		names = append(names, display)
+	} else {
+		node, err := e.store.GetNode(p)
+		if err != nil {
+			return nil, fmt.Errorf("not found: %s", dirPath)
+		}
+		if !node.Mode.IsDir() {
+			return nil, fmt.Errorf("%s is not a directory", dirPath)
+		}
+		childIDs = node.Children
+	}
+
+	names := make([]string, 0, len(childIDs))
+	for _, childID := range childIDs {
+		child, err := e.store.GetNode(childID)
+		if err != nil {
+			continue
+		}
+		name := path.Base(childID)
+		if child.Mode.IsDir() {
+			name += "/"
+		}
+		names = append(names, name)
 	}
 	sort.Strings(names)
 	return names, nil
@@ -128,33 +193,45 @@ func (e *Engine) ListDir(dirPath string) ([]string, error) {
 
 // ReadFile returns file content at the given path.
 func (e *Engine) ReadFile(filePath string) (string, error) {
-	entry, err := e.resolve(filePath)
+	p := cleanPath(filePath)
+	node, err := e.store.GetNode(p)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("not found: %s", filePath)
 	}
-	if entry.IsDir {
+	if node.Mode.IsDir() {
 		return "", fmt.Errorf("%s is a directory", filePath)
 	}
-	return entry.Content, nil
+	return string(node.Data), nil
 }
 
 // ResolveMacheID finds the mache_id for a given virtual path.
 func (e *Engine) ResolveMacheID(nodePath string) (string, error) {
-	entry, err := e.resolve(nodePath)
+	p := cleanPath(nodePath)
+	node, err := e.store.GetNode(p)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("no mache_id found at %s", nodePath)
 	}
-	if entry.MacheID != "" {
-		return entry.MacheID, nil
-	}
-	if !entry.IsDir && entry.Name == "mache_id" {
-		return entry.Content, nil
-	}
-	if entry.IsDir {
-		if child, ok := entry.Children["mache_id"]; ok {
-			return child.Content, nil
+
+	// Check Properties on directory nodes.
+	if node.Properties != nil {
+		if mid, ok := node.Properties["mache_id"]; ok {
+			return string(mid), nil
 		}
 	}
+
+	// If it's a file named "mache_id", return its content.
+	if !node.Mode.IsDir() && path.Base(p) == "mache_id" {
+		return string(node.Data), nil
+	}
+
+	// If it's a directory, look for a mache_id child file.
+	if node.Mode.IsDir() {
+		childID := p + "/mache_id"
+		if childNode, err := e.store.GetNode(childID); err == nil {
+			return string(childNode.Data), nil
+		}
+	}
+
 	return "", fmt.Errorf("no mache_id found at %s", nodePath)
 }
 
@@ -182,6 +259,10 @@ func (e *Engine) ZoneSelectors() map[string]string {
 	}
 	return selectors
 }
+
+// ---------------------------------------------------------------------------
+// DOM summary parsing (unchanged — DOM-specific helpers)
+// ---------------------------------------------------------------------------
 
 // SummaryElement represents one parsed line from the DOM summary.
 type SummaryElement struct {
@@ -466,53 +547,49 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 			descendants = descendants[:maxChildrenPerZone]
 		}
 
-		// Resolve the zone directory
-		zoneEntry, err := e.resolve(m.VirtualPath)
-		if err != nil || !zoneEntry.IsDir {
+		// Resolve the zone directory in the graph store.
+		zoneID := cleanPath(m.VirtualPath)
+		zoneNode, err := e.store.GetNode(zoneID)
+		if err != nil || !zoneNode.Mode.IsDir() {
 			continue
 		}
 
-		zoneEntry.Children["children"] = &Entry{
-			Name:    "children",
-			Content: formatGroupedChildren(descendants, effectivePrimary),
+		// Add "children" file node.
+		childrenFileID := zoneID + "/children"
+		e.store.AddNode(&graph.Node{
+			ID:   childrenFileID,
+			Data: []byte(formatGroupedChildren(descendants, effectivePrimary)),
+		})
+		zoneNode.Children = appendUnique(zoneNode.Children, childrenFileID)
+
+		// Build "_c/" directory with per-child subdirs.
+		cDirID := zoneID + "/_c"
+		cDir := &graph.Node{
+			ID:       cDirID,
+			Mode:     fs.ModeDir,
+			Children: make([]string, 0, len(descendants)),
 		}
 
-		// Build "_c/" directory with per-child subdirs
-		cDir := &Entry{Name: "_c", IsDir: true, Children: make(map[string]*Entry)}
 		for _, d := range descendants {
-			childDir := &Entry{
-				Name:     d.ID,
-				IsDir:    true,
-				MacheID:  d.ID,
-				Children: make(map[string]*Entry),
-			}
-			childDir.Children["mache_id"] = &Entry{Name: "mache_id", Content: d.ID}
-			childDir.Children["tag"] = &Entry{Name: "tag", Content: d.Tag}
-			childDir.Children["text"] = &Entry{Name: "text", Content: d.Text}
-			cDir.Children[d.ID] = childDir
-		}
-		zoneEntry.Children["_c"] = cDir
-	}
-}
+			childDirID := cDirID + "/" + d.ID
+			macheIDFileID := childDirID + "/mache_id"
+			tagFileID := childDirID + "/tag"
+			textFileID := childDirID + "/text"
 
-// resolve navigates the tree to find the entry at the given path.
-func (e *Engine) resolve(p string) (*Entry, error) {
-	p = path.Clean(p)
-	p = strings.TrimPrefix(p, "/")
-	if p == "" || p == "." {
-		return e.root, nil
-	}
-	parts := strings.Split(p, "/")
-	current := e.root
-	for _, part := range parts {
-		if !current.IsDir {
-			return nil, fmt.Errorf("not a directory: %s", part)
+			childDir := &graph.Node{
+				ID:         childDirID,
+				Mode:       fs.ModeDir,
+				Children:   []string{macheIDFileID, tagFileID, textFileID},
+				Properties: map[string][]byte{"mache_id": []byte(d.ID)},
+			}
+			e.store.AddNode(childDir)
+			e.store.AddNode(&graph.Node{ID: macheIDFileID, Data: []byte(d.ID)})
+			e.store.AddNode(&graph.Node{ID: tagFileID, Data: []byte(d.Tag)})
+			e.store.AddNode(&graph.Node{ID: textFileID, Data: []byte(d.Text)})
+
+			cDir.Children = append(cDir.Children, childDirID)
 		}
-		child, ok := current.Children[part]
-		if !ok {
-			return nil, fmt.Errorf("not found: %s", p)
-		}
-		current = child
+		e.store.AddNode(cDir)
+		zoneNode.Children = appendUnique(zoneNode.Children, cDirID)
 	}
-	return current, nil
 }
