@@ -108,8 +108,8 @@ func TestToolChainLsToChildren(t *testing.T) {
 		Name: "cat", Args: map[string]any{"path": "/main/story_list/children"},
 	})
 
-	// Should have compact primary items listing
-	if !strings.Contains(result, "[1]") {
+	// Should have ordinal children listing (no mache IDs)
+	if !strings.Contains(result, `[1] "`) {
 		t.Errorf("children missing [1]: %s", result)
 	}
 	if !strings.Contains(result, "Timeframe") {
@@ -118,8 +118,12 @@ func TestToolChainLsToChildren(t *testing.T) {
 	if !strings.Contains(result, "Global Intelligence Crisis") {
 		t.Errorf("children missing second story: %s", result)
 	}
-	if !strings.Contains(result, "[3]") {
+	if !strings.Contains(result, `[3] "`) {
 		t.Errorf("children missing [3]: %s", result)
+	}
+	// No mache IDs exposed in children listing
+	if strings.Contains(result, "mache-") {
+		t.Errorf("children listing should not expose mache IDs: %s", result)
 	}
 }
 
@@ -127,10 +131,10 @@ func TestToolChainActOnChild(t *testing.T) {
 	engine := buildHNEngine(t)
 	agent := &Agent{engine: engine}
 
-	// Simulate the Navigator workflow: ls → cat children → act on specific child
+	// Ordinal path: _c/1 is the first primary item (mache-11)
 	_, action := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "act", Args: map[string]any{
-			"path":   "/main/story_list/_c/mache-11",
+			"path":   "/main/story_list/_c/1",
 			"action": "click",
 		},
 	})
@@ -200,18 +204,18 @@ func TestToolChainFullWorkflow(t *testing.T) {
 		t.Fatalf("step 2 failed: %s", zone)
 	}
 
-	// Step 3: cat("/main/story_list/children")
+	// Step 3: cat("/main/story_list/children") — ordinal format
 	children, _ := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "cat", Args: map[string]any{"path": "/main/story_list/children"},
 	})
-	if !strings.Contains(children, "mache-18") {
-		t.Fatalf("step 3 failed — missing story mache-id: %s", children)
+	if !strings.Contains(children, "Global Intelligence Crisis") {
+		t.Fatalf("step 3 failed — missing second story text: %s", children)
 	}
 
-	// Step 4: act on the second story
+	// Step 4: act on the second story via ordinal path _c/2
 	result, action := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "act", Args: map[string]any{
-			"path":   "/main/story_list/_c/mache-18",
+			"path":   "/main/story_list/_c/2",
 			"action": "click",
 		},
 	})

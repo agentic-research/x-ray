@@ -118,8 +118,9 @@ func TestExecuteToolCatChildren(t *testing.T) {
 
 func TestExecuteToolAct(t *testing.T) {
 	agent := newTestAgent()
+	// Ordinal path: _c/1 is the first primary item (mache-11)
 	fc := &genai.FunctionCall{Name: "act", Args: map[string]any{
-		"path":   "/main/stories/_c/mache-11",
+		"path":   "/main/stories/_c/1",
 		"action": "click",
 	}}
 
@@ -140,8 +141,9 @@ func TestExecuteToolAct(t *testing.T) {
 
 func TestExecuteToolActDefaultAction(t *testing.T) {
 	agent := newTestAgent()
+	// Ordinal path: _c/2 is the second primary item (mache-13)
 	fc := &genai.FunctionCall{Name: "act", Args: map[string]any{
-		"path":   "/main/stories/_c/mache-13",
+		"path":   "/main/stories/_c/2",
 		"action": "",
 	}}
 

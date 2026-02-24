@@ -209,16 +209,16 @@ func TestLoadChildren(t *testing.T) {
 		t.Error("missing _c/ directory in news_feed")
 	}
 
-	// Read children file
+	// Read children file — ordinal format, no mache IDs exposed
 	content, err := e.ReadFile("/main/news_feed/children")
 	if err != nil {
 		t.Fatalf("ReadFile children failed: %v", err)
 	}
-	if !strings.Contains(content, "mache-16") {
-		t.Errorf("children file missing mache-16: %q", content)
+	if !strings.Contains(content, `[1] "First Story Title"`) {
+		t.Errorf("children file missing first story: %q", content)
 	}
 
-	// Verify _c/ subdirectory entries
+	// Verify _c/ subdirectory entries (ordinal names)
 	cEntries, err := e.ListDir("/main/news_feed/_c")
 	if err != nil {
 		t.Fatalf("ListDir _c failed: %v", err)
@@ -227,8 +227,8 @@ func TestLoadChildren(t *testing.T) {
 		t.Errorf("expected 3 child dirs in _c/, got %d: %v", len(cEntries), cEntries)
 	}
 
-	// Verify child has mache_id, tag, text files
-	childEntries, err := e.ListDir("/main/news_feed/_c/mache-16")
+	// Verify ordinal child dir has mache_id, tag, text files
+	childEntries, err := e.ListDir("/main/news_feed/_c/1")
 	if err != nil {
 		t.Fatalf("ListDir child failed: %v", err)
 	}
@@ -240,6 +240,15 @@ func TestLoadChildren(t *testing.T) {
 		if !childFound[f] {
 			t.Errorf("missing %s file in child dir", f)
 		}
+	}
+
+	// Verify mache_id file inside ordinal dir resolves to actual mache ID
+	macheID, err := e.ReadFile("/main/news_feed/_c/1/mache_id")
+	if err != nil {
+		t.Fatalf("ReadFile mache_id failed: %v", err)
+	}
+	if macheID != "mache-16" {
+		t.Errorf("expected mache-16 in _c/1/mache_id, got %q", macheID)
 	}
 }
 
@@ -269,98 +278,63 @@ func TestLoadChildrenCap(t *testing.T) {
 	}
 }
 
-func TestFormatByPrimaryItems(t *testing.T) {
-	tests := []struct {
-		name         string
-		descendants  []SummaryElement
-		primaryItems []string
-		wantItems    int    // number of "Item N:" entries
-		wantContains string // substring that must appear
-	}{
-		{
-			name: "only primary items listed",
-			descendants: []SummaryElement{
-				{ID: "m-1", Tag: "span", Text: ""},       // not primary
-				{ID: "m-2", Tag: "a", Text: "Story One"}, // primary
-				{ID: "m-3", Tag: "a", Text: "(example.com)"},
-				{ID: "m-4", Tag: "span", Text: ""},       // not primary
-				{ID: "m-5", Tag: "a", Text: "Story Two"}, // primary
-				{ID: "m-6", Tag: "a", Text: "(other.com)"},
-			},
-			primaryItems: []string{"m-2", "m-5"},
-			wantItems:    2, // only primary items
-			wantContains: `[1] "Story One"`,
-		},
-		{
-			name: "non-primary descendants excluded",
-			descendants: []SummaryElement{
-				{ID: "m-10", Tag: "a", Text: "First"},
-				{ID: "m-11", Tag: "span", Text: "meta"},
-				{ID: "m-12", Tag: "a", Text: "Second"},
-				{ID: "m-13", Tag: "a", Text: "Extra Link"},
-			},
-			primaryItems: []string{"m-10", "m-12"},
-			wantItems:    2, // only primary, m-13 excluded
-			wantContains: `[1] "First"`,
-		},
-		{
-			name: "missing primary items skipped gracefully",
-			descendants: []SummaryElement{
-				{ID: "m-20", Tag: "a", Text: "Title"},
-			},
-			primaryItems: []string{"m-20", "m-99"},
-			wantItems:    1, // m-99 not in descendants
-			wantContains: `"Title" → _c/m-20`,
-		},
+func TestSelectChildItems(t *testing.T) {
+	descendants := []SummaryElement{
+		{ID: "m-1", Tag: "span", Text: ""},
+		{ID: "m-2", Tag: "a", Text: "Story One"},
+		{ID: "m-3", Tag: "a", Text: "(example.com)"},
+		{ID: "m-4", Tag: "span", Text: ""},
+		{ID: "m-5", Tag: "a", Text: "Story Two"},
+		{ID: "m-6", Tag: "a", Text: "(other.com)"},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := formatByPrimaryItems(tt.descendants, tt.primaryItems)
-			gotItems := strings.Count(got, "] \"")
-			if gotItems != tt.wantItems {
-				t.Errorf("expected %d items, got %d\noutput:\n%s", tt.wantItems, gotItems, got)
-			}
-			if !strings.Contains(got, tt.wantContains) {
-				t.Errorf("output missing %q\noutput:\n%s", tt.wantContains, got)
-			}
-		})
+	// With primary items: only those are selected
+	items := selectChildItems(descendants, []string{"m-2", "m-5"})
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(items))
+	}
+	if items[0].ID != "m-2" || items[1].ID != "m-5" {
+		t.Errorf("wrong items: %v", items)
+	}
+
+	// Missing primary items are skipped gracefully
+	items = selectChildItems(descendants, []string{"m-2", "m-99"})
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item (m-99 missing), got %d", len(items))
+	}
+
+	// Without primary items: all non-empty text descendants
+	items = selectChildItems(descendants, nil)
+	if len(items) != 4 {
+		t.Fatalf("expected 4 non-empty items, got %d", len(items))
+	}
+	for _, item := range items {
+		if item.Text == "" {
+			t.Error("empty-text item should be filtered out")
+		}
+	}
+
+	// Empty primary slice behaves same as nil
+	items2 := selectChildItems(descendants, []string{})
+	if len(items2) != len(items) {
+		t.Errorf("empty slice should behave same as nil: got %d vs %d", len(items2), len(items))
 	}
 }
 
-func TestFormatGroupedChildrenDispatch(t *testing.T) {
-	// Need enough non-empty elements so emptyCount (2) < len/2 (4) triggers heuristic
-	descendants := []SummaryElement{
-		{ID: "m-1", Tag: "span", Text: ""},
-		{ID: "m-2", Tag: "a", Text: "Story"},
-		{ID: "m-3", Tag: "a", Text: "meta1"},
-		{ID: "m-4", Tag: "span", Text: ""},
-		{ID: "m-5", Tag: "a", Text: "Another"},
-		{ID: "m-6", Tag: "a", Text: "meta2"},
+func TestFormatOrdinalChildren(t *testing.T) {
+	items := []SummaryElement{
+		{ID: "m-2", Tag: "a", Text: "Story One"},
+		{ID: "m-5", Tag: "a", Text: "Story Two"},
+	}
+	got := formatOrdinalChildren(items)
+	want := "[1] \"Story One\"\n[2] \"Story Two\""
+	if got != want {
+		t.Errorf("expected:\n%s\ngot:\n%s", want, got)
 	}
 
-	// With primary items: should use compact primary-item listing (only primaries)
-	withPrimary := formatGroupedChildren(descendants, []string{"m-2", "m-5"})
-	if !strings.Contains(withPrimary, "[1]") {
-		t.Errorf("expected item listing with primary items, got:\n%s", withPrimary)
-	}
-	if !strings.Contains(withPrimary, `"Story"`) {
-		t.Errorf("primary item text missing:\n%s", withPrimary)
-	}
-	if strings.Count(withPrimary, "] \"") != 2 {
-		t.Errorf("expected only 2 primary items, got:\n%s", withPrimary)
-	}
-
-	// With nil primary items: should fall back to empty-separator heuristic
-	withHeuristic := formatGroupedChildren(descendants, nil)
-	if !strings.Contains(withHeuristic, "--- Item ") {
-		t.Errorf("expected item headers from heuristic fallback, got:\n%s", withHeuristic)
-	}
-
-	// With empty slice: same fallback
-	withEmpty := formatGroupedChildren(descendants, []string{})
-	if withEmpty != withHeuristic {
-		t.Errorf("empty slice should behave same as nil\nempty: %s\nnil: %s", withEmpty, withHeuristic)
+	// No mache IDs should appear in output
+	if strings.Contains(got, "m-2") || strings.Contains(got, "m-5") {
+		t.Error("ordinal format should not expose mache IDs")
 	}
 }
 
@@ -394,17 +368,19 @@ ID: mache-14 | Parent: mache-10 | Tag: span | Text: "(other.com)"
 		t.Fatalf("ReadFile children failed: %v", err)
 	}
 
-	// 2 primary items; non-primary elements are <span> so not included
+	// 2 primary items in ordinal format
+	if !strings.Contains(content, `[1] "First Story"`) {
+		t.Errorf("missing [1] First Story in output:\n%s", content)
+	}
+	if !strings.Contains(content, `[2] "Second Story"`) {
+		t.Errorf("missing [2] Second Story in output:\n%s", content)
+	}
 	if strings.Count(content, "] \"") != 2 {
 		t.Errorf("expected 2 items, got:\n%s", content)
 	}
-
-	// Primary items should appear first
-	if !strings.Contains(content, `"First Story"`) {
-		t.Errorf("missing First Story in output:\n%s", content)
-	}
-	if !strings.Contains(content, `"Second Story"`) {
-		t.Errorf("missing Second Story in output:\n%s", content)
+	// No mache IDs in children file
+	if strings.Contains(content, "mache-") {
+		t.Errorf("children file should not expose mache IDs:\n%s", content)
 	}
 }
 
@@ -415,7 +391,8 @@ func TestResolveMacheIDChild(t *testing.T) {
 	}
 	e.LoadChildren(sampleSummary, nil)
 
-	id, err := e.ResolveMacheID("/main/news_feed/_c/mache-16")
+	// Ordinal path _c/1 should resolve to the actual mache ID
+	id, err := e.ResolveMacheID("/main/news_feed/_c/1")
 	if err != nil {
 		t.Fatalf("ResolveMacheID child failed: %v", err)
 	}
@@ -567,19 +544,22 @@ ID: mache-15 | Parent: mache-10 | Tag: a | Text: "Fourth Story (new after scroll
 		t.Fatalf("ReadFile children failed: %v", err)
 	}
 
-	// All 4 resolved items should appear as primary items
-	if !strings.Contains(content, `"First Story"`) {
-		t.Errorf("missing First Story:\n%s", content)
+	// All 4 resolved items should appear in ordinal format
+	if !strings.Contains(content, `[1] "First Story"`) {
+		t.Errorf("missing [1] First Story:\n%s", content)
 	}
-	if !strings.Contains(content, `"Third Story (new after scroll)"`) {
-		t.Errorf("missing Third Story (resolved item):\n%s", content)
+	if !strings.Contains(content, `[3] "Third Story (new after scroll)"`) {
+		t.Errorf("missing [3] Third Story (resolved item):\n%s", content)
 	}
-	if !strings.Contains(content, `"Fourth Story (new after scroll)"`) {
-		t.Errorf("missing Fourth Story (resolved item):\n%s", content)
+	if !strings.Contains(content, `[4] "Fourth Story (new after scroll)"`) {
+		t.Errorf("missing [4] Fourth Story (resolved item):\n%s", content)
 	}
-	// Should have 4 primary items (resolved), mache-12 is <span> so not appended
 	if strings.Count(content, "] \"") != 4 {
 		t.Errorf("expected 4 items from resolved items, got:\n%s", content)
+	}
+	// No mache IDs exposed
+	if strings.Contains(content, "mache-") {
+		t.Errorf("children file should not expose mache IDs:\n%s", content)
 	}
 }
 
@@ -669,15 +649,15 @@ ID: mache-27 | Parent: mache-25 | Tag: a | Text: "Third Story"
 		t.Fatalf("children file missing (leaf zone root fallback failed): %v", err)
 	}
 
-	// All 3 primary items should appear
-	if !strings.Contains(content, `"First Story"`) {
-		t.Errorf("missing First Story:\n%s", content)
+	// All 3 primary items should appear in ordinal format
+	if !strings.Contains(content, `[1] "First Story"`) {
+		t.Errorf("missing [1] First Story:\n%s", content)
 	}
-	if !strings.Contains(content, `"Second Story"`) {
-		t.Errorf("missing Second Story:\n%s", content)
+	if !strings.Contains(content, `[2] "Second Story"`) {
+		t.Errorf("missing [2] Second Story:\n%s", content)
 	}
-	if !strings.Contains(content, `"Third Story"`) {
-		t.Errorf("missing Third Story:\n%s", content)
+	if !strings.Contains(content, `[3] "Third Story"`) {
+		t.Errorf("missing [3] Third Story:\n%s", content)
 	}
 	if strings.Count(content, "] \"") != 3 {
 		t.Errorf("expected 3 items, got:\n%s", content)

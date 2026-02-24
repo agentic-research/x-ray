@@ -97,11 +97,11 @@ func TestHandleIntentWithMockGenerator(t *testing.T) {
 					Name: "cat", Args: map[string]any{"path": "/main/stories/children"},
 				}}},
 			}}}},
-			// Iteration 3: model calls act on the first story
+			// Iteration 3: model calls act on the first story (ordinal path)
 			{Candidates: []*genai.Candidate{{Content: &genai.Content{
 				Role: "model",
 				Parts: []*genai.Part{{FunctionCall: &genai.FunctionCall{
-					Name: "act", Args: map[string]any{"path": "/main/stories/_c/mache-11", "action": "click"},
+					Name: "act", Args: map[string]any{"path": "/main/stories/_c/1", "action": "click"},
 				}}},
 			}}}},
 		},
@@ -434,7 +434,7 @@ func TestGemmaGeneratorMultiTurnHistory(t *testing.T) {
 			"choices": []map[string]any{{
 				"message": map[string]any{
 					"role":    "assistant",
-					"content": `{"name": "act", "parameters": {"path": "/main/stories/_c/mache-11", "action": "click"}}`,
+					"content": `{"name": "act", "parameters": {"path": "/main/stories/_c/1", "action": "click"}}`,
 				},
 			}},
 		}

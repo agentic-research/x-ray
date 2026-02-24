@@ -363,90 +363,38 @@ func collectDescendants(parentMap map[string][]SummaryElement, rootID string, ma
 
 const maxChildrenPerZone = 200
 
-// formatGroupedChildren formats descendants into numbered item groups.
-// If primaryItems is non-empty (LLM-identified primary clickable elements),
-// each primary item starts a new group with subsequent elements as metadata.
-// Otherwise falls back to the empty-separator heuristic.
-func formatGroupedChildren(descendants []SummaryElement, primaryItems []string) string {
+// selectChildItems determines which descendants appear in the children listing
+// and _c/ directory. With primary items, only those are listed (preserving
+// order). Otherwise, all descendants with non-empty text are included.
+func selectChildItems(descendants []SummaryElement, primaryItems []string) []SummaryElement {
 	if len(primaryItems) > 0 {
-		return formatByPrimaryItems(descendants, primaryItems)
-	}
-
-	// Heuristic fallback: detect empty-text separators.
-	var emptyCount int
-	for _, d := range descendants {
-		if d.Text == "" {
-			emptyCount++
+		byID := make(map[string]SummaryElement, len(descendants))
+		for _, d := range descendants {
+			byID[d.ID] = d
 		}
-	}
-	if emptyCount >= 2 && emptyCount < len(descendants)/2 {
-		return formatByEmptySeparator(descendants)
-	}
-
-	// Flat list fallback.
-	var lines []string
-	for _, d := range descendants {
-		lines = append(lines, fmt.Sprintf("%s | %s | \"%s\"", d.ID, d.Tag, d.Text))
-	}
-	return strings.Join(lines, "\n")
-}
-
-// formatByPrimaryItems outputs a compact numbered list of primary items.
-// Only includes items from the provided primary list (either from the
-// Cartographer's schema or browser-resolved via CSS selectors after scroll).
-func formatByPrimaryItems(descendants []SummaryElement, primaryItems []string) string {
-	// Index descendants by ID for O(1) lookup.
-	byID := make(map[string]SummaryElement, len(descendants))
-	for _, d := range descendants {
-		byID[d.ID] = d
-	}
-
-	var sb strings.Builder
-	itemNum := 0
-
-	for _, id := range primaryItems {
-		d, ok := byID[id]
-		if !ok {
-			continue
-		}
-		itemNum++
-		fmt.Fprintf(&sb, "[%d] \"%s\" → _c/%s\n", itemNum, d.Text, d.ID)
-	}
-
-	return strings.TrimRight(sb.String(), "\n")
-}
-
-// formatByEmptySeparator groups elements: each empty-text element starts a new
-// numbered item group.
-func formatByEmptySeparator(descendants []SummaryElement) string {
-	var sb strings.Builder
-	itemNum := 0
-	inGroup := false
-
-	for _, d := range descendants {
-		if d.Text == "" {
-			// Empty text = start of new item group.
-			itemNum++
-			if inGroup {
-				sb.WriteString("\n")
+		var items []SummaryElement
+		for _, id := range primaryItems {
+			if d, ok := byID[id]; ok {
+				items = append(items, d)
 			}
-			fmt.Fprintf(&sb, "--- Item %d ---\n", itemNum)
-			inGroup = true
-			continue
 		}
+		return items
+	}
+	var items []SummaryElement
+	for _, d := range descendants {
+		if d.Text != "" {
+			items = append(items, d)
+		}
+	}
+	return items
+}
 
-		// Skip structural containers (tbody, etc.) — they aren't actionable.
-		if d.Tag == "tbody" || d.Tag == "thead" || d.Tag == "table" {
-			continue
-		}
-
-		if !inGroup {
-			// Elements before the first separator get their own group.
-			itemNum++
-			fmt.Fprintf(&sb, "--- Item %d ---\n", itemNum)
-			inGroup = true
-		}
-		fmt.Fprintf(&sb, "  %s | %s | \"%s\"\n", d.ID, d.Tag, d.Text)
+// formatOrdinalChildren formats items as a simple ordinal list: [N] "text".
+// The model uses N to reference items via _c/N paths.
+func formatOrdinalChildren(items []SummaryElement) string {
+	var sb strings.Builder
+	for i, d := range items {
+		fmt.Fprintf(&sb, "[%d] \"%s\"\n", i+1, d.Text)
 	}
 	return strings.TrimRight(sb.String(), "\n")
 }
@@ -509,10 +457,25 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 	for _, m := range e.mounts {
 		// Use browser-resolved items (from CSS selector) if available,
 		// otherwise fall back to the schema's static primary items.
-		effectivePrimary := m.PrimaryItems
+		// Union the schema's static primary_items with browser-resolved CSS items.
+		// Filter out stale IDs that don't exist in the current DOM summary
+		// (e.g., cached schema from a different tab has wrong mache-IDs).
+		seen := make(map[string]bool)
+		var effectivePrimary []string
+		for _, id := range m.PrimaryItems {
+			if _, ok := byID[id]; ok && !seen[id] {
+				seen[id] = true
+				effectivePrimary = append(effectivePrimary, id)
+			}
+		}
 		if resolvedItems != nil {
-			if resolved, ok := resolvedItems[m.MacheID]; ok && len(resolved) > 0 {
-				effectivePrimary = resolved
+			if res, ok := resolvedItems[m.MacheID]; ok {
+				for _, id := range res {
+					if !seen[id] {
+						seen[id] = true
+						effectivePrimary = append(effectivePrimary, id)
+					}
+				}
 			}
 		}
 
@@ -554,24 +517,32 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 			continue
 		}
 
-		// Add "children" file node.
+		// Select items for the children listing and _c/ directory.
+		// Ordinal numbering: _c/1, _c/2, ... so the model never sees raw mache IDs.
+		childItems := selectChildItems(descendants, effectivePrimary)
+		if len(childItems) == 0 {
+			continue
+		}
+
+		// Add "children" file node with ordinal format.
 		childrenFileID := zoneID + "/children"
 		e.store.AddNode(&graph.Node{
 			ID:   childrenFileID,
-			Data: []byte(formatGroupedChildren(descendants, effectivePrimary)),
+			Data: []byte(formatOrdinalChildren(childItems)),
 		})
 		zoneNode.Children = appendUnique(zoneNode.Children, childrenFileID)
 
-		// Build "_c/" directory with per-child subdirs.
+		// Build "_c/" directory with ordinal subdirs: _c/1/, _c/2/, ...
 		cDirID := zoneID + "/_c"
 		cDir := &graph.Node{
 			ID:       cDirID,
 			Mode:     fs.ModeDir,
-			Children: make([]string, 0, len(descendants)),
+			Children: make([]string, 0, len(childItems)),
 		}
 
-		for _, d := range descendants {
-			childDirID := cDirID + "/" + d.ID
+		for i, d := range childItems {
+			ordinal := fmt.Sprintf("%d", i+1)
+			childDirID := cDirID + "/" + ordinal
 			macheIDFileID := childDirID + "/mache_id"
 			tagFileID := childDirID + "/tag"
 			textFileID := childDirID + "/text"

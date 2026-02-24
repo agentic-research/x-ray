@@ -41,11 +41,12 @@ type DOMUpdate struct {
 
 // TabSession holds per-tab state: its own Engine and Navigator.
 type TabSession struct {
-	TabID       int
-	Engine      *mache.Engine
-	Navigator   IntentHandler
-	SchemaReady chan struct{}  // closed when schema is applied
-	DOMUpdateCh chan DOMUpdate // receives summary + resolved items after scroll
+	TabID             int
+	Engine            *mache.Engine
+	Navigator         IntentHandler
+	SchemaReady       chan struct{}            // closed when schema is applied
+	DOMUpdateCh       chan DOMUpdate           // receives summary + resolved items after scroll
+	SelectorsResolved chan map[string][]string // receives resolved items from RESOLVE_SELECTORS round-trip
 }
 
 // Handler holds the dependencies for the WebSocket handler.
@@ -87,11 +88,12 @@ func (h *Handler) getSession(tabID int) *TabSession {
 	engine := mache.NewEngine()
 	nav := navigator.NewAgent(h.NavGen, h.NavModel, engine)
 	sess := &TabSession{
-		TabID:       tabID,
-		Engine:      engine,
-		Navigator:   nav,
-		SchemaReady: make(chan struct{}),
-		DOMUpdateCh: make(chan DOMUpdate, 1),
+		TabID:             tabID,
+		Engine:            engine,
+		Navigator:         nav,
+		SchemaReady:       make(chan struct{}),
+		DOMUpdateCh:       make(chan DOMUpdate, 1),
+		SelectorsResolved: make(chan map[string][]string, 1),
 	}
 	h.sessions[tabID] = sess
 	log.Printf("Session: created new session for tab %d", tabID)
@@ -167,6 +169,8 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			go h.handleNavigate(conn, msg)
 		case MsgDOMUpdate:
 			h.handleDOMUpdate(msg)
+		case MsgSelectorsResolved:
+			h.handleSelectorsResolved(msg)
 		default:
 			log.Printf("WebSocket: unknown message type: %s", msg.Type)
 		}
@@ -269,7 +273,29 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 		return
 	}
 
-	sess.Engine.LoadChildren(msg.Summary, nil)
+	// Resolve CSS selectors via the browser so LoadChildren has the full item list.
+	// This is the same mechanism used after scroll, but applied on initial load too.
+	var resolvedItems map[string][]string
+	if selectors := sess.Engine.ZoneSelectors(); len(selectors) > 0 {
+		// Drain any stale response from a previous snapshot.
+		select {
+		case <-sess.SelectorsResolved:
+		default:
+		}
+		h.sendMessage(conn, OutboundMessage{
+			Type: MsgResolveSelectors, TabID: msg.TabID, Selectors: selectors,
+		})
+		select {
+		case resolvedItems = <-sess.SelectorsResolved:
+			log.Printf("Schema: resolved selectors for %d zones (tab %d)", len(resolvedItems), msg.TabID)
+		case <-time.After(5 * time.Second):
+			log.Printf("Schema: selector resolution timed out for tab %d, using static primary_items", msg.TabID)
+		case <-ctx.Done():
+			return
+		}
+	}
+
+	sess.Engine.LoadChildren(msg.Summary, resolvedItems)
 	sess.Navigator.SetEngine(sess.Engine)
 
 	// Signal that schema is ready — unblocks any waiting handleNavigate.
@@ -363,6 +389,22 @@ func (h *Handler) handleDOMUpdate(msg InboundMessage) {
 			msg.TabID, len(msg.Summary), len(msg.ResolvedItems))
 	default:
 		log.Printf("Scroll: DOM_UPDATE for tab %d but no listener, discarding", msg.TabID)
+	}
+}
+
+// handleSelectorsResolved receives CSS selector results from the browser.
+// Signals the waiting handleDOMSnapshot goroutine via SelectorsResolved channel.
+func (h *Handler) handleSelectorsResolved(msg InboundMessage) {
+	sess := h.getSession(msg.TabID)
+	resolved := msg.ResolvedItems
+	if resolved == nil {
+		resolved = make(map[string][]string)
+	}
+	select {
+	case sess.SelectorsResolved <- resolved:
+		log.Printf("Selectors resolved for tab %d (%d zones)", msg.TabID, len(resolved))
+	default:
+		log.Printf("Selectors resolved for tab %d but no listener, discarding", msg.TabID)
 	}
 }
 

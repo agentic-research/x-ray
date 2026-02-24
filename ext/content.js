@@ -1,13 +1,24 @@
 // content.js - Injected into pages to handle ID tagging and execution
+//
+// Uses an in-memory registry instead of DOM mutation (data-mache-id attributes)
+// to avoid triggering React/Vue re-renders on SPA sites like Reddit.
 
 let idCounter = 0;
+const elementRegistry = new Map();   // "mache-42" -> Element
+const reverseRegistry = new Map();   // Element -> "mache-42"
 
-function injectMacheIDs() {
+function buildRegistry() {
+  elementRegistry.clear();
+  reverseRegistry.clear();
+  idCounter = 0;
+
   // Phase 1: Tag interactive leaf elements
   const interactiveNodes = document.querySelectorAll('a, button, input, select, textarea, [role="button"]');
   interactiveNodes.forEach(node => {
-    if (!node.hasAttribute('data-mache-id')) {
-      node.setAttribute('data-mache-id', `mache-${idCounter++}`);
+    if (!reverseRegistry.has(node)) {
+      const id = `mache-${idCounter++}`;
+      elementRegistry.set(id, node);
+      reverseRegistry.set(node, id);
     }
   });
 
@@ -19,10 +30,16 @@ function injectMacheIDs() {
     '[role="navigation"], [role="main"], [role="list"], [role="group"], [role="region"]'
   );
   containers.forEach(node => {
-    if (!node.hasAttribute('data-mache-id')) {
-      const childCount = node.querySelectorAll('[data-mache-id]').length;
+    if (!reverseRegistry.has(node)) {
+      let childCount = 0;
+      for (const child of node.querySelectorAll('*')) {
+        if (reverseRegistry.has(child)) childCount++;
+        if (childCount >= 2) break;
+      }
       if (childCount >= 2) {
-        node.setAttribute('data-mache-id', `mache-${idCounter++}`);
+        const id = `mache-${idCounter++}`;
+        elementRegistry.set(id, node);
+        reverseRegistry.set(node, id);
       }
     }
   });
@@ -43,35 +60,42 @@ function getPath(element, maxLevels = 3) {
 }
 
 function generateSummary() {
-  const nodes = document.querySelectorAll('[data-mache-id]');
   let summary = "Interactive Elements:\n";
   let count = 0;
-  nodes.forEach(node => {
-    if (count >= 300) return;
+  for (const [macheId, node] of elementRegistry) {
+    if (count >= 300) break;
     const tag = node.tagName.toLowerCase();
     let text = (node.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 60);
     if (!text && tag === 'input') {
       text = node.placeholder || node.name || 'input';
     }
-    // Skip interactive elements with no text — not useful for navigation
-    if (!text && !node.children.length) return;
-    const parentTagged = node.parentElement ? node.parentElement.closest('[data-mache-id]') : null;
-    const parentID = parentTagged ? parentTagged.getAttribute('data-mache-id') : 'none';
-    summary += `ID: ${node.getAttribute('data-mache-id')} | Parent: ${parentID} | Tag: ${node.tagName.toLowerCase()} | Text: "${text}" | Path: ${getPath(node)}\n`;
+    // Skip interactive elements with no text -- not useful for navigation
+    if (!text && !node.children.length) continue;
+    // Find nearest tagged parent via registry
+    let parentID = 'none';
+    let ancestor = node.parentElement;
+    while (ancestor) {
+      if (reverseRegistry.has(ancestor)) {
+        parentID = reverseRegistry.get(ancestor);
+        break;
+      }
+      ancestor = ancestor.parentElement;
+    }
+    summary += `ID: ${macheId} | Parent: ${parentID} | Tag: ${tag} | Text: "${text}" | Path: ${getPath(node)}\n`;
     count++;
-  });
+  }
   return summary;
 }
 
 function captureSnapshot() {
-  injectMacheIDs();
+  buildRegistry();
   const summary = generateSummary();
-  console.log("X-Ray: Captured snapshot with", idCounter, "tagged nodes.");
+  console.log("X-Ray: Captured snapshot with", elementRegistry.size, "registered nodes.");
   return { summary, url: window.location.href };
 }
 
 function executeAction(macheId, actionType) {
-  let el = document.querySelector(`[data-mache-id="${macheId}"]`);
+  let el = elementRegistry.get(macheId);
   if (!el) {
     console.error("X-Ray: Element not found for ID:", macheId);
     return;
@@ -79,7 +103,7 @@ function executeAction(macheId, actionType) {
 
   if (actionType === 'click') {
     // If the target is a structural container (article, section, etc.),
-    // find the first <a> or <button> inside it — clicking a container
+    // find the first <a> or <button> inside it -- clicking a container
     // element does nothing on most sites (React, SPA, etc.).
     const containers = ['article', 'section', 'main', 'aside', 'nav', 'header', 'footer', 'div', 'li', 'ul', 'ol'];
     if (containers.includes(el.tagName.toLowerCase())) {
@@ -102,6 +126,77 @@ function executeAction(macheId, actionType) {
   }
 }
 
+// --- Set-of-Mark Overlay ---
+// Draws colored bounding boxes + mache-ID labels over registered elements.
+// Visible in CDP screenshots so the Cartographer can see which elements are tagged.
+
+const OVERLAY_ID = 'xray-overlay';
+
+// Distinct colors for visual separation of bounding boxes.
+const BOX_COLORS = [
+  'rgba(255, 0, 0, 0.3)',
+  'rgba(0, 128, 255, 0.3)',
+  'rgba(0, 200, 0, 0.3)',
+  'rgba(255, 165, 0, 0.3)',
+  'rgba(160, 32, 240, 0.3)',
+  'rgba(0, 200, 200, 0.3)',
+  'rgba(255, 105, 180, 0.3)',
+];
+
+function drawOverlay() {
+  removeOverlay();
+
+  const overlay = document.createElement('div');
+  overlay.id = OVERLAY_ID;
+  overlay.style.cssText =
+    'position: absolute; top: 0; left: 0; width: 100%; height: 100%;' +
+    'pointer-events: none; z-index: 2147483647;';
+
+  let colorIdx = 0;
+  for (const [macheId, node] of elementRegistry) {
+    const rect = node.getBoundingClientRect();
+    // Skip elements that are off-screen or zero-sized
+    if (rect.width === 0 || rect.height === 0) continue;
+
+    const color = BOX_COLORS[colorIdx % BOX_COLORS.length];
+    colorIdx++;
+
+    // Bounding box with translucent fill + thick border
+    const box = document.createElement('div');
+    box.style.cssText =
+      `position: absolute;` +
+      `left: ${rect.left + window.scrollX}px;` +
+      `top: ${rect.top + window.scrollY}px;` +
+      `width: ${rect.width}px;` +
+      `height: ${rect.height}px;` +
+      `background: ${color};` +
+      `border: 2px solid ${color.replace('0.3', '0.9')};` +
+      `pointer-events: none;` +
+      `box-sizing: border-box;`;
+
+    // ID label
+    const label = document.createElement('span');
+    label.textContent = macheId;
+    label.style.cssText =
+      'position: absolute; top: -14px; left: 0;' +
+      'background: rgba(0,0,0,0.75); color: #fff;' +
+      'font: bold 10px monospace; padding: 1px 3px;' +
+      'white-space: nowrap; pointer-events: none;' +
+      'line-height: 12px;';
+    box.appendChild(label);
+
+    overlay.appendChild(box);
+  }
+
+  document.documentElement.appendChild(overlay);
+  console.log(`X-Ray: Drew overlay with ${colorIdx} bounding boxes`);
+}
+
+function removeOverlay() {
+  const existing = document.getElementById(OVERLAY_ID);
+  if (existing) existing.remove();
+}
+
 // Listen for messages from background.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.type) {
@@ -109,13 +204,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse(captureSnapshot());
       return true;
 
+    case 'DRAW_OVERLAY':
+      drawOverlay();
+      sendResponse({ success: true });
+      return true;
+
+    case 'REMOVE_OVERLAY':
+      removeOverlay();
+      sendResponse({ success: true });
+      return true;
+
+    case 'RESOLVE_SELECTORS': {
+      // Evaluate CSS selectors against the current registry and return resolved mache-IDs.
+      const resolvedItems = {};
+      if (message.selectors) {
+        for (const [zoneId, selector] of Object.entries(message.selectors)) {
+          try {
+            const nodes = document.querySelectorAll(selector);
+            const ids = [];
+            nodes.forEach(n => {
+              let mid = reverseRegistry.get(n);
+              if (!mid) {
+                // Dynamically register the new element
+                mid = `mache-${idCounter++}`;
+                elementRegistry.set(mid, n);
+                reverseRegistry.set(n, mid);
+              }
+              ids.push(mid);
+            });
+            if (ids.length > 0) resolvedItems[zoneId] = ids;
+          } catch (e) {
+            console.warn('X-Ray: selector failed for zone', zoneId, e);
+          }
+        }
+        console.log('X-Ray: Resolved selectors for', Object.keys(resolvedItems).length,
+          'zones,', Object.values(resolvedItems).reduce((a, b) => a + b.length, 0), 'items total');
+      }
+      sendResponse({ resolved_items: resolvedItems });
+      return true;
+    }
+
     case 'EXECUTE_ACTION':
       executeAction(message.mache_id, message.action);
       sendResponse({ success: true });
       return true;
 
     case 'SCROLL': {
-      const preScrollCount = document.querySelectorAll('[data-mache-id]').length;
+      const preScrollSize = elementRegistry.size;
       const preScrollHeight = document.documentElement.scrollHeight;
 
       if (message.direction === 'up') {
@@ -135,17 +270,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const maxPolls = 10; // 500ms * 10 = 5s max wait
       const pollInterval = setInterval(() => {
         polls++;
-        injectMacheIDs();
-        const currentCount = document.querySelectorAll('[data-mache-id]').length;
+        buildRegistry();
+        const currentSize = elementRegistry.size;
         const heightChanged = document.documentElement.scrollHeight !== preScrollHeight;
-        const nodesChanged = currentCount !== preScrollCount;
+        const nodesChanged = currentSize !== preScrollSize;
 
         if (nodesChanged || heightChanged || polls >= maxPolls) {
           clearInterval(pollInterval);
           const summary = generateSummary();
           console.log(`X-Ray: Scroll complete after ${polls * 500}ms — ` +
-            `nodes: ${preScrollCount}→${currentCount}, ` +
-            `height: ${preScrollHeight}→${document.documentElement.scrollHeight}`);
+            `nodes: ${preScrollSize}->${currentSize}, ` +
+            `height: ${preScrollHeight}->${document.documentElement.scrollHeight}`);
 
           // Evaluate CSS selectors from the Cartographer to resolve fresh primary items.
           const resolvedItems = {};
@@ -155,7 +290,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 const nodes = document.querySelectorAll(selector);
                 const ids = [];
                 nodes.forEach(n => {
-                  const mid = n.getAttribute('data-mache-id');
+                  const mid = reverseRegistry.get(n);
                   if (mid) ids.push(mid);
                 });
                 if (ids.length > 0) resolvedItems[zoneId] = ids;
@@ -174,5 +309,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Initial tag on load
-injectMacheIDs();
+// Initial registration on load (no DOM mutation)
+buildRegistry();

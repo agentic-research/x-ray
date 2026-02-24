@@ -120,6 +120,39 @@ function connectWebSocket() {
         break;
       }
 
+      case 'RESOLVE_SELECTORS': {
+        const targetTab = msg.tab_id;
+        if (targetTab) {
+          chrome.tabs.sendMessage(targetTab, {
+            type: 'RESOLVE_SELECTORS',
+            selectors: msg.selectors || {}
+          }, (response) => {
+            if (chrome.runtime.lastError || !response) {
+              console.error('X-Ray: Resolve selectors failed', chrome.runtime.lastError);
+              // Send empty response so server doesn't hang
+              if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                  type: 'SELECTORS_RESOLVED',
+                  tab_id: targetTab,
+                  resolved_items: {}
+                }));
+              }
+              return;
+            }
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'SELECTORS_RESOLVED',
+                tab_id: targetTab,
+                resolved_items: response.resolved_items || {}
+              }));
+              console.log('X-Ray: Selectors resolved for tab', targetTab,
+                Object.keys(response.resolved_items || {}).length, 'zones');
+            }
+          });
+        }
+        break;
+      }
+
       case 'SCHEMA_READY': {
         const tabId = msg.tab_id;
         console.log('X-Ray: Schema ready (tab', tabId, ')');
@@ -278,10 +311,10 @@ function enrichSummaryWithAX(summary, axMap) {
 }
 
 // Capture snapshot from the given tab and send to server with tab_id.
-// Uses a single CDP session for full-page screenshot + AX tree enrichment.
+// Flow: build registry → draw overlay → CDP screenshot (overlay visible) → remove overlay → send.
 async function captureAndSend(tabId) {
-  // Get summary from content script. If the content script isn't loaded
-  // (extension reloaded while tab was open), inject it first.
+  // Step 1: Get summary from content script (builds registry).
+  // If the content script isn't loaded (extension reloaded while tab was open), inject it first.
   let response;
   try {
     response = await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
@@ -307,13 +340,25 @@ async function captureAndSend(tabId) {
     return;
   }
 
-  // Single CDP session: scaled JPEG screenshot + AX enrichment
+  // Step 2: Draw Set-of-Mark overlay (bounding boxes + ID labels).
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: 'DRAW_OVERLAY' });
+  } catch (e) {
+    console.warn('X-Ray: Draw overlay failed, continuing without:', e.message);
+  }
+
+  // Step 3: CDP screenshot (overlay is visible in capture) + AX enrichment.
   const cdpData = await captureWithCDP(tabId).catch(e => {
     console.warn('X-Ray: CDP capture failed, sending without screenshot:', e);
     return { screenshot: '', axMap: new Map() };
   });
 
-  // Enrich summary with per-element AX roles/names
+  // Step 4: Remove overlay so the user doesn't see it.
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' });
+  } catch (_) { /* overlay cleanup is best-effort */ }
+
+  // Step 5: Enrich summary with per-element AX roles/names and send.
   const enrichedSummary = cdpData.axMap.size > 0
     ? enrichSummaryWithAX(response.summary, cdpData.axMap)
     : response.summary;

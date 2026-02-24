@@ -2,13 +2,15 @@ package api
 
 // Message type constants for WebSocket communication.
 const (
-	MsgDOMSnapshot   = "DOM_SNAPSHOT"
-	MsgSchemaReady   = "SCHEMA_READY"
-	MsgExecuteAction = "EXECUTE_ACTION"
-	MsgNavigate      = "NAVIGATE"
-	MsgStatus        = "STATUS"
-	MsgScroll        = "SCROLL"
-	MsgDOMUpdate     = "DOM_UPDATE"
+	MsgDOMSnapshot       = "DOM_SNAPSHOT"
+	MsgSchemaReady       = "SCHEMA_READY"
+	MsgExecuteAction     = "EXECUTE_ACTION"
+	MsgNavigate          = "NAVIGATE"
+	MsgStatus            = "STATUS"
+	MsgScroll            = "SCROLL"
+	MsgDOMUpdate         = "DOM_UPDATE"
+	MsgResolveSelectors  = "RESOLVE_SELECTORS"
+	MsgSelectorsResolved = "SELECTORS_RESOLVED"
 )
 
 // InboundMessage is the envelope for all browser -> server messages.

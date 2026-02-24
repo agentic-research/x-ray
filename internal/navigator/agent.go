@@ -115,11 +115,11 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 		Temperature: genai.Ptr(float32(0.1)),
 	}
 
-	// Pre-fill ls("/") so the model starts with knowledge of the page structure.
-	// This saves one full API round-trip (~0.5-1s) since the agent always starts here.
-	rootEntries, _ := a.engine.ListDir("/")
-	rootListing := strings.Join(rootEntries, "\n")
-	log.Printf("Navigator: pre-filled ls(\"/\") → %s", rootListing)
+	// Pre-fill a tree dump so the model sees the full filesystem structure upfront.
+	// This prevents small models from guessing zone names (e.g., /main/story_list
+	// when the actual path is /main/feed) and wasting iterations on 404s.
+	treeDump := a.buildTreeDump()
+	log.Printf("Navigator: pre-filled tree:\n%s", treeDump)
 
 	history := []*genai.Content{
 		{Role: "user", Parts: []*genai.Part{{Text: intent}}},
@@ -128,7 +128,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 		}}}},
 		{Role: "user", Parts: []*genai.Part{{FunctionResponse: &genai.FunctionResponse{
 			Name:     "ls",
-			Response: map[string]any{"output": rootListing},
+			Response: map[string]any{"output": treeDump},
 		}}}},
 	}
 
@@ -247,6 +247,44 @@ func (a *Agent) ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string
 	}
 }
 
+// buildTreeDump generates a compact tree listing of the virtual filesystem.
+// Shows zone structure (2 levels) with leaf contents but skips recursing into
+// _c/ subdirectories — the model uses "children" for item details.
+func (a *Agent) buildTreeDump() string {
+	var sb strings.Builder
+	rootEntries, err := a.engine.ListDir("/")
+	if err != nil {
+		return "(empty filesystem)"
+	}
+	for _, entry := range rootEntries {
+		a.walkTree(&sb, "/"+strings.TrimSuffix(entry, "/"), entry, "", 0)
+	}
+	return strings.TrimRight(sb.String(), "\n")
+}
+
+const maxTreeDepth = 3 // root → top-level → zone → zone contents
+
+func (a *Agent) walkTree(sb *strings.Builder, fullPath, name, indent string, depth int) {
+	isDir := strings.HasSuffix(name, "/")
+	fmt.Fprintf(sb, "%s%s\n", indent, name)
+	if !isDir || depth >= maxTreeDepth {
+		return
+	}
+	// Don't recurse into _c/ — it can have dozens of entries.
+	// The model reads the "children" file instead.
+	if name == "_c/" {
+		return
+	}
+	dirPath := strings.TrimSuffix(fullPath, "/")
+	entries, err := a.engine.ListDir(dirPath)
+	if err != nil {
+		return
+	}
+	for _, child := range entries {
+		a.walkTree(sb, dirPath+"/"+strings.TrimSuffix(child, "/"), child, indent+"  ", depth+1)
+	}
+}
+
 // NavigatorSystemPrompt is the system instruction shared by text and voice modes.
 const NavigatorSystemPrompt = `You are 'The Navigator', an agent that helps users interact with web pages through a semantic filesystem.
 
@@ -268,19 +306,26 @@ Strategy:
 2. Navigate into the most relevant zone based on the user's intent.
 3. Read the "description" file to confirm you've found the right zone.
 4. If the user needs a specific element inside the zone (e.g., "click the first story"):
-   a. cat the zone's "children" file. Each line is: [N] "text" → _c/mache-ID
-   b. The number in brackets is the position. The path after → is what you pass to act().
-      Example: to click the 3rd item, find [3], read the path after →, and use that.
-   c. act on "_c/<mache-id>" inside that zone to target the specific child element.
+   a. cat the zone's "children" file. Each line is: [N] "text"
+   b. The number in brackets is the item number. Use it as the _c/ path.
+      Example: to click the 3rd item, act on "_c/3".
+   c. act on "_c/N" inside that zone to target the specific child element.
 5. If the zone has no "children" file, or the zone itself is the target, act on the zone path directly.
 6. If the user asks for an item beyond what's visible (e.g., "click the 10th post" but only 3 shown), scroll("down") to load more content, then cat the children file again.
 
 Example workflow for "click the first story" on a news page:
-  ls("/")                              → header/  main/  footer/
-  ls("/main/story_list")               → _c/  children  description  mache_id
-  cat("/main/story_list/children")     → [1] "First Story Title" → _c/mache-13
-                                         [2] "Second Story Title" → _c/mache-20
-  act("/main/story_list/_c/mache-13", "click")  → clicks the first story
+  ls("/") already shows the full tree:
+    header/
+      nav/
+        description  mache_id
+    main/
+      feed/
+        _c/  children  description  mache_id
+    footer/
+      description  mache_id
+  cat("/main/feed/children")           → [1] "First Story Title"
+                                         [2] "Second Story Title"
+  act("/main/feed/_c/1", "click")      → clicks the first story
 
-Be decisive. Three to four tool calls should be enough: ls → ls zone → cat children → act.
+Be decisive. You already know the full tree from ls("/"). Two calls should be enough: cat children → act.
 If you need more items, add scroll → cat children → act (up to 8 iterations total).`
