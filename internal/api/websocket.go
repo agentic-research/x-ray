@@ -60,6 +60,7 @@ type Handler struct {
 	conn     *websocket.Conn
 	pending  []pendingAction
 	sessions map[int]*TabSession
+	schemas  *schemaCache // domain+path → schema JSON
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveClient *genai.Client, navModel, liveModel string) *Handler {
@@ -70,6 +71,7 @@ func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveCli
 		NavModel:     navModel,
 		LiveModel:    liveModel,
 		sessions:     make(map[int]*TabSession),
+		schemas:      newSchemaCache(),
 	}
 }
 
@@ -175,51 +177,83 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	ctx := context.Background()
 	sess := h.getSession(msg.TabID)
 
-	h.sendMessage(conn, OutboundMessage{
-		Type: MsgStatus, TabID: msg.TabID, Message: "Generating semantic schema...", Stage: "cartographer",
-	})
+	// --- Schema cache lookup ---
+	key := cacheKey(msg.URL)
+	var schemaJSON string
+	var fromCache bool
 
-	// Decode screenshot from base64
-	var screenshotBytes []byte
-	if msg.Screenshot != "" {
-		var err error
-		screenshotBytes, err = base64.StdEncoding.DecodeString(msg.Screenshot)
-		if err != nil {
-			log.Printf("Failed to decode screenshot: %v", err)
+	if key != "" {
+		if cached, ok := h.schemas.Get(key); ok {
+			if bad := mache.ValidateSchema(cached, msg.Summary); len(bad) == 0 {
+				schemaJSON = cached
+				fromCache = true
+				log.Printf("Schema CACHE HIT for %q (tab %d) — skipping Cartographer", key, msg.TabID)
+				h.sendMessage(conn, OutboundMessage{
+					Type: MsgStatus, TabID: msg.TabID, Message: "Using cached schema", Stage: "cartographer",
+				})
+			} else {
+				log.Printf("Schema cache STALE for %q (tab %d) — %d invalid IDs: %v",
+					key, msg.TabID, len(bad), bad)
+			}
+		} else {
+			log.Printf("Schema CACHE MISS for %q (tab %d)", key, msg.TabID)
 		}
 	}
 
-	mimeType := "image/jpeg"
-
-	cartStart := time.Now()
-	schemaJSON, err := h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, msg.Summary)
-	if err != nil {
-		log.Printf("Cartographer failed after %s: %v", time.Since(cartStart), err)
+	if !fromCache {
 		h.sendMessage(conn, OutboundMessage{
-			Type: MsgStatus, TabID: msg.TabID, Message: "Schema generation failed: " + err.Error(), Stage: "error",
+			Type: MsgStatus, TabID: msg.TabID, Message: "Generating semantic schema...", Stage: "cartographer",
 		})
-		return
-	}
 
-	log.Printf("Cartographer generated schema (tab %d) in %s: %s", msg.TabID, time.Since(cartStart), schemaJSON)
+		// Decode screenshot from base64
+		var screenshotBytes []byte
+		if msg.Screenshot != "" {
+			var err error
+			screenshotBytes, err = base64.StdEncoding.DecodeString(msg.Screenshot)
+			if err != nil {
+				log.Printf("Failed to decode screenshot: %v", err)
+			}
+		}
 
-	// Validate: every mache_id must exist in the DOM summary.
-	if bad := mache.ValidateSchema(schemaJSON, msg.Summary); len(bad) > 0 {
-		log.Printf("Cartographer hallucinated IDs: %v — regenerating", bad)
-		h.sendMessage(conn, OutboundMessage{
-			Type: MsgStatus, TabID: msg.TabID, Message: "Schema had invalid IDs, retrying...", Stage: "cartographer",
-		})
+		mimeType := "image/jpeg"
+
+		cartStart := time.Now()
+		var err error
 		schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, msg.Summary)
 		if err != nil {
-			log.Printf("Cartographer retry failed: %v", err)
+			log.Printf("Cartographer failed after %s: %v", time.Since(cartStart), err)
 			h.sendMessage(conn, OutboundMessage{
-				Type: MsgStatus, TabID: msg.TabID, Message: "Schema retry failed: " + err.Error(), Stage: "error",
+				Type: MsgStatus, TabID: msg.TabID, Message: "Schema generation failed: " + err.Error(), Stage: "error",
 			})
 			return
 		}
-		log.Printf("Cartographer retry schema: %s", schemaJSON)
-		if bad2 := mache.ValidateSchema(schemaJSON, msg.Summary); len(bad2) > 0 {
-			log.Printf("Cartographer still hallucinating after retry: %v", bad2)
+
+		log.Printf("Cartographer generated schema (tab %d) in %s: %s", msg.TabID, time.Since(cartStart), schemaJSON)
+
+		// Validate: every mache_id must exist in the DOM summary.
+		if bad := mache.ValidateSchema(schemaJSON, msg.Summary); len(bad) > 0 {
+			log.Printf("Cartographer hallucinated IDs: %v — regenerating", bad)
+			h.sendMessage(conn, OutboundMessage{
+				Type: MsgStatus, TabID: msg.TabID, Message: "Schema had invalid IDs, retrying...", Stage: "cartographer",
+			})
+			schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, msg.Summary)
+			if err != nil {
+				log.Printf("Cartographer retry failed: %v", err)
+				h.sendMessage(conn, OutboundMessage{
+					Type: MsgStatus, TabID: msg.TabID, Message: "Schema retry failed: " + err.Error(), Stage: "error",
+				})
+				return
+			}
+			log.Printf("Cartographer retry schema: %s", schemaJSON)
+			if bad2 := mache.ValidateSchema(schemaJSON, msg.Summary); len(bad2) > 0 {
+				log.Printf("Cartographer still hallucinating after retry: %v", bad2)
+			}
+		}
+
+		// Cache the validated schema.
+		if key != "" {
+			h.schemas.Put(key, schemaJSON)
+			log.Printf("Schema cached for %q", key)
 		}
 	}
 

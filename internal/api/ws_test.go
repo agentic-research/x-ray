@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,11 +14,13 @@ import (
 
 // mockCartographer returns a fixed schema with mache_ids matching the summary.
 type mockCartographer struct {
-	schema string
-	err    error
+	schema    string
+	err       error
+	callCount atomic.Int32
 }
 
 func (m *mockCartographer) GenerateSchema(_ context.Context, _ []byte, _, _ string) (string, error) {
+	m.callCount.Add(1)
 	return m.schema, m.err
 }
 
@@ -294,5 +297,52 @@ func TestWSMultipleTabIsolation(t *testing.T) {
 	}
 	if len(entriesB) != 1 || entriesB[0] != "zone_b/" {
 		t.Errorf("tab 20 expected [zone_b/], got %v", entriesB)
+	}
+}
+
+func TestWSSchemaCacheHit(t *testing.T) {
+	schema := `{"mounts":[{"virtual_path":"/main/stories","mache_id":"mache-1","description":"stories"}]}`
+	cart := &mockCartographer{schema: schema}
+	h := NewHandler(cart, nil, nil, "test", "test-live")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", h.HandleWebSocket)
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	conn := dialWS(t, s)
+	defer func() { _ = conn.Close() }()
+
+	summary := "Interactive Elements:\nID: mache-1 | Parent: none | Tag: div | Text: \"Story\"\n"
+
+	// First snapshot: cache miss → calls Cartographer.
+	sendJSON(t, conn, InboundMessage{
+		Type:    MsgDOMSnapshot,
+		TabID:   1,
+		URL:     "https://news.ycombinator.com/news?p=1",
+		Summary: summary,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	// Second snapshot: same domain+path, different query → cache hit.
+	sendJSON(t, conn, InboundMessage{
+		Type:    MsgDOMSnapshot,
+		TabID:   2,
+		URL:     "https://news.ycombinator.com/news?p=2",
+		Summary: summary,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	// Cartographer should have been called exactly once.
+	if got := cart.callCount.Load(); got != 1 {
+		t.Errorf("expected 1 Cartographer call, got %d", got)
 	}
 }
