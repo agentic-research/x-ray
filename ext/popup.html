@@ -64,7 +64,10 @@
 <body>
 
 <h1>X-RAY</h1>
-<button id="snapshot-btn" class="btn">Snapshot</button>
+<div class="row">
+  <button id="snapshot-btn" class="btn grow">Snapshot</button>
+  <button id="export-btn" class="btn" style="width:64px;flex-shrink:0;text-align:center" title="Export Set-of-Mark overlay as PNG">Export</button>
+</div>
 <div class="intent-row">
   <input id="intent-input" type="text" placeholder="Type a command...">
   <button id="intent-btn" class="btn">Go</button>

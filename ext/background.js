@@ -484,6 +484,46 @@ function getState() {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
+    case 'EXPORT_OVERLAY':
+      chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+        if (!tabs[0]) {
+          sendResponse({ ok: false, error: 'No active tab' });
+          return;
+        }
+        const tabId = tabs[0].id;
+        try {
+          // Build registry + draw overlay.
+          try {
+            await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
+          } catch (_) {
+            await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+            await new Promise(r => setTimeout(r, 200));
+            await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
+          }
+          await chrome.tabs.sendMessage(tabId, { type: 'DRAW_OVERLAY' });
+          // Extra paint settle time — rAF in content.js handles most cases,
+          // but some pages (Reddit logged-out) need more time to composite.
+          await new Promise(r => setTimeout(r, 300));
+
+          // Capture visible viewport (overlay is on screen).
+          const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 85 });
+
+          // Remove overlay.
+          try { await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' }); } catch (_) {}
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+          chrome.downloads.download({
+            url: dataUrl,
+            filename: `xray-overlay-${timestamp}.jpg`,
+            saveAs: false
+          });
+          sendResponse({ ok: true });
+        } catch (e) {
+          try { await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' }); } catch (_) {}
+          sendResponse({ ok: false, error: e.message });
+        }
+      });
+      return true;
+
     case 'TRIGGER_SNAPSHOT':
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) {

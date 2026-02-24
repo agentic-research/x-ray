@@ -23,21 +23,21 @@ X-Ray bridges the physical reality of the DOM and the conceptual intent of the u
 
 ### Stage 1: The Cartographer (Vision + Structure)
 
-When a user visits a page, the X-Ray Chrome extension injects a tiny `data-mache-id` into every interactive element. It captures a scaled viewport screenshot (JPEG, quality 60) and generates a flattened text summary of those tagged IDs — each line enriched with DOM breadcrumb paths for structural context.
+When a user visits a page, the X-Ray Chrome extension builds an in-memory registry of interactive elements (zero DOM mutation — SPA-safe), draws a Set-of-Mark overlay with colored bounding boxes and ID labels, captures a scaled screenshot (JPEG, quality 60) with the overlay visible, and generates a flattened text summary — each line enriched with DOM breadcrumb paths for structural context.
 
-This payload goes to Gemini. Because Gemini is natively multimodal, it instantly understands the visual layout (e.g., "The top bar is navigation, the left side is filters"). It outputs a strict JSON schema projecting these visual zones onto the tagged DOM nodes. For list zones, it identifies both **primary items** (the main clickable element in each repeating item) and a **CSS `item_selector`** — a structural query derived from DOM breadcrumb paths in the summary. After scrolling, the browser evaluates this selector via `querySelectorAll` to discover fresh content without another LLM call.
+This payload goes to Gemini. Because Gemini is natively multimodal, it instantly understands the visual layout (e.g., "The top bar is navigation, the left side is filters") — aided by the Set-of-Mark bounding boxes visible in the screenshot. It outputs a strict JSON schema projecting these visual zones onto the registered DOM elements. For list zones, it identifies both **primary items** (the main clickable element in each repeating item) and a **CSS `item_selector`** — a structural query derived from DOM breadcrumb paths in the summary. After scrolling, the browser evaluates this selector via `querySelectorAll` to discover fresh content without another LLM call.
 
 ### Stage 2: The Navigator (Voice + Action)
 
 That JSON schema feeds into the Mache Engine, which instantly mounts a virtual, in-memory filesystem tailored to that exact page.
 
-Now, the Gemini Live agent doesn't see `div[4]/span/button`. It runs `ls /` and sees a clean, human-readable structure:
+Now, the agent doesn't see `div[4]/span/button`. It runs `ls /` and sees a clean, human-readable structure:
 
 - `/header/global_nav/`
 - `/main/trending_repositories/`
 - `/footer/legal/`
 
-When the user says, "Click the first trending repository," the Navigator traverses the filesystem using standard POSIX tools (`ls`, `cat`) and safely executes the action (`act`).
+Children are addressed by ordinal number (`_c/1`, `_c/2`, ...) — the model never sees raw mache IDs, eliminating confusion between item numbers and element IDs. When the user says, "Click the first trending repository," the Navigator traverses the filesystem using standard POSIX tools (`ls`, `cat`) and safely executes the action (`act`). The Navigator can run on Gemini cloud or a local 7B SLM (Qwen 2.5 Coder) for zero-latency, zero-cost execution. Because Gemini handles the heavy multimodal spatial reasoning in Stage 1, the execution loop is reduced to simple filesystem traversal — allowing a lightweight 7B model to drive the browser flawlessly.
 
 ## Project Structure
 
@@ -194,7 +194,10 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system diagram, da
 
 ### Highlights
 
-- **Zero Hallucinated IDs**: The Cartographer is constrained to select from the pre-tagged `data-mache-id` set. Structured JSON output with a strict schema prevents the model from inventing non-existent DOM pointers.
+- **Zero Hallucinated IDs**: The Cartographer is constrained to select from the in-memory element registry. Structured JSON output with a strict schema prevents the model from inventing non-existent DOM pointers.
+- **Set-of-Mark Visual Grounding**: Colored bounding boxes with ID labels are drawn over every registered element before screenshot capture, giving the Cartographer spatial anchors that tie visual zones to element IDs.
+- **Ordinal Children Paths**: Child entries use ordinal numbers (`_c/1`, `_c/2`) instead of raw mache IDs, so the Navigator never confuses "click the 6th post" with `mache-6`.
+- **CSS Selector Unions**: Primary items from the Cartographer's visual pass are *unioned* with browser-resolved CSS selector results (deduplicated, stale IDs filtered). Neither source alone is reliable — together they handle both SPA edge cases and infinite scroll.
 - **Accessibility Tree Enrichment**: The extension captures the browser's computed accessibility tree via `chrome.debugger` + CDP (`Accessibility.getFullAXTree`). Each summary line is enriched with `AXRole` and `AXName` — the semantic truth the browser computes from implicit roles, CSS visibility, and ARIA attributes.
 - **DOM Breadcrumb Injection**: Each summary line includes a `Path` field with 2-3 levels of DOM ancestry and CSS classes (e.g., `div.post > h3.title > a`). The Cartographer uses these structural patterns to synthesize CSS selectors per zone.
 - **Dynamic CSS Selectors**: For list zones, the Cartographer outputs an `item_selector` — a CSS query that the browser evaluates natively via `querySelectorAll` after scrolling. This discovers fresh content without another LLM call, replacing stale hardcoded IDs.

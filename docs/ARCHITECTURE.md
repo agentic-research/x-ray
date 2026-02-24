@@ -5,7 +5,7 @@
 ```mermaid
 graph TB
     subgraph Chrome["Chrome Extension (ext/)"]
-        CS[content.js<br/>Tag IDs, DOM summary + Path,<br/>Execute actions, Selector eval]
+        CS[content.js<br/>Element registry, SoM overlay,<br/>DOM summary + Path, Execute actions]
         BG[background.js<br/>WebSocket client,<br/>Screenshot capture]
         POP[popup.html/js<br/>Snapshot + Mic toggle]
         OFF[offscreen.js<br/>Voice audio bridge]
@@ -37,7 +37,7 @@ graph TB
     end
 
     subgraph Local["Local (optional)"]
-        OLLAMA[Ollama / OpenAI-compat<br/>e.g. llama3.2]
+        OLLAMA[Ollama / OpenAI-compat<br/>e.g. qwen2.5-coder:7b]
     end
 
     BG <-->|"ws://host/ws<br/>DOM_SNAPSHOT, EXECUTE_ACTION"| WS
@@ -62,9 +62,11 @@ sequenceDiagram
     participant G as Gemini
 
     U->>E: Click X-Ray icon
-    E->>E: Inject data-mache-id tags
+    E->>E: Build element registry (zero DOM mutation)
     E->>E: Generate DOM summary
-    E->>E: Capture screenshot (scaled JPEG, q60)
+    E->>E: Draw Set-of-Mark overlay
+    E->>E: Capture screenshot (scaled JPEG, q60, overlay visible)
+    E->>E: Remove overlay
     E->>E: CDP: Accessibility.getFullAXTree
     E->>E: Enrich summary with AXRole/AXName + Path breadcrumbs
     E->>A: DOM_SNAPSHOT {tab_id, summary, ax_tree, screenshot}
@@ -93,7 +95,7 @@ sequenceDiagram
         M-->>N: "Item 1: mache-13 | a | \"First Story\"..."
         N->>G: ToolResponse(content)
 
-        G-->>N: FunctionCall: act("/main/story_list/_c/mache-13", "click")
+        G-->>N: FunctionCall: act("/main/story_list/_c/1", "click")
         N->>M: ResolveMacheID(path)
         M-->>N: "mache-13"
     end
@@ -133,7 +135,7 @@ sequenceDiagram
 
     Note over A: Audio suppressed during tool loop
 
-    G-->>A: ToolCall: act("/main/story/_c/mache-13", "click")
+    G-->>A: ToolCall: act("/main/story/_c/1", "click")
     A->>A: engine.ResolveMacheID → "mache-13"
     A->>E: EXECUTE_ACTION via extension WS
     E->>E: element.click()
@@ -184,13 +186,13 @@ After the Cartographer maps a page and the engine loads children:
 │   └── story_list/
 │       ├── mache_id          → "mache-15"
 │       ├── description       → "List of news stories"
-│       ├── children           → "Item 1: mache-13 | a | \"First Story\"..."
+│       ├── children           → "[1] \"First Story Title\"\n[2] \"Second Story\"..."
 │       └── _c/
-│           ├── mache-13/
+│           ├── 1/                          # Ordinal — model never sees raw IDs
 │           │   ├── mache_id  → "mache-13"
 │           │   ├── tag       → "a"
 │           │   └── text      → "First Story Title"
-│           ├── mache-14/
+│           ├── 2/
 │           └── ...
 └── footer/
     └── links/
@@ -214,22 +216,22 @@ sequenceDiagram
     A->>M: ApplySchema + LoadChildren(summary, nil)
 
     Note over E,M: After Scroll
-    A->>M: ZoneSelectors() → {"mache-10": "article.w-full > a[data-mache-id]"}
+    A->>M: ZoneSelectors() → {"mache-10": "article.w-full > shreddit-post > a[slot=title]"}
     A->>E: SCROLL {direction, selectors}
     E->>E: querySelectorAll(selector) → fresh mache-ids
     E->>A: DOM_UPDATE {summary, resolved_items: {"mache-10": ["mache-400","mache-401",...]}}
     A->>M: LoadChildren(summary, resolvedItems)
-    Note over M: resolved_items override static primary_items
+    Note over M: resolved_items unioned with static primary_items (deduplicated, stale IDs filtered)
 ```
 
-**Key insight**: The LLM identifies *what* matters visually (story titles vs. metadata links) and synthesizes a CSS selector. The browser executes it deterministically at scroll time. This hybrid keeps the LLM for pattern recognition and delegates execution to `querySelectorAll`.
+**Key insight**: The LLM identifies *what* matters visually (story titles vs. metadata links) and synthesizes a CSS selector. The browser executes it deterministically at scroll time. Both sources are unioned — neither the LLM's visual pass nor the CSS selector alone is reliable, but together they handle brittle selectors, lazy visual passes, SPA edge cases, and infinite scroll. This hybrid keeps the LLM for pattern recognition and delegates execution to `querySelectorAll`.
 
 **Summary line format** (breadcrumb injection):
 ```
 ID: mache-16 | Parent: mache-10 | Tag: a | Text: "Story Title" | Path: article.w-full > h3.title > a
 ```
 
-The `Path` field gives the Cartographer 2-3 levels of DOM ancestry with CSS classes, enabling it to output selectors like `article.w-full > shreddit-post.block > a.absolute[data-mache-id]`.
+The `Path` field gives the Cartographer 2-3 levels of DOM ancestry with CSS classes, enabling it to output selectors like `article.w-full > shreddit-post > a[slot=title]`. Selectors must match exactly one element per repeating item (the title link, not metadata) — child combinators (`>`) are preferred over broad descendant selectors.
 
 ## Audio Formats
 
@@ -246,7 +248,7 @@ The `Path` field gives the Cartographer 2-3 levels of DOM ancestry with CSS clas
 
 Seven files, no build step, no dependencies.
 
-- **`content.js`**: Injected into every page. Tags interactive elements with `data-mache-id`, generates flat text summary with DOM breadcrumb paths (`| Path: div.post > h3.title > a`), executes browser actions on command, evaluates CSS selectors after scroll to resolve fresh primary items.
+- **`content.js`**: Injected into every page. Builds an in-memory element registry (zero DOM mutation — SPA-safe), draws/removes Set-of-Mark overlay for screenshot capture, generates flat text summary with DOM breadcrumb paths (`| Path: div.post > h3.title > a`), executes browser actions on command, evaluates CSS selectors after scroll to resolve fresh primary items.
 - **`background.js`**: Service worker. WebSocket to agentd, screenshot capture, CDP accessibility tree capture + AX-to-mache-id mapping, offscreen doc lifecycle, per-tab schema tracking.
 - **`popup.html/js`**: Extension popup. Snapshot button, mic toggle, session kill button.
 - **`offscreen.html/js`**: Persistent voice audio bridge. Mic capture (48→16kHz downsample), PCM streaming, audio playback (24kHz).
@@ -257,7 +259,7 @@ Seven files, no build step, no dependencies.
 During snapshot capture, `background.js` attaches the Chrome DevTools Protocol debugger to the active tab and:
 
 1. Calls `Accessibility.getFullAXTree` for the browser's computed AX tree
-2. Calls `DOM.querySelectorAll('[data-mache-id]')` + `DOM.describeNode` (batched via `Promise.all`) to map mache-ids to backend DOM node IDs
+2. Calls `DOM.querySelectorAll('[data-mache-id]')` + `DOM.describeNode` (batched via `Promise.all`) to map registry IDs to backend DOM node IDs
 3. Joins AX nodes with mache-ids via `backendDOMNodeId`
 4. Enriches each summary line with `AXRole` and `AXName` (e.g., `| AXRole: navigation | AXName: "Primary nav"`)
 5. Sends a compact `ax_tree` field alongside the enriched summary in `DOM_SNAPSHOT`
@@ -270,7 +272,7 @@ This gives the Cartographer the browser's semantic truth — implicit roles (`<b
 - `SchemaGenerator`, `IntentHandler`, and `ContentGenerator` interfaces decouple Cartographer/Navigator/LLM for testability
 - Inbound: `DOM_SNAPSHOT` (screenshot + summary + ax_tree + tab_id), `DOM_UPDATE` (summary + resolved_items), `NAVIGATE` (intent + tab_id)
 - Outbound: `SCHEMA_READY`, `EXECUTE_ACTION`, `SCROLL` (direction + selectors), `STATUS` — all include `tab_id`
-- Voice handler: `/voice?tab=N` — Gemini Live proxy with server-side audio suppression during tool loops
+- Voice handler: `/voice?tab=N` — Gemini Live proxy with server-side audio suppression during tool loops (prevents the agent from narrating its internal tool-use thought process, resulting in a clean, snappy voice UX)
 - `POST /navigate` for curl/testing
 
 ### Cartographer (`internal/cartographer/`)
@@ -288,7 +290,8 @@ Stage 2. User intent → browser action via filesystem traversal.
 
 - **`ContentGenerator` interface** (`model.go`): Abstracts the LLM call so Navigator can use Gemini, Ollama, or a mock
   - `GeminiGenerator`: Wraps `genai.Client.Models.GenerateContent()` (default)
-  - `OllamaGenerator`: Talks OpenAI wire format (`/v1/chat/completions`); translates genai types ↔ OpenAI messages/tools/tool_calls. Used when `NAVIGATOR_ENDPOINT` env var is set
+  - `OllamaGenerator`: Talks OpenAI wire format (`/v1/chat/completions`); translates genai types ↔ OpenAI messages/tools/tool_calls
+  - `GemmaGenerator`: Embeds tool definitions in system prompt, parses function calls from model text output as JSON. Accepts both `"parameters"` (Gemma) and `"arguments"` (Qwen) wire formats via regex. Used when `NAVIGATOR_FORMAT=gemma`
 - Four tools: `ls`, `cat`, `act`, `scroll`
 - Max 8 tool-use iterations (typical: 3-4; scroll workflows use more)
 - Temperature 0.1
@@ -297,7 +300,8 @@ Stage 2. User intent → browser action via filesystem traversal.
 **Env vars for local model override:**
 ```
 NAVIGATOR_ENDPOINT=http://localhost:11434/v1   # empty = use Gemini cloud
-NAVIGATOR_MODEL=llama3.2                       # empty = use GEMINI_MODEL
+NAVIGATOR_MODEL=qwen2.5-coder:7b              # empty = use GEMINI_MODEL
+NAVIGATOR_FORMAT=gemma                         # "gemma" = text-based JSON parsing; empty = OpenAI tool_calls
 ```
 
 ### Mache Engine (`internal/mache/`)
@@ -305,7 +309,7 @@ NAVIGATOR_MODEL=llama3.2                       # empty = use GEMINI_MODEL
 In-memory virtual filesystem from Cartographer output.
 
 - `ApplySchema()` → directory tree with `Mount.ItemSelector` for dynamic CSS selectors
-- `LoadChildren(summary, resolvedItems)` → parent-chain zone membership, max 200 children per zone. When `resolvedItems` (from browser CSS selector evaluation) is present, overrides static `PrimaryItems`
+- `LoadChildren(summary, resolvedItems)` → parent-chain zone membership, max 200 children per zone, ordinal `_c/` entries (`1/`, `2/`, ...). Unions static `PrimaryItems` with browser-resolved CSS selector results (deduplicated, stale IDs filtered against current DOM summary)
 - `ZoneSelectors()` → returns `map[macheID]cssSelector` for scroll-time evaluation
 - `ListDir()` / `ReadFile()` / `ResolveMacheID()` — Navigator's tool implementations
 - `parseSummary()` handles optional `Path`, `AXRole`, `AXName` trailing fields (backward-compatible with old format)

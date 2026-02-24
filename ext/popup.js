@@ -1,4 +1,5 @@
 const snapshotBtn = document.getElementById('snapshot-btn');
+const exportBtn = document.getElementById('export-btn');
 const intentInput = document.getElementById('intent-input');
 const intentBtn = document.getElementById('intent-btn');
 const micBtn = document.getElementById('mic-btn');
@@ -78,6 +79,22 @@ snapshotBtn.addEventListener('click', () => {
     }
     snapshotBtn.textContent = 'Snapshot';
     snapshotBtn.disabled = false;
+  });
+});
+
+exportBtn.addEventListener('click', () => {
+  exportBtn.textContent = 'Exporting...';
+  exportBtn.disabled = true;
+  chrome.runtime.sendMessage({ type: 'EXPORT_OVERLAY' }, (resp) => {
+    if (chrome.runtime.lastError || !resp?.ok) {
+      statusEl.textContent = resp?.error || 'Export failed';
+      statusEl.className = 'error';
+    } else {
+      statusEl.textContent = 'Overlay PNG saved';
+      statusEl.className = 'connected';
+    }
+    exportBtn.textContent = 'Export';
+    exportBtn.disabled = false;
   });
 });
 

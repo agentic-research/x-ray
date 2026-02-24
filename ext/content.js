@@ -206,7 +206,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case 'DRAW_OVERLAY':
       drawOverlay();
-      sendResponse({ success: true });
+      // Wait for browser paint so overlay is visible in screenshot capture.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          sendResponse({ success: true });
+        });
+      });
       return true;
 
     case 'REMOVE_OVERLAY':
