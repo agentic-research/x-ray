@@ -97,6 +97,8 @@ func ToolDefinitions() []*genai.Tool {
 	}}
 }
 
+const maxToolIterations = 8
+
 // HandleIntent processes a user intent by navigating the semantic FS.
 // Returns an ActionResult if the agent acts, or a text response otherwise.
 func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult, string, error) {
@@ -127,8 +129,8 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 		}}}},
 	}
 
-	for i := range 8 {
-		log.Printf("Navigator: tool-use iteration %d/8", i+1)
+	for i := range maxToolIterations {
+		log.Printf("Navigator: tool-use iteration %d/%d", i+1, maxToolIterations)
 
 		res, err := a.generator.GenerateContent(ctx, a.model, history, config)
 		if err != nil {
@@ -187,7 +189,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 		return nil, "", fmt.Errorf("unexpected response part type at iteration %d", i)
 	}
 
-	return nil, "", fmt.Errorf("tool-use loop exceeded 8 iterations without resolution")
+	return nil, "", fmt.Errorf("tool-use loop exceeded %d iterations without resolution", maxToolIterations)
 }
 
 // ExecuteTool dispatches a function call to the Mache engine and returns the

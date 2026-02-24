@@ -17,6 +17,11 @@ import (
 	"google.golang.org/genai"
 )
 
+const (
+	schemaWaitTimeout = 30 * time.Second
+	scrollWaitTimeout = 10 * time.Second
+)
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
@@ -260,7 +265,7 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 		select {
 		case <-sess.SchemaReady:
 			log.Printf("Navigator: schema ready, proceeding (tab %d)", msg.TabID)
-		case <-time.After(30 * time.Second):
+		case <-time.After(schemaWaitTimeout):
 			log.Printf("Navigator: timed out waiting for schema (tab %d)", msg.TabID)
 			h.sendMessage(conn, OutboundMessage{
 				Type: MsgStatus, TabID: msg.TabID, Message: "Timed out waiting for schema", Stage: "error",
@@ -342,7 +347,7 @@ func (h *Handler) scrollPage(ctx context.Context, conn *websocket.Conn, sess *Ta
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-time.After(10 * time.Second):
+	case <-time.After(scrollWaitTimeout):
 		return fmt.Errorf("scroll timed out waiting for DOM update")
 	}
 }
@@ -421,7 +426,7 @@ func (h *Handler) HandleNavigateHTTP(w http.ResponseWriter, r *http.Request) {
 	if !sess.Engine.HasSchema() {
 		select {
 		case <-sess.SchemaReady:
-		case <-time.After(30 * time.Second):
+		case <-time.After(schemaWaitTimeout):
 			http.Error(w, "timed out waiting for schema", http.StatusServiceUnavailable)
 			return
 		}

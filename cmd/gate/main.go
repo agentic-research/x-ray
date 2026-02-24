@@ -53,7 +53,11 @@ func main() {
 	}
 
 	// 3. Initialize Agent
-	agent := cartographer.NewAgent(client, "gemini-2.5-flash")
+	model := os.Getenv("GEMINI_MODEL")
+	if model == "" {
+		model = "gemini-2.5-flash"
+	}
+	agent := cartographer.NewAgent(client, model)
 
 	// 4. Run the Cartographer
 	startTime := time.Now()

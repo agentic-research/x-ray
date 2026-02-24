@@ -1,8 +1,9 @@
 // offscreen.js — Voice audio bridge (runs in offscreen document)
 //
-// Connects to ws://localhost:8080/voice?tab=<tabId>, acquires mic,
+// Connects to ws://<host>/voice?tab=<tabId>, acquires mic,
 // streams PCM to Gemini, plays back audio responses.
 //
+// Host is read from chrome.storage.local (same as background.js).
 // Tab ID is passed via URL fragment: offscreen.html#tab=12345
 //
 // Mic starts OFF. Background sends MIC_ON/MIC_OFF to toggle streaming.
@@ -10,7 +11,20 @@
 
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
-const WS_HOST = 'localhost:8080';
+const DEFAULT_WS_HOST = 'localhost:8080';
+
+let wsHost = DEFAULT_WS_HOST;
+
+// Read host from storage (background.js stores full URL like ws://host:port/ws).
+chrome.storage.local.get({ wsUrl: `ws://${DEFAULT_WS_HOST}/ws` }, (items) => {
+  try {
+    const url = new URL(items.wsUrl);
+    wsHost = url.host;
+  } catch {
+    wsHost = DEFAULT_WS_HOST;
+  }
+  console.log('Offscreen: using host', wsHost);
+});
 
 let ws = null;
 let audioCtx = null;
@@ -79,7 +93,7 @@ function releaseMic() {
 
 // --- Voice WebSocket session ---
 function connectVoice(tabId) {
-  const url = `ws://${WS_HOST}/voice?tab=${tabId}`;
+  const url = `ws://${wsHost}/voice?tab=${tabId}`;
   console.log('Offscreen: connecting to', url);
   reportStatus('connecting', 'Connecting to voice server...');
 
