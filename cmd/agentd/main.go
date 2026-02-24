@@ -57,8 +57,14 @@ func main() {
 		if navModel == "" {
 			navModel = "llama3.2"
 		}
-		navGen = &navigator.OllamaGenerator{Endpoint: ep, Model: navModel}
-		log.Printf("Navigator: using local model %s at %s", navModel, ep)
+		format := os.Getenv("NAVIGATOR_FORMAT") // "gemma" or "openai" (default)
+		if format == "gemma" {
+			navGen = &navigator.GemmaGenerator{Endpoint: ep, Model: navModel}
+			log.Printf("Navigator: using Gemma model %s at %s (native function calling)", navModel, ep)
+		} else {
+			navGen = &navigator.OllamaGenerator{Endpoint: ep, Model: navModel}
+			log.Printf("Navigator: using local model %s at %s (OpenAI format)", navModel, ep)
+		}
 	}
 
 	// Per-tab Engine + Navigator are created on demand inside Handler.

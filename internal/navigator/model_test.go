@@ -19,6 +19,7 @@ import (
 var (
 	_ ContentGenerator = (*GeminiGenerator)(nil)
 	_ ContentGenerator = (*OllamaGenerator)(nil)
+	_ ContentGenerator = (*GemmaGenerator)(nil)
 )
 
 // mockGenerator records calls and returns canned responses.
@@ -282,6 +283,210 @@ func TestOllamaGeneratorToolCallResponse(t *testing.T) {
 	path, _ := part.FunctionCall.Args["path"].(string)
 	if path != "/" {
 		t.Errorf("expected path '/', got %q", path)
+	}
+}
+
+// --- GemmaGenerator tests ---
+
+func TestGemmaGeneratorParsesFunctionCall(t *testing.T) {
+	// Fake server returns a text response containing a Gemma-style function call.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
+		content := `{"name": "ls", "parameters": {"path": "/"}}`
+		resp := map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{
+					"role":    "assistant",
+					"content": content,
+				},
+			}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	gen := &GemmaGenerator{
+		Endpoint:   server.URL,
+		Model:      "gemma3",
+		HTTPClient: server.Client(),
+	}
+
+	resp, err := gen.GenerateContent(context.Background(), "", []*genai.Content{
+		{Role: "user", Parts: []*genai.Part{{Text: "list root"}}},
+	}, &genai.GenerateContentConfig{Tools: ToolDefinitions()})
+	if err != nil {
+		t.Fatalf("GenerateContent: %v", err)
+	}
+
+	part := resp.Candidates[0].Content.Parts[0]
+	if part.FunctionCall == nil {
+		t.Fatal("expected FunctionCall, got text")
+	}
+	if part.FunctionCall.Name != "ls" {
+		t.Errorf("expected name 'ls', got %q", part.FunctionCall.Name)
+	}
+	path, _ := part.FunctionCall.Args["path"].(string)
+	if path != "/" {
+		t.Errorf("expected path '/', got %q", path)
+	}
+}
+
+func TestGemmaGeneratorParsesTextResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
+		resp := map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{
+					"role":    "assistant",
+					"content": "Done, I clicked the first story.",
+				},
+			}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	gen := &GemmaGenerator{
+		Endpoint:   server.URL,
+		Model:      "gemma3",
+		HTTPClient: server.Client(),
+	}
+
+	resp, err := gen.GenerateContent(context.Background(), "", []*genai.Content{
+		{Role: "user", Parts: []*genai.Part{{Text: "what did you do?"}}},
+	}, nil)
+	if err != nil {
+		t.Fatalf("GenerateContent: %v", err)
+	}
+
+	part := resp.Candidates[0].Content.Parts[0]
+	if part.FunctionCall != nil {
+		t.Error("expected text response, got FunctionCall")
+	}
+	if !strings.Contains(part.Text, "clicked the first story") {
+		t.Errorf("unexpected text: %q", part.Text)
+	}
+}
+
+func TestGemmaGeneratorEmbedsToolsInPrompt(t *testing.T) {
+	var gotRequest map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
+		_ = json.NewDecoder(r.Body).Decode(&gotRequest)
+		resp := map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{"role": "assistant", "content": "ok"},
+			}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	gen := &GemmaGenerator{
+		Endpoint:   server.URL,
+		Model:      "gemma3",
+		HTTPClient: server.Client(),
+	}
+
+	config := &genai.GenerateContentConfig{
+		SystemInstruction: &genai.Content{
+			Parts: []*genai.Part{{Text: "You are a navigator."}},
+		},
+		Tools: ToolDefinitions(),
+	}
+
+	_, err := gen.GenerateContent(context.Background(), "", []*genai.Content{
+		{Role: "user", Parts: []*genai.Part{{Text: "hi"}}},
+	}, config)
+	if err != nil {
+		t.Fatalf("GenerateContent: %v", err)
+	}
+
+	// Verify: no "tools" key in request (Gemma embeds in system prompt).
+	if _, hasTools := gotRequest["tools"]; hasTools {
+		t.Error("GemmaGenerator should NOT send 'tools' parameter — definitions go in system prompt")
+	}
+
+	// Verify: system message contains tool definitions.
+	messages, _ := gotRequest["messages"].([]any)
+	if len(messages) == 0 {
+		t.Fatal("no messages in request")
+	}
+	sysMsg, _ := messages[0].(map[string]any)
+	sysContent, _ := sysMsg["content"].(string)
+	if !strings.Contains(sysContent, `"ls"`) {
+		t.Errorf("system prompt should contain ls tool definition, got: %s", sysContent)
+	}
+	if !strings.Contains(sysContent, `"act"`) {
+		t.Errorf("system prompt should contain act tool definition, got: %s", sysContent)
+	}
+}
+
+func TestGemmaGeneratorMultiTurnHistory(t *testing.T) {
+	var gotRequest map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
+		_ = json.NewDecoder(r.Body).Decode(&gotRequest)
+		resp := map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{
+					"role":    "assistant",
+					"content": `{"name": "act", "parameters": {"path": "/main/stories/_c/mache-11", "action": "click"}}`,
+				},
+			}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	gen := &GemmaGenerator{
+		Endpoint:   server.URL,
+		Model:      "gemma3",
+		HTTPClient: server.Client(),
+	}
+
+	// Simulate mid-loop history: user → model called ls → result → now what?
+	history := []*genai.Content{
+		{Role: "user", Parts: []*genai.Part{{Text: "click the first story"}}},
+		{Role: "model", Parts: []*genai.Part{{FunctionCall: &genai.FunctionCall{
+			Name: "ls", Args: map[string]any{"path": "/"},
+		}}}},
+		{Role: "user", Parts: []*genai.Part{{FunctionResponse: &genai.FunctionResponse{
+			Name:     "ls",
+			Response: map[string]any{"output": "header/\nmain/\nfooter/"},
+		}}}},
+	}
+
+	resp, err := gen.GenerateContent(context.Background(), "", history, &genai.GenerateContentConfig{
+		Tools: ToolDefinitions(),
+	})
+	if err != nil {
+		t.Fatalf("GenerateContent: %v", err)
+	}
+
+	// Should parse the act() call from response.
+	part := resp.Candidates[0].Content.Parts[0]
+	if part.FunctionCall == nil {
+		t.Fatal("expected FunctionCall")
+	}
+	if part.FunctionCall.Name != "act" {
+		t.Errorf("expected 'act', got %q", part.FunctionCall.Name)
+	}
+
+	// Verify history was converted: function call → assistant JSON, function response → user result.
+	messages, _ := gotRequest["messages"].([]any)
+	var roles []string
+	for _, m := range messages {
+		msg, _ := m.(map[string]any)
+		roles = append(roles, msg["role"].(string))
+	}
+	// system, user, assistant (ls call as JSON), user (result), should be 4 messages
+	if len(messages) < 4 {
+		t.Errorf("expected at least 4 messages, got %d: %v", len(messages), roles)
 	}
 }
 

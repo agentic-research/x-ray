@@ -89,6 +89,11 @@ function executeAction(macheId, actionType) {
         el = clickable;
       }
     }
+    // Force links to open in a new tab so the original page (and X-Ray session) stays intact.
+    if (el.tagName === 'A' && el.href && !el.href.startsWith('javascript:')) {
+      el.setAttribute('target', '_blank');
+      el.setAttribute('rel', 'noopener');
+    }
     console.log(`X-Ray: Executing click on`, el);
     el.click();
   } else if (actionType === 'focus') {

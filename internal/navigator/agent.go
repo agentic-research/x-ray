@@ -10,8 +10,11 @@ import (
 	"google.golang.org/genai"
 )
 
-// Compile-time check: GeminiGenerator implements ContentGenerator.
-var _ ContentGenerator = (*GeminiGenerator)(nil)
+// Compile-time checks.
+var (
+	_ ContentGenerator = (*GeminiGenerator)(nil)
+	_ ContentGenerator = (*GemmaGenerator)(nil)
+)
 
 // ActionResult is returned when the Navigator decides to act on an element.
 type ActionResult struct {
