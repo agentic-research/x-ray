@@ -191,16 +191,17 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 
 	mimeType := "image/jpeg"
 
+	cartStart := time.Now()
 	schemaJSON, err := h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, msg.Summary)
 	if err != nil {
-		log.Printf("Cartographer failed: %v", err)
+		log.Printf("Cartographer failed after %s: %v", time.Since(cartStart), err)
 		h.sendMessage(conn, OutboundMessage{
 			Type: MsgStatus, TabID: msg.TabID, Message: "Schema generation failed: " + err.Error(), Stage: "error",
 		})
 		return
 	}
 
-	log.Printf("Cartographer generated schema (tab %d): %s", msg.TabID, schemaJSON)
+	log.Printf("Cartographer generated schema (tab %d) in %s: %s", msg.TabID, time.Since(cartStart), schemaJSON)
 
 	// Validate: every mache_id must exist in the DOM summary.
 	if bad := mache.ValidateSchema(schemaJSON, msg.Summary); len(bad) > 0 {
@@ -284,14 +285,17 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 	})
 	defer sess.Navigator.SetScrollFunc(nil)
 
+	navStart := time.Now()
 	action, textResponse, err := sess.Navigator.HandleIntent(ctx, msg.Intent)
 	if err != nil {
-		log.Printf("Navigator failed: %v", err)
+		log.Printf("Navigator failed after %s: %v", time.Since(navStart), err)
 		h.sendMessage(conn, OutboundMessage{
 			Type: MsgStatus, TabID: msg.TabID, Message: "Navigation failed: " + err.Error(), Stage: "error",
 		})
 		return
 	}
+
+	log.Printf("Navigator handled intent in %s: %q", time.Since(navStart), msg.Intent)
 
 	if action != nil {
 		result, _ := json.MarshalIndent(action, "", "  ")

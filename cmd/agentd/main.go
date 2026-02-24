@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/jamesgardner/x-ray/internal/api"
 	"github.com/jamesgardner/x-ray/internal/cartographer"
@@ -55,7 +56,7 @@ func main() {
 	if ep := os.Getenv("NAVIGATOR_ENDPOINT"); ep != "" {
 		navModel = os.Getenv("NAVIGATOR_MODEL")
 		if navModel == "" {
-			navModel = "llama3.2"
+			navModel = "functiongemma:270m"
 		}
 		format := os.Getenv("NAVIGATOR_FORMAT") // "gemma" or "openai" (default)
 		if format == "gemma" {
@@ -65,6 +66,22 @@ func main() {
 			navGen = &navigator.OllamaGenerator{Endpoint: ep, Model: navModel}
 			log.Printf("Navigator: using local model %s at %s (OpenAI format)", navModel, ep)
 		}
+
+		// Pre-warm: send a throwaway request so Ollama loads the model into GPU
+		// memory before the first real intent arrives.
+		go func() {
+			log.Printf("Navigator: pre-warming model %s...", navModel)
+			warmCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			defer cancel()
+			_, err := navGen.GenerateContent(warmCtx, navModel, []*genai.Content{
+				{Role: "user", Parts: []*genai.Part{{Text: "hi"}}},
+			}, nil)
+			if err != nil {
+				log.Printf("Navigator: pre-warm failed (non-fatal): %v", err)
+			} else {
+				log.Printf("Navigator: model %s pre-warmed and ready", navModel)
+			}
+		}()
 	}
 
 	// Per-tab Engine + Navigator are created on demand inside Handler.
