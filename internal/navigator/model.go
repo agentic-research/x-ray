@@ -257,7 +257,8 @@ type GemmaGenerator struct {
 }
 
 // gemmaFnCallRe matches JSON function call objects in model output.
-var gemmaFnCallRe = regexp.MustCompile(`\{\s*"name"\s*:\s*"(\w+)"\s*,\s*"parameters"\s*:\s*(\{[^}]*\})\s*\}`)
+// Accepts both "parameters" (Gemma) and "arguments" (Qwen) keys.
+var gemmaFnCallRe = regexp.MustCompile(`\{\s*"name"\s*:\s*"(\w+)"\s*,\s*"(?:parameters|arguments)"\s*:\s*(\{[^}]*\})\s*\}`)
 
 func (g *GemmaGenerator) GenerateContent(ctx context.Context, model string, history []*genai.Content, config *genai.GenerateContentConfig) (*genai.GenerateContentResponse, error) {
 	if model == "" {
