@@ -111,15 +111,29 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			case websocket.TextMessage:
-				var cmd struct {
-					Type string `json:"type"`
+				var cmd voiceMessage
+				if err := json.Unmarshal(data, &cmd); err != nil {
+					continue
 				}
-				if json.Unmarshal(data, &cmd) == nil && cmd.Type == "mic_stop" {
+				switch cmd.Type {
+				case "mic_stop":
 					log.Println("Voice: mic released, sending AudioStreamEnd")
 					if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
 						AudioStreamEnd: true,
 					}); err != nil {
 						log.Printf("Voice: AudioStreamEnd error: %v", err)
+					}
+				case "text_input":
+					if cmd.Text == "" {
+						continue
+					}
+					log.Printf("Voice [tab %d]: text input: %s", tabID, cmd.Text)
+					if err := session.SendClientContent(genai.LiveClientContentInput{
+						Turns: []*genai.Content{
+							{Role: "user", Parts: []*genai.Part{{Text: cmd.Text}}},
+						},
+					}); err != nil {
+						log.Printf("Voice: SendClientContent error: %v", err)
 					}
 				}
 			}

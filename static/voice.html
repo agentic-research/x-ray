@@ -46,6 +46,22 @@
   .model-line { color: #abebc6; }
   .action-line { color: #f5b041; font-style: italic; }
   .system-line { color: #666; font-size: 0.8rem; }
+  .text-row {
+    display: flex; gap: 0.5rem; margin-top: 1rem; width: 100%; max-width: 600px;
+  }
+  .text-row input {
+    flex: 1; padding: 0.5rem 0.75rem;
+    border: 1px solid #333; border-radius: 6px;
+    background: #1a1a1a; color: #ccc; font-size: 0.9rem; outline: none;
+  }
+  .text-row input:focus { border-color: #555; }
+  .text-row input::placeholder { color: #555; }
+  .text-row button {
+    padding: 0.5rem 1rem; border-radius: 6px;
+    background: #222; color: #ccc; border: 1px solid #333; font-size: 0.9rem;
+  }
+  .text-row button:hover { background: #2a2a2a; border-color: #555; color: #fff; }
+  .text-row button:disabled { opacity: 0.3; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -56,6 +72,10 @@
   <button id="disconnect-btn" title="Disconnect">&#x2716;</button>
 </div>
 <div id="status">Connecting...</div>
+<div class="text-row">
+  <input id="text-cmd" type="text" placeholder="Type a command..." disabled>
+  <button id="send-text-btn" disabled>Send</button>
+</div>
 <div id="transcript"></div>
 
 <script>
@@ -63,6 +83,8 @@ const disconnectBtn = document.getElementById('disconnect-btn');
 const micBtn = document.getElementById('mic-btn');
 const statusEl = document.getElementById('status');
 const transcriptEl = document.getElementById('transcript');
+const textCmd = document.getElementById('text-cmd');
+const sendTextBtn = document.getElementById('send-text-btn');
 
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
@@ -178,7 +200,9 @@ function connect() {
         sessionReady = true;
         micBtn.disabled = false;
         micBtn.classList.add('ready');
-        statusEl.textContent = 'Session ready - hold mic to talk (or spacebar)';
+        textCmd.disabled = false;
+        sendTextBtn.disabled = false;
+        statusEl.textContent = 'Session ready - hold mic to talk, type, or spacebar';
         break;
       case 'input_transcription':
         addLine('user-line', 'You: ' + msg.text);
@@ -214,6 +238,8 @@ function connect() {
     disconnectBtn.style.display = 'none';
     micBtn.disabled = true;
     micBtn.classList.remove('ready', 'recording');
+    textCmd.disabled = true;
+    sendTextBtn.disabled = true;
   };
 
   ws.onerror = (e) => {
@@ -261,12 +287,26 @@ micBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecordin
 micBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
 micBtn.addEventListener('touchcancel', stopRecording);
 
-// Spacebar as PTT shortcut
+// Spacebar as PTT shortcut (not when typing in text input)
 document.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' && !e.repeat && sessionReady) { e.preventDefault(); startRecording(); }
+  if (e.code === 'Space' && !e.repeat && sessionReady && document.activeElement !== textCmd) { e.preventDefault(); startRecording(); }
 });
 document.addEventListener('keyup', (e) => {
-  if (e.code === 'Space') { e.preventDefault(); stopRecording(); }
+  if (e.code === 'Space' && document.activeElement !== textCmd) { e.preventDefault(); stopRecording(); }
+});
+
+// --- Text input: type a command into the same Gemini Live session ---
+function sendText() {
+  const text = textCmd.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ type: 'text_input', text }));
+  addLine('user-line', 'You (text): ' + text);
+  textCmd.value = '';
+}
+
+sendTextBtn.addEventListener('click', sendText);
+textCmd.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendText();
 });
 
 // --- Auto-connect on page load ---
