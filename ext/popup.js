@@ -108,24 +108,8 @@ intentInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendIntent();
 });
 
-// Mic button: pre-grant mic permission in popup context (visible, user gesture),
-// then send TOGGLE_MIC to background which creates the offscreen doc.
-// All chrome-extension:// contexts share the same origin, so the permission
-// grant persists to offscreen.js's getUserMedia call.
-micBtn.addEventListener('click', async () => {
+micBtn.addEventListener('click', () => {
   micBtn.disabled = true;
-
-  // Pre-grant mic permission (one-time — Chrome remembers for the extension origin).
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach(t => t.stop());
-  } catch (err) {
-    statusEl.textContent = 'Mic permission denied: ' + err.message;
-    statusEl.className = 'error';
-    micBtn.disabled = false;
-    return;
-  }
-
   chrome.runtime.sendMessage({ type: 'TOGGLE_MIC' }, (resp) => {
     if (chrome.runtime.lastError || !resp?.ok) {
       statusEl.textContent = resp?.error || 'Mic toggle failed';

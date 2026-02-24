@@ -343,7 +343,29 @@ async function hasOffscreen() {
 }
 
 // Start a voice session for the given tab. Mic starts OFF — user toggles it.
+// If mic permission hasn't been granted yet, opens a small popup window to request it.
 async function startSession(tabId) {
+  // Check mic permission — offscreen docs can't show the Chrome prompt.
+  try {
+    const perm = await navigator.permissions.query({ name: 'microphone' });
+    if (perm.state !== 'granted') {
+      console.log('X-Ray: Mic permission not granted, opening grant window');
+      chrome.windows.create({
+        url: 'mic-setup.html',
+        type: 'popup',
+        width: 420, height: 320,
+        focused: true
+      });
+      // Store the tab so we can retry after permission is granted.
+      pendingAutoMic = true;
+      sessionTabId = tabId;
+      updateBadge();
+      return;
+    }
+  } catch (_) {
+    // permissions.query may not be available — proceed and let offscreen try.
+  }
+
   // Tear down any existing session first.
   if (await hasOffscreen()) {
     try { chrome.runtime.sendMessage({ type: 'VOICE_STOP' }); } catch (_) {}
@@ -502,6 +524,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case 'GET_VOICE_STATE':
       sendResponse(getState());
       return false;
+
+    case 'MIC_GRANTED':
+      // mic-setup.html reports permission was granted — retry session creation.
+      console.log('X-Ray: Mic permission granted, retrying session');
+      if (sessionTabId !== null) {
+        const tabId = sessionTabId;
+        sessionTabId = null; // Reset so startSession doesn't think we already have one
+        startSession(tabId);
+      }
+      break;
 
     case 'VOICE_STATUS':
       console.log('X-Ray: Voice status:', msg.status, msg.text);
