@@ -21,6 +21,11 @@ const (
 	DoerFailed               // error occurred
 )
 
+const (
+	maxGoalSteps        = 5
+	actionSettleTimeout = 2 * time.Second
+)
+
 // DoerGoal is sent from the Talker to the Doer.
 type DoerGoal struct {
 	ID   string // unique goal ID for correlation
@@ -157,47 +162,13 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 
 	log.Printf("Doer [tab %d]: executing goal %q", d.tabID, goal.Text)
 
-	// Wire scroll for this goal.
-	d.sess.Navigator.SetScrollFunc(func(scrollCtx context.Context, direction string) error {
-		d.updateStep(fmt.Sprintf("scrolling %s", direction))
-		return d.handler.scrollVoice(scrollCtx, d.sess, d.tabID, direction)
-	})
-	defer d.sess.Navigator.SetScrollFunc(nil)
-
-	// Wire progress reporting.
-	d.sess.Navigator.SetProgressFunc(func(toolName string, args map[string]any) {
-		p, _ := args["path"].(string)
-		if p != "" {
-			d.updateStep(fmt.Sprintf("%s %s", toolName, p))
-		} else {
-			d.updateStep(toolName)
-		}
-	})
-	defer d.sess.Navigator.SetProgressFunc(nil)
-
-	// Wire list_tabs: round-trip through extension WebSocket.
-	d.sess.Navigator.SetListTabsFunc(func(ltCtx context.Context) ([]navigator.TabInfo, error) {
-		d.updateStep("listing open tabs")
-		// Drain any stale response, then send fresh request.
-		select {
-		case <-d.sess.TabsListedCh:
-		default:
-		}
-		d.handler.sendListTabs()
-		select {
-		case tabs := <-d.sess.TabsListedCh:
-			result := make([]navigator.TabInfo, len(tabs))
-			for i, t := range tabs {
-				result[i] = navigator.TabInfo{ID: t.ID, Title: t.Title, URL: t.URL}
-			}
-			return result, nil
-		case <-time.After(5 * time.Second):
-			return nil, fmt.Errorf("list_tabs timed out")
-		case <-ltCtx.Done():
-			return nil, ltCtx.Err()
-		}
-	})
-	defer d.sess.Navigator.SetListTabsFunc(nil)
+	// Wire navigator callbacks (scroll, progress, list_tabs).
+	d.wireNavigatorCallbacks()
+	defer func() {
+		d.sess.Navigator.SetScrollFunc(nil)
+		d.sess.Navigator.SetProgressFunc(nil)
+		d.sess.Navigator.SetListTabsFunc(nil)
+	}()
 
 	// Wait briefly for schema, but proceed without one.
 	// HandleIntent works with empty state for goto intents (e.g., "go to reddit.com"
@@ -213,32 +184,93 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 		return
 	}
 
-	// Run the navigator's agentic tool loop.
-	d.updateStep("exploring page structure")
-	action, textResponse, err := d.sess.Navigator.HandleIntent(goalCtx, goal.Text)
-	if err != nil {
-		if goalCtx.Err() != nil {
-			d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
+	// Multi-step loop: dispatch action, wait for page settle, feed result back.
+	enrichedIntent := goal.Text
+	var lastSummary string
+
+	for step := 0; step < maxGoalSteps; step++ {
+		if step > 0 {
+			d.updateStep(fmt.Sprintf("step %d", step+1))
 		} else {
-			d.finishGoal(goal.ID, false, fmt.Sprintf("Failed: %v", err), err.Error())
+			d.updateStep("exploring page structure")
 		}
-		return
+
+		action, textResponse, err := d.sess.Navigator.HandleIntent(goalCtx, enrichedIntent)
+		if err != nil {
+			if goalCtx.Err() != nil {
+				d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
+			} else {
+				d.finishGoal(goal.ID, false, fmt.Sprintf("Failed: %v", err), err.Error())
+			}
+			return
+		}
+
+		// Text response — the navigator answered rather than acted. Done.
+		if textResponse != "" {
+			d.finishGoal(goal.ID, true, textResponse, "")
+			return
+		}
+
+		if action == nil {
+			d.finishGoal(goal.ID, false, "Could not determine what to do.", "no action or response")
+			return
+		}
+
+		lastSummary = d.dispatchAction(goalCtx, action)
+
+		// For interactive actions (click/type/enter/focus), detect if the page navigated.
+		if isInteractiveAction(action.Action) {
+			d.sess.ResetSchema()
+			select {
+			case <-d.sess.SchemaReady:
+				// Page changed (URL change triggered auto-snapshot) — continue loop.
+			case <-time.After(actionSettleTimeout):
+				// No same-tab navigation. Check if a new tab was activated.
+				d.handler.mu.Lock()
+				newTabID := d.handler.activeVoiceTab
+				d.handler.mu.Unlock()
+
+				if newTabID != 0 && newTabID != d.tabID {
+					// Click opened a new tab — rebind Doer to it.
+					log.Printf("Doer [tab %d]: tab changed to %d, rebinding", d.tabID, newTabID)
+					d.tabID = newTabID
+					d.sess = d.handler.getSession(newTabID)
+					d.wireNavigatorCallbacks()
+					select {
+					case <-d.sess.SchemaReady:
+						// New tab loaded — continue loop.
+					case <-time.After(schemaWaitTimeout):
+						// Timed out waiting for new tab.
+					case <-goalCtx.Done():
+						d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
+						return
+					}
+				} else {
+					// No tab change — rescan for in-page DOM mutations.
+					d.sess.ResetSchema()
+					d.handler.sendRescan(d.tabID, "")
+					select {
+					case <-d.sess.SchemaReady:
+						// Rescan complete — continue loop with fresh VFS.
+					case <-time.After(schemaWaitTimeout):
+						// Give up waiting for rescan.
+					case <-goalCtx.Done():
+						d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
+						return
+					}
+				}
+			case <-goalCtx.Done():
+				d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
+				return
+			}
+		}
+		// goto/rescan/switch_tab already waited for SchemaReady in dispatchAction.
+
+		enrichedIntent = buildContinuation(goal.Text, step, action, lastSummary)
 	}
 
-	// Handle action dispatch (goto, rescan, act).
-	if action != nil {
-		summary := d.dispatchAction(goalCtx, action)
-		d.finishGoal(goal.ID, true, summary, "")
-		return
-	}
-
-	// Text response (the navigator decided to answer rather than act).
-	if textResponse != "" {
-		d.finishGoal(goal.ID, true, textResponse, "")
-		return
-	}
-
-	d.finishGoal(goal.ID, false, "Could not determine what to do.", "no action or response")
+	// Exhausted steps — return whatever we have.
+	d.finishGoal(goal.ID, true, lastSummary, "")
 }
 
 func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResult) string {
@@ -343,6 +375,43 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 	}
 }
 
+// wireNavigatorCallbacks sets scroll, progress, and list_tabs callbacks on the
+// current session's Navigator. Called at goal start and after cross-tab rebind.
+func (d *Doer) wireNavigatorCallbacks() {
+	d.sess.Navigator.SetScrollFunc(func(scrollCtx context.Context, direction string) error {
+		d.updateStep(fmt.Sprintf("scrolling %s", direction))
+		return d.handler.scrollVoice(scrollCtx, d.sess, d.tabID, direction)
+	})
+	d.sess.Navigator.SetProgressFunc(func(toolName string, args map[string]any) {
+		p, _ := args["path"].(string)
+		if p != "" {
+			d.updateStep(fmt.Sprintf("%s %s", toolName, p))
+		} else {
+			d.updateStep(toolName)
+		}
+	})
+	d.sess.Navigator.SetListTabsFunc(func(ltCtx context.Context) ([]navigator.TabInfo, error) {
+		d.updateStep("listing open tabs")
+		select {
+		case <-d.sess.TabsListedCh:
+		default:
+		}
+		d.handler.sendListTabs()
+		select {
+		case tabs := <-d.sess.TabsListedCh:
+			result := make([]navigator.TabInfo, len(tabs))
+			for i, t := range tabs {
+				result[i] = navigator.TabInfo{ID: t.ID, Title: t.Title, URL: t.URL}
+			}
+			return result, nil
+		case <-time.After(5 * time.Second):
+			return nil, fmt.Errorf("list_tabs timed out")
+		case <-ltCtx.Done():
+			return nil, ltCtx.Err()
+		}
+	})
+}
+
 func (d *Doer) updateStep(step string) {
 	d.state.mu.Lock()
 	d.state.Step = step
@@ -371,4 +440,21 @@ func (d *Doer) finishGoal(goalID string, success bool, summary, errStr string) {
 	if d.resultNotifyFn != nil {
 		d.resultNotifyFn(summary)
 	}
+}
+
+// isInteractiveAction returns true for actions that don't already wait for
+// SchemaReady inside dispatchAction (i.e., everything except goto/rescan/switch_tab).
+func isInteractiveAction(action string) bool {
+	return action != "goto" && action != "rescan" && action != "switch_tab"
+}
+
+// buildContinuation creates an enriched intent for the next step in the loop.
+// It tells the Navigator what happened and asks it to continue toward the goal.
+func buildContinuation(goal string, step int, action *navigator.ActionResult, summary string) string {
+	return fmt.Sprintf("[CONTINUATION — Step %d completed]\n"+
+		"Original goal: %s\nLast action: %s on %s\nResult: %s\n\n"+
+		"The page has updated. Explore the new page structure to continue working on "+
+		"the original goal. If the goal is achievable by reading page content, provide "+
+		"a text answer. If more actions are needed, take the next step.",
+		step+1, goal, action.Action, action.Path, summary)
 }

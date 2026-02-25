@@ -464,4 +464,6 @@ Example workflow for "search for Golang tutorials" on YouTube:
   act("/header/search_bar", "enter")
 
 Be decisive. You already know the full tree from ls("/"). Two calls should be enough: cat children → act.
-If you need more items, add scroll → cat children → act (up to 8 iterations total).`
+If you need more items, add scroll → cat children → act (up to 8 iterations total).
+
+CONTINUATION: When your intent starts with [CONTINUATION], a previous action was executed and the page may have changed. The filesystem reflects the current state. First, VERIFY the previous action worked: use ls/cat to check the page actually changed as expected. If you clicked a button and it's still there, it may have failed — try a different approach. Then continue toward the original goal: if you can answer by reading page content, respond with text. If more actions are needed, take the next step.`

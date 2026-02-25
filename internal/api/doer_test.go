@@ -12,7 +12,16 @@ import (
 	"google.golang.org/genai"
 )
 
+// mockResponse holds one response for the sequencing mock.
+type mockResponse struct {
+	action   *navigator.ActionResult
+	textResp string
+	err      error
+}
+
 // mockIntentHandler is a configurable IntentHandler for Doer tests.
+// If responses is non-empty, successive HandleIntent calls pop from it.
+// Otherwise the single action/textResp/err fields are used (legacy behavior).
 type mockIntentHandler struct {
 	action      *navigator.ActionResult
 	textResp    string
@@ -22,12 +31,13 @@ type mockIntentHandler struct {
 	engine      *mache.Engine
 
 	mu         sync.Mutex
+	responses  []mockResponse
 	scrollFn   func(ctx context.Context, direction string) error
 	progressFn func(toolName string, args map[string]any)
 }
 
 func (m *mockIntentHandler) HandleIntent(ctx context.Context, intent string) (*navigator.ActionResult, string, error) {
-	m.handleCalls.Add(1)
+	idx := int(m.handleCalls.Add(1)) - 1
 	if m.delay > 0 {
 		select {
 		case <-time.After(m.delay):
@@ -35,6 +45,13 @@ func (m *mockIntentHandler) HandleIntent(ctx context.Context, intent string) (*n
 			return nil, "", ctx.Err()
 		}
 	}
+	m.mu.Lock()
+	if idx < len(m.responses) {
+		r := m.responses[idx]
+		m.mu.Unlock()
+		return r.action, r.textResp, r.err
+	}
+	m.mu.Unlock()
 	return m.action, m.textResp, m.err
 }
 
@@ -202,10 +219,11 @@ func TestDoerSubmitCancelsPrevious(t *testing.T) {
 }
 
 func TestDoerGotoDispatch(t *testing.T) {
+	// Step 1: goto → SchemaReady, Step 2: text answer → done.
 	mock := &mockIntentHandler{
-		action: &navigator.ActionResult{
-			Action: "goto",
-			Path:   "https://example.com",
+		responses: []mockResponse{
+			{action: &navigator.ActionResult{Action: "goto", Path: "https://example.com"}},
+			{textResp: "Page loaded."},
 		},
 	}
 	h, sess, doer := newDoerTestHarness(mock)
@@ -221,9 +239,6 @@ func TestDoerGotoDispatch(t *testing.T) {
 	// on SchemaReady. Simulate the extension responding by signaling after a delay.
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		// sendGoto on a nil conn opens Chrome (no-op in tests). The Doer
-		// is waiting on sess.SchemaReady. Signal it to simulate the extension
-		// completing the page load + schema pipeline.
 		sess.SignalSchemaReady()
 	}()
 
@@ -250,15 +265,17 @@ func TestDoerGotoDispatch(t *testing.T) {
 	if sess.Engine == nil {
 		t.Error("engine should have been replaced, not nil")
 	}
+	if mock.handleCalls.Load() != 2 {
+		t.Errorf("expected 2 HandleIntent calls (goto + text), got %d", mock.handleCalls.Load())
+	}
 
 	_ = h // used for sendGoto side-effect (conn is nil, opens Chrome)
 }
 
 func TestDoerGotoTimeout(t *testing.T) {
 	mock := &mockIntentHandler{
-		action: &navigator.ActionResult{
-			Action: "goto",
-			Path:   "https://slow-page.example.com",
+		responses: []mockResponse{
+			{action: &navigator.ActionResult{Action: "goto", Path: "https://slow-page.example.com"}},
 		},
 	}
 	_, sess, doer := newDoerTestHarness(mock)
@@ -294,9 +311,9 @@ func TestDoerGotoTimeout(t *testing.T) {
 func TestDoerSchemaWaitSoftProceed(t *testing.T) {
 	// Verify the Doer proceeds without schema after the 3s soft wait.
 	mock := &mockIntentHandler{
-		action: &navigator.ActionResult{
-			Action: "goto",
-			Path:   "https://example.com",
+		responses: []mockResponse{
+			{action: &navigator.ActionResult{Action: "goto", Path: "https://example.com"}},
+			{textResp: "Page loaded."},
 		},
 	}
 	_, sess, doer := newDoerTestHarness(mock)
@@ -330,11 +347,12 @@ func TestDoerSchemaWaitSoftProceed(t *testing.T) {
 }
 
 func TestDoerActionDispatch(t *testing.T) {
+	// Click dispatches the action, then the multi-step loop waits for settle.
+	// After settle timeout + rescan, it loops back — second call returns text to finish.
 	mock := &mockIntentHandler{
-		action: &navigator.ActionResult{
-			Action:  "click",
-			MacheID: "mache-42",
-			Path:    "/main/button",
+		responses: []mockResponse{
+			{action: &navigator.ActionResult{Action: "click", MacheID: "mache-42", Path: "/main/button"}},
+			{textResp: "Button clicked successfully."},
 		},
 	}
 	_, sess, doer := newDoerTestHarness(mock)
@@ -351,7 +369,15 @@ func TestDoerActionDispatch(t *testing.T) {
 
 	doer.Submit(DoerGoal{ID: "g-click", Text: "click the button"})
 
-	deadline := time.After(2 * time.Second)
+	// After the click, the Doer resets schema and waits for settle.
+	// Simulate: no auto-snapshot (timeout), then rescan completes.
+	go func() {
+		// Wait for the settle timeout + rescan reset, then signal.
+		time.Sleep(actionSettleTimeout + 200*time.Millisecond)
+		sess.SignalSchemaReady()
+	}()
+
+	deadline := time.After(10 * time.Second)
 	for {
 		status, _, _, result := doer.State().Snapshot()
 		if status == DoerDone && result != nil {
@@ -369,6 +395,9 @@ func TestDoerActionDispatch(t *testing.T) {
 
 	if v := actionNotified.Load(); v != "mache-42:click" {
 		t.Errorf("expected actionNotifyFn with 'mache-42:click', got %v", v)
+	}
+	if mock.handleCalls.Load() != 2 {
+		t.Errorf("expected 2 HandleIntent calls, got %d", mock.handleCalls.Load())
 	}
 }
 
@@ -406,5 +435,261 @@ func TestDoerProgressCallback(t *testing.T) {
 	mock.mu.Unlock()
 	if afterProgress != nil {
 		t.Error("progressFn should be nil after goal completes (defer cleanup)")
+	}
+}
+
+func TestDoerMultiStepGotoThenRead(t *testing.T) {
+	// Step 1: goto → navigate, Step 2: text answer from reading page.
+	mock := &mockIntentHandler{
+		responses: []mockResponse{
+			{action: &navigator.ActionResult{Action: "goto", Path: "https://news.ycombinator.com"}},
+			{textResp: "The top story is about AI safety regulations."},
+		},
+	}
+	_, sess, doer := newDoerTestHarness(mock)
+	sess.SignalSchemaReady()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-multi-goto", Text: "go to HN and tell me the top story"})
+
+	// Simulate extension: goto resets schema, signal after a delay.
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		sess.SignalSchemaReady()
+	}()
+
+	deadline := time.After(3 * time.Second)
+	for {
+		status, _, _, result := doer.State().Snapshot()
+		if status == DoerDone && result != nil {
+			if !result.Success {
+				t.Errorf("expected success, got error: %s", result.Error)
+			}
+			if result.Summary != "The top story is about AI safety regulations." {
+				t.Errorf("unexpected summary: %s", result.Summary)
+			}
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("multi-step goto goal never completed (status=%d)", status)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+
+	if calls := mock.handleCalls.Load(); calls != 2 {
+		t.Errorf("expected 2 HandleIntent calls, got %d", calls)
+	}
+}
+
+func TestDoerMultiStepClickNavigates(t *testing.T) {
+	// Step 1: click a link → page navigates (SchemaReady fires quickly).
+	// Step 2: text answer from reading the new page.
+	mock := &mockIntentHandler{
+		responses: []mockResponse{
+			{action: &navigator.ActionResult{Action: "click", MacheID: "mache-7", Path: "/main/stories/_c/3"}},
+			{textResp: "The article discusses quantum computing breakthroughs."},
+		},
+	}
+	_, sess, doer := newDoerTestHarness(mock)
+	sess.SignalSchemaReady()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-click-nav", Text: "click the third story and tell me about it"})
+
+	// Simulate: click causes URL change → auto-snapshot → SchemaReady fires quickly.
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		sess.SignalSchemaReady()
+	}()
+
+	deadline := time.After(3 * time.Second)
+	for {
+		status, _, _, result := doer.State().Snapshot()
+		if status == DoerDone && result != nil {
+			if !result.Success {
+				t.Errorf("expected success, got error: %s", result.Error)
+			}
+			if result.Summary != "The article discusses quantum computing breakthroughs." {
+				t.Errorf("unexpected summary: %s", result.Summary)
+			}
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("multi-step click-nav goal never completed (status=%d)", status)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+
+	if calls := mock.handleCalls.Load(); calls != 2 {
+		t.Errorf("expected 2 HandleIntent calls, got %d", calls)
+	}
+}
+
+func TestDoerMultiStepClickNoNav(t *testing.T) {
+	// Click doesn't cause navigation → settle timeout → rescan → loop continues.
+	// Step 1: click (in-page toggle), Step 2: text answer.
+	mock := &mockIntentHandler{
+		responses: []mockResponse{
+			{action: &navigator.ActionResult{Action: "click", MacheID: "mache-10", Path: "/main/dropdown"}},
+			{textResp: "Dropdown is now open."},
+		},
+	}
+	_, sess, doer := newDoerTestHarness(mock)
+	sess.SignalSchemaReady()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-click-nonav", Text: "open the dropdown menu"})
+
+	// Simulate: no auto-snapshot (no URL change), settle timeout fires,
+	// then rescan triggers → signal SchemaReady after the timeout.
+	go func() {
+		time.Sleep(actionSettleTimeout + 200*time.Millisecond)
+		sess.SignalSchemaReady()
+	}()
+
+	deadline := time.After(10 * time.Second)
+	for {
+		status, _, _, result := doer.State().Snapshot()
+		if status == DoerDone && result != nil {
+			if !result.Success {
+				t.Errorf("expected success, got error: %s", result.Error)
+			}
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("click-no-nav goal never completed (status=%d)", status)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+
+	if calls := mock.handleCalls.Load(); calls != 2 {
+		t.Errorf("expected 2 HandleIntent calls (click + text), got %d", calls)
+	}
+}
+
+func TestDoerMultiStepMaxSteps(t *testing.T) {
+	// Navigator always returns a click action — verify we stop at maxGoalSteps.
+	mock := &mockIntentHandler{
+		action: &navigator.ActionResult{Action: "click", MacheID: "mache-1", Path: "/main/button"},
+	}
+	_, sess, doer := newDoerTestHarness(mock)
+	sess.SignalSchemaReady()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-loop", Text: "keep clicking forever"})
+
+	// Each click step: settle timeout (2s) + rescan signal needed.
+	// Signal SchemaReady repeatedly to keep the loop going.
+	go func() {
+		for i := 0; i < maxGoalSteps+1; i++ {
+			time.Sleep(actionSettleTimeout + 100*time.Millisecond)
+			sess.SignalSchemaReady()
+		}
+	}()
+
+	deadline := time.After(time.Duration(maxGoalSteps)*(actionSettleTimeout+500*time.Millisecond) + 5*time.Second)
+	for {
+		status, _, _, result := doer.State().Snapshot()
+		if status == DoerDone && result != nil {
+			if !result.Success {
+				t.Errorf("expected success (exhausted steps), got error: %s", result.Error)
+			}
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("max-steps goal never completed (status=%d, calls=%d)", status, mock.handleCalls.Load())
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+
+	if calls := mock.handleCalls.Load(); int(calls) != maxGoalSteps {
+		t.Errorf("expected %d HandleIntent calls (maxGoalSteps), got %d", maxGoalSteps, calls)
+	}
+}
+
+func TestDoerMultiStepClickOpensNewTab(t *testing.T) {
+	// Click opens a new tab (target="_blank" on site). The Doer detects
+	// activeVoiceTab changed and rebinds to the new tab's session.
+
+	// Mock for tab 0: returns click action.
+	mock0 := &mockIntentHandler{
+		responses: []mockResponse{
+			{action: &navigator.ActionResult{Action: "click", MacheID: "mache-5", Path: "/main/link"}},
+		},
+	}
+	// Mock for tab 99 (new tab): returns text answer.
+	mock99 := &mockIntentHandler{
+		responses: []mockResponse{
+			{textResp: "New tab page content."},
+		},
+	}
+
+	h, sess0, doer := newDoerTestHarness(mock0)
+	sess0.SignalSchemaReady()
+
+	// Pre-create session for tab 99 with its own mock navigator.
+	sess99 := h.getSession(99)
+	sess99.Navigator = mock99
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-newtab", Text: "click the link and read the new page"})
+
+	// Simulate: click opens new tab. The extension sends TAB_ACTIVATED immediately
+	// (before the settle timeout), then the new tab's page loads and SchemaReady fires.
+	go func() {
+		// TAB_ACTIVATED arrives quickly after the click.
+		time.Sleep(200 * time.Millisecond)
+		h.mu.Lock()
+		h.activeVoiceTab = 99
+		h.mu.Unlock()
+		// New tab's page loads after settle timeout.
+		time.Sleep(actionSettleTimeout)
+		sess99.SignalSchemaReady()
+	}()
+
+	deadline := time.After(10 * time.Second)
+	for {
+		status, _, _, result := doer.State().Snapshot()
+		if status == DoerDone && result != nil {
+			if !result.Success {
+				t.Errorf("expected success, got error: %s", result.Error)
+			}
+			if result.Summary != "New tab page content." {
+				t.Errorf("unexpected summary: %s", result.Summary)
+			}
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("cross-tab goal never completed (status=%d)", status)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+
+	// Tab 0 mock: 1 call (click). Tab 99 mock: 1 call (text answer).
+	if calls := mock0.handleCalls.Load(); calls != 1 {
+		t.Errorf("expected 1 HandleIntent call on tab 0, got %d", calls)
+	}
+	if calls := mock99.handleCalls.Load(); calls != 1 {
+		t.Errorf("expected 1 HandleIntent call on tab 99, got %d", calls)
 	}
 }
