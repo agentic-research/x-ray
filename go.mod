@@ -3,13 +3,11 @@ module github.com/jamesgardner/x-ray
 go 1.25.0
 
 require (
-	github.com/agentic-research/mache v0.2.0
+	github.com/agentic-research/mache v0.3.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	google.golang.org/genai v1.47.0
 )
-
-replace github.com/agentic-research/mache => ../mache
 
 require (
 	cloud.google.com/go v0.116.0 // indirect

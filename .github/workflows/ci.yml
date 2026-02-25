@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,9 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clone mache dependency
-        run: git clone --depth 1 https://github.com/agentic-research/mache.git ../mache
-
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -33,9 +31,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clone mache dependency
-        run: git clone --depth 1 https://github.com/agentic-research/mache.git ../mache
-
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -46,3 +41,26 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
+
+  bench:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Navigation benchmark (${{ matrix.arch }})
+        if: env.GEMINI_API_KEY != ''
+        run: go run ./cmd/bench
