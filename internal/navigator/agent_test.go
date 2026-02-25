@@ -236,3 +236,76 @@ func TestExecuteToolScrollDefaultDirection(t *testing.T) {
 		t.Errorf("expected default direction 'down', got %q", gotDirection)
 	}
 }
+
+func TestExecuteToolActType(t *testing.T) {
+	agent := newTestAgent()
+	fc := &genai.FunctionCall{Name: "act", Args: map[string]any{
+		"path":    "/main/stories/_c/1",
+		"action":  "type",
+		"payload": "hello world",
+	}}
+
+	result, action := agent.ExecuteTool(context.Background(), fc)
+	if action == nil {
+		t.Fatal("act type should return an ActionResult")
+	}
+	if action.Action != "type" {
+		t.Errorf("expected action type, got %q", action.Action)
+	}
+	if action.Payload != "hello world" {
+		t.Errorf("expected payload 'hello world', got %q", action.Payload)
+	}
+	if action.MacheID != "mache-11" {
+		t.Errorf("expected MacheID mache-11, got %q", action.MacheID)
+	}
+	if !strings.Contains(result, "Typing") {
+		t.Errorf("result should mention typing: %s", result)
+	}
+}
+
+func TestExecuteToolActEnter(t *testing.T) {
+	agent := newTestAgent()
+	fc := &genai.FunctionCall{Name: "act", Args: map[string]any{
+		"path":   "/main/stories/_c/1",
+		"action": "enter",
+	}}
+
+	result, action := agent.ExecuteTool(context.Background(), fc)
+	if action == nil {
+		t.Fatal("act enter should return an ActionResult")
+	}
+	if action.Action != "enter" {
+		t.Errorf("expected action enter, got %q", action.Action)
+	}
+	if action.Payload != "" {
+		t.Errorf("enter should have empty payload, got %q", action.Payload)
+	}
+	if !strings.Contains(result, "Executing enter") {
+		t.Errorf("result should mention executing enter: %s", result)
+	}
+}
+
+func TestExecuteToolRescanRoot(t *testing.T) {
+	agent := newTestAgent()
+	// rescan("/") should behave as full-page rescan, not error on missing mache_id.
+	fc := &genai.FunctionCall{Name: "rescan", Args: map[string]any{
+		"path": "/",
+	}}
+
+	result, action := agent.ExecuteTool(context.Background(), fc)
+	if action == nil {
+		t.Fatal("rescan('/') should return an ActionResult")
+	}
+	if action.Action != "rescan" {
+		t.Errorf("expected action rescan, got %q", action.Action)
+	}
+	if action.MacheID != "" {
+		t.Errorf("full-page rescan should have empty MacheID, got %q", action.MacheID)
+	}
+	if action.Path != "" {
+		t.Errorf("full-page rescan should have empty Path, got %q", action.Path)
+	}
+	if strings.Contains(result, "Error") {
+		t.Errorf("rescan('/') should not error: %s", result)
+	}
+}
