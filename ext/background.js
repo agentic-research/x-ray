@@ -607,7 +607,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return true;
       } else if (!sessionReady) {
         voiceLog(sessionTabId, 'TOGGLE_MIC: session not ready yet');
-        sendResponse({ ok: false, error: 'Session connecting...' });
+        sendResponse({ ok: true, ...getState() });
       } else {
         voiceLog(sessionTabId, `TOGGLE_MIC: toggling mic ${micActive} → ${!micActive}`);
         setMic(!micActive);

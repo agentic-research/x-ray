@@ -149,8 +149,13 @@ micBtn.addEventListener('click', () => {
       statusEl.className = 'error';
     } else {
       updateUI(resp);
-      statusEl.textContent = resp.mic ? 'Mic active — speak naturally' : 'Mic muted';
-      statusEl.className = resp.mic ? 'connected' : '';
+      if (resp.sessionConnecting) {
+        statusEl.textContent = 'Starting voice session...';
+        statusEl.className = '';
+      } else {
+        statusEl.textContent = resp.mic ? 'Mic active — speak naturally' : 'Mic muted';
+        statusEl.className = resp.mic ? 'connected' : '';
+      }
     }
     micBtn.disabled = false;
   });
@@ -168,11 +173,11 @@ killBtn.addEventListener('click', () => {
 });
 
 function updateUI(state) {
-  // Session dot
-  if (state.session) {
-    sessionDot.className = 'session-dot live';
-  } else if (state.sessionConnecting) {
+  // Session dot — check connecting BEFORE session (connecting implies session).
+  if (state.sessionConnecting) {
     sessionDot.className = 'session-dot connecting';
+  } else if (state.session) {
+    sessionDot.className = 'session-dot live';
   } else {
     sessionDot.className = 'session-dot';
   }
