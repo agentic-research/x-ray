@@ -321,22 +321,12 @@ Each `TabSession` contains:
 - `Navigator` — agent with its own tool-use history
 - `Doer` — background goroutine (created lazily on first voice session)
 - `SchemaReady` — channel that unblocks when schema is applied
+- `DOMMutatedCh` — channel signalled by MutationObserver for instant settle (~150ms)
 - `CurrentURL` — prevents redundant goto navigation
 
+**Session pruning**: When a tab is closed, the extension sends a `TAB_CLOSED` message. The daemon cancels the corresponding Doer context and deletes the session from memory to prevent leaks.
+
 **Cross-tab rebinding**: When a click opens a new tab, the extension sends `TAB_ACTIVATED` which updates `activeVoiceTab`. The Doer detects this during settle detection and rebinds its `tabID` and `sess` to the new tab's session mid-goal, re-wiring Navigator callbacks via `wireNavigatorCallbacks()`. This lets multi-step workflows survive tab changes transparently.
-
-## Tab Management
-
-The Navigator has two tab-related tools that let it see and switch between open Chrome tabs:
-
-| Tool | Description |
-|------|-------------|
-| `list_tabs()` | Queries extension for all open tabs (filters out chrome:// URLs). Returns `[tab_id] title -- url` per tab. |
-| `switch_tab(tab_id)` | Activates an existing tab, triggers auto-snapshot, updates `activeVoiceTab`. Instant vs. `goto()` which reloads. |
-
-The Navigator's system prompt instructs it to always call `list_tabs()` before `goto()` to check if the target site is already open in another tab.
-
-Message flow: Navigator returns `ActionResult{Action: "switch_tab", Path: "tab_id"}` → Doer sends `SWITCH_TAB` message → extension calls `chrome.tabs.update(tabId, {active: true})` → auto-snapshot → schema pipeline.
 
 ## Dynamic CSS Selectors (Scroll Architecture)
 
@@ -364,7 +354,7 @@ sequenceDiagram
 
 ## Navigator Tools
 
-The Navigator (`internal/navigator/agent.go`) has 8 tools:
+The Navigator uses a **Tool Registry** pattern (`internal/navigator/tool.go`). Each tool is a self-contained struct implementing `Declaration()` and `Execute()`. Adding a tool requires one struct and one `Register()` call — no changes to the system prompt, execution switch, or interface definitions.
 
 | Tool | Description |
 |------|-------------|
