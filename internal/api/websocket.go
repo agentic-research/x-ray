@@ -50,6 +50,7 @@ type TabSession struct {
 	SelectorsResolved chan map[string][]string // receives resolved items from RESOLVE_SELECTORS round-trip
 	RescanPath        string                   // set by voice handler for targeted rescan, consumed by handleDOMSnapshot
 	CurrentURL        string                   // URL of the page currently loaded or loading (prevents redundant goto)
+	Doer              *Doer                    // background execution agent (created lazily on first voice session)
 
 	schemaMu     sync.Mutex // protects SchemaReady close + schemaGen
 	schemaClosed bool
@@ -72,6 +73,20 @@ func (s *TabSession) ResetSchema() {
 	defer s.schemaMu.Unlock()
 	s.SchemaReady = make(chan struct{})
 	s.schemaClosed = false
+}
+
+// GetCurrentURL returns the URL currently associated with this session.
+func (s *TabSession) GetCurrentURL() string {
+	s.schemaMu.Lock()
+	defer s.schemaMu.Unlock()
+	return s.CurrentURL
+}
+
+// SetCurrentURL updates the URL for this session.
+func (s *TabSession) SetCurrentURL(url string) {
+	s.schemaMu.Lock()
+	defer s.schemaMu.Unlock()
+	s.CurrentURL = url
 }
 
 // Handler holds the dependencies for the WebSocket handler.
@@ -140,6 +155,19 @@ func (h *Handler) getVoiceTabID() int {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.activeVoiceTab
+}
+
+// getOrCreateDoer lazily creates a Doer for the given tab session.
+func (h *Handler) getOrCreateDoer(tabID int, sess *TabSession) *Doer {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if sess.Doer != nil {
+		return sess.Doer
+	}
+	doer := NewDoer(h, tabID, sess)
+	sess.Doer = doer
+	go doer.Run(context.Background())
+	return doer
 }
 
 // HandleWebSocket upgrades the HTTP connection and processes messages.
@@ -343,6 +371,9 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	// Generation guard: discard if a newer snapshot started processing.
 	sess.schemaMu.Lock()
 	stale := sess.schemaGen != myGen
+	if !stale {
+		sess.CurrentURL = msg.URL
+	}
 	sess.schemaMu.Unlock()
 	if stale {
 		log.Printf("Schema: generation %d superseded (tab %d), discarding stale Cartographer result", myGen, msg.TabID)

@@ -19,4 +19,5 @@ type IntentHandler interface {
 	ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string, *navigator.ActionResult)
 	SetEngine(engine *mache.Engine)
 	SetScrollFunc(fn func(ctx context.Context, direction string) error)
+	SetProgressFunc(fn func(toolName string, args map[string]any))
 }

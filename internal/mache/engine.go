@@ -587,10 +587,29 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 			tagFileID := childDirID + "/tag"
 			textFileID := childDirID + "/text"
 
+			children := []string{macheIDFileID, tagFileID, textFileID}
+
+			// Semantic enrichment: inject AX role, name, DOM path when available.
+			if d.AXRole != "" {
+				id := childDirID + "/role"
+				e.store.AddNode(&graph.Node{ID: id, Data: []byte(d.AXRole)})
+				children = append(children, id)
+			}
+			if d.AXName != "" {
+				id := childDirID + "/name"
+				e.store.AddNode(&graph.Node{ID: id, Data: []byte(d.AXName)})
+				children = append(children, id)
+			}
+			if d.Path != "" {
+				id := childDirID + "/path"
+				e.store.AddNode(&graph.Node{ID: id, Data: []byte(d.Path)})
+				children = append(children, id)
+			}
+
 			childDir := &graph.Node{
 				ID:         childDirID,
 				Mode:       fs.ModeDir,
-				Children:   []string{macheIDFileID, tagFileID, textFileID},
+				Children:   children,
 				Properties: map[string][]byte{"mache_id": []byte(d.ID)},
 			}
 			e.store.AddNode(childDir)

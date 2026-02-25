@@ -26,10 +26,11 @@ type ActionResult struct {
 
 // Agent represents Stage 2: The Navigator.
 type Agent struct {
-	generator ContentGenerator
-	model     string
-	engine    *mache.Engine
-	scrollFn  func(ctx context.Context, direction string) error
+	generator  ContentGenerator
+	model      string
+	engine     *mache.Engine
+	scrollFn   func(ctx context.Context, direction string) error
+	progressFn func(toolName string, args map[string]any)
 }
 
 func NewAgent(gen ContentGenerator, model string, engine *mache.Engine) *Agent {
@@ -47,6 +48,12 @@ func (a *Agent) SetEngine(engine *mache.Engine) {
 // SetScrollFunc injects the scroll callback used by the scroll tool.
 func (a *Agent) SetScrollFunc(fn func(ctx context.Context, direction string) error) {
 	a.scrollFn = fn
+}
+
+// SetProgressFunc injects a callback fired before each tool execution,
+// allowing the Doer to report its current step to the Talker.
+func (a *Agent) SetProgressFunc(fn func(toolName string, args map[string]any)) {
+	a.progressFn = fn
 }
 
 // ToolDefinitions returns the tool declarations for ls/cat/act.
@@ -193,6 +200,9 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 				Parts: []*genai.Part{{FunctionCall: fc}},
 			})
 
+			if a.progressFn != nil {
+				a.progressFn(fc.Name, fc.Args)
+			}
 			result, action := a.ExecuteTool(ctx, fc)
 			log.Printf("Navigator: tool=%s args=%v result=%q", fc.Name, fc.Args, result)
 
