@@ -306,6 +306,13 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 		}
 	}
 
+	h.mu.Lock()
+	if h.activeVoiceTab == 0 {
+		h.activeVoiceTab = msg.TabID
+		log.Printf("WebSocket: active voice tab initialized to %d", msg.TabID)
+	}
+	h.mu.Unlock()
+
 	// Save schema to disk for reference
 	saveLog("schema", msg.URL, schemaJSON)
 	saveLog("summary", msg.URL, msg.Summary)
