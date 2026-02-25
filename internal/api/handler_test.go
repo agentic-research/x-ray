@@ -20,7 +20,9 @@ func (s *stubCartographer) GenerateSchema(ctx context.Context, screenshot []byte
 // newTestHandler builds a Handler suitable for unit tests. Gemini clients are
 // nil — only getSession / session isolation / message plumbing are exercised.
 func newTestHandler() *Handler {
-	return NewHandler(&stubCartographer{}, nil, nil, "test-model", "test-live-model", "")
+	h := NewHandler(&stubCartographer{}, nil, nil, "test-model", "test-live-model", "")
+	h.openBrowserFn = nil // prevent tests from opening real Chrome windows
+	return h
 }
 
 func TestGetSessionCreatesNew(t *testing.T) {
