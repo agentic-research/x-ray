@@ -67,6 +67,11 @@ tasks:
     cmds:
       - ./{{.BINARY_NAME}}
 
+  bench:
+    desc: Run navigation accuracy benchmark (requires GEMINI_API_KEY)
+    cmds:
+      - go run ./cmd/bench
+
   gate:
     desc: Run the 48-hour gate test on the mock dummy page
     cmds:

@@ -1,0 +1,32 @@
+[
+  {
+    "site": "hackernews",
+    "intent": "click the first story",
+    "expect_mache_id": "mache-11",
+    "expect_text": "Timeframe"
+  },
+  {
+    "site": "hackernews",
+    "intent": "click the second story",
+    "expect_mache_id": "mache-18",
+    "expect_text": "Global Intelligence Crisis"
+  },
+  {
+    "site": "hackernews",
+    "intent": "click the third story",
+    "expect_mache_id": "mache-25",
+    "expect_text": "Loops"
+  },
+  {
+    "site": "lobsters",
+    "intent": "click the first story",
+    "expect_mache_id": "mache-8",
+    "expect_text": "AI generated"
+  },
+  {
+    "site": "lobsters",
+    "intent": "click the second story",
+    "expect_mache_id": "mache-16",
+    "expect_text": "You are not left behind"
+  }
+]
