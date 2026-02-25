@@ -250,7 +250,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			// schema times out, Gemini's error response audio is NOT suppressed.
 			needsSchema := false
 			for _, fc := range tc.FunctionCalls {
-				if fc.Name != "goto" {
+				if fc.Name != "goto" && fc.Name != "rescan" {
 					needsSchema = true
 					break
 				}
@@ -284,7 +284,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				// Skip server-side tools (e.g., google_search) — Gemini handles
 				// these internally and returns synthesized audio/text directly.
 				switch fc.Name {
-				case "ls", "cat", "act", "scroll", "goto":
+				case "ls", "cat", "act", "scroll", "goto", "rescan":
 					// Our local tools — handle below.
 				default:
 					log.Printf("Voice: skipping server-side tool %s (tab %d)", fc.Name, tabID)
@@ -296,7 +296,8 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 
 				// Handle actions: goto navigates + re-maps, act dispatches a click.
 				if action != nil {
-					if action.Action == "goto" {
+					switch action.Action {
+					case "goto":
 						// Reset schema state for the new page.
 						sess.ResetSchema()
 						sess.Engine = mache.NewEngine()
@@ -315,7 +316,21 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 						case <-ctx.Done():
 							result = "Navigation cancelled."
 						}
-					} else {
+					case "rescan":
+						sess.ResetSchema()
+						sess.Engine = mache.NewEngine()
+						sess.Navigator.SetEngine(sess.Engine)
+						h.sendRescan(tabID)
+						log.Printf("Voice: rescan — waiting for fresh schema (tab %d)", tabID)
+						select {
+						case <-sess.SchemaReady:
+							result = "Page rescanned with fresh screenshot. Schema regenerated. Use ls('/') to see the updated structure."
+						case <-time.After(schemaWaitTimeout):
+							result = "Rescan timed out waiting for new schema."
+						case <-ctx.Done():
+							result = "Rescan cancelled."
+						}
+					default:
 						h.SendActionToExtension(tabID, action.MacheID, action.Action)
 						sendVoiceJSON(conn, &wsMu, voiceMessage{
 							Type:    MsgExecuteAction,
@@ -362,7 +377,8 @@ VOICE RULES:
 2. Only speak AFTER you have completed the action or determined you cannot.
 3. Responses must be ONE short sentence. Example: "Done, clicked the first story."
 4. NEVER narrate your process. No "I'm now looking at..." or "Let me check...". SILENCE until done.
-5. If you can't find it after 8 tool calls, say "I couldn't find that element."
+5. If you can't find an element, use rescan() to refresh the page map before giving up.
+6. When the user's intent implies visiting a website ("find me flights", "show me Reddit"), use goto() proactively.
 
 ` + navigator.NavigatorSystemPrompt
 
@@ -539,7 +555,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				// Schema gate — let goto through without a schema.
 				needsSchema := false
 				for _, fc := range tc.FunctionCalls {
-					if fc.Name != "goto" {
+					if fc.Name != "goto" && fc.Name != "rescan" {
 						needsSchema = true
 						break
 					}
@@ -571,7 +587,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				for _, fc := range tc.FunctionCalls {
 					// Skip server-side tools (google_search etc.)
 					switch fc.Name {
-					case "ls", "cat", "act", "scroll", "goto":
+					case "ls", "cat", "act", "scroll", "goto", "rescan":
 					default:
 						log.Printf("Voice: skipping server-side tool %s", fc.Name)
 						continue
@@ -582,7 +598,8 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 					log.Printf("Voice: result: %q", result)
 
 					if action != nil {
-						if action.Action == "goto" {
+						switch action.Action {
+						case "goto":
 							sess.ResetSchema()
 							sess.Engine = mache.NewEngine()
 							sess.Navigator.SetEngine(sess.Engine)
@@ -597,7 +614,21 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 							case <-toolCtx.Done():
 								result = "Navigation cancelled."
 							}
-						} else {
+						case "rescan":
+							sess.ResetSchema()
+							sess.Engine = mache.NewEngine()
+							sess.Navigator.SetEngine(sess.Engine)
+							h.sendRescan(tabID)
+							log.Printf("Voice: rescan — waiting for fresh schema (tab %d)", tabID)
+							select {
+							case <-sess.SchemaReady:
+								result = "Page rescanned with fresh screenshot. Schema regenerated. Use ls('/') to see the updated structure."
+							case <-time.After(schemaWaitTimeout):
+								result = "Rescan timed out waiting for new schema."
+							case <-toolCtx.Done():
+								result = "Rescan cancelled."
+							}
+						default:
 							h.SendActionToExtension(tabID, action.MacheID, action.Action)
 						}
 					}

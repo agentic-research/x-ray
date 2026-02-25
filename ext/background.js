@@ -140,6 +140,15 @@ function connectWebSocket() {
         break;
       }
 
+      case 'RESCAN': {
+        const targetTab = msg.tab_id;
+        if (targetTab) {
+          console.log('X-Ray: Rescan requested for tab', targetTab);
+          captureAndSend(targetTab);
+        }
+        break;
+      }
+
       case 'RESOLVE_SELECTORS': {
         const targetTab = msg.tab_id;
         if (targetTab) {

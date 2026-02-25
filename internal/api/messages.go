@@ -14,6 +14,7 @@ const (
 	MsgGotoURL           = "GOTO_URL"
 	MsgVoiceLog          = "VOICE_LOG"
 	MsgTabActivated      = "TAB_ACTIVATED"
+	MsgRescan            = "RESCAN"
 )
 
 // InboundMessage is the envelope for all browser -> server messages.

@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"sync"
 	"time"
 
@@ -500,13 +501,31 @@ func (h *Handler) sendGoto(tabID int, url string) {
 	conn := h.conn
 	h.mu.Unlock()
 	if conn == nil {
-		log.Printf("Voice: extension not connected, cannot navigate to %s", url)
+		log.Printf("Voice: no extension connected, opening Chrome: %s", url)
+		_ = exec.Command("open", "-a", "Google Chrome", url).Start()
 		return
 	}
 	h.sendMessage(conn, OutboundMessage{
 		Type:  MsgGotoURL,
 		TabID: tabID,
 		URL:   url,
+	})
+}
+
+// sendRescan triggers a fresh DOM snapshot + screenshot from the extension.
+// The extension calls captureAndSend() which flows through the normal
+// DOM_SNAPSHOT → Cartographer → schema cache pipeline.
+func (h *Handler) sendRescan(tabID int) {
+	h.mu.Lock()
+	conn := h.conn
+	h.mu.Unlock()
+	if conn == nil {
+		log.Printf("Voice: extension not connected, cannot rescan")
+		return
+	}
+	h.sendMessage(conn, OutboundMessage{
+		Type:  MsgRescan,
+		TabID: tabID,
 	})
 }
 
