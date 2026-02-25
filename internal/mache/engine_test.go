@@ -611,6 +611,44 @@ func TestZoneSelectors(t *testing.T) {
 	}
 }
 
+// TestConcurrentReadWrite verifies the Engine is safe under concurrent access.
+// Run with -race to catch data races: go test -race ./internal/mache/
+func TestConcurrentReadWrite(t *testing.T) {
+	e := NewEngine()
+	if err := e.ApplySchema(sampleSchema); err != nil {
+		t.Fatal(err)
+	}
+	e.LoadChildren(sampleSummary, nil)
+
+	// Hammer the engine with concurrent reads and writes.
+	done := make(chan struct{})
+	for i := 0; i < 5; i++ {
+		// Readers
+		go func() {
+			defer func() { done <- struct{}{} }()
+			for j := 0; j < 100; j++ {
+				_, _ = e.ListDir("/")
+				_, _ = e.ReadFile("/main/news_feed/description")
+				_, _ = e.ResolveMacheID("/main/news_feed")
+				_ = e.HasSchema()
+				_ = e.ZoneSelectors()
+				_ = e.ToTopology()
+			}
+		}()
+		// Writer: re-apply schema + reload children
+		go func() {
+			defer func() { done <- struct{}{} }()
+			for j := 0; j < 20; j++ {
+				_ = e.ApplySchema(sampleSchema)
+				e.LoadChildren(sampleSummary, nil)
+			}
+		}()
+	}
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+}
+
 func TestLoadChildrenLeafZoneRoot(t *testing.T) {
 	// Simulates HN: the Cartographer picks the first story link (mache-13)
 	// as the zone root. Stories are siblings in a table, not descendants

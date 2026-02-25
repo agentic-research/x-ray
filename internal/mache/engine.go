@@ -7,6 +7,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/agentic-research/mache/api"
 	"github.com/agentic-research/mache/graph"
@@ -27,7 +28,9 @@ type CartographerOutput struct {
 }
 
 // Engine holds the virtual semantic filesystem backed by a mache MemoryStore.
+// All public methods are safe for concurrent use.
 type Engine struct {
+	mu     sync.RWMutex
 	store  *graph.MemoryStore
 	mounts []Mount
 }
@@ -51,6 +54,8 @@ func cleanPath(p string) string {
 
 // HasSchema reports whether at least one mount has been applied.
 func (e *Engine) HasSchema() bool {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	return len(e.mounts) > 0
 }
 
@@ -76,6 +81,9 @@ func (e *Engine) ApplySchema(schemaJSON string) error {
 	if err := json.Unmarshal([]byte(schemaJSON), &output); err != nil {
 		return fmt.Errorf("parse cartographer output: %w", err)
 	}
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.mounts = output.Mounts
 	e.store = graph.NewMemoryStore()
 
@@ -154,6 +162,8 @@ func appendUnique(slice []string, val string) []string {
 
 // ListDir returns child names at the given path.
 func (e *Engine) ListDir(dirPath string) ([]string, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	p := cleanPath(dirPath)
 
 	var childIDs []string
@@ -193,6 +203,8 @@ func (e *Engine) ListDir(dirPath string) ([]string, error) {
 
 // ReadFile returns file content at the given path.
 func (e *Engine) ReadFile(filePath string) (string, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	p := cleanPath(filePath)
 	node, err := e.store.GetNode(p)
 	if err != nil {
@@ -206,6 +218,8 @@ func (e *Engine) ReadFile(filePath string) (string, error) {
 
 // ResolveMacheID finds the mache_id for a given virtual path.
 func (e *Engine) ResolveMacheID(nodePath string) (string, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	p := cleanPath(nodePath)
 	node, err := e.store.GetNode(p)
 	if err != nil {
@@ -237,6 +251,8 @@ func (e *Engine) ResolveMacheID(nodePath string) (string, error) {
 
 // ToTopology converts the engine state to mache schema types.
 func (e *Engine) ToTopology() *api.Topology {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	topo := &api.Topology{Version: "v1"}
 	for _, m := range e.mounts {
 		topo.Nodes = append(topo.Nodes, api.Node{
@@ -251,6 +267,8 @@ func (e *Engine) ToTopology() *api.Topology {
 // all mounts that have a dynamic selector defined. Used by scrollPage to
 // send selectors to the browser for re-evaluation after scroll.
 func (e *Engine) ZoneSelectors() map[string]string {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	selectors := make(map[string]string)
 	for _, m := range e.mounts {
 		if m.ItemSelector != "" {
@@ -442,6 +460,8 @@ func collectZoneMembers(elements []SummaryElement, zoneRootID string) []SummaryE
 // by the browser via CSS selectors after scroll. When present, these override the
 // schema's static PrimaryItems for that zone.
 func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	elements := parseSummary(summary)
 	if len(elements) == 0 {
 		return

@@ -241,9 +241,9 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 
 		// ToolCall — execute ls/cat/act locally against this tab's session.
 		if tc := msg.ToolCall; tc != nil {
-			inToolLoop = true
-
 			// Block until schema is ready — but let goto through without a schema.
+			// Don't set inToolLoop until AFTER schema check passes, so that if
+			// schema times out, Gemini's error response audio is NOT suppressed.
 			needsSchema := false
 			for _, fc := range tc.FunctionCalls {
 				if fc.Name != "goto" {
@@ -269,9 +269,11 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 					}); err != nil {
 						log.Printf("Voice: SendToolResponse error: %v", err)
 					}
-					continue
+					continue // inToolLoop is false — audio flows normally
 				}
 			}
+
+			inToolLoop = true
 
 			var responses []*genai.FunctionResponse
 			for _, fc := range tc.FunctionCalls {
@@ -283,7 +285,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				if action != nil {
 					if action.Action == "goto" {
 						// Reset schema state for the new page.
-						sess.SchemaReady = make(chan struct{})
+						sess.ResetSchema()
 						sess.Engine = mache.NewEngine()
 						sess.Navigator.SetEngine(sess.Engine)
 

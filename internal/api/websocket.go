@@ -47,6 +47,27 @@ type TabSession struct {
 	SchemaReady       chan struct{}            // closed when schema is applied
 	DOMUpdateCh       chan DOMUpdate           // receives summary + resolved items after scroll
 	SelectorsResolved chan map[string][]string // receives resolved items from RESOLVE_SELECTORS round-trip
+
+	schemaMu     sync.Mutex // protects SchemaReady close
+	schemaClosed bool
+}
+
+// SignalSchemaReady safely closes SchemaReady. No-op if already closed.
+func (s *TabSession) SignalSchemaReady() {
+	s.schemaMu.Lock()
+	defer s.schemaMu.Unlock()
+	if !s.schemaClosed {
+		close(s.SchemaReady)
+		s.schemaClosed = true
+	}
+}
+
+// ResetSchema creates a fresh SchemaReady channel (used by goto navigation).
+func (s *TabSession) ResetSchema() {
+	s.schemaMu.Lock()
+	defer s.schemaMu.Unlock()
+	s.SchemaReady = make(chan struct{})
+	s.schemaClosed = false
 }
 
 // Handler holds the dependencies for the WebSocket handler.
@@ -300,13 +321,8 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	sess.Engine.LoadChildren(msg.Summary, resolvedItems)
 	sess.Navigator.SetEngine(sess.Engine)
 
-	// Signal that schema is ready — unblocks any waiting handleNavigate.
-	select {
-	case <-sess.SchemaReady:
-		// Already closed from a previous snapshot — fine, schema replaced in-place.
-	default:
-		close(sess.SchemaReady)
-	}
+	// Signal that schema is ready — unblocks any waiting handleNavigate or voice tool call.
+	sess.SignalSchemaReady()
 
 	var schema any
 	if err := json.Unmarshal([]byte(schemaJSON), &schema); err != nil {
@@ -422,6 +438,12 @@ func (h *Handler) handleSelectorsResolved(msg InboundMessage) {
 // updated DOM summary arrives. It then re-runs LoadChildren on the Engine.
 func (h *Handler) scrollPage(ctx context.Context, conn *websocket.Conn, sess *TabSession, tabID int, direction string) error {
 	log.Printf("Scroll: requesting %s for tab %d", direction, tabID)
+
+	// Drain any stale DOM update from a previous scroll or duplicate message.
+	select {
+	case <-sess.DOMUpdateCh:
+	default:
+	}
 
 	selectors := sess.Engine.ZoneSelectors()
 

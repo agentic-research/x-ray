@@ -346,3 +346,76 @@ func TestWSSchemaCacheHit(t *testing.T) {
 		t.Errorf("expected 1 Cartographer call, got %d", got)
 	}
 }
+
+func TestSignalSchemaReadyIdempotent(t *testing.T) {
+	sess := &TabSession{
+		SchemaReady: make(chan struct{}),
+	}
+
+	// First signal should close the channel.
+	sess.SignalSchemaReady()
+	select {
+	case <-sess.SchemaReady:
+		// good — channel is closed
+	default:
+		t.Fatal("SchemaReady should be closed after SignalSchemaReady")
+	}
+
+	// Second signal should not panic (double-close protection).
+	sess.SignalSchemaReady()
+}
+
+func TestSignalSchemaReadyConcurrent(t *testing.T) {
+	sess := &TabSession{
+		SchemaReady: make(chan struct{}),
+	}
+
+	// Race 10 goroutines all trying to signal at once.
+	done := make(chan struct{})
+	for i := 0; i < 10; i++ {
+		go func() {
+			defer func() { done <- struct{}{} }()
+			sess.SignalSchemaReady()
+		}()
+	}
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+
+	// Channel should be closed exactly once.
+	select {
+	case <-sess.SchemaReady:
+	default:
+		t.Fatal("SchemaReady should be closed")
+	}
+}
+
+func TestResetSchemaAllowsReSignal(t *testing.T) {
+	sess := &TabSession{
+		SchemaReady: make(chan struct{}),
+	}
+
+	sess.SignalSchemaReady()
+	select {
+	case <-sess.SchemaReady:
+	default:
+		t.Fatal("should be closed")
+	}
+
+	// Reset creates a fresh channel.
+	sess.ResetSchema()
+	select {
+	case <-sess.SchemaReady:
+		t.Fatal("SchemaReady should be open after reset")
+	default:
+		// good — channel is open
+	}
+
+	// Signal again should work.
+	sess.SignalSchemaReady()
+	select {
+	case <-sess.SchemaReady:
+	default:
+		t.Fatal("should be closed after re-signal")
+	}
+}
