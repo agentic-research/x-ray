@@ -243,25 +243,34 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 		if tc := msg.ToolCall; tc != nil {
 			inToolLoop = true
 
-			// Block until schema is ready — keeps mic hot while Cartographer finishes.
-			select {
-			case <-sess.SchemaReady:
-			case <-time.After(schemaWaitTimeout):
-				log.Printf("Voice: timed out waiting for schema before tool call (tab %d)", tabID)
-				var errResponses []*genai.FunctionResponse
-				for _, fc := range tc.FunctionCalls {
-					errResponses = append(errResponses, &genai.FunctionResponse{
-						ID:       fc.ID,
-						Name:     fc.Name,
-						Response: map[string]any{"output": "Error: page schema is still loading. Please tell the user to wait a moment."},
-					})
+			// Block until schema is ready — but let goto through without a schema.
+			needsSchema := false
+			for _, fc := range tc.FunctionCalls {
+				if fc.Name != "goto" {
+					needsSchema = true
+					break
 				}
-				if err := session.SendToolResponse(genai.LiveToolResponseInput{
-					FunctionResponses: errResponses,
-				}); err != nil {
-					log.Printf("Voice: SendToolResponse error: %v", err)
+			}
+			if needsSchema {
+				select {
+				case <-sess.SchemaReady:
+				case <-time.After(schemaWaitTimeout):
+					log.Printf("Voice: timed out waiting for schema before tool call (tab %d)", tabID)
+					var errResponses []*genai.FunctionResponse
+					for _, fc := range tc.FunctionCalls {
+						errResponses = append(errResponses, &genai.FunctionResponse{
+							ID:       fc.ID,
+							Name:     fc.Name,
+							Response: map[string]any{"output": "Error: page schema is still loading. Please tell the user to wait a moment."},
+						})
+					}
+					if err := session.SendToolResponse(genai.LiveToolResponseInput{
+						FunctionResponses: errResponses,
+					}); err != nil {
+						log.Printf("Voice: SendToolResponse error: %v", err)
+					}
+					continue
 				}
-				continue
 			}
 
 			var responses []*genai.FunctionResponse
