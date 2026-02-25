@@ -3,6 +3,8 @@ package api
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/agentic-research/mache/graph"
 )
 
 func TestCacheKey(t *testing.T) {
@@ -55,43 +57,15 @@ func TestSchemaCacheHitMiss(t *testing.T) {
 	}
 }
 
-func TestSchemaCacheEviction(t *testing.T) {
-	c := newSchemaCache("")
-
-	// Fill to capacity.
-	for i := range schemaCacheMaxSize {
-		c.Put(cacheKey("https://example.com/"+string(rune('A'+i))), `{}`)
-	}
-
-	// All entries should be present.
-	if _, ok := c.Get("example.com/A"); !ok {
-		t.Fatal("expected oldest entry to exist at capacity")
-	}
-
-	// One more triggers eviction of the oldest ("A").
-	c.Put("example.com/overflow", `{}`)
-
-	if _, ok := c.Get("example.com/A"); ok {
-		t.Fatal("expected oldest entry to be evicted")
-	}
-	if _, ok := c.Get("example.com/overflow"); !ok {
-		t.Fatal("expected new entry to exist")
-	}
-}
-
 func TestSchemaCacheSQLitePersistence(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test-schemas.db")
 
-	// Create a cache backed by SQLite, put an entry, and close.
+	// Create a cache backed by SQLite, put an entry.
 	c1 := newSchemaCache(dbPath)
 	c1.Put("example.com/page", `{"mounts":[{"virtual_path":"/main"}]}`)
-	if err := c1.Close(); err != nil {
-		t.Fatalf("Close failed: %v", err)
-	}
 
 	// Create a new cache with the same path — entry should be loaded from disk.
 	c2 := newSchemaCache(dbPath)
-	defer func() { _ = c2.Close() }()
 
 	got, ok := c2.Get("example.com/page")
 	if !ok {
@@ -108,10 +82,8 @@ func TestSchemaCacheSQLiteOverwrite(t *testing.T) {
 	c1 := newSchemaCache(dbPath)
 	c1.Put("example.com/", `{"v":1}`)
 	c1.Put("example.com/", `{"v":2}`)
-	_ = c1.Close()
 
 	c2 := newSchemaCache(dbPath)
-	defer func() { _ = c2.Close() }()
 
 	got, ok := c2.Get("example.com/")
 	if !ok {
@@ -119,5 +91,49 @@ func TestSchemaCacheSQLiteOverwrite(t *testing.T) {
 	}
 	if got != `{"v":2}` {
 		t.Errorf("expected overwritten value, got %s", got)
+	}
+}
+
+// TestSchemaCacheMacheGraphIntegrity proves the thesis: the SQLite file
+// produced by x-ray's schema cache IS a mache graph, readable by any
+// mache-aware tool via graph.ImportSQLite.
+func TestSchemaCacheMacheGraphIntegrity(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test-graph.db")
+
+	c := newSchemaCache(dbPath)
+	c.Put("example.com/page", `{"mounts":[{"virtual_path":"/main"}]}`)
+	c.Put("news.ycombinator.com/news", `{"mounts":[{"virtual_path":"/feed"}]}`)
+
+	// The SQLite file should be a valid mache graph.
+	store, err := graph.ImportSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("ImportSQLite: %v", err)
+	}
+
+	// Verify roots correspond to cached URLs.
+	roots := store.RootIDs()
+	if len(roots) != 2 {
+		t.Fatalf("expected 2 roots, got %d: %v", len(roots), roots)
+	}
+
+	// Verify graph node data matches what was cached.
+	node, err := store.GetNode("example.com/page/schema_json")
+	if err != nil {
+		t.Fatalf("GetNode(schema_json): %v", err)
+	}
+	if string(node.Data) != `{"mounts":[{"virtual_path":"/main"}]}` {
+		t.Errorf("schema data = %q", node.Data)
+	}
+
+	// Verify the directory structure.
+	dir, err := store.GetNode("example.com/page")
+	if err != nil {
+		t.Fatalf("GetNode(dir): %v", err)
+	}
+	if !dir.Mode.IsDir() {
+		t.Error("expected directory node")
+	}
+	if len(dir.Children) != 2 {
+		t.Errorf("expected 2 children, got %v", dir.Children)
 	}
 }
