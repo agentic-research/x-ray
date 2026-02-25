@@ -116,10 +116,12 @@ An LLM already knows what a "Checkout" button *means* (semantics), but when you 
 |------|-------------|
 | `ls(path)` | List directory contents |
 | `cat(path)` | Read a file (description, children) |
-| `act(path, action)` | Click or focus an element |
+| `act(path, action)` | Click, focus, type, or press Enter on an element |
 | `scroll(direction)` | Scroll to load more content |
 | `goto(url)` | Navigate the browser to a new URL |
 | `rescan(path?)` | Rescan the page -- full or targeted (magnifying glass) |
+| `list_tabs()` | List all open browser tabs (ID, title, URL) |
+| `switch_tab(tab_id)` | Switch to an existing open tab (faster than goto) |
 
 ## Voice Mode
 

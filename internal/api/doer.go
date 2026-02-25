@@ -221,11 +221,28 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 		// For interactive actions (click/type/enter/focus), detect if the page navigated.
 		if isInteractiveAction(action.Action) {
 			d.sess.ResetSchema()
+			// Drain any stale DOM mutation signal from a previous action.
+			select {
+			case <-d.sess.DOMMutatedCh:
+			default:
+			}
 			select {
 			case <-d.sess.SchemaReady:
-				// Page changed (URL change triggered auto-snapshot) — continue loop.
+				// Same-tab navigation (URL change → auto-snapshot) — continue loop.
+			case <-d.sess.DOMMutatedCh:
+				// In-page DOM mutation detected via MutationObserver.
+				// Trigger rescan for fresh VFS.
+				d.sess.ResetSchema()
+				d.handler.sendRescan(d.tabID, "")
+				select {
+				case <-d.sess.SchemaReady:
+				case <-time.After(schemaWaitTimeout):
+				case <-goalCtx.Done():
+					d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
+					return
+				}
 			case <-time.After(actionSettleTimeout):
-				// No same-tab navigation. Check if a new tab was activated.
+				// No same-tab navigation or DOM mutation. Check if a new tab was activated.
 				d.handler.mu.Lock()
 				newTabID := d.handler.activeVoiceTab
 				d.handler.mu.Unlock()

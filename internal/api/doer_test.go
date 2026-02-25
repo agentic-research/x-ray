@@ -534,7 +534,7 @@ func TestDoerMultiStepClickNavigates(t *testing.T) {
 }
 
 func TestDoerMultiStepClickNoNav(t *testing.T) {
-	// Click doesn't cause navigation → settle timeout → rescan → loop continues.
+	// Click doesn't cause navigation → DOMMutatedCh fires → rescan → loop continues.
 	// Step 1: click (in-page toggle), Step 2: text answer.
 	mock := &mockIntentHandler{
 		responses: []mockResponse{
@@ -551,8 +551,55 @@ func TestDoerMultiStepClickNoNav(t *testing.T) {
 
 	doer.Submit(DoerGoal{ID: "g-click-nonav", Text: "open the dropdown menu"})
 
-	// Simulate: no auto-snapshot (no URL change), settle timeout fires,
-	// then rescan triggers → signal SchemaReady after the timeout.
+	// Simulate: MutationObserver fires after 200ms (much faster than 2s settle),
+	// then rescan completes and signals SchemaReady.
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		sess.DOMMutatedCh <- struct{}{}
+		// Doer sends rescan after DOM mutation, then waits for SchemaReady.
+		time.Sleep(100 * time.Millisecond)
+		sess.SignalSchemaReady()
+	}()
+
+	deadline := time.After(5 * time.Second)
+	for {
+		status, _, _, result := doer.State().Snapshot()
+		if status == DoerDone && result != nil {
+			if !result.Success {
+				t.Errorf("expected success, got error: %s", result.Error)
+			}
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("click-no-nav goal never completed (status=%d)", status)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+
+	if calls := mock.handleCalls.Load(); calls != 2 {
+		t.Errorf("expected 2 HandleIntent calls (click + text), got %d", calls)
+	}
+}
+
+func TestDoerMultiStepClickNoNavFallbackTimeout(t *testing.T) {
+	// Verify the 2s fallback still works when no DOMMutatedCh signal arrives.
+	mock := &mockIntentHandler{
+		responses: []mockResponse{
+			{action: &navigator.ActionResult{Action: "click", MacheID: "mache-10", Path: "/main/dropdown"}},
+			{textResp: "Dropdown is now open."},
+		},
+	}
+	_, sess, doer := newDoerTestHarness(mock)
+	sess.SignalSchemaReady()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-click-nonav-fallback", Text: "open the dropdown menu"})
+
+	// No DOMMutatedCh signal — the 2s settle timeout fires, then rescan.
 	go func() {
 		time.Sleep(actionSettleTimeout + 200*time.Millisecond)
 		sess.SignalSchemaReady()
@@ -569,7 +616,7 @@ func TestDoerMultiStepClickNoNav(t *testing.T) {
 		}
 		select {
 		case <-deadline:
-			t.Fatalf("click-no-nav goal never completed (status=%d)", status)
+			t.Fatalf("click-no-nav fallback goal never completed (status=%d)", status)
 		case <-time.After(10 * time.Millisecond):
 		}
 	}

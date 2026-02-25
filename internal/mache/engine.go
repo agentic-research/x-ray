@@ -434,17 +434,23 @@ func formatOrdinalChildren(items []SummaryElement) string {
 	return strings.TrimRight(sb.String(), "\n")
 }
 
+// buildParentOfMap builds a child→parent lookup from parsed summary elements.
+// Called once in LoadChildren and passed to collectZoneMembers for each zone,
+// avoiding redundant O(N) map builds per zone.
+func buildParentOfMap(elements []SummaryElement) map[string]string {
+	m := make(map[string]string, len(elements))
+	for _, el := range elements {
+		m[el.ID] = el.ParentID
+	}
+	return m
+}
+
 // collectZoneMembers returns all elements that are descendants of the zone root,
 // determined by walking each element's parent chain. This handles arbitrarily
 // deep nesting (e.g., Reddit's virtual scroll containers) and picks up new
 // elements loaded after scrolling, unlike collectByPrimaryItems which only
 // matches the original primary item IDs.
-func collectZoneMembers(elements []SummaryElement, zoneRootID string) []SummaryElement {
-	parentOf := make(map[string]string, len(elements))
-	for _, el := range elements {
-		parentOf[el.ID] = el.ParentID
-	}
-
+func collectZoneMembers(elements []SummaryElement, zoneRootID string, parentOf map[string]string) []SummaryElement {
 	// Memoized zone membership with depth cap to prevent cycles.
 	cache := make(map[string]bool)
 	var inZone func(string, int) bool
@@ -484,6 +490,7 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 		return
 	}
 	parentMap := buildParentMap(elements)
+	parentOf := buildParentOfMap(elements)
 
 	// Index all elements by ID for O(1) lookup (used by primary item fallback).
 	byID := make(map[string]SummaryElement, len(elements))
@@ -519,7 +526,7 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 		// Collect all elements in this zone by walking parent chains to the
 		// zone root. Handles arbitrarily deep nesting and picks up new
 		// elements loaded after scrolling.
-		descendants := collectZoneMembers(elements, m.MacheID)
+		descendants := collectZoneMembers(elements, m.MacheID, parentOf)
 
 		// Fall back to BFS from zone root (in case parent chains don't
 		// reach the zone root due to untagged intermediate containers).

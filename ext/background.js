@@ -629,6 +629,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         });
       });
       return true;
+
+    case 'DOM_MUTATED':
+      // Forward content script MutationObserver signal to the server.
+      if (ws && ws.readyState === WebSocket.OPEN && sender.tab?.id) {
+        ws.send(JSON.stringify({ type: 'DOM_MUTATED', tab_id: sender.tab.id }));
+      }
+      return false;
   }
 });
 
@@ -676,11 +683,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   captureAndSend(tabId);
 });
 
-// Clean up tracking when tabs close.
+// Clean up tracking when tabs close and notify the server to prune the session.
 chrome.tabs.onRemoved.addListener((tabId) => {
   lastKnownUrls.delete(tabId);
   schemaReadyTabs.delete(tabId);
   pendingSnapshots.delete(tabId);
   pendingIntents.delete(tabId);
   gotoInFlight.delete(tabId);
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'TAB_CLOSED', tab_id: tabId }));
+  }
 });

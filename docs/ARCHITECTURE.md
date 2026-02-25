@@ -60,7 +60,7 @@ The voice system splits into two concurrent agents per tab:
 
 ### Multi-Step Loop (Closed-Loop Verification)
 
-A single voice command like *"Go to HN and tell me the top story"* triggers multiple steps automatically:
+A single voice command like *"Go to HN and tell me the top story"* triggers multiple steps automatically. The Doer loop observes the state of the browser after every action to ensure determinism:
 
 ```
 for step := 0; step < 5; step++ {
@@ -73,13 +73,12 @@ for step := 0; step < 5; step++ {
 ```
 
 **Page settle detection** (after click/type/enter):
-1. `ResetSchema()` on current tab, wait up to 2s for `SchemaReady`
-2. If `SchemaReady` fires → same-tab navigation (URL change triggered auto-snapshot), continue loop
-3. If timeout → check `activeVoiceTab`:
-   - Changed → click opened a new tab; rebind Doer to new tab session, re-wire callbacks, wait on new tab's `SchemaReady`
-   - Unchanged → in-page DOM mutation; trigger `sendRescan()` fallback, continue loop
+1. **Mutation Detection (Fast Path):** Content scripts use a `MutationObserver` to detect DOM changes. A `DOM_MUTATED` signal is sent to the Doer, which triggers an immediate `rescan()` in ~150ms.
+2. **Navigation Detection:** If the URL changes, the extension's auto-snapshot fires, signaling `SchemaReady` and unblocking the loop.
+3. **Cross-Tab Rebinding:** If the 2s settle timeout expires, the Doer checks `activeVoiceTab`. If it changed (click opened a new tab), the Doer **teleports** its context to the new session mid-goal.
+4. **Rescan Fallback:** If neither navigation nor mutation is detected, the Doer triggers a full-page rescan to capture visual state changes (e.g., a modal opening).
 
-**Continuation prompt**: Between steps, the Doer builds a `[CONTINUATION]` prompt that tells the Navigator what happened and asks it to verify the action worked before continuing toward the original goal.
+**Continuation prompt**: Between steps, the Doer builds a `[CONTINUATION]` prompt that tells the Navigator what happened and asks it to **VERIFY** the previous action worked before continuing.
 
 ```mermaid
 sequenceDiagram

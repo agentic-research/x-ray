@@ -36,26 +36,67 @@ type Agent struct {
 	generator  ContentGenerator
 	model      string
 	engine     *mache.Engine
-	scrollFn   func(ctx context.Context, direction string) error
 	progressFn func(toolName string, args map[string]any)
-	listTabsFn func(ctx context.Context) ([]TabInfo, error)
+
+	registry   *ToolRegistry
+	scrollTool *ScrollTool
+	listTabs   *ListTabsTool
+	lsTool     *LsTool
+	catTool    *CatTool
+	actTool    *ActTool
+	rescanTool *RescanTool
 }
 
 func NewAgent(gen ContentGenerator, model string, engine *mache.Engine) *Agent {
 	if model == "" {
 		model = "gemini-2.5-flash"
 	}
-	return &Agent{generator: gen, model: model, engine: engine}
+
+	ls := &LsTool{engine: engine}
+	cat := &CatTool{engine: engine}
+	act := &ActTool{engine: engine}
+	scroll := &ScrollTool{}
+	goTo := &GotoTool{}
+	rescan := &RescanTool{engine: engine}
+	listTabs := &ListTabsTool{}
+	switchTab := &SwitchTabTool{}
+
+	reg := NewToolRegistry()
+	reg.Register(ls)
+	reg.Register(cat)
+	reg.Register(act)
+	reg.Register(scroll)
+	reg.Register(goTo)
+	reg.Register(rescan)
+	reg.Register(listTabs)
+	reg.Register(switchTab)
+
+	return &Agent{
+		generator:  gen,
+		model:      model,
+		engine:     engine,
+		registry:   reg,
+		scrollTool: scroll,
+		listTabs:   listTabs,
+		lsTool:     ls,
+		catTool:    cat,
+		actTool:    act,
+		rescanTool: rescan,
+	}
 }
 
 // SetEngine updates the engine when a new schema is applied.
 func (a *Agent) SetEngine(engine *mache.Engine) {
 	a.engine = engine
+	a.lsTool.engine = engine
+	a.catTool.engine = engine
+	a.actTool.engine = engine
+	a.rescanTool.engine = engine
 }
 
 // SetScrollFunc injects the scroll callback used by the scroll tool.
 func (a *Agent) SetScrollFunc(fn func(ctx context.Context, direction string) error) {
-	a.scrollFn = fn
+	a.scrollTool.scrollFn = fn
 }
 
 // SetProgressFunc injects a callback fired before each tool execution,
@@ -66,96 +107,7 @@ func (a *Agent) SetProgressFunc(fn func(toolName string, args map[string]any)) {
 
 // SetListTabsFunc injects the callback used by the list_tabs tool.
 func (a *Agent) SetListTabsFunc(fn func(ctx context.Context) ([]TabInfo, error)) {
-	a.listTabsFn = fn
-}
-
-// ToolDefinitions returns the tool declarations for ls/cat/act.
-func ToolDefinitions() []*genai.Tool {
-	return []*genai.Tool{{
-		FunctionDeclarations: []*genai.FunctionDeclaration{
-			{
-				Name:        "ls",
-				Description: "List the contents of a directory in the semantic filesystem. Returns file and directory names. Always start with ls(\"/\") to see the top-level zones.",
-				Parameters: &genai.Schema{
-					Type: genai.TypeObject,
-					Properties: map[string]*genai.Schema{
-						"path": {Type: genai.TypeString, Description: "Directory path, e.g. '/' or '/header/nav'"},
-					},
-					Required: []string{"path"},
-				},
-			},
-			{
-				Name:        "cat",
-				Description: "Read the contents of a file in the semantic filesystem. Use this to read 'description' files for context about a zone.",
-				Parameters: &genai.Schema{
-					Type: genai.TypeObject,
-					Properties: map[string]*genai.Schema{
-						"path": {Type: genai.TypeString, Description: "File path, e.g. '/header/nav/description'"},
-					},
-					Required: []string{"path"},
-				},
-			},
-			{
-				Name:        "act",
-				Description: "Execute a browser action on the element at this virtual path. This triggers a real click/focus/type/enter in the browser.",
-				Parameters: &genai.Schema{
-					Type: genai.TypeObject,
-					Properties: map[string]*genai.Schema{
-						"path":    {Type: genai.TypeString, Description: "Virtual path to the element, e.g. '/main/trending'"},
-						"action":  {Type: genai.TypeString, Description: "Action type: 'click', 'focus', 'type', or 'enter'"},
-						"payload": {Type: genai.TypeString, Description: "Text to type into the element (required for 'type' action, ignored otherwise)"},
-					},
-					Required: []string{"path", "action"},
-				},
-			},
-			{
-				Name:        "scroll",
-				Description: "Scroll the page to load more content. Use when items shown are fewer than what the user needs (e.g., only 3 posts visible but user wants the 10th). After scrolling, cat the children file again to see newly loaded items.",
-				Parameters: &genai.Schema{
-					Type: genai.TypeObject,
-					Properties: map[string]*genai.Schema{
-						"direction": {Type: genai.TypeString, Description: "Scroll direction: 'down' or 'up'. Default: 'down'"},
-					},
-				},
-			},
-			{
-				Name:        "goto",
-				Description: "Navigate the browser to a new URL. Use when the user wants to visit a different website (e.g., 'go to Reddit'). After navigation, the filesystem updates to reflect the new page — run ls('/') to explore it.",
-				Parameters: &genai.Schema{
-					Type: genai.TypeObject,
-					Properties: map[string]*genai.Schema{
-						"url": {Type: genai.TypeString, Description: "Fully qualified URL, e.g. 'https://www.reddit.com'"},
-					},
-					Required: []string{"url"},
-				},
-			},
-			{
-				Name:        "rescan",
-				Description: "Rescan the page or a specific zone with a fresh screenshot. Without a path, rescans the full page. With a path, zooms into that zone for higher detail (e.g., a video player's internal controls). After rescanning, run ls('/') to see the updated structure.",
-				Parameters: &genai.Schema{
-					Type: genai.TypeObject,
-					Properties: map[string]*genai.Schema{
-						"path": {Type: genai.TypeString, Description: "Optional: virtual path to zoom into, e.g. '/main/player'. Omit for full-page rescan."},
-					},
-				},
-			},
-			{
-				Name:        "list_tabs",
-				Description: "List all open browser tabs. Returns tab ID, title, and URL for each. Use this BEFORE goto() to check if the user already has the site open — switching tabs is instant while navigating loads a fresh page.",
-			},
-			{
-				Name:        "switch_tab",
-				Description: "Switch to an existing open browser tab by its ID (from list_tabs). After switching, the filesystem updates to reflect the new page. This is much faster than goto() when the page is already open.",
-				Parameters: &genai.Schema{
-					Type: genai.TypeObject,
-					Properties: map[string]*genai.Schema{
-						"tab_id": {Type: genai.TypeInteger, Description: "The tab ID to switch to (from list_tabs output)"},
-					},
-					Required: []string{"tab_id"},
-				},
-			},
-		},
-	}}
+	a.listTabs.listTabsFn = fn
 }
 
 const maxToolIterations = 8
@@ -169,7 +121,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{{Text: NavigatorSystemPrompt}},
 		},
-		Tools:       ToolDefinitions(),
+		Tools:       a.registry.Definitions(),
 		Temperature: genai.Ptr(float32(0.1)),
 	}
 
@@ -239,7 +191,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 			if a.progressFn != nil {
 				a.progressFn(fc.Name, fc.Args)
 			}
-			result, action := a.ExecuteTool(ctx, fc)
+			result, action := a.registry.Execute(ctx, fc)
 			log.Printf("Navigator: tool=%s args=%v result=%q", fc.Name, fc.Args, result)
 
 			if action != nil {
@@ -264,110 +216,10 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 	return nil, "", fmt.Errorf("tool-use loop exceeded %d iterations without resolution", maxToolIterations)
 }
 
-// ExecuteTool dispatches a function call to the Mache engine and returns the
-// result string and an optional ActionResult (non-nil when act() fires).
+// ExecuteTool dispatches a function call via the tool registry.
+// Satisfies the IntentHandler interface.
 func (a *Agent) ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string, *ActionResult) {
-	args := fc.Args
-	switch fc.Name {
-	case "ls":
-		p, _ := args["path"].(string)
-		entries, err := a.engine.ListDir(p)
-		if err != nil {
-			return fmt.Sprintf("Error: %v", err), nil
-		}
-		return strings.Join(entries, "\n"), nil
-
-	case "cat":
-		p, _ := args["path"].(string)
-		content, err := a.engine.ReadFile(p)
-		if err != nil {
-			return fmt.Sprintf("Error: %v", err), nil
-		}
-		return content, nil
-
-	case "act":
-		p, _ := args["path"].(string)
-		action, _ := args["action"].(string)
-		payload, _ := args["payload"].(string)
-		if action == "" {
-			action = "click"
-		}
-		macheID, err := a.engine.ResolveMacheID(p)
-		if err != nil {
-			return fmt.Sprintf("Error: %v", err), nil
-		}
-		desc := fmt.Sprintf("Executing %s on %s (mache_id: %s)", action, p, macheID)
-		if payload != "" {
-			desc = fmt.Sprintf("Typing %q into %s (mache_id: %s)", payload, p, macheID)
-		}
-		return desc, &ActionResult{MacheID: macheID, Action: action, Path: p, Payload: payload}
-
-	case "scroll":
-		direction, _ := args["direction"].(string)
-		if direction == "" {
-			direction = "down"
-		}
-		if a.scrollFn == nil {
-			return "Error: scroll not available in this context", nil
-		}
-		if err := a.scrollFn(ctx, direction); err != nil {
-			return fmt.Sprintf("Error scrolling: %v", err), nil
-		}
-		return fmt.Sprintf("Scrolled %s. Use cat on the children file to see updated content.", direction), nil
-
-	case "goto":
-		u, _ := args["url"].(string)
-		if u == "" {
-			return "Error: url is required", nil
-		}
-		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
-			u = "https://" + u
-		}
-		return fmt.Sprintf("Navigating to %s", u),
-			&ActionResult{Action: "goto", Path: u}
-
-	case "rescan":
-		p, _ := args["path"].(string)
-		// "/" means full-page rescan (root has no mache_id).
-		if p != "" && p != "/" {
-			macheID, err := a.engine.ResolveMacheID(p)
-			if err != nil {
-				return fmt.Sprintf("Error: %v", err), nil
-			}
-			return fmt.Sprintf("Zooming into %s for detailed rescan...", p),
-				&ActionResult{Action: "rescan", MacheID: macheID, Path: p}
-		}
-		return "Rescanning page...", &ActionResult{Action: "rescan"}
-
-	case "list_tabs":
-		if a.listTabsFn == nil {
-			return "Error: list_tabs not available in this context", nil
-		}
-		tabs, err := a.listTabsFn(ctx)
-		if err != nil {
-			return fmt.Sprintf("Error listing tabs: %v", err), nil
-		}
-		if len(tabs) == 0 {
-			return "No open tabs found.", nil
-		}
-		var sb strings.Builder
-		for _, t := range tabs {
-			fmt.Fprintf(&sb, "[%d] %s — %s\n", t.ID, t.Title, t.URL)
-		}
-		return sb.String(), nil
-
-	case "switch_tab":
-		tabIDRaw, _ := args["tab_id"].(float64) // JSON numbers are float64
-		tabID := int(tabIDRaw)
-		if tabID == 0 {
-			return "Error: tab_id is required", nil
-		}
-		return fmt.Sprintf("Switching to tab %d", tabID),
-			&ActionResult{Action: "switch_tab", Path: fmt.Sprintf("%d", tabID)}
-
-	default:
-		return fmt.Sprintf("Unknown tool: %s", fc.Name), nil
-	}
+	return a.registry.Execute(ctx, fc)
 }
 
 // buildTreeDump generates a compact tree listing of the virtual filesystem.

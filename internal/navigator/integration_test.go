@@ -77,7 +77,7 @@ func buildHNEngine(t *testing.T) *mache.Engine {
 
 func TestToolChainLsRoot(t *testing.T) {
 	engine := buildHNEngine(t)
-	agent := &Agent{engine: engine}
+	agent := NewAgent(nil, "test", engine)
 
 	result, _ := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "ls", Args: map[string]any{"path": "/"},
@@ -92,7 +92,7 @@ func TestToolChainLsRoot(t *testing.T) {
 
 func TestToolChainLsToChildren(t *testing.T) {
 	engine := buildHNEngine(t)
-	agent := &Agent{engine: engine}
+	agent := NewAgent(nil, "test", engine)
 
 	// ls the story list zone
 	result, _ := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
@@ -129,7 +129,7 @@ func TestToolChainLsToChildren(t *testing.T) {
 
 func TestToolChainActOnChild(t *testing.T) {
 	engine := buildHNEngine(t)
-	agent := &Agent{engine: engine}
+	agent := NewAgent(nil, "test", engine)
 
 	// Ordinal path: _c/1 is the first primary item (mache-11)
 	_, action := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
@@ -152,7 +152,7 @@ func TestToolChainActOnChild(t *testing.T) {
 
 func TestToolChainActOnZone(t *testing.T) {
 	engine := buildHNEngine(t)
-	agent := &Agent{engine: engine}
+	agent := NewAgent(nil, "test", engine)
 
 	// Act directly on a zone (e.g. footer "More" link)
 	_, action := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
@@ -172,7 +172,7 @@ func TestToolChainActOnZone(t *testing.T) {
 
 func TestToolChainNavDescription(t *testing.T) {
 	engine := buildHNEngine(t)
-	agent := &Agent{engine: engine}
+	agent := NewAgent(nil, "test", engine)
 
 	result, _ := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
 		Name: "cat", Args: map[string]any{"path": "/header/nav/description"},
@@ -186,7 +186,7 @@ func TestToolChainNavDescription(t *testing.T) {
 func TestToolChainFullWorkflow(t *testing.T) {
 	// Simulates what the Navigator agent does: ls → ls zone → cat children → act
 	engine := buildHNEngine(t)
-	agent := &Agent{engine: engine}
+	agent := NewAgent(nil, "test", engine)
 
 	// Step 1: ls("/")
 	root, _ := agent.ExecuteTool(context.Background(), &genai.FunctionCall{

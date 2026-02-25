@@ -22,6 +22,22 @@ var (
 	_ ContentGenerator = (*GemmaGenerator)(nil)
 )
 
+// testToolDefs returns tool definitions via a temporary Agent's registry.
+func testToolDefs() []*genai.Tool {
+	a := NewAgent(nil, "test", mache.NewEngine())
+	return a.registry.Definitions()
+}
+
+// newTestAgentWithGen creates an Agent with a mock generator and engine.
+func newTestAgentWithGen(gen ContentGenerator, engine *mache.Engine) *Agent {
+	return NewAgent(gen, "test", engine)
+}
+
+// newTestAgentWithGenModel creates an Agent with a specific generator, model, and engine.
+func newTestAgentWithGenModel(gen ContentGenerator, model string, engine *mache.Engine) *Agent {
+	return NewAgent(gen, model, engine)
+}
+
 // mockGenerator records calls and returns canned responses.
 type mockGenerator struct {
 	calls    []mockCall
@@ -107,7 +123,7 @@ func TestHandleIntentWithMockGenerator(t *testing.T) {
 		},
 	}
 
-	agent := &Agent{generator: mock, model: "test", engine: engine}
+	agent := newTestAgentWithGen(mock, engine)
 	action, _, err := agent.HandleIntent(context.Background(), "click the first story")
 	if err != nil {
 		t.Fatalf("HandleIntent: %v", err)
@@ -144,7 +160,7 @@ func TestHandleIntentTextResponse(t *testing.T) {
 		},
 	}
 
-	agent := &Agent{generator: mock, model: "test", engine: engine}
+	agent := newTestAgentWithGen(mock, engine)
 	action, text, err := agent.HandleIntent(context.Background(), "where is the nav?")
 	if err != nil {
 		t.Fatalf("HandleIntent: %v", err)
@@ -190,7 +206,7 @@ func TestOllamaGeneratorConversion(t *testing.T) {
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{{Text: "You are a helper."}},
 		},
-		Tools:       ToolDefinitions(),
+		Tools:       testToolDefs(),
 		Temperature: genai.Ptr(float32(0.1)),
 	}
 
@@ -314,7 +330,7 @@ func TestGemmaGeneratorParsesFunctionCall(t *testing.T) {
 
 	resp, err := gen.GenerateContent(context.Background(), "", []*genai.Content{
 		{Role: "user", Parts: []*genai.Part{{Text: "list root"}}},
-	}, &genai.GenerateContentConfig{Tools: ToolDefinitions()})
+	}, &genai.GenerateContentConfig{Tools: testToolDefs()})
 	if err != nil {
 		t.Fatalf("GenerateContent: %v", err)
 	}
@@ -395,7 +411,7 @@ func TestGemmaGeneratorEmbedsToolsInPrompt(t *testing.T) {
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{{Text: "You are a navigator."}},
 		},
-		Tools: ToolDefinitions(),
+		Tools: testToolDefs(),
 	}
 
 	_, err := gen.GenerateContent(context.Background(), "", []*genai.Content{
@@ -462,7 +478,7 @@ func TestGemmaGeneratorMultiTurnHistory(t *testing.T) {
 	}
 
 	resp, err := gen.GenerateContent(context.Background(), "", history, &genai.GenerateContentConfig{
-		Tools: ToolDefinitions(),
+		Tools: testToolDefs(),
 	})
 	if err != nil {
 		t.Fatalf("GenerateContent: %v", err)
@@ -533,7 +549,7 @@ func TestOllamaIntegrationSingleToolCall(t *testing.T) {
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{{Text: "You have a tool called ls(path) that lists directory contents. When asked to explore, call ls with path '/'. Only call the tool, do not respond with text."}},
 		},
-		Tools:       ToolDefinitions(),
+		Tools:       testToolDefs(),
 		Temperature: genai.Ptr(float32(0.1)),
 	}
 
@@ -592,7 +608,7 @@ func TestOllamaIntegrationMultiTurn(t *testing.T) {
 		Model:    ollamaModel(),
 	}
 
-	agent := &Agent{generator: gen, model: ollamaModel(), engine: engine}
+	agent := newTestAgentWithGenModel(gen, ollamaModel(), engine)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -630,7 +646,7 @@ func TestOllamaIntegrationFunctionResponseRoundTrip(t *testing.T) {
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{{Text: NavigatorSystemPrompt}},
 		},
-		Tools:       ToolDefinitions(),
+		Tools:       testToolDefs(),
 		Temperature: genai.Ptr(float32(0.1)),
 	}
 
@@ -694,7 +710,7 @@ func TestOllamaIntegrationToolFormatDiagnostic(t *testing.T) {
 	}
 
 	// Make a raw HTTP request to see exactly what Ollama returns.
-	tools := gen.convertTools(&genai.GenerateContentConfig{Tools: ToolDefinitions()})
+	tools := gen.convertTools(&genai.GenerateContentConfig{Tools: testToolDefs()})
 	reqBody := map[string]any{
 		"model": ollamaModel(),
 		"messages": []map[string]any{

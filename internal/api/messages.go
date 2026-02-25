@@ -18,6 +18,8 @@ const (
 	MsgListTabs          = "LIST_TABS"
 	MsgTabsListed        = "TABS_LISTED"
 	MsgSwitchTab         = "SWITCH_TAB"
+	MsgTabClosed         = "TAB_CLOSED"
+	MsgDOMMutated        = "DOM_MUTATED"
 )
 
 // TabInfo describes an open browser tab (returned by LIST_TABS round-trip).

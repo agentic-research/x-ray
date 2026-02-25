@@ -46,6 +46,7 @@ type TabSession struct {
 	Navigator         IntentHandler
 	SchemaReady       chan struct{}            // closed when schema is applied
 	DOMUpdateCh       chan DOMUpdate           // receives summary + resolved items after scroll
+	DOMMutatedCh      chan struct{}            // signals in-page DOM mutation (from MutationObserver)
 	SelectorsResolved chan map[string][]string // receives resolved items from RESOLVE_SELECTORS round-trip
 	RescanPath        string                   // set by voice handler for targeted rescan, consumed by handleDOMSnapshot
 	CurrentURL        string                   // URL of the page currently loaded or loading (prevents redundant goto)
@@ -140,6 +141,7 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		Navigator:         nav,
 		SchemaReady:       make(chan struct{}),
 		DOMUpdateCh:       make(chan DOMUpdate, 1),
+		DOMMutatedCh:      make(chan struct{}, 1),
 		SelectorsResolved: make(chan map[string][]string, 1),
 		TabsListedCh:      make(chan []TabInfo, 1),
 	}
@@ -253,6 +255,10 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			h.activeVoiceTab = msg.TabID
 			h.mu.Unlock()
 			log.Printf("WebSocket: active voice tab set to %d", msg.TabID)
+		case MsgTabClosed:
+			h.handleTabClosed(msg)
+		case MsgDOMMutated:
+			h.handleDOMMutated(msg)
 		case MsgTabsListed:
 			h.handleTabsListed(msg)
 		case MsgVoiceLog:
@@ -529,6 +535,31 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 		h.sendMessage(conn, OutboundMessage{
 			Type: MsgStatus, TabID: msg.TabID, Message: textResponse, Stage: "navigator",
 		})
+	}
+}
+
+// handleTabClosed prunes the session for a closed tab, cancelling any running Doer.
+func (h *Handler) handleTabClosed(msg InboundMessage) {
+	h.mu.Lock()
+	if sess, ok := h.sessions[msg.TabID]; ok {
+		if sess.Doer != nil {
+			sess.Doer.Cancel()
+		}
+		delete(h.sessions, msg.TabID)
+	}
+	if h.activeVoiceTab == msg.TabID {
+		h.activeVoiceTab = 0
+	}
+	h.mu.Unlock()
+	log.Printf("WebSocket: tab %d closed, session pruned", msg.TabID)
+}
+
+// handleDOMMutated signals the Doer that an in-page DOM mutation was detected.
+func (h *Handler) handleDOMMutated(msg InboundMessage) {
+	sess := h.getSession(msg.TabID)
+	select {
+	case sess.DOMMutatedCh <- struct{}{}:
+	default: // non-blocking, don't pile up
 	}
 }
 

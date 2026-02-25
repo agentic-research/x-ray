@@ -474,3 +474,95 @@ func TestSchemaResetAndSignalCycle(t *testing.T) {
 		t.Fatal("new SchemaReady should be closed after signal")
 	}
 }
+
+func TestTabClosedPrunesSession(t *testing.T) {
+	h := newTestHandler()
+
+	// Create a session for tab 42.
+	sess := h.getSession(42)
+	if sess == nil {
+		t.Fatal("getSession returned nil")
+	}
+
+	// Set tab 42 as the active voice tab.
+	h.mu.Lock()
+	h.activeVoiceTab = 42
+	h.mu.Unlock()
+
+	// Verify session exists.
+	h.mu.Lock()
+	_, exists := h.sessions[42]
+	h.mu.Unlock()
+	if !exists {
+		t.Fatal("session for tab 42 should exist before close")
+	}
+
+	// Simulate TAB_CLOSED message.
+	h.handleTabClosed(InboundMessage{Type: MsgTabClosed, TabID: 42})
+
+	// Session should be pruned.
+	h.mu.Lock()
+	_, exists = h.sessions[42]
+	voiceTab := h.activeVoiceTab
+	h.mu.Unlock()
+	if exists {
+		t.Error("session for tab 42 should have been pruned")
+	}
+	if voiceTab != 0 {
+		t.Errorf("activeVoiceTab should be 0 after closing voice tab, got %d", voiceTab)
+	}
+}
+
+func TestTabClosedCancelsDoer(t *testing.T) {
+	h := newTestHandler()
+	sess := h.getSession(99)
+
+	// Create and attach a Doer.
+	doer := NewDoer(h, 99, sess)
+	sess.Doer = doer
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	// Simulate TAB_CLOSED — should cancel the Doer.
+	h.handleTabClosed(InboundMessage{Type: MsgTabClosed, TabID: 99})
+
+	// Doer state should be Idle (from Cancel()).
+	status, _, _, result := doer.State().Snapshot()
+	if status != DoerIdle {
+		t.Errorf("expected DoerIdle after tab close, got %d", status)
+	}
+	if result == nil || result.Summary != "Cancelled by user." {
+		t.Errorf("expected cancel result, got %v", result)
+	}
+}
+
+func TestTabClosedNonVoiceTabPreservesVoiceTab(t *testing.T) {
+	h := newTestHandler()
+	h.getSession(10)
+	h.getSession(20)
+
+	h.mu.Lock()
+	h.activeVoiceTab = 10
+	h.mu.Unlock()
+
+	// Close tab 20 (not the voice tab).
+	h.handleTabClosed(InboundMessage{Type: MsgTabClosed, TabID: 20})
+
+	h.mu.Lock()
+	voiceTab := h.activeVoiceTab
+	_, exists10 := h.sessions[10]
+	_, exists20 := h.sessions[20]
+	h.mu.Unlock()
+
+	if voiceTab != 10 {
+		t.Errorf("activeVoiceTab should remain 10, got %d", voiceTab)
+	}
+	if !exists10 {
+		t.Error("session for tab 10 should still exist")
+	}
+	if exists20 {
+		t.Error("session for tab 20 should have been pruned")
+	}
+}

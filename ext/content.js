@@ -404,3 +404,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Initial registration on load (no DOM mutation)
 buildRegistry();
+
+// MutationObserver: detect in-page DOM changes (e.g., dropdown opens, SPA update)
+// and notify the server so the Doer can rescan immediately instead of waiting 2s.
+let mutationTimer = null;
+const domObserver = new MutationObserver(() => {
+  clearTimeout(mutationTimer);
+  mutationTimer = setTimeout(() => {
+    chrome.runtime.sendMessage({ type: 'DOM_MUTATED' });
+  }, 150);
+});
+domObserver.observe(document.body, { childList: true, subtree: true });

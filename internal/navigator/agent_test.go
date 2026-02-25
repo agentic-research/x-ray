@@ -48,7 +48,7 @@ func newTestAgent() *Agent {
 		panic(err)
 	}
 	engine.LoadChildren(testSummary, nil)
-	return &Agent{engine: engine}
+	return NewAgent(nil, "test", engine)
 }
 
 func TestExecuteToolLs(t *testing.T) {
