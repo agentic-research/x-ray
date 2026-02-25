@@ -46,6 +46,44 @@ tasks:
           fi
         fi
 
+  deps:
+    desc: Install all project dependencies
+    cmds:
+      - |
+        echo "==> Go module dependencies"
+        go mod download
+        echo "    Done."
+      - |
+        echo "==> sox (needed for voice mode mic/speaker)"
+        if command -v sox >/dev/null 2>&1; then
+          echo "    sox already installed: $(sox --version 2>&1 | head -1)"
+        else
+          if [ "$(uname)" = "Darwin" ]; then
+            echo "    Installing sox via Homebrew..."
+            brew install sox
+          else
+            echo "    sox not found. Please install sox for your platform."
+          fi
+        fi
+      - |
+        echo "==> Ollama (optional, for local Navigator model)"
+        if command -v ollama >/dev/null 2>&1; then
+          echo "    ollama found: $(ollama --version 2>&1 | head -1)"
+        else
+          echo "    ollama not found. Install from https://ollama.com if you want local Navigator models."
+        fi
+      - |
+        echo "==> fuse-t (needed for FUSE mount)"
+        if [ "$(uname)" = "Darwin" ]; then
+          if [ -d "{{.FUSE_T_HEADERS}}" ]; then
+            echo "    fuse-t found at {{.FUSE_T_HEADERS}}"
+          else
+            echo "    fuse-t not found. Run 'brew install --cask fuse-t' to install."
+          fi
+        else
+          echo "    fuse-t check skipped (not macOS)."
+        fi
+
   build:
     desc: Build and codesign agentd
     deps: [check-fuse-t]
