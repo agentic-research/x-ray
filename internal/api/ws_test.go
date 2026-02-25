@@ -177,7 +177,7 @@ func TestWSExecuteActionRouting(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Queue an action via the public API (simulating voice handler dispatching)
-	h.SendActionToExtension(10, "mache-7", "click")
+	h.SendActionToExtension(10, "mache-7", "click", "")
 
 	msg := readMessage(t, conn)
 	if msg.Type != MsgExecuteAction {
@@ -203,8 +203,8 @@ func TestWSReconnectFlushesQueue(t *testing.T) {
 	defer s.Close()
 
 	// Queue actions while no WS is connected
-	h.SendActionToExtension(1, "mache-1", "click")
-	h.SendActionToExtension(2, "mache-2", "focus")
+	h.SendActionToExtension(1, "mache-1", "click", "")
+	h.SendActionToExtension(2, "mache-2", "focus", "")
 
 	h.mu.Lock()
 	if len(h.pending) != 2 {

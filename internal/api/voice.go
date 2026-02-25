@@ -22,6 +22,7 @@ type voiceMessage struct {
 	Text       string `json:"text,omitempty"`
 	MacheID    string `json:"mache_id,omitempty"`
 	Action     string `json:"action,omitempty"`
+	Payload    string `json:"payload,omitempty"` // text for "type" action
 	SampleRate int    `json:"sample_rate,omitempty"`
 }
 
@@ -344,11 +345,12 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 							result = "Rescan cancelled."
 						}
 					default:
-						h.SendActionToExtension(tabID, action.MacheID, action.Action)
+						h.SendActionToExtension(tabID, action.MacheID, action.Action, action.Payload)
 						sendVoiceJSON(conn, &wsMu, voiceMessage{
 							Type:    MsgExecuteAction,
 							MacheID: action.MacheID,
 							Action:  action.Action,
+							Payload: action.Payload,
 						})
 					}
 				}
@@ -655,7 +657,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 								result = "Rescan cancelled."
 							}
 						default:
-							h.SendActionToExtension(tabID, action.MacheID, action.Action)
+							h.SendActionToExtension(tabID, action.MacheID, action.Action, action.Payload)
 						}
 					}
 

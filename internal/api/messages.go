@@ -37,6 +37,7 @@ type OutboundMessage struct {
 	Schema    any               `json:"schema,omitempty"`
 	MacheID   string            `json:"mache_id,omitempty"`
 	Action    string            `json:"action,omitempty"`
+	Payload   string            `json:"payload,omitempty"` // text for "type" action
 	Message   string            `json:"message,omitempty"`
 	Stage     string            `json:"stage,omitempty"`
 	Direction string            `json:"direction,omitempty"`

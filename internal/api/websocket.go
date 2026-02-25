@@ -473,6 +473,7 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 				TabID:   msg.TabID,
 				MacheID: action.MacheID,
 				Action:  action.Action,
+				Payload: action.Payload,
 			})
 		}
 	} else if textResponse != "" {
@@ -629,7 +630,7 @@ func (h *Handler) sendMessage(conn *websocket.Conn, msg OutboundMessage) {
 // SendActionToExtension sends an EXECUTE_ACTION message over the extension WebSocket.
 // Used by the voice handler to dispatch act() results to the browser.
 // If the extension is disconnected, the action is queued and flushed on reconnect.
-func (h *Handler) SendActionToExtension(tabID int, macheID, action string) {
+func (h *Handler) SendActionToExtension(tabID int, macheID, action, payload string) {
 	h.mu.Lock()
 	conn := h.conn
 	if conn == nil {
@@ -644,6 +645,7 @@ func (h *Handler) SendActionToExtension(tabID int, macheID, action string) {
 		TabID:   tabID,
 		MacheID: macheID,
 		Action:  action,
+		Payload: payload,
 	})
 }
 
@@ -683,7 +685,7 @@ func (h *Handler) HandleNavigateHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// If there's an action, also send it to the browser via WebSocket
 	if action != nil {
-		h.SendActionToExtension(req.TabID, action.MacheID, action.Action)
+		h.SendActionToExtension(req.TabID, action.MacheID, action.Action, action.Payload)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

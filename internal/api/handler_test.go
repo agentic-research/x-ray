@@ -192,7 +192,7 @@ func TestOutboundMessageTabIDOmitZero(t *testing.T) {
 func TestSendActionToExtensionQueuesWhenDisconnected(t *testing.T) {
 	h := newTestHandler()
 	// conn is nil — action should be queued.
-	h.SendActionToExtension(42, "mache-5", "click")
+	h.SendActionToExtension(42, "mache-5", "click", "")
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -214,9 +214,9 @@ func TestSendActionToExtensionQueuesWhenDisconnected(t *testing.T) {
 func TestSendActionToExtensionMultipleTabs(t *testing.T) {
 	h := newTestHandler()
 
-	h.SendActionToExtension(10, "m-1", "click")
-	h.SendActionToExtension(20, "m-2", "focus")
-	h.SendActionToExtension(10, "m-3", "click")
+	h.SendActionToExtension(10, "m-1", "click", "")
+	h.SendActionToExtension(20, "m-2", "focus", "")
+	h.SendActionToExtension(10, "m-3", "click", "")
 
 	h.mu.Lock()
 	defer h.mu.Unlock()

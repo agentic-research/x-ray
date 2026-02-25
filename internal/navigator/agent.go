@@ -21,6 +21,7 @@ type ActionResult struct {
 	MacheID string `json:"mache_id"`
 	Action  string `json:"action"`
 	Path    string `json:"path"`
+	Payload string `json:"payload,omitempty"`
 }
 
 // Agent represents Stage 2: The Navigator.
@@ -76,12 +77,13 @@ func ToolDefinitions() []*genai.Tool {
 			},
 			{
 				Name:        "act",
-				Description: "Execute a browser action on the element at this virtual path. This triggers a real click/focus in the browser.",
+				Description: "Execute a browser action on the element at this virtual path. This triggers a real click/focus/type/enter in the browser.",
 				Parameters: &genai.Schema{
 					Type: genai.TypeObject,
 					Properties: map[string]*genai.Schema{
-						"path":   {Type: genai.TypeString, Description: "Virtual path to the element, e.g. '/main/trending'"},
-						"action": {Type: genai.TypeString, Description: "Action type: 'click' or 'focus'"},
+						"path":    {Type: genai.TypeString, Description: "Virtual path to the element, e.g. '/main/trending'"},
+						"action":  {Type: genai.TypeString, Description: "Action type: 'click', 'focus', 'type', or 'enter'"},
+						"payload": {Type: genai.TypeString, Description: "Text to type into the element (required for 'type' action, ignored otherwise)"},
 					},
 					Required: []string{"path", "action"},
 				},
@@ -240,6 +242,7 @@ func (a *Agent) ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string
 	case "act":
 		p, _ := args["path"].(string)
 		action, _ := args["action"].(string)
+		payload, _ := args["payload"].(string)
 		if action == "" {
 			action = "click"
 		}
@@ -247,8 +250,11 @@ func (a *Agent) ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), nil
 		}
-		return fmt.Sprintf("Executing %s on %s (mache_id: %s)", action, p, macheID),
-			&ActionResult{MacheID: macheID, Action: action, Path: p}
+		desc := fmt.Sprintf("Executing %s on %s (mache_id: %s)", action, p, macheID)
+		if payload != "" {
+			desc = fmt.Sprintf("Typing %q into %s (mache_id: %s)", payload, p, macheID)
+		}
+		return desc, &ActionResult{MacheID: macheID, Action: action, Path: p, Payload: payload}
 
 	case "scroll":
 		direction, _ := args["direction"].(string)
@@ -338,7 +344,7 @@ You have access to a semantic filesystem that represents the current web page. T
 Your tools:
 - ls(path): List directory contents. Always start with ls("/") to see the top-level zones.
 - cat(path): Read a file. Use this to read "description" or "children" files.
-- act(path, action): Execute a browser action on the element at this path. Actions: "click", "focus".
+- act(path, action, payload?): Execute a browser action on the element at this path. Actions: "click", "focus", "type", "enter". For "type", include the text as the payload parameter. For "enter", dispatches an Enter keypress (useful for search bars without a visible submit button).
 - scroll(direction): Scroll the page to load more content. Direction: "down" or "up".
 - goto(url): Navigate the browser to a new URL. After navigation, the filesystem updates — run ls("/") to explore the new page.
 - rescan(path?): Rescan the page with a fresh screenshot. Without a path, rescans the full page. With a path (e.g., rescan("/main/player")), zooms into that zone for higher detail — discovers internal controls like play buttons, volume sliders, etc. Use when you can't find an element or need finer detail within a zone.
@@ -376,6 +382,12 @@ Example workflow for "click the first story" on a news page:
   cat("/main/feed/children")           → [1] "First Story Title"
                                          [2] "Second Story Title"
   act("/main/feed/_c/1", "click")      → clicks the first story
+
+Example workflow for "search for Golang tutorials" on YouTube:
+  ls("/") shows: header/ main/ sidebar/
+  cat("/header/search_bar/description")  → "Search input field"
+  act("/header/search_bar", "type", "Golang tutorials")
+  act("/header/search_bar", "enter")
 
 Be decisive. You already know the full tree from ls("/"). Two calls should be enough: cat children → act.
 If you need more items, add scroll → cat children → act (up to 8 iterations total).`

@@ -101,14 +101,49 @@ function captureSnapshot() {
   return { summary, url: window.location.href };
 }
 
-function executeAction(macheId, actionType) {
+// React-safe text injection. Bypasses React/Vue/Angular controlled component
+// state by calling the native HTMLInputElement/HTMLTextAreaElement value setter
+// directly, then dispatching bubbling input+change events so the framework
+// picks up the new value.
+function typeText(element, text) {
+  element.focus();
+  const nativeInputSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+  const nativeTextAreaSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+
+  if (element.tagName === 'TEXTAREA') {
+    nativeTextAreaSetter.call(element, text);
+  } else {
+    nativeInputSetter.call(element, text);
+  }
+
+  element.dispatchEvent(new Event('input', { bubbles: true }));
+  element.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+// Simulate pressing Enter on an element (for search bars without visible submit buttons).
+function pressEnter(element) {
+  element.dispatchEvent(new KeyboardEvent('keydown', {
+    bubbles: true, cancelable: true, keyCode: 13, key: 'Enter'
+  }));
+  element.dispatchEvent(new KeyboardEvent('keyup', {
+    bubbles: true, cancelable: true, keyCode: 13, key: 'Enter'
+  }));
+}
+
+function executeAction(macheId, actionType, payload) {
   let el = elementRegistry.get(macheId);
   if (!el) {
     console.error("X-Ray: Element not found for ID:", macheId);
     return;
   }
 
-  if (actionType === 'click') {
+  if (actionType === 'type') {
+    console.log(`X-Ray: Typing "${payload}" into`, el);
+    typeText(el, payload || '');
+  } else if (actionType === 'enter') {
+    console.log(`X-Ray: Pressing Enter on`, el);
+    pressEnter(el);
+  } else if (actionType === 'click') {
     // If the target is a structural container (article, section, etc.),
     // find the first <a> or <button> inside it -- clicking a container
     // element does nothing on most sites (React, SPA, etc.).
@@ -257,7 +292,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     case 'EXECUTE_ACTION':
-      executeAction(message.mache_id, message.action);
+      executeAction(message.mache_id, message.action, message.payload);
       sendResponse({ success: true });
       return true;
 

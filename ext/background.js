@@ -59,20 +59,18 @@ function connectWebSocket() {
     switch (msg.type) {
       case 'EXECUTE_ACTION': {
         const targetTab = msg.tab_id || null;
+        const actionMsg = {
+          type: 'EXECUTE_ACTION',
+          mache_id: msg.mache_id,
+          action: msg.action,
+          payload: msg.payload || ''
+        };
         if (targetTab != null) {
-          chrome.tabs.sendMessage(targetTab, {
-            type: 'EXECUTE_ACTION',
-            mache_id: msg.mache_id,
-            action: msg.action
-          });
+          chrome.tabs.sendMessage(targetTab, actionMsg);
         } else {
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
-              chrome.tabs.sendMessage(tabs[0].id, {
-                type: 'EXECUTE_ACTION',
-                mache_id: msg.mache_id,
-                action: msg.action
-              });
+              chrome.tabs.sendMessage(tabs[0].id, actionMsg);
             }
           });
         }
