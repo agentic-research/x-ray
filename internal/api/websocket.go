@@ -381,9 +381,16 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	}
 
 	h.mu.Lock()
-	if h.activeVoiceTab == 0 {
+	if h.activeVoiceTab == 0 && msg.TabID != 0 {
 		h.activeVoiceTab = msg.TabID
 		log.Printf("WebSocket: active voice tab initialized to %d", msg.TabID)
+		// Unblock any Doer stranded on the placeholder tab-0 session.
+		// The goto dispatched before the real tab was known; now that the
+		// extension responded with a real tab ID, signal the old session
+		// so the Doer can complete and future commands use the real tab.
+		if oldSess, ok := h.sessions[0]; ok {
+			oldSess.SignalSchemaReady()
+		}
 	}
 	h.mu.Unlock()
 
