@@ -14,6 +14,7 @@ Powered by [`agentic-research/mache`](https://github.com/agentic-research/mache)
   - [Stage 1: The Cartographer](#stage-1-the-cartographer-vision--structure)
   - [Stage 2: The Navigator](#stage-2-the-navigator-voice--action)
 - [Voice Mode](#voice-mode)
+  - [Voice Daemon Mode](#voice-daemon-mode)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Testing](#testing)
@@ -62,21 +63,59 @@ X-Ray supports hands-free voice navigation via Gemini's Live API. The user speak
 ### How it works
 
 1. **Push-to-talk**: Hold the mic button (or spacebar) and speak a navigation intent.
-2. **Gemini Live** receives the audio, transcribes it, and issues tool calls (`ls`, `cat`, `act`, `scroll`) against the Mache engine — the same tools the text Navigator uses.
+2. **Gemini Live** receives the audio, transcribes it, and issues tool calls (`ls`, `cat`, `act`, `scroll`, `goto`, `rescan`) against the Mache engine — the same tools the text Navigator uses.
 3. **Audio suppression**: While executing tool calls, Gemini's narration is muted server-side. Only the final result is spoken aloud ("Done, clicked the first story.").
 4. **Text fallback**: A text input field lets you type commands into the same Live session — useful for corrections or precise instructions.
+
+### Navigator tools
+
+| Tool | Description |
+|------|-------------|
+| `ls(path)` | List directory contents |
+| `cat(path)` | Read a file (description, children) |
+| `act(path, action)` | Click or focus an element |
+| `scroll(direction)` | Scroll to load more content |
+| `goto(url)` | Navigate the browser to a new URL |
+| `rescan(path?)` | Rescan the page — full or targeted (magnifying glass) |
+
+### Magnifying glass rescan
+
+A full-page rescan captures the same 800px-wide screenshot the Cartographer always sees — fine for top-level zones, but too coarse for internal controls (play buttons, volume sliders, scrubbers inside a video player).
+
+When the Navigator calls `rescan("/main/player")`, X-Ray:
+1. Resolves the mache-id for that zone
+2. Uses CDP `DOM.getBoxModel` to get the element's bounding box
+3. Crops the screenshot to just that region (with 50px padding for context)
+4. Runs the Cartographer on the cropped image with a hint: *"You are zoomed into `/main/player`. Output absolute paths like `/main/player/controls`."*
+5. Merges the new sub-zones into the existing filesystem via `Engine.MergeSchema` — no destructive replace
+
+The agent retries `ls("/main/player")` and now sees `controls/`, `progress_bar/`, `volume/` — sub-zones that were invisible at full-page scale.
 
 ### Non-blocking schema
 
 The voice connection opens immediately so the mic is hot from the moment the user clicks. If Gemini fires a tool call before the Cartographer finishes generating the schema, the tool execution blocks on a Go channel until the schema arrives — the user never sees an empty page.
 
+### Voice daemon mode
+
+For native mic/speaker voice interaction without the browser UI:
+
+```bash
+go run ./cmd/agentd --voice
+```
+
+This mode:
+- Opens Chrome automatically if no browser is connected (cold-start)
+- Uses `sox` for native mic capture and speaker playback — no browser audio permissions needed
+- Connects to Gemini Live API with the same tool set as the browser voice UI
+- Falls back to querying the active tab if the extension hasn't reported one yet
+
 ### Using voice mode
 
-Voice mode is available through both the Chrome extension (popup mic toggle) and the standalone UI:
+Voice mode is available through three interfaces:
 
-```
-http://localhost:8080/voice-ui?tab=<tabId>
-```
+1. **Voice daemon** (recommended): `go run ./cmd/agentd --voice` — native mic/speaker, no browser UI
+2. **Chrome extension**: Popup mic toggle
+3. **Standalone UI**: `http://localhost:8080/voice-ui?tab=<tabId>`
 
 The extension handles mic permissions via a dedicated setup window (`mic-setup.html`) since Chrome MV3 offscreen documents cannot trigger permission prompts directly.
 
@@ -271,6 +310,11 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system diagram, da
 - **Semantic Filesystem**: Instead of brittle XPaths or coordinate guessing, the agent interacts with a logical directory structure mapped dynamically to the page in under 10 seconds.
 - **LLM-Powered Item Grouping**: For list zones, the Cartographer identifies primary items (story titles, product cards) so ordinal counting ("click the 3rd story") works correctly across any site.
 - **Scroll Support**: The Navigator's `scroll` tool triggers page scrolling, CSS selector re-evaluation, and children file refresh — enabling "click the 15th post" workflows that span beyond the initial viewport.
+- **Self-Healing Rescan**: When the Navigator can't find an element, it calls `rescan()` to capture a fresh screenshot and regenerate the schema — adapting to dynamic page changes without manual intervention.
+- **Magnifying Glass Rescan**: Targeted `rescan("/path")` crops the screenshot to a specific zone's bounding box via CDP, runs the Cartographer on the zoomed-in image, and merges sub-zones into the existing filesystem. Discovers fine-grained controls (video player buttons, form fields) invisible at full-page scale.
+- **Schema Cache with Bypass**: DOM snapshots are cached by URL to avoid redundant Cartographer calls. Rescan operations bypass the cache automatically via the `IsRescan` flag.
+- **Proactive Navigation**: The `goto(url)` tool lets the Navigator open new pages ("go to Reddit", "take me home") — the filesystem updates automatically after navigation.
+- **Cold-Start Browser Open**: The voice daemon detects when no browser is connected and opens Chrome automatically, so the user can start with just `go run ./cmd/agentd --voice`.
 - **Temperature 0.1**: Both Cartographer and Navigator run at near-deterministic temperature for reproducible results.
 
 ## Deployment

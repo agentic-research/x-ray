@@ -67,6 +67,8 @@ X-Ray supports real-time voice interaction via the **Gemini Live API**. The user
 
 For example: the user says, *"Scroll down and find the post about Python."* Gemini Live understands the intent, X-Ray's tools silently execute `scroll("down")` and `cat("/main/feed/children")` in the background, and Gemini replies aloud: *"I found it — clicking now"* — as the browser navigates to the post. The user never sees a terminal, a command, or a loading spinner. It just works.
 
+**Voice daemon mode** (`go run ./cmd/agentd --voice`) provides native mic/speaker interaction via `sox` — no browser audio permissions needed. It opens Chrome automatically on cold start, connects to Gemini Live with the full tool set, and falls back gracefully when the extension hasn't reported the active tab yet.
+
 ---
 
 ## How I Built It
@@ -87,7 +89,7 @@ Gemini 2.5 Flash receives both the visual screenshot and the text summary. Becau
 
 **Stage 2: The Navigator (Local Edge Execution)**
 
-The JSON schema feeds into the Mache Engine, which builds an in-memory virtual filesystem. Now the execution loop is trivially simple — a local 7B model (Qwen 2.5 Coder) uses four bash-like tools:
+The JSON schema feeds into the Mache Engine, which builds an in-memory virtual filesystem. Now the execution loop is trivially simple — a local 7B model (Qwen 2.5 Coder) uses six bash-like tools:
 
 | Tool | Description |
 |------|-------------|
@@ -95,8 +97,21 @@ The JSON schema feeds into the Mache Engine, which builds an in-memory virtual f
 | `cat(path)` | Read a file |
 | `act(path, action)` | Click or focus an element |
 | `scroll(direction)` | Scroll to load more content |
+| `goto(url)` | Navigate the browser to a new URL |
+| `rescan(path?)` | Rescan the page — full or targeted (magnifying glass) |
 
 The model sees the full filesystem tree upfront (pre-filled via a tree dump), reads the children file, and acts. Two calls. No hallucinated paths. No wasted iterations.
+
+### Self-Healing Rescan & Magnifying Glass
+
+When the Navigator can't find what it needs, it doesn't give up — it calls `rescan()` to capture a fresh screenshot and regenerate the schema. But a full-page rescan has a resolution limit: at 800px wide, a video player's internal controls (play, volume, scrubber) are too small to map.
+
+The **magnifying glass** solves this. When the Navigator calls `rescan("/main/player")`, X-Ray:
+1. Crops the CDP screenshot to just that element's bounding box (via `DOM.getBoxModel`)
+2. Runs the Cartographer on the zoomed-in image
+3. Merges the new sub-zones into the existing filesystem — like tree-sitter re-parsing a single AST node
+
+The agent retries and now sees `/main/player/controls/`, `/main/player/progress_bar/` — sub-zones invisible at full-page scale.
 
 ### The Hybrid Edge-Cloud Split
 
@@ -161,6 +176,10 @@ Different model families output function calls in different JSON formats. Gemma 
 - **CSS selector unions** — a novel approach that combines LLM visual intelligence with browser-native `querySelectorAll` for robust item discovery
 - **Model-agnostic Navigator** — tested with Gemini Flash, Gemma 12B, Qwen 2.5 Coder 7B, and Llama 3.2 3B. The filesystem abstraction is the constant; the model is a variable
 - **Voice mode via Gemini Live API** — real-time bidirectional audio with server-side tool execution, audio suppression during tool loops, and sub-second latency
+- **Self-healing rescan** — the Navigator autonomously recaptures the page when the schema goes stale, adapting to dynamic content without manual intervention
+- **Magnifying glass rescan** — targeted `rescan("/path")` crops the screenshot to a specific zone, runs the Cartographer on the zoomed region, and merges sub-zones into the existing filesystem. Like tree-sitter re-parsing a single AST node
+- **Proactive navigation** — `goto(url)` lets the agent open new pages, navigate home, or follow cross-site links. The filesystem rebuilds automatically after each navigation
+- **Voice daemon with cold-start** — `--voice` mode opens Chrome automatically, uses native mic/speaker via sox, and works end-to-end without any browser UI
 
 ---
 
@@ -174,23 +193,26 @@ The difference wasn't intelligence. It was interface design.
 
 ## What's Next for X-Ray
 
-- **FUSE mount** — expose the virtual filesystem as a real mount point so any terminal tool (`grep`, `find`, `tree`) works natively against a live webpage. Developers could write simple bash scripts to automate web tasks without complex browser automation frameworks like Playwright
-- **Multi-page workflows** — chain navigations across pages ("search for X, click the first result, add to cart")
+- **Multi-page workflows** — chain navigations across pages ("search for X, click the first result, add to cart"). The `goto` tool enables cross-site navigation; next is persistent context across page transitions
 - **Write actions** — form filling, text input, drag-and-drop via the same filesystem metaphor
+- **FUSE mount** — expose the virtual filesystem as a real mount point so any terminal tool (`grep`, `find`, `tree`) works natively against a live webpage
 - **Mache for the web** — generalize the schema format so any web agent framework can consume X-Ray's output
 - **Fine-tuned Navigator** — train a purpose-built tiny model on filesystem navigation traces, potentially bringing the execution loop down to sub-1B parameters
+- **Recursive magnifying glass** — allow nested rescans (zoom into a zone, then zoom into a sub-zone) for arbitrarily deep UI hierarchies
 
 ---
 
 ## Built With
 
 - **Google Gemini 2.5 Flash** — Cartographer vision + structured output
-- **Google Gemini Live API** — Real-time voice interaction
+- **Google Gemini Live API** — Real-time voice interaction + voice daemon
 - **Google Cloud Run** — Backend hosting
-- **Go** — Backend (agentd)
-- **Chrome Extension (Manifest V3)** — DOM analysis, Set-of-Mark overlay, action execution
-- **Mache** — Virtual filesystem engine
+- **Go** — Backend (agentd), voice daemon, WebSocket hub
+- **Chrome Extension (Manifest V3)** — DOM analysis, Set-of-Mark overlay, CDP screenshot cropping, action execution
+- **Chrome DevTools Protocol** — Accessibility tree, box model queries, targeted screenshot capture
+- **Mache** — Virtual filesystem engine with schema merging
 - **Ollama + Qwen 2.5 Coder 7B** — Local Navigator execution
+- **sox** — Native mic/speaker for voice daemon mode
 
 ---
 
@@ -204,6 +226,9 @@ export GEMINI_API_KEY="your-key"
 # Cloud-only (Gemini for everything):
 task run
 
+# Voice daemon (native mic/speaker, opens Chrome automatically):
+go run ./cmd/agentd --voice
+
 # Hybrid edge-cloud (local Navigator):
 export NAVIGATOR_ENDPOINT=http://localhost:11434/v1
 export NAVIGATOR_MODEL=qwen2.5-coder:7b
@@ -211,7 +236,7 @@ export NAVIGATOR_FORMAT=gemma
 task run
 ```
 
-Load the `ext/` directory as an unpacked Chrome extension, visit any page, and click the X-Ray icon.
+Load the `ext/` directory as an unpacked Chrome extension, visit any page, and click the X-Ray icon. For voice daemon mode, just run `--voice` — Chrome opens automatically.
 
 ---
 

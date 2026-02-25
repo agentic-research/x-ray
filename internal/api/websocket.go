@@ -50,8 +50,9 @@ type TabSession struct {
 	SelectorsResolved chan map[string][]string // receives resolved items from RESOLVE_SELECTORS round-trip
 	RescanPath        string                   // set by voice handler for targeted rescan, consumed by handleDOMSnapshot
 
-	schemaMu     sync.Mutex // protects SchemaReady close
+	schemaMu     sync.Mutex // protects SchemaReady close + schemaGen
 	schemaClosed bool
+	schemaGen    uint64 // monotonically increasing; only the latest generation applies
 }
 
 // SignalSchemaReady safely closes SchemaReady. No-op if already closed.
@@ -228,6 +229,14 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	ctx := context.Background()
 	sess := h.getSession(msg.TabID)
 
+	// Claim a generation number. If another snapshot starts processing while
+	// this one is in-flight (e.g., goto fires twice), the stale generation
+	// is discarded at apply time to prevent overwriting a newer schema.
+	sess.schemaMu.Lock()
+	sess.schemaGen++
+	myGen := sess.schemaGen
+	sess.schemaMu.Unlock()
+
 	// --- Schema cache lookup (bypassed on rescan) ---
 	key := cacheKey(msg.URL)
 	var schemaJSON string
@@ -328,6 +337,15 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 			h.schemas.Put(key, schemaJSON)
 			log.Printf("Schema cached for %q", key)
 		}
+	}
+
+	// Generation guard: discard if a newer snapshot started processing.
+	sess.schemaMu.Lock()
+	stale := sess.schemaGen != myGen
+	sess.schemaMu.Unlock()
+	if stale {
+		log.Printf("Schema: generation %d superseded (tab %d), discarding stale Cartographer result", myGen, msg.TabID)
+		return
 	}
 
 	h.mu.Lock()

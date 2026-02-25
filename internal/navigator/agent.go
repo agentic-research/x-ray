@@ -276,7 +276,8 @@ func (a *Agent) ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string
 
 	case "rescan":
 		p, _ := args["path"].(string)
-		if p != "" {
+		// "/" means full-page rescan (root has no mache_id).
+		if p != "" && p != "/" {
 			macheID, err := a.engine.ResolveMacheID(p)
 			if err != nil {
 				return fmt.Sprintf("Error: %v", err), nil
