@@ -9,6 +9,11 @@
 // Mic starts OFF. Background sends MIC_ON/MIC_OFF to toggle streaming.
 // Session stays alive independently of mic state.
 
+// Immediately report that offscreen JS loaded — helps debug silent failures.
+try {
+  chrome.runtime.sendMessage({ type: 'VOICE_STATUS', status: 'loaded', text: 'offscreen.js executing' });
+} catch (_) {}
+
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
 const DEFAULT_WS_HOST = 'localhost:8080';

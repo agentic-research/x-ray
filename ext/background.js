@@ -631,6 +631,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: false, error: 'No active tab' });
           return;
         }
+        // On restricted URLs (chrome://, about://), there's no schema and never will be.
+        const url = tabs[0].url || '';
+        const restricted = /^(chrome|about|edge|brave):\/\//.test(url);
+        if (restricted && !schemaReadyTabs.has(tabId)) {
+          sendResponse({ ok: false, error: 'Navigate to a website first (use voice: "go to reddit")' });
+          return;
+        }
         if (!schemaReadyTabs.has(tabId)) {
           // Queue intent — it will be sent when SCHEMA_READY arrives.
           pendingIntents.set(tabId, msg.intent);
