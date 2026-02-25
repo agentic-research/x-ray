@@ -16,38 +16,49 @@ chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
     statusEl.className = 'error';
     return;
   }
-  // Check if active tab already has a schema — if not, auto-snapshot.
-  chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
-    if (chrome.runtime.lastError) return;
-    if (resp?.hasSchema) {
-      intentInput.placeholder = 'Type a command...';
-      statusEl.textContent = 'Ready — type a command or use voice';
-      statusEl.className = 'connected';
-    } else if (resp?.pending) {
-      intentInput.placeholder = 'Type now — runs when ready...';
-      snapshotBtn.textContent = 'Capturing...';
-      snapshotBtn.disabled = true;
-      statusEl.textContent = 'Generating schema...';
+  // Check if current tab is a restricted URL (chrome://, about:, etc.)
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const url = tabs[0]?.url || '';
+    const restricted = /^(chrome|about|edge|brave):\/\//.test(url);
+    if (restricted) {
+      intentInput.placeholder = 'Say "go to reddit" or type a URL...';
+      statusEl.textContent = 'Use voice or goto to navigate first';
       statusEl.className = '';
-    } else {
-      intentInput.placeholder = 'Type now — runs when ready...';
-      // Auto-trigger snapshot.
-      snapshotBtn.textContent = 'Capturing...';
-      snapshotBtn.disabled = true;
-      statusEl.textContent = 'Auto-capturing page...';
-      statusEl.className = '';
-      chrome.runtime.sendMessage({ type: 'TRIGGER_SNAPSHOT' }, (snapResp) => {
-        if (chrome.runtime.lastError || !snapResp?.ok) {
-          statusEl.textContent = snapResp?.error || 'Snapshot failed';
-          statusEl.className = 'error';
-        } else {
-          statusEl.textContent = 'Generating schema...';
-          statusEl.className = '';
-        }
-        snapshotBtn.textContent = 'Snapshot';
-        snapshotBtn.disabled = false;
-      });
+      return;
     }
+    // Check if active tab already has a schema — if not, auto-snapshot.
+    chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
+      if (chrome.runtime.lastError) return;
+      if (resp?.hasSchema) {
+        intentInput.placeholder = 'Type a command...';
+        statusEl.textContent = 'Ready — type a command or use voice';
+        statusEl.className = 'connected';
+      } else if (resp?.pending) {
+        intentInput.placeholder = 'Type now — runs when ready...';
+        snapshotBtn.textContent = 'Capturing...';
+        snapshotBtn.disabled = true;
+        statusEl.textContent = 'Generating schema...';
+        statusEl.className = '';
+      } else {
+        intentInput.placeholder = 'Type now — runs when ready...';
+        // Auto-trigger snapshot.
+        snapshotBtn.textContent = 'Capturing...';
+        snapshotBtn.disabled = true;
+        statusEl.textContent = 'Auto-capturing page...';
+        statusEl.className = '';
+        chrome.runtime.sendMessage({ type: 'TRIGGER_SNAPSHOT' }, (snapResp) => {
+          if (chrome.runtime.lastError || !snapResp?.ok) {
+            statusEl.textContent = snapResp?.error || 'Snapshot failed';
+            statusEl.className = 'error';
+          } else {
+            statusEl.textContent = 'Generating schema...';
+            statusEl.className = '';
+          }
+          snapshotBtn.textContent = 'Snapshot';
+          snapshotBtn.disabled = false;
+        });
+      }
+    });
   });
 });
 

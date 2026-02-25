@@ -47,6 +47,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
+// Send a voice log message to agentd over the main WebSocket so it appears in the terminal.
+function voiceLog(tabId, message) {
+  console.log('X-Ray Voice:', message);
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'VOICE_LOG', tab_id: tabId || 0, message }));
+  }
+}
+
 function connectWebSocket() {
   if (ws && ws.readyState === WebSocket.OPEN) return;
 
@@ -412,11 +420,14 @@ async function hasOffscreen() {
 // Start a voice session for the given tab. Mic starts OFF — user toggles it.
 // If mic permission hasn't been granted yet, opens a small popup window to request it.
 async function startSession(tabId) {
+  voiceLog(tabId, 'startSession called');
+
   // Check mic permission — offscreen docs can't show the Chrome prompt.
   try {
     const perm = await navigator.permissions.query({ name: 'microphone' });
+    voiceLog(tabId, `mic permission: ${perm.state}`);
     if (perm.state !== 'granted') {
-      console.log('X-Ray: Mic permission not granted, opening grant window');
+      voiceLog(tabId, 'opening mic-setup.html grant window');
       chrome.windows.create({
         url: 'mic-setup.html',
         type: 'popup',
@@ -429,12 +440,13 @@ async function startSession(tabId) {
       updateBadge();
       return;
     }
-  } catch (_) {
-    // permissions.query may not be available — proceed and let offscreen try.
+  } catch (e) {
+    voiceLog(tabId, `permissions.query error (non-fatal): ${e.message}`);
   }
 
   // Tear down any existing session first.
   if (await hasOffscreen()) {
+    voiceLog(tabId, 'tearing down existing offscreen doc');
     try { chrome.runtime.sendMessage({ type: 'VOICE_STOP' }); } catch (_) {}
     await chrome.offscreen.closeDocument();
   }
@@ -443,12 +455,16 @@ async function startSession(tabId) {
   sessionReady = false;
   micActive = false;
 
-  await chrome.offscreen.createDocument({
-    url: 'offscreen.html#tab=' + tabId,
-    reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'],
-    justification: 'Voice navigator needs microphone and audio playback'
-  });
-  console.log('X-Ray: Voice session starting for tab', tabId);
+  try {
+    await chrome.offscreen.createDocument({
+      url: 'offscreen.html#tab=' + tabId,
+      reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'],
+      justification: 'Voice navigator needs microphone and audio playback'
+    });
+    voiceLog(tabId, 'offscreen doc created, voice WS connecting');
+  } catch (e) {
+    voiceLog(tabId, `offscreen createDocument FAILED: ${e.message}`);
+  }
   updateBadge();
 }
 
@@ -470,6 +486,7 @@ async function killSession() {
 
 function setMic(on) {
   micActive = on;
+  voiceLog(sessionTabId, `setMic(${on})`);
   try {
     chrome.runtime.sendMessage({ type: on ? 'MIC_ON' : 'MIC_OFF' });
   } catch (_) {}
@@ -553,6 +570,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case 'TRIGGER_SNAPSHOT':
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) {
+          const url = tabs[0].url || '';
+          if (/^(chrome|about|edge|brave):\/\//.test(url)) {
+            sendResponse({ ok: false, error: 'Cannot snapshot restricted page — use goto to navigate first' });
+            return;
+          }
           const tabId = tabs[0].id;
           if (pendingSnapshots.has(tabId)) {
             sendResponse({ ok: true, tabId });
@@ -573,6 +595,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         // No session yet — start one and auto-enable mic once ready.
         chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
           if (tabs[0]) {
+            voiceLog(tabs[0].id, `TOGGLE_MIC: no session, starting for tab ${tabs[0].id}`);
             pendingAutoMic = true;
             await startSession(tabs[0].id);
             sendResponse({ ok: true, ...getState() });
@@ -582,8 +605,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         });
         return true;
       } else if (!sessionReady) {
+        voiceLog(sessionTabId, 'TOGGLE_MIC: session not ready yet');
         sendResponse({ ok: false, error: 'Session connecting...' });
       } else {
+        voiceLog(sessionTabId, `TOGGLE_MIC: toggling mic ${micActive} → ${!micActive}`);
         setMic(!micActive);
         sendResponse({ ok: true, ...getState() });
       }
@@ -648,11 +673,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
 
     case 'VOICE_STATUS':
-      console.log('X-Ray: Voice status:', msg.status, msg.text);
+      voiceLog(sessionTabId, `offscreen → ${msg.status}: ${msg.text}`);
       if (msg.status === 'ready') {
         sessionReady = true;
-        // One-click flow: snapshot set pendingAutoMic, now session is ready — turn on mic.
+        // One-click flow: auto-enable mic once session is ready.
         if (pendingAutoMic) {
+          voiceLog(sessionTabId, 'pendingAutoMic → enabling mic');
           pendingAutoMic = false;
           setMic(true);
         }

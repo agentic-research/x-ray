@@ -12,6 +12,7 @@ const (
 	MsgResolveSelectors  = "RESOLVE_SELECTORS"
 	MsgSelectorsResolved = "SELECTORS_RESOLVED"
 	MsgGotoURL           = "GOTO_URL"
+	MsgVoiceLog          = "VOICE_LOG"
 )
 
 // InboundMessage is the envelope for all browser -> server messages.
@@ -23,6 +24,7 @@ type InboundMessage struct {
 	Screenshot    string              `json:"screenshot,omitempty"` // base64-encoded JPEG (scaled)
 	Intent        string              `json:"intent,omitempty"`
 	ResolvedItems map[string][]string `json:"resolved_items,omitempty"` // zone mache-id → resolved child mache-ids
+	Message       string              `json:"message,omitempty"`        // VOICE_LOG text
 }
 
 // OutboundMessage is the envelope for all server -> browser messages.

@@ -171,6 +171,8 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			h.handleDOMUpdate(msg)
 		case MsgSelectorsResolved:
 			h.handleSelectorsResolved(msg)
+		case MsgVoiceLog:
+			log.Printf("Voice [ext tab %d]: %s", msg.TabID, msg.Message)
 		default:
 			log.Printf("WebSocket: unknown message type: %s", msg.Type)
 		}
