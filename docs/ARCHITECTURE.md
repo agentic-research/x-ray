@@ -56,7 +56,30 @@ graph TB
 The voice system splits into two concurrent agents per tab:
 
 - **Talker** (`voice.go`): Connected to Gemini Live API. Always responsive to the user. Has 3 instant tools (no I/O, no blocking) so audio is never suppressed. Delegates all page work via `issue_command`.
-- **Doer** (`doer.go`): Background goroutine running the Navigator's agentic tool-use loop. Receives goals from the Talker, executes them asynchronously, and notifies the Talker when done.
+- **Doer** (`doer.go`): Background goroutine running a multi-step loop. Receives goals from the Talker, dispatches actions, waits for page settle, feeds results back to the Navigator, and repeats up to 5 steps. Notifies the Talker when done.
+
+### Multi-Step Loop (Closed-Loop Verification)
+
+A single voice command like *"Go to HN and tell me the top story"* triggers multiple steps automatically:
+
+```
+for step := 0; step < 5; step++ {
+    Navigator.HandleIntent(enrichedIntent) → ActionResult or text
+    if text → done (Navigator answered)
+    dispatchAction(action)
+    waitForPageSettle()     // detect same-tab nav, new tab, or in-page mutation
+    enrichedIntent = buildContinuation(goal, step, action, result)
+}
+```
+
+**Page settle detection** (after click/type/enter):
+1. `ResetSchema()` on current tab, wait up to 2s for `SchemaReady`
+2. If `SchemaReady` fires → same-tab navigation (URL change triggered auto-snapshot), continue loop
+3. If timeout → check `activeVoiceTab`:
+   - Changed → click opened a new tab; rebind Doer to new tab session, re-wire callbacks, wait on new tab's `SchemaReady`
+   - Unchanged → in-page DOM mutation; trigger `sendRescan()` fallback, continue loop
+
+**Continuation prompt**: Between steps, the Doer builds a `[CONTINUATION]` prompt that tells the Navigator what happened and asks it to verify the action worked before continuing toward the original goal.
 
 ```mermaid
 sequenceDiagram
@@ -66,28 +89,35 @@ sequenceDiagram
     participant N as Navigator
     participant E as Extension
 
-    U->>T: "Click the first story"
-    T->>T: issue_command("click the first story")
-    T-->>U: "Let me do that." (audio)
+    U->>T: "Go to HN and tell me the top story"
+    T->>T: issue_command("go to HN and tell me the top story")
+    T-->>U: "On it!" (audio)
 
-    Note over D: Doer picks up goal from channel
+    Note over D: Step 0: goto
+    D->>N: HandleIntent("go to HN...")
+    N-->>D: ActionResult{goto, "https://news.ycombinator.com"}
+    D->>E: GOTO_URL
+    D->>D: wait SchemaReady (page loaded)
 
-    D->>N: HandleIntent("click the first story")
-    loop Tool-use loop (max 8)
-        N->>N: ls("/") → cat("/main/feed/children")
-        N->>N: act("/main/feed/_c/1", "click")
-    end
-    N-->>D: ActionResult{mache_id, action}
-    D->>E: EXECUTE_ACTION via WebSocket
-    E->>E: element.click()
+    Note over D: Step 1: click story
+    D->>N: HandleIntent("[CONTINUATION] goal: ... last: goto ...")
+    N->>N: ls("/") → cat("/main/stories/children") → act("_c/3", "click")
+    N-->>D: ActionResult{click, "/main/stories/_c/3"}
+    D->>E: EXECUTE_ACTION (click)
+    D->>D: wait SchemaReady (URL changed)
 
-    D->>T: resultNotifyFn("Done. Clicked first story.")
-    T-->>U: "Done, I clicked the first story." (audio)
+    Note over D: Step 2: read and answer
+    D->>N: HandleIntent("[CONTINUATION] goal: ... last: click ...")
+    N->>N: cat("/main/article/description") → text answer
+    N-->>D: "The top story is about AI safety..."
+
+    D->>T: resultNotifyFn("The top story is about AI safety...")
+    T-->>U: "The top story is about AI safety..." (audio)
 
     Note over U,T: Meanwhile, user can ask "what are you doing?"
     U->>T: "Are you done yet?"
     T->>T: check_status()
-    T-->>U: "Working on: click the first story. Current step: reading /main/feed/children"
+    T-->>U: "Working on step 2. Current step: reading /main/stories/children"
 ```
 
 ### Talker Tools (instant, no I/O)
@@ -293,6 +323,8 @@ Each `TabSession` contains:
 - `Doer` — background goroutine (created lazily on first voice session)
 - `SchemaReady` — channel that unblocks when schema is applied
 - `CurrentURL` — prevents redundant goto navigation
+
+**Cross-tab rebinding**: When a click opens a new tab, the extension sends `TAB_ACTIVATED` which updates `activeVoiceTab`. The Doer detects this during settle detection and rebinds its `tabID` and `sess` to the new tab's session mid-goal, re-wiring Navigator callbacks via `wireNavigatorCallbacks()`. This lets multi-step workflows survive tab changes transparently.
 
 ## Tab Management
 
