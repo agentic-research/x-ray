@@ -399,7 +399,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 	}
 
 	// Echo gate: suppress mic input while Gemini is speaking to prevent feedback.
-	// Set to 1 when audio flows to the speaker, cleared 300ms after the last chunk.
+	// Set to 1 when audio flows to the speaker, cleared 1s after the last chunk.
 	var speaking atomic.Int32
 	var speakingTimer *time.Timer
 
@@ -410,7 +410,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 		}
 		// Clear the flag 300ms after the last audio chunk — gives time for the
 		// speaker to finish playing before the mic re-opens.
-		speakingTimer = time.AfterFunc(300*time.Millisecond, func() {
+		speakingTimer = time.AfterFunc(1000*time.Millisecond, func() {
 			speaking.Store(0)
 		})
 	}

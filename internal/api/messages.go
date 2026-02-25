@@ -15,7 +15,17 @@ const (
 	MsgVoiceLog          = "VOICE_LOG"
 	MsgTabActivated      = "TAB_ACTIVATED"
 	MsgRescan            = "RESCAN"
+	MsgListTabs          = "LIST_TABS"
+	MsgTabsListed        = "TABS_LISTED"
+	MsgSwitchTab         = "SWITCH_TAB"
 )
+
+// TabInfo describes an open browser tab (returned by LIST_TABS round-trip).
+type TabInfo struct {
+	ID    int    `json:"id"`
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
 
 // InboundMessage is the envelope for all browser -> server messages.
 type InboundMessage struct {
@@ -28,6 +38,7 @@ type InboundMessage struct {
 	ResolvedItems map[string][]string `json:"resolved_items,omitempty"` // zone mache-id → resolved child mache-ids
 	Message       string              `json:"message,omitempty"`        // VOICE_LOG text
 	IsRescan      bool                `json:"is_rescan,omitempty"`      // bypass schema cache on rescan
+	Tabs          []TabInfo           `json:"tabs,omitempty"`           // TABS_LISTED response
 }
 
 // OutboundMessage is the envelope for all server -> browser messages.

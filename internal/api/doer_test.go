@@ -56,6 +56,9 @@ func (m *mockIntentHandler) SetProgressFunc(fn func(toolName string, args map[st
 	m.mu.Unlock()
 }
 
+func (m *mockIntentHandler) SetListTabsFunc(_ func(ctx context.Context) ([]navigator.TabInfo, error)) {
+}
+
 // newDoerTestHarness wires up a Handler + TabSession + Doer for unit tests.
 // The returned Doer is NOT started (call go doer.Run(ctx) yourself).
 func newDoerTestHarness(nav IntentHandler) (*Handler, *TabSession, *Doer) {

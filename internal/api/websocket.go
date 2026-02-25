@@ -51,6 +51,7 @@ type TabSession struct {
 	RescanPath        string                   // set by voice handler for targeted rescan, consumed by handleDOMSnapshot
 	CurrentURL        string                   // URL of the page currently loaded or loading (prevents redundant goto)
 	Doer              *Doer                    // background execution agent (created lazily on first voice session)
+	TabsListedCh      chan []TabInfo           // receives tab list from LIST_TABS round-trip
 
 	schemaMu     sync.Mutex // protects SchemaReady close + schemaGen
 	schemaClosed bool
@@ -139,6 +140,7 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		SchemaReady:       make(chan struct{}),
 		DOMUpdateCh:       make(chan DOMUpdate, 1),
 		SelectorsResolved: make(chan map[string][]string, 1),
+		TabsListedCh:      make(chan []TabInfo, 1),
 	}
 	h.sessions[tabID] = sess
 	log.Printf("Session: created new session for tab %d", tabID)
@@ -250,6 +252,8 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			h.activeVoiceTab = msg.TabID
 			h.mu.Unlock()
 			log.Printf("WebSocket: active voice tab set to %d", msg.TabID)
+		case MsgTabsListed:
+			h.handleTabsListed(msg)
 		case MsgVoiceLog:
 			log.Printf("Voice [ext tab %d]: %s", msg.TabID, msg.Message)
 		default:
@@ -627,6 +631,44 @@ func (h *Handler) sendRescan(tabID int, macheID string) {
 		TabID:   tabID,
 		MacheID: macheID,
 	})
+}
+
+// handleTabsListed delivers the tab list to whichever session is waiting.
+func (h *Handler) handleTabsListed(msg InboundMessage) {
+	// Deliver to the voice session (or tab 0 if no voice tab yet).
+	h.mu.Lock()
+	tabID := h.activeVoiceTab
+	h.mu.Unlock()
+	sess := h.getSession(tabID)
+	select {
+	case sess.TabsListedCh <- msg.Tabs:
+	default:
+		log.Printf("WebSocket: TABS_LISTED dropped (no listener on tab %d)", tabID)
+	}
+}
+
+// sendListTabs asks the extension for all open Chrome tabs.
+func (h *Handler) sendListTabs() {
+	h.mu.Lock()
+	conn := h.conn
+	h.mu.Unlock()
+	if conn == nil {
+		log.Printf("Voice: extension not connected, cannot list tabs")
+		return
+	}
+	h.sendMessage(conn, OutboundMessage{Type: MsgListTabs})
+}
+
+// sendSwitchTab tells the extension to activate a specific tab.
+func (h *Handler) sendSwitchTab(tabID int) {
+	h.mu.Lock()
+	conn := h.conn
+	h.mu.Unlock()
+	if conn == nil {
+		log.Printf("Voice: extension not connected, cannot switch tab")
+		return
+	}
+	h.sendMessage(conn, OutboundMessage{Type: MsgSwitchTab, TabID: tabID})
 }
 
 // scrollVoice scrolls the page via the extension WebSocket. Used by voice mode

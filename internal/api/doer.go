@@ -175,6 +175,30 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 	})
 	defer d.sess.Navigator.SetProgressFunc(nil)
 
+	// Wire list_tabs: round-trip through extension WebSocket.
+	d.sess.Navigator.SetListTabsFunc(func(ltCtx context.Context) ([]navigator.TabInfo, error) {
+		d.updateStep("listing open tabs")
+		// Drain any stale response, then send fresh request.
+		select {
+		case <-d.sess.TabsListedCh:
+		default:
+		}
+		d.handler.sendListTabs()
+		select {
+		case tabs := <-d.sess.TabsListedCh:
+			result := make([]navigator.TabInfo, len(tabs))
+			for i, t := range tabs {
+				result[i] = navigator.TabInfo{ID: t.ID, Title: t.Title, URL: t.URL}
+			}
+			return result, nil
+		case <-time.After(5 * time.Second):
+			return nil, fmt.Errorf("list_tabs timed out")
+		case <-ltCtx.Done():
+			return nil, ltCtx.Err()
+		}
+	})
+	defer d.sess.Navigator.SetListTabsFunc(nil)
+
 	// Wait briefly for schema, but proceed without one.
 	// HandleIntent works with empty state for goto intents (e.g., "go to reddit.com"
 	// produces a goto action regardless of whether a page schema exists).
@@ -276,6 +300,33 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 			return "Rescan timed out."
 		case <-ctx.Done():
 			return "Rescan cancelled."
+		}
+
+	case "switch_tab":
+		// Switch to an existing open tab. Parse tab ID from Path.
+		var switchTabID int
+		if _, err := fmt.Sscanf(action.Path, "%d", &switchTabID); err != nil || switchTabID == 0 {
+			return fmt.Sprintf("Invalid tab ID: %s", action.Path)
+		}
+		d.updateStep(fmt.Sprintf("switching to tab %d", switchTabID))
+		d.handler.sendSwitchTab(switchTabID)
+
+		// Update the voice tab so future commands route here.
+		d.handler.mu.Lock()
+		d.handler.activeVoiceTab = switchTabID
+		d.handler.mu.Unlock()
+
+		// The extension will activate the tab and send a DOM_SNAPSHOT.
+		// Wait for the new tab's schema to be ready.
+		newSess := d.handler.getSession(switchTabID)
+		newSess.ResetSchema()
+		select {
+		case <-newSess.SchemaReady:
+			return fmt.Sprintf("Switched to tab %d. Page is loaded.", switchTabID)
+		case <-time.After(schemaWaitTimeout):
+			return fmt.Sprintf("Switched to tab %d but schema timed out.", switchTabID)
+		case <-ctx.Done():
+			return "Tab switch cancelled."
 		}
 
 	default:

@@ -180,6 +180,34 @@ function connectWebSocket() {
         break;
       }
 
+      case 'LIST_TABS': {
+        chrome.tabs.query({}, (tabs) => {
+          const tabList = tabs
+            .filter(t => t.url && !/^(chrome|about|edge|brave):\/\//.test(t.url))
+            .map(t => ({ id: t.id, title: t.title || '', url: t.url }));
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'TABS_LISTED', tabs: tabList }));
+          }
+          console.log('X-Ray: Listed', tabList.length, 'tabs');
+        });
+        break;
+      }
+
+      case 'SWITCH_TAB': {
+        const targetTab = msg.tab_id;
+        if (!targetTab) break;
+        console.log('X-Ray: Switching to tab', targetTab);
+        chrome.tabs.update(targetTab, { active: true }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('X-Ray: Switch tab failed', chrome.runtime.lastError);
+            return;
+          }
+          // Auto-snapshot the newly active tab so the schema updates.
+          captureAndSend(targetTab);
+        });
+        break;
+      }
+
       case 'RESOLVE_SELECTORS': {
         const targetTab = msg.tab_id;
         if (targetTab) {

@@ -24,6 +24,13 @@ type ActionResult struct {
 	Payload string `json:"payload,omitempty"`
 }
 
+// TabInfo describes an open browser tab (mirrored from api.TabInfo for the navigator layer).
+type TabInfo struct {
+	ID    int    `json:"id"`
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
+
 // Agent represents Stage 2: The Navigator.
 type Agent struct {
 	generator  ContentGenerator
@@ -31,6 +38,7 @@ type Agent struct {
 	engine     *mache.Engine
 	scrollFn   func(ctx context.Context, direction string) error
 	progressFn func(toolName string, args map[string]any)
+	listTabsFn func(ctx context.Context) ([]TabInfo, error)
 }
 
 func NewAgent(gen ContentGenerator, model string, engine *mache.Engine) *Agent {
@@ -54,6 +62,11 @@ func (a *Agent) SetScrollFunc(fn func(ctx context.Context, direction string) err
 // allowing the Doer to report its current step to the Talker.
 func (a *Agent) SetProgressFunc(fn func(toolName string, args map[string]any)) {
 	a.progressFn = fn
+}
+
+// SetListTabsFunc injects the callback used by the list_tabs tool.
+func (a *Agent) SetListTabsFunc(fn func(ctx context.Context) ([]TabInfo, error)) {
+	a.listTabsFn = fn
 }
 
 // ToolDefinitions returns the tool declarations for ls/cat/act.
@@ -124,6 +137,21 @@ func ToolDefinitions() []*genai.Tool {
 					Properties: map[string]*genai.Schema{
 						"path": {Type: genai.TypeString, Description: "Optional: virtual path to zoom into, e.g. '/main/player'. Omit for full-page rescan."},
 					},
+				},
+			},
+			{
+				Name:        "list_tabs",
+				Description: "List all open browser tabs. Returns tab ID, title, and URL for each. Use this BEFORE goto() to check if the user already has the site open — switching tabs is instant while navigating loads a fresh page.",
+			},
+			{
+				Name:        "switch_tab",
+				Description: "Switch to an existing open browser tab by its ID (from list_tabs). After switching, the filesystem updates to reflect the new page. This is much faster than goto() when the page is already open.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"tab_id": {Type: genai.TypeInteger, Description: "The tab ID to switch to (from list_tabs output)"},
+					},
+					Required: []string{"tab_id"},
 				},
 			},
 		},
@@ -311,6 +339,32 @@ func (a *Agent) ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string
 		}
 		return "Rescanning page...", &ActionResult{Action: "rescan"}
 
+	case "list_tabs":
+		if a.listTabsFn == nil {
+			return "Error: list_tabs not available in this context", nil
+		}
+		tabs, err := a.listTabsFn(ctx)
+		if err != nil {
+			return fmt.Sprintf("Error listing tabs: %v", err), nil
+		}
+		if len(tabs) == 0 {
+			return "No open tabs found.", nil
+		}
+		var sb strings.Builder
+		for _, t := range tabs {
+			fmt.Fprintf(&sb, "[%d] %s — %s\n", t.ID, t.Title, t.URL)
+		}
+		return sb.String(), nil
+
+	case "switch_tab":
+		tabIDRaw, _ := args["tab_id"].(float64) // JSON numbers are float64
+		tabID := int(tabIDRaw)
+		if tabID == 0 {
+			return "Error: tab_id is required", nil
+		}
+		return fmt.Sprintf("Switching to tab %d", tabID),
+			&ActionResult{Action: "switch_tab", Path: fmt.Sprintf("%d", tabID)}
+
 	default:
 		return fmt.Sprintf("Unknown tool: %s", fc.Name), nil
 	}
@@ -366,13 +420,15 @@ Your tools:
 - scroll(direction): Scroll the page to load more content. Direction: "down" or "up".
 - goto(url): Navigate the browser to a new URL. After navigation, the filesystem updates — run ls("/") to explore the new page.
 - rescan(path?): Rescan the page with a fresh screenshot. Without a path, rescans the full page. With a path (e.g., rescan("/main/player")), zooms into that zone for higher detail — discovers internal controls like play buttons, volume sliders, etc. Use when you can't find an element or need finer detail within a zone.
+- list_tabs(): List all open browser tabs (ID, title, URL). ALWAYS call this before goto() — if the site is already open in another tab, use switch_tab() instead. Switching is instant; navigating reloads.
+- switch_tab(tab_id): Switch to an existing open tab by ID. The filesystem updates to reflect the new page.
 
 You are a NAVIGATIONAL agent. Words like "home", "back", "go to", and "open" are spatial/navigational — they refer to WHERE the user wants to be, not WHAT to click on the current page. When the user says "go home" or "take me home", they mean navigate to the site's homepage using goto(). Derive the homepage from the current domain (e.g., on reddit.com/r/news → goto("https://www.reddit.com")).
 
 CRITICAL CONSTRAINTS:
 - Do NOT hallucinate tools or paths. Only use paths that you have confirmed exist via ls().
 - Never guess a path. Always ls() a directory before trying to cat() or act() on its children.
-- You have exactly six tools: ls, cat, act, scroll, goto, rescan. Do not attempt to use any other tool.
+- You have exactly eight tools: ls, cat, act, scroll, goto, rescan, list_tabs, switch_tab. Do not attempt to use any other tool.
 - If you cannot find an element after exploring the filesystem, use rescan() before giving up. The rescan captures a fresh screenshot and may discover elements that weren't in the original scan. If you can see the zone but need finer detail (e.g., video player controls), use rescan("/path/to/zone") to zoom in.
 
 Strategy:
