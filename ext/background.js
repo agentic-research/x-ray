@@ -43,6 +43,13 @@ function connectWebSocket() {
       clearInterval(reconnectTimer);
       reconnectTimer = null;
     }
+    // Tell server which tab is currently active (voice daemon needs this).
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0] && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'TAB_ACTIVATED', tab_id: tabs[0].id }));
+        console.log('X-Ray: Sent initial TAB_ACTIVATED for tab', tabs[0].id);
+      }
+    });
   };
 
   ws.onmessage = (event) => {
@@ -73,9 +80,8 @@ function connectWebSocket() {
       }
 
       case 'SCROLL': {
-        const targetTab = msg.tab_id;
         const direction = msg.direction || 'down';
-        if (targetTab) {
+        const doScroll = (targetTab) => {
           chrome.tabs.sendMessage(targetTab, {
             type: 'SCROLL',
             direction,
@@ -98,14 +104,23 @@ function connectWebSocket() {
                 'resolved:', Object.keys(response.resolved_items || {}).length, 'zones');
             }
           });
+        };
+        if (msg.tab_id) {
+          doScroll(msg.tab_id);
+        } else {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) doScroll(tabs[0].id);
+          });
         }
         break;
       }
 
       case 'GOTO_URL': {
-        const targetTab = msg.tab_id;
         const url = msg.url;
-        if (targetTab && url) {
+        if (!url) break;
+        // Resolve tab: use provided tab_id, fall back to active tab if 0/missing.
+        const doGoto = (targetTab) => {
+          if (!targetTab) return;
           console.log('X-Ray: Navigating tab', targetTab, 'to', url);
           schemaReadyTabs.delete(targetTab);
           gotoInFlight.add(targetTab); // Suppress auto-snapshot from persistent listener
@@ -136,17 +151,33 @@ function connectWebSocket() {
               }
             }, 30000); // 30s safety net
           });
+        };
+        if (msg.tab_id) {
+          doGoto(msg.tab_id);
+        } else {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+              console.log('X-Ray: GOTO_URL tab_id=0, resolved to active tab', tabs[0].id);
+              doGoto(tabs[0].id);
+            }
+          });
         }
         break;
       }
 
       case 'RESCAN': {
-        const targetTab = msg.tab_id;
-        if (targetTab) {
-          const targetMacheId = msg.mache_id || null;
-          console.log('X-Ray: Rescan requested for tab', targetTab,
+        const targetMacheId = msg.mache_id || null;
+        const doRescan = (tabId) => {
+          console.log('X-Ray: Rescan requested for tab', tabId,
             targetMacheId ? `(zoom: ${targetMacheId})` : '(full page)');
-          captureAndSend(targetTab, true, targetMacheId);
+          captureAndSend(tabId, true, targetMacheId);
+        };
+        if (msg.tab_id) {
+          doRescan(msg.tab_id);
+        } else {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) doRescan(tabs[0].id);
+          });
         }
         break;
       }
