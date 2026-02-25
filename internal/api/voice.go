@@ -352,11 +352,6 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 // mic delivers PCM chunks from the Recorder. speaker receives PCM chunks to play.
 // textIn delivers typed text intents from stdin. Runs until ctx is cancelled.
 func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker chan<- []byte, textIn <-chan string) error {
-	// Get or create the session and Doer for the active voice tab.
-	tabID := h.getVoiceTabID()
-	sess := h.getVoiceSession()
-	doer := h.getOrCreateDoer(tabID, sess)
-
 	// Connect to Gemini Live with Talker tools + Google Search Grounding.
 	tools := append(talkerToolDefinitions(), &genai.Tool{
 		GoogleSearch: &genai.GoogleSearch{},
@@ -376,8 +371,9 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 	defer func() { _ = session.Close() }()
 	log.Println("Voice: Gemini Live session established (native mode)")
 
-	// Wire Doer result callback — inject synthetic message so Gemini speaks the result.
-	doer.SetResultNotifyFn(func(summary string) {
+	// resultNotifyFn injects a synthetic message so Gemini speaks the Doer's result.
+	// Defined once (captures the stable Gemini session); wired to whatever Doer is active.
+	resultNotifyFn := func(summary string) {
 		if err := session.SendClientContent(genai.LiveClientContentInput{
 			Turns: []*genai.Content{{
 				Role: "user",
@@ -389,8 +385,18 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 		}); err != nil {
 			log.Printf("Voice: result notify SendClientContent error: %v", err)
 		}
-	})
-	defer doer.SetResultNotifyFn(nil)
+	}
+
+	// resolveDoer returns the Doer for the currently active voice tab.
+	// The tab may change when the extension connects or the user switches tabs,
+	// so we resolve it fresh on each tool call instead of locking at startup.
+	resolveDoer := func() *Doer {
+		tabID := h.getVoiceTabID()
+		sess := h.getVoiceSession()
+		doer := h.getOrCreateDoer(tabID, sess)
+		doer.SetResultNotifyFn(resultNotifyFn)
+		return doer
+	}
 
 	// Echo gate: suppress mic input while Gemini is speaking to prevent feedback.
 	// Set to 1 when audio flows to the speaker, cleared 300ms after the last chunk.
@@ -510,7 +516,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 			for _, fc := range tc.FunctionCalls {
 				switch fc.Name {
 				case "check_status", "issue_command", "cancel_task":
-					result := h.executeTalkerTool(fc, doer)
+					result := h.executeTalkerTool(fc, resolveDoer())
 					log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
 					responses = append(responses, &genai.FunctionResponse{
 						ID:       fc.ID,
