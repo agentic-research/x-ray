@@ -49,6 +49,7 @@ type TabSession struct {
 	DOMUpdateCh       chan DOMUpdate           // receives summary + resolved items after scroll
 	SelectorsResolved chan map[string][]string // receives resolved items from RESOLVE_SELECTORS round-trip
 	RescanPath        string                   // set by voice handler for targeted rescan, consumed by handleDOMSnapshot
+	CurrentURL        string                   // URL of the page currently loaded or loading (prevents redundant goto)
 
 	schemaMu     sync.Mutex // protects SchemaReady close + schemaGen
 	schemaClosed bool

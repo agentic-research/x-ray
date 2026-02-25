@@ -299,23 +299,37 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				if action != nil {
 					switch action.Action {
 					case "goto":
-						// Reset schema state for the new page.
-						sess.ResetSchema()
-						sess.Engine = mache.NewEngine()
-						sess.Navigator.SetEngine(sess.Engine)
+						// Idempotent: if already on this URL, skip reset and just wait for schema.
+						if sess.CurrentURL == action.Path {
+							log.Printf("Voice: goto %s — already on this URL, waiting for schema (tab %d)", action.Path, tabID)
+							select {
+							case <-sess.SchemaReady:
+								result = fmt.Sprintf("Already on %s. Page is loaded and mapped. Use ls('/') to see the page structure.", action.Path)
+							case <-time.After(schemaWaitTimeout):
+								result = fmt.Sprintf("Already on %s but schema is still loading.", action.Path)
+							case <-ctx.Done():
+								result = "Navigation cancelled."
+							}
+						} else {
+							// New URL — reset schema state for the new page.
+							sess.CurrentURL = action.Path
+							sess.ResetSchema()
+							sess.Engine = mache.NewEngine()
+							sess.Navigator.SetEngine(sess.Engine)
 
-						// Navigate browser via extension WebSocket.
-						h.sendGoto(tabID, action.Path)
-						log.Printf("Voice: goto %s — waiting for new page schema (tab %d)", action.Path, tabID)
+							// Navigate browser via extension WebSocket.
+							h.sendGoto(tabID, action.Path)
+							log.Printf("Voice: goto %s — waiting for new page schema (tab %d)", action.Path, tabID)
 
-						// Block until the new page's schema is ready.
-						select {
-						case <-sess.SchemaReady:
-							result = fmt.Sprintf("Navigated to %s. Page is loaded and mapped. Use ls('/') to see the new page structure.", action.Path)
-						case <-time.After(schemaWaitTimeout):
-							result = fmt.Sprintf("Navigated to %s but timed out waiting for page to load.", action.Path)
-						case <-ctx.Done():
-							result = "Navigation cancelled."
+							// Block until the new page's schema is ready.
+							select {
+							case <-sess.SchemaReady:
+								result = fmt.Sprintf("Navigated to %s. Page is loaded and mapped. Use ls('/') to see the new page structure.", action.Path)
+							case <-time.After(schemaWaitTimeout):
+								result = fmt.Sprintf("Navigated to %s but timed out waiting for page to load.", action.Path)
+							case <-ctx.Done():
+								result = "Navigation cancelled."
+							}
 						}
 					case "rescan":
 						if action.Path != "" {
@@ -615,19 +629,33 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 					if action != nil {
 						switch action.Action {
 						case "goto":
-							sess.ResetSchema()
-							sess.Engine = mache.NewEngine()
-							sess.Navigator.SetEngine(sess.Engine)
-							h.sendGoto(tabID, action.Path)
-							log.Printf("Voice: goto %s (tab %d)", action.Path, tabID)
+							// Idempotent: if already on this URL, skip reset and just wait for schema.
+							if sess.CurrentURL == action.Path {
+								log.Printf("Voice: goto %s — already on this URL, waiting for schema (tab %d)", action.Path, tabID)
+								select {
+								case <-sess.SchemaReady:
+									result = fmt.Sprintf("Already on %s. Page loaded. Use ls('/') to explore.", action.Path)
+								case <-time.After(schemaWaitTimeout):
+									result = fmt.Sprintf("Already on %s but schema is still loading.", action.Path)
+								case <-toolCtx.Done():
+									result = "Navigation cancelled."
+								}
+							} else {
+								sess.CurrentURL = action.Path
+								sess.ResetSchema()
+								sess.Engine = mache.NewEngine()
+								sess.Navigator.SetEngine(sess.Engine)
+								h.sendGoto(tabID, action.Path)
+								log.Printf("Voice: goto %s (tab %d)", action.Path, tabID)
 
-							select {
-							case <-sess.SchemaReady:
-								result = fmt.Sprintf("Navigated to %s. Page loaded. Use ls('/') to explore.", action.Path)
-							case <-time.After(schemaWaitTimeout):
-								result = fmt.Sprintf("Navigated to %s but timed out waiting for page.", action.Path)
-							case <-toolCtx.Done():
-								result = "Navigation cancelled."
+								select {
+								case <-sess.SchemaReady:
+									result = fmt.Sprintf("Navigated to %s. Page loaded. Use ls('/') to explore.", action.Path)
+								case <-time.After(schemaWaitTimeout):
+									result = fmt.Sprintf("Navigated to %s but timed out waiting for page.", action.Path)
+								case <-toolCtx.Done():
+									result = "Navigation cancelled."
+								}
 							}
 						case "rescan":
 							if action.Path != "" {

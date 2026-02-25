@@ -7,6 +7,22 @@ let idCounter = 0;
 const elementRegistry = new Map();   // "mache-42" -> Element
 const reverseRegistry = new Map();   // Element -> "mache-42"
 
+// Check if an element is actually visible to the user.
+// Filters out hidden search forms, collapsed modals, aria-hidden elements, etc.
+function isVisible(el) {
+  // Skip aria-hidden (e.g., GitHub's collapsed search modal internals)
+  if (el.getAttribute('aria-hidden') === 'true') return false;
+  // Check ancestors for aria-hidden (hidden subtrees)
+  if (el.closest('[aria-hidden="true"]')) return false;
+  // Skip CSS-hidden elements
+  const style = getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden') return false;
+  // Skip zero-size elements (but allow small icons like notification bells)
+  const rect = el.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) return false;
+  return true;
+}
+
 function buildRegistry() {
   // Incremental rebuild: don't reset idCounter or clear registries.
   // Existing elements keep their IDs across rebuilds (stable mache-IDs).
@@ -16,11 +32,13 @@ function buildRegistry() {
   const interactiveAncestors = new Map(); // node → count of interactive descendants
   const interactiveNodes = document.querySelectorAll('a, button, input, select, textarea, [role="button"]');
   interactiveNodes.forEach(node => {
-    if (!reverseRegistry.has(node)) {
+    if (!reverseRegistry.has(node) && isVisible(node)) {
       const id = `mache-${idCounter++}`;
       elementRegistry.set(id, node);
       reverseRegistry.set(node, id);
     }
+    // Only count visible nodes for Phase 2 ancestor thresholds.
+    if (!isVisible(node)) return;
     // Walk up to count interactive descendants for Phase 2 (replaces O(N*M) nested query).
     let parent = node.parentElement;
     while (parent) {
@@ -43,9 +61,9 @@ function buildRegistry() {
     }
   });
 
-  // Prune stale entries (elements removed from DOM by SPA frameworks, lazy unloading, etc.)
+  // Prune stale entries: removed from DOM, or now hidden (e.g., collapsed modal).
   for (const [id, node] of elementRegistry) {
-    if (!document.contains(node)) {
+    if (!document.contains(node) || !isVisible(node)) {
       elementRegistry.delete(id);
       reverseRegistry.delete(node);
     }
@@ -73,6 +91,10 @@ function generateSummary() {
     if (count >= 300) break;
     const tag = node.tagName.toLowerCase();
     let text = (node.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 60);
+    // Fallback to aria-label/title for icon-only elements (e.g., notification bell, menu icons)
+    if (!text) {
+      text = node.getAttribute('aria-label') || node.getAttribute('title') || '';
+    }
     if (!text && tag === 'input') {
       text = node.placeholder || node.name || 'input';
     }
