@@ -7,6 +7,22 @@
 
 Powered by [`agentic-research/mache`](https://github.com/agentic-research/mache) — an agent-computer interface that projects structured data into virtual filesystems — X-Ray uses Gemini's multimodal vision to project any webpage into a clean, semantic filesystem. Agents navigate the DOM deterministically via `ls` and `cat` — no pixel guessing, no fragile HTML parsing.
 
+## Table of Contents
+
+- [The Problem](#the-problem-llms-understand-semantics-but-lack-topology)
+- [The Fix](#the-fix-dynamic-semantic-projection)
+  - [Stage 1: The Cartographer](#stage-1-the-cartographer-vision--structure)
+  - [Stage 2: The Navigator](#stage-2-the-navigator-voice--action)
+- [Voice Mode](#voice-mode)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Testing](#testing)
+- [Benchmarks](#benchmarks)
+- [Task Commands](#task-commands)
+- [CI](#ci)
+- [Architecture](#architecture)
+- [Deployment](#deployment)
+
 ## The Problem: LLMs Understand Semantics, but Lack Topology
 
 When building web-navigating agents, the standard approach is to feed them raw HTML or rely on pixel-coordinate guessing. But HTML is a 1D delivery mechanism for browsers, not a semantic map for reasoning agents.
@@ -39,21 +55,48 @@ Now, the agent doesn't see `div[4]/span/button`. It runs `ls /` and sees a clean
 
 Children are addressed by ordinal number (`_c/1`, `_c/2`, ...) — the model never sees raw mache IDs, eliminating confusion between item numbers and element IDs. When the user says, "Click the first trending repository," the Navigator traverses the filesystem using standard POSIX tools (`ls`, `cat`) and safely executes the action (`act`). The Navigator can run on Gemini cloud or a local 7B SLM (Qwen 2.5 Coder) for zero-latency, zero-cost execution. Because Gemini handles the heavy multimodal spatial reasoning in Stage 1, the execution loop is reduced to simple filesystem traversal — allowing a lightweight 7B model to drive the browser flawlessly.
 
+## Voice Mode
+
+X-Ray supports hands-free voice navigation via Gemini's Live API. The user speaks natural commands ("click the first story", "scroll down", "open the settings page") and Gemini executes them in real-time against the semantic filesystem.
+
+### How it works
+
+1. **Push-to-talk**: Hold the mic button (or spacebar) and speak a navigation intent.
+2. **Gemini Live** receives the audio, transcribes it, and issues tool calls (`ls`, `cat`, `act`, `scroll`) against the Mache engine — the same tools the text Navigator uses.
+3. **Audio suppression**: While executing tool calls, Gemini's narration is muted server-side. Only the final result is spoken aloud ("Done, clicked the first story.").
+4. **Text fallback**: A text input field lets you type commands into the same Live session — useful for corrections or precise instructions.
+
+### Non-blocking schema
+
+The voice connection opens immediately so the mic is hot from the moment the user clicks. If Gemini fires a tool call before the Cartographer finishes generating the schema, the tool execution blocks on a Go channel until the schema arrives — the user never sees an empty page.
+
+### Using voice mode
+
+Voice mode is available through both the Chrome extension (popup mic toggle) and the standalone UI:
+
+```
+http://localhost:8080/voice-ui?tab=<tabId>
+```
+
+The extension handles mic permissions via a dedicated setup window (`mic-setup.html`) since Chrome MV3 offscreen documents cannot trigger permission prompts directly.
+
 ## Project Structure
 
 ```
 x-ray/
-├── .github/workflows/   # CI: test (Ubuntu + macOS) + lint
+├── .github/workflows/   # CI: test, lint, bench (amd64 + arm64)
 ├── cmd/
 │   ├── agentd/          # Main backend server (WebSocket + HTTP)
+│   ├── bench/           # Navigation accuracy benchmark
 │   └── gate/            # Offline accuracy gate test
 ├── internal/
-│   ├── api/             # WebSocket handler, message types, interfaces
+│   ├── api/             # WebSocket handler, voice handler, message types
 │   ├── cartographer/    # Stage 1: Gemini Vision → semantic schema
 │   ├── mache/           # Virtual filesystem engine
 │   └── navigator/       # Stage 2: Gemini Tool-Use → browser actions
 ├── ext/                 # Chrome extension (content.js, background.js, CDP AX tree)
-├── testdata/            # Captured page snapshots for gate tests
+├── static/              # Standalone voice UI (voice.html)
+├── testdata/            # Captured page snapshots for gate tests + benchmarks
 ├── deploy/              # Dockerfile + Cloud Run deploy script
 └── docs/                # Architecture documentation
 ```
@@ -101,12 +144,16 @@ After making changes to extension code, click the reload icon on `chrome://exten
 1. Navigate to any webpage in Chrome.
 2. Click the X-Ray extension icon — this captures a screenshot + DOM summary and sends it to the backend.
 3. The Cartographer analyzes the page and generates a semantic schema.
-4. Send navigation intents via the `/navigate` HTTP endpoint:
+4. Navigate via text, voice, or curl:
 
 ```bash
+# Text via HTTP
 curl -X POST http://localhost:8080/navigate \
   -H "Content-Type: application/json" \
   -d '{"intent": "click the first story"}'
+
+# Voice via extension popup mic toggle or standalone UI
+open http://localhost:8080/voice-ui
 ```
 
 ## Testing
@@ -164,6 +211,24 @@ task fmt            # gofumpt (stricter than gofmt)
 task vet            # go vet
 ```
 
+## Benchmarks
+
+The automated navigation benchmark runs the full pipeline (Cartographer → Engine → Navigator) against captured testdata snapshots and verifies the correct element gets clicked.
+
+```bash
+task bench
+```
+
+Schemas are cached per site so multiple intents on the same page share one Cartographer call. The Navigator respects `NAVIGATOR_ENDPOINT`/`NAVIGATOR_MODEL`/`NAVIGATOR_FORMAT` env vars for testing with local models:
+
+```bash
+# Local Navigator (Gemma/Qwen via Ollama)
+NAVIGATOR_ENDPOINT=http://localhost:11434/v1 \
+NAVIGATOR_MODEL=qwen2.5-coder:7b \
+NAVIGATOR_FORMAT=gemma \
+task bench
+```
+
 ## Task Commands
 
 | Command | Description |
@@ -171,6 +236,7 @@ task vet            # go vet
 | `task run` | Build, codesign, and run agentd |
 | `task build` | Build and codesign the binary |
 | `task test` | Run all tests (`go test -race -v ./...`) |
+| `task bench` | Run navigation accuracy benchmark |
 | `task gate` | Run accuracy gate on mock dummy page |
 | `task gate-real` | Run accuracy gate on all captured real pages |
 | `task lint` | Run golangci-lint |
@@ -185,8 +251,9 @@ GitHub Actions runs on every push and PR to `main`:
 
 - **Test**: `go test -race -v ./...` on Ubuntu and macOS
 - **Lint**: `go vet` + `golangci-lint`
+- **Bench**: Navigation accuracy benchmark on amd64 and arm64 (push to main + manual dispatch)
 
-No Gemini API key or FUSE required — all 61 tests use mock interfaces.
+No Gemini API key or FUSE required for test/lint — all 61 tests use mock interfaces. The bench job requires a `GEMINI_API_KEY` repository secret and skips gracefully if not configured.
 
 ## Architecture
 

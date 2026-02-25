@@ -432,6 +432,18 @@ func (h *Handler) scrollPage(ctx context.Context, conn *websocket.Conn, sess *Ta
 	}
 }
 
+// scrollVoice scrolls the page via the extension WebSocket. Used by voice mode
+// which has its own WS connection for audio but needs the extension conn for scroll.
+func (h *Handler) scrollVoice(ctx context.Context, sess *TabSession, tabID int, direction string) error {
+	h.mu.Lock()
+	conn := h.conn
+	h.mu.Unlock()
+	if conn == nil {
+		return fmt.Errorf("extension not connected, cannot scroll")
+	}
+	return h.scrollPage(ctx, conn, sess, tabID, direction)
+}
+
 // saveLog writes a timestamped log entry to logs/<kind>/.
 func saveLog(kind, label, content string) {
 	dir := fmt.Sprintf("logs/%s", kind)

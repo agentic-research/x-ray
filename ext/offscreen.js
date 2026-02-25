@@ -189,6 +189,10 @@ chrome.runtime.onMessage.addListener((msg) => {
       break;
     case 'MIC_OFF':
       recording = false;
+      // Signal server to send AudioStreamEnd to Gemini so it processes the utterance.
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'mic_stop' }));
+      }
       console.log('Offscreen: mic OFF');
       break;
     case 'VOICE_STOP':

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -47,12 +48,21 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	sess := h.getSession(tabID)
 	log.Printf("Voice: browser connected (tab %d)", tabID)
 
+	// Mutex protects writes to the browser WS (two goroutines: gemini→browser
+	// and tool-response paths both write).
+	var wsMu sync.Mutex
+
+	// Wire scroll so voice navigator can request page scrolling via extension WS.
+	sess.Navigator.SetScrollFunc(func(scrollCtx context.Context, direction string) error {
+		return h.scrollVoice(scrollCtx, sess, tabID, direction)
+	})
+	defer sess.Navigator.SetScrollFunc(nil)
+
 	// Connect to Gemini Live immediately — don't block on schema.
-	// Tools (ls/cat/act) will return "no schema yet" if called before schema arrives.
-	// Schema typically arrives within seconds via the concurrent snapshot flow.
+	// Tool calls will block on sess.SchemaReady if fired before schema arrives.
 	if !sess.Engine.HasSchema() {
 		log.Printf("Voice: schema not ready yet (tab %d), connecting to Gemini anyway", tabID)
-		sendVoiceJSON(conn, nil, voiceMessage{Type: "waiting", Text: "Connecting to voice... schema loading in background"})
+		sendVoiceJSON(conn, &wsMu, voiceMessage{Type: "waiting", Text: "Connecting to voice... schema loading in background"})
 	}
 
 	// Open Gemini Live session with voice-optimized prompt.
@@ -72,10 +82,6 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = session.Close() }()
 	log.Printf("Voice: Gemini Live session established (tab %d)", tabID)
-
-	// Mutex protects writes to the browser WS (two goroutines: gemini→browser
-	// and tool-response paths both write).
-	var wsMu sync.Mutex
 
 	// --- goroutine 1: browser → Gemini (audio chunks) ---
 	go func() {
@@ -235,6 +241,27 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 		if tc := msg.ToolCall; tc != nil {
 			inToolLoop = true
 
+			// Block until schema is ready — keeps mic hot while Cartographer finishes.
+			select {
+			case <-sess.SchemaReady:
+			case <-time.After(schemaWaitTimeout):
+				log.Printf("Voice: timed out waiting for schema before tool call (tab %d)", tabID)
+				var errResponses []*genai.FunctionResponse
+				for _, fc := range tc.FunctionCalls {
+					errResponses = append(errResponses, &genai.FunctionResponse{
+						ID:       fc.ID,
+						Name:     fc.Name,
+						Response: map[string]any{"output": "Error: page schema is still loading. Please tell the user to wait a moment."},
+					})
+				}
+				if err := session.SendToolResponse(genai.LiveToolResponseInput{
+					FunctionResponses: errResponses,
+				}); err != nil {
+					log.Printf("Voice: SendToolResponse error: %v", err)
+				}
+				continue
+			}
+
 			var responses []*genai.FunctionResponse
 			for _, fc := range tc.FunctionCalls {
 				log.Printf("Voice: tool call %s(%v) (tab %d)", fc.Name, fc.Args, tabID)
@@ -279,32 +306,18 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Voice: session ended (tab %d)", tabID)
 }
 
-const voiceSystemPrompt = `You navigate web pages via a semantic filesystem. You are a VOICE agent — be silent while working, only speak to announce results.
+// voiceSystemPrompt composes voice-specific behavioral rules with the shared
+// NavigatorSystemPrompt. Single source of truth for navigation instructions.
+var voiceSystemPrompt = `You are a VOICE agent — be SILENT while working, only speak to announce results.
 
-Tools: ls(path), cat(path), act(path, action)
-
-STRICT RULES:
+VOICE RULES:
 1. NEVER speak while using tools. Do all exploration silently.
 2. Only speak AFTER you have completed the action or determined you cannot.
 3. Responses must be ONE short sentence. Example: "Done, clicked the first story."
-4. Maximum 8 tool calls per request. If you can't find it by then, say "I couldn't find that element."
-5. NEVER narrate your process. No "I'm now looking at..." or "Let me check...". SILENCE until done.
+4. NEVER narrate your process. No "I'm now looking at..." or "Let me check...". SILENCE until done.
+5. If you can't find it after 8 tool calls, say "I couldn't find that element."
 
-NAVIGATION PATTERN:
-- ls("/") to see zones, then ls the relevant zone.
-- If a zone has "children" file: cat it, then act("/zone/_c/mache-ID", "click")
-- If a zone has NO children (only description + mache_id): the zone itself IS the clickable element. Use act("/zone/path", "click") directly.
-- Zone descriptions tell you what they contain. Use them to pick the right zone fast.
-
-COUNTING ITEMS: The children file groups elements into numbered items (--- Item 1 ---, --- Item 2 ---, etc). When the user says "click the 3rd story" or "the 14th item", count by ITEM GROUPS, not individual elements. Each group is one content item (a story, a link, a card, etc).
-
-Example — "click the first story":
-  ls("/") → ls("/main/news_feed") → cat("/main/news_feed/children") → act("/main/news_feed/_c/mache-13", "click")
-  Then say: "Done."
-
-Example — "click next page" (pagination zone has no children):
-  ls("/") → ls("/main") → act("/main/pagination", "click")
-  Then say: "Done, clicked next page."`
+` + navigator.NavigatorSystemPrompt
 
 // sendVoiceJSON marshals a voiceMessage and writes it as a text frame. If mu
 // is non-nil it acquires the lock first (used when called from non-reader goroutines).
