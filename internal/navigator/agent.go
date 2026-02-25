@@ -151,15 +151,23 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 	treeDump := a.buildTreeDump()
 	log.Printf("Navigator: pre-filled tree:\n%s", treeDump)
 
-	history := []*genai.Content{
-		{Role: "user", Parts: []*genai.Part{{Text: intent}}},
-		{Role: "model", Parts: []*genai.Part{{FunctionCall: &genai.FunctionCall{
-			Name: "ls", Args: map[string]any{"path": "/"},
-		}}}},
-		{Role: "user", Parts: []*genai.Part{{FunctionResponse: &genai.FunctionResponse{
-			Name:     "ls",
-			Response: map[string]any{"output": treeDump},
-		}}}},
+	var history []*genai.Content
+	if treeDump == "" {
+		// No page loaded yet — tell the model so it knows to use goto().
+		history = []*genai.Content{
+			{Role: "user", Parts: []*genai.Part{{Text: intent + "\n\n[No page is currently loaded. Use goto(url) to navigate to a website first.]"}}},
+		}
+	} else {
+		history = []*genai.Content{
+			{Role: "user", Parts: []*genai.Part{{Text: intent}}},
+			{Role: "model", Parts: []*genai.Part{{FunctionCall: &genai.FunctionCall{
+				Name: "ls", Args: map[string]any{"path": "/"},
+			}}}},
+			{Role: "user", Parts: []*genai.Part{{FunctionResponse: &genai.FunctionResponse{
+				Name:     "ls",
+				Response: map[string]any{"output": treeDump},
+			}}}},
+		}
 	}
 
 	for i := range maxToolIterations {
