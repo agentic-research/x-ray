@@ -13,6 +13,7 @@ const (
 	MsgSelectorsResolved = "SELECTORS_RESOLVED"
 	MsgGotoURL           = "GOTO_URL"
 	MsgVoiceLog          = "VOICE_LOG"
+	MsgTabActivated      = "TAB_ACTIVATED"
 )
 
 // InboundMessage is the envelope for all browser -> server messages.

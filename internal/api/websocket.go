@@ -78,14 +78,15 @@ type Handler struct {
 	NavModel     string                     // model name for creating per-tab Navigators
 	LiveModel    string                     // model name for voice sessions
 
-	mu       sync.Mutex
-	conn     *websocket.Conn
-	pending  []pendingAction
-	sessions map[int]*TabSession
-	schemas  *schemaCache // domain+path → schema JSON
+	mu             sync.Mutex
+	conn           *websocket.Conn
+	pending        []pendingAction
+	sessions       map[int]*TabSession
+	schemas        *schemaCache // domain+path → schema JSON
+	activeVoiceTab int          // tab ID for native voice mode (set by TAB_ACTIVATED)
 }
 
-func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveClient *genai.Client, navModel, liveModel string) *Handler {
+func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveClient *genai.Client, navModel, liveModel, dbPath string) *Handler {
 	return &Handler{
 		Cartographer: cart,
 		NavGen:       navGen,
@@ -93,7 +94,7 @@ func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveCli
 		NavModel:     navModel,
 		LiveModel:    liveModel,
 		sessions:     make(map[int]*TabSession),
-		schemas:      newSchemaCache(),
+		schemas:      newSchemaCache(dbPath),
 	}
 }
 
@@ -119,6 +120,22 @@ func (h *Handler) getSession(tabID int) *TabSession {
 	h.sessions[tabID] = sess
 	log.Printf("Session: created new session for tab %d", tabID)
 	return sess
+}
+
+// getVoiceSession returns the TabSession for the active voice tab.
+// Used by StartVoiceLoop to resolve tool calls against the right tab.
+func (h *Handler) getVoiceSession() *TabSession {
+	h.mu.Lock()
+	tabID := h.activeVoiceTab
+	h.mu.Unlock()
+	return h.getSession(tabID)
+}
+
+// getVoiceTabID returns the current active voice tab ID.
+func (h *Handler) getVoiceTabID() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.activeVoiceTab
 }
 
 // HandleWebSocket upgrades the HTTP connection and processes messages.
@@ -192,6 +209,11 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			h.handleDOMUpdate(msg)
 		case MsgSelectorsResolved:
 			h.handleSelectorsResolved(msg)
+		case MsgTabActivated:
+			h.mu.Lock()
+			h.activeVoiceTab = msg.TabID
+			h.mu.Unlock()
+			log.Printf("WebSocket: active voice tab set to %d", msg.TabID)
 		case MsgVoiceLog:
 			log.Printf("Voice [ext tab %d]: %s", msg.TabID, msg.Message)
 		default:

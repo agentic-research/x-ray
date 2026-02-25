@@ -68,12 +68,16 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Open Gemini Live session with voice-optimized prompt.
+	// Include Google Search Grounding — Gemini executes searches server-side.
+	tools := append(navigator.ToolDefinitions(), &genai.Tool{
+		GoogleSearch: &genai.GoogleSearch{},
+	})
 	session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, &genai.LiveConnectConfig{
 		ResponseModalities: []genai.Modality{genai.ModalityAudio},
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{{Text: voiceSystemPrompt}},
 		},
-		Tools:                    navigator.ToolDefinitions(),
+		Tools:                    tools,
 		InputAudioTranscription:  &genai.AudioTranscriptionConfig{},
 		OutputAudioTranscription: &genai.AudioTranscriptionConfig{},
 	})
@@ -277,6 +281,15 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 
 			var responses []*genai.FunctionResponse
 			for _, fc := range tc.FunctionCalls {
+				// Skip server-side tools (e.g., google_search) — Gemini handles
+				// these internally and returns synthesized audio/text directly.
+				switch fc.Name {
+				case "ls", "cat", "act", "scroll", "goto":
+					// Our local tools — handle below.
+				default:
+					log.Printf("Voice: skipping server-side tool %s (tab %d)", fc.Name, tabID)
+					continue
+				}
 				log.Printf("Voice: tool call %s(%v) (tab %d)", fc.Name, fc.Args, tabID)
 				result, action := sess.Navigator.ExecuteTool(ctx, fc)
 				log.Printf("Voice: tool result: %q", result)
@@ -352,6 +365,266 @@ VOICE RULES:
 5. If you can't find it after 8 tool calls, say "I couldn't find that element."
 
 ` + navigator.NavigatorSystemPrompt
+
+// StartVoiceLoop runs the native voice mode using sox mic/speaker pipes.
+// mic delivers PCM chunks from the Recorder. speaker receives PCM chunks to play.
+// textIn delivers typed text intents from stdin. Runs until ctx is cancelled.
+func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker chan<- []byte, textIn <-chan string) error {
+	// Connect to Gemini Live with voice prompt + tools + Google Search Grounding.
+	tools := append(navigator.ToolDefinitions(), &genai.Tool{
+		GoogleSearch: &genai.GoogleSearch{},
+	})
+	session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, &genai.LiveConnectConfig{
+		ResponseModalities: []genai.Modality{genai.ModalityAudio},
+		SystemInstruction: &genai.Content{
+			Parts: []*genai.Part{{Text: voiceSystemPrompt}},
+		},
+		Tools:                    tools,
+		InputAudioTranscription:  &genai.AudioTranscriptionConfig{},
+		OutputAudioTranscription: &genai.AudioTranscriptionConfig{},
+	})
+	if err != nil {
+		return fmt.Errorf("voice: Live API connect: %w", err)
+	}
+	defer func() { _ = session.Close() }()
+	log.Println("Voice: Gemini Live session established (native mode)")
+
+	// --- goroutine: mic + text → Gemini ---
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case chunk, ok := <-mic:
+				if !ok {
+					// Mic channel closed — send AudioStreamEnd.
+					if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+						AudioStreamEnd: true,
+					}); err != nil {
+						log.Printf("Voice: AudioStreamEnd error: %v", err)
+					}
+					return
+				}
+				if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+					Audio: &genai.Blob{
+						Data:     chunk,
+						MIMEType: "audio/pcm;rate=16000",
+					},
+				}); err != nil {
+					log.Printf("Voice: SendRealtimeInput error: %v", err)
+					return
+				}
+			case text, ok := <-textIn:
+				if !ok {
+					continue
+				}
+				if text == "" {
+					continue
+				}
+				log.Printf("Voice: text input: %s", text)
+				if err := session.SendClientContent(genai.LiveClientContentInput{
+					Turns: []*genai.Content{
+						{Role: "user", Parts: []*genai.Part{{Text: text}}},
+					},
+				}); err != nil {
+					log.Printf("Voice: SendClientContent error: %v", err)
+				}
+			}
+		}
+	}()
+
+	// --- main loop: Gemini → speaker + tool execution ---
+	var inToolLoop bool
+	var bufferedTranscript string
+
+	// activeCancelTool stores the cancel func for the current tool interaction.
+	// Called by Interrupted/ToolCallCancellation handlers to abort in-flight work.
+	var activeCancelMu sync.Mutex
+	var activeCancelFn context.CancelFunc
+	setActiveCancel := func(fn context.CancelFunc) {
+		activeCancelMu.Lock()
+		defer activeCancelMu.Unlock()
+		if activeCancelFn != nil {
+			activeCancelFn()
+		}
+		activeCancelFn = fn
+	}
+	defer setActiveCancel(nil)
+
+	for {
+		msg, err := session.Receive()
+		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			return fmt.Errorf("voice: Receive: %w", err)
+		}
+
+		if msg.SetupComplete != nil {
+			log.Println("Voice: Live session setup complete (native mode)")
+			continue
+		}
+
+		// ServerContent — audio data and/or transcription.
+		if sc := msg.ServerContent; sc != nil {
+			if inToolLoop {
+				if sc.OutputTranscription != nil && sc.OutputTranscription.Text != "" {
+					bufferedTranscript += sc.OutputTranscription.Text
+				}
+				if sc.TurnComplete {
+					inToolLoop = false
+					if bufferedTranscript != "" {
+						log.Printf("Voice Navigator: %s", bufferedTranscript)
+						bufferedTranscript = ""
+					}
+				}
+				if sc.Interrupted {
+					inToolLoop = false
+					bufferedTranscript = ""
+					setActiveCancel(nil)
+					log.Println("Voice: interrupted by user")
+				}
+				continue
+			}
+
+			// Normal path: forward audio to speaker.
+			if sc.ModelTurn != nil {
+				for _, part := range sc.ModelTurn.Parts {
+					if part.InlineData != nil && len(part.InlineData.Data) > 0 {
+						select {
+						case speaker <- part.InlineData.Data:
+						case <-ctx.Done():
+							return ctx.Err()
+						}
+					}
+				}
+			}
+
+			if sc.InputTranscription != nil && sc.InputTranscription.Text != "" {
+				log.Printf("Voice User: %s", sc.InputTranscription.Text)
+			}
+			if sc.OutputTranscription != nil && sc.OutputTranscription.Text != "" {
+				log.Printf("Voice Navigator: %s", sc.OutputTranscription.Text)
+			}
+
+			if sc.Interrupted {
+				log.Println("Voice: interrupted by user")
+			}
+			continue
+		}
+
+		// ToolCall — execute against the active voice tab's session.
+		if tc := msg.ToolCall; tc != nil {
+			tabID := h.getVoiceTabID()
+			sess := h.getVoiceSession()
+
+			// Wire scroll for this interaction.
+			sess.Navigator.SetScrollFunc(func(scrollCtx context.Context, direction string) error {
+				return h.scrollVoice(scrollCtx, sess, tabID, direction)
+			})
+
+			// Schema gate — let goto through without a schema.
+			needsSchema := false
+			for _, fc := range tc.FunctionCalls {
+				if fc.Name != "goto" {
+					needsSchema = true
+					break
+				}
+			}
+			if needsSchema {
+				select {
+				case <-sess.SchemaReady:
+				case <-time.After(schemaWaitTimeout):
+					log.Printf("Voice: timed out waiting for schema (tab %d)", tabID)
+					var errResponses []*genai.FunctionResponse
+					for _, fc := range tc.FunctionCalls {
+						errResponses = append(errResponses, &genai.FunctionResponse{
+							ID:       fc.ID,
+							Name:     fc.Name,
+							Response: map[string]any{"output": "Error: page schema is still loading. Please wait."},
+						})
+					}
+					_ = session.SendToolResponse(genai.LiveToolResponseInput{
+						FunctionResponses: errResponses,
+					})
+					continue
+				}
+			}
+
+			inToolLoop = true
+
+			// Per-interaction cancellable context: cancelled on Interrupted.
+			toolCtx, toolCancelFn := context.WithCancel(ctx)
+			setActiveCancel(toolCancelFn)
+
+			var responses []*genai.FunctionResponse
+			for _, fc := range tc.FunctionCalls {
+				// Skip server-side tools (google_search etc.)
+				switch fc.Name {
+				case "ls", "cat", "act", "scroll", "goto":
+				default:
+					log.Printf("Voice: skipping server-side tool %s", fc.Name)
+					continue
+				}
+
+				log.Printf("Voice: tool %s(%v) (tab %d)", fc.Name, fc.Args, tabID)
+				result, action := sess.Navigator.ExecuteTool(toolCtx, fc)
+				log.Printf("Voice: result: %q", result)
+
+				if action != nil {
+					if action.Action == "goto" {
+						sess.ResetSchema()
+						sess.Engine = mache.NewEngine()
+						sess.Navigator.SetEngine(sess.Engine)
+						h.sendGoto(tabID, action.Path)
+						log.Printf("Voice: goto %s (tab %d)", action.Path, tabID)
+
+						select {
+						case <-sess.SchemaReady:
+							result = fmt.Sprintf("Navigated to %s. Page loaded. Use ls('/') to explore.", action.Path)
+						case <-time.After(schemaWaitTimeout):
+							result = fmt.Sprintf("Navigated to %s but timed out waiting for page.", action.Path)
+						case <-toolCtx.Done():
+							result = "Navigation cancelled."
+						}
+					} else {
+						h.SendActionToExtension(tabID, action.MacheID, action.Action)
+					}
+				}
+
+				responses = append(responses, &genai.FunctionResponse{
+					ID:       fc.ID,
+					Name:     fc.Name,
+					Response: map[string]any{"output": result},
+				})
+			}
+
+			sess.Navigator.SetScrollFunc(nil)
+
+			if len(responses) > 0 {
+				if err := session.SendToolResponse(genai.LiveToolResponseInput{
+					FunctionResponses: responses,
+				}); err != nil {
+					log.Printf("Voice: SendToolResponse error: %v", err)
+					toolCancelFn()
+					break
+				}
+			}
+			toolCancelFn()
+			continue
+		}
+
+		if msg.ToolCallCancellation != nil {
+			log.Printf("Voice: tool call cancelled: %v", msg.ToolCallCancellation)
+			inToolLoop = false
+			bufferedTranscript = ""
+			setActiveCancel(nil)
+			continue
+		}
+	}
+
+	return nil
+}
 
 // sendVoiceJSON marshals a voiceMessage and writes it as a text frame. If mu
 // is non-nil it acquires the lock first (used when called from non-reader goroutines).

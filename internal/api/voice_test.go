@@ -86,7 +86,7 @@ func TestVoiceMessageOmitsEmpty(t *testing.T) {
 
 func TestVoiceWaitingForSchema(t *testing.T) {
 	// Verify the handler creates a session without schema — voice would send "waiting"
-	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live")
+	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
 	sess := h.getSession(99)
 
 	if sess.Engine.HasSchema() {
@@ -95,7 +95,7 @@ func TestVoiceWaitingForSchema(t *testing.T) {
 }
 
 func TestVoiceConnectsWithSchema(t *testing.T) {
-	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live")
+	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
 	sess := h.getSession(99)
 
 	schema := `{"mounts":[{"virtual_path":"/main","mache_id":"mache-1","description":"main"}]}`

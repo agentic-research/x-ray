@@ -1,6 +1,9 @@
 package api
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
+)
 
 func TestCacheKey(t *testing.T) {
 	tests := []struct {
@@ -27,7 +30,7 @@ func TestCacheKey(t *testing.T) {
 }
 
 func TestSchemaCacheHitMiss(t *testing.T) {
-	c := newSchemaCache()
+	c := newSchemaCache("")
 
 	// Miss on empty cache.
 	if _, ok := c.Get("example.com/"); ok {
@@ -53,7 +56,7 @@ func TestSchemaCacheHitMiss(t *testing.T) {
 }
 
 func TestSchemaCacheEviction(t *testing.T) {
-	c := newSchemaCache()
+	c := newSchemaCache("")
 
 	// Fill to capacity.
 	for i := range schemaCacheMaxSize {
@@ -73,5 +76,48 @@ func TestSchemaCacheEviction(t *testing.T) {
 	}
 	if _, ok := c.Get("example.com/overflow"); !ok {
 		t.Fatal("expected new entry to exist")
+	}
+}
+
+func TestSchemaCacheSQLitePersistence(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test-schemas.db")
+
+	// Create a cache backed by SQLite, put an entry, and close.
+	c1 := newSchemaCache(dbPath)
+	c1.Put("example.com/page", `{"mounts":[{"virtual_path":"/main"}]}`)
+	if err := c1.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	// Create a new cache with the same path — entry should be loaded from disk.
+	c2 := newSchemaCache(dbPath)
+	defer func() { _ = c2.Close() }()
+
+	got, ok := c2.Get("example.com/page")
+	if !ok {
+		t.Fatal("expected hit after reopening SQLite-backed cache")
+	}
+	if got != `{"mounts":[{"virtual_path":"/main"}]}` {
+		t.Errorf("unexpected schema after reload: %s", got)
+	}
+}
+
+func TestSchemaCacheSQLiteOverwrite(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test-overwrite.db")
+
+	c1 := newSchemaCache(dbPath)
+	c1.Put("example.com/", `{"v":1}`)
+	c1.Put("example.com/", `{"v":2}`)
+	_ = c1.Close()
+
+	c2 := newSchemaCache(dbPath)
+	defer func() { _ = c2.Close() }()
+
+	got, ok := c2.Get("example.com/")
+	if !ok {
+		t.Fatal("expected hit")
+	}
+	if got != `{"v":2}` {
+		t.Errorf("expected overwritten value, got %s", got)
 	}
 }

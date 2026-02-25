@@ -1,13 +1,20 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"flag"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/jamesgardner/x-ray/internal/api"
+	"github.com/jamesgardner/x-ray/internal/audio"
 	"github.com/jamesgardner/x-ray/internal/cartographer"
 	"github.com/jamesgardner/x-ray/internal/navigator"
 	"github.com/joho/godotenv"
@@ -15,6 +22,9 @@ import (
 )
 
 func main() {
+	voiceFlag := flag.Bool("voice", false, "Enable native voice mode (requires sox)")
+	flag.Parse()
+
 	log.Println("Starting X-Ray Agentd")
 
 	// Load .envrc for GOOGLE_GEMINI_API_KEY / GOOGLE_API_KEY
@@ -22,7 +32,9 @@ func main() {
 		log.Println("Note: No .envrc file found, using environment")
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	client, err := genai.NewClient(ctx, nil)
 	if err != nil {
 		log.Fatalf("Failed to initialize Gemini client: %v", err)
@@ -71,8 +83,8 @@ func main() {
 		// memory before the first real intent arrives.
 		go func() {
 			log.Printf("Navigator: pre-warming model %s...", navModel)
-			warmCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-			defer cancel()
+			warmCtx, warmCancel := context.WithTimeout(context.Background(), 60*time.Second)
+			defer warmCancel()
 			_, err := navGen.GenerateContent(warmCtx, navModel, []*genai.Content{
 				{Role: "user", Parts: []*genai.Part{{Text: "hi"}}},
 			}, nil)
@@ -84,8 +96,15 @@ func main() {
 		}()
 	}
 
+	// Schema cache persistence.
+	dbPath := os.Getenv("XRAY_DB")
+	if dbPath == "" {
+		home, _ := os.UserHomeDir()
+		dbPath = filepath.Join(home, ".xray", "schemas.db")
+	}
+
 	// Per-tab Engine + Navigator are created on demand inside Handler.
-	handler := api.NewHandler(cart, navGen, liveClient, navModel, liveModel)
+	handler := api.NewHandler(cart, navGen, liveClient, navModel, liveModel, dbPath)
 
 	http.HandleFunc("/ws", handler.HandleWebSocket)
 	http.HandleFunc("/navigate", handler.HandleNavigateHTTP)
@@ -97,9 +116,125 @@ func main() {
 		port = "8080"
 	}
 	port = ":" + port
-	log.Printf("Listening on %s", port)
-	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Fatalf("Server failed: %v", err)
+
+	// Start HTTP server in background.
+	go func() {
+		log.Printf("Listening on %s", port)
+		if err := http.ListenAndServe(port, nil); err != nil {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	if *voiceFlag {
+		if !audio.Available() {
+			log.Fatal("Voice mode requires sox (brew install sox)")
+		}
+		runVoiceLoop(ctx, cancel, handler)
+	} else {
+		// No voice mode — block on HTTP server.
+		log.Printf("Listening on %s (no voice mode, use --voice to enable)", port)
+		select {}
+	}
+}
+
+// runVoiceLoop implements enter-to-talk PTT using sox for native mic/speaker.
+func runVoiceLoop(ctx context.Context, cancel context.CancelFunc, handler *api.Handler) {
+	mic := make(chan []byte, 64)
+	speaker := make(chan []byte, 64)
+	textIn := make(chan string, 8)
+
+	// Speaker goroutine: play audio chunks via sox.
+	go func() {
+		player := audio.NewPlayer()
+		pipe, err := player.Start()
+		if err != nil {
+			log.Printf("Voice: failed to start speaker: %v", err)
+			return
+		}
+		defer func() { _ = player.Stop() }()
+		for chunk := range speaker {
+			if _, err := pipe.Write(chunk); err != nil {
+				log.Printf("Voice: speaker write error: %v", err)
+				return
+			}
+		}
+	}()
+
+	// Voice loop goroutine: connects to Gemini Live.
+	go func() {
+		if err := handler.StartVoiceLoop(ctx, mic, speaker, textIn); err != nil {
+			log.Printf("Voice: loop ended: %v", err)
+		}
+		cancel()
+	}()
+
+	// Stdin PTT loop.
+	fmt.Println()
+	fmt.Println("  Agent OS Ready.")
+	fmt.Println("  Press ENTER to open voice channel.")
+	fmt.Println("  Type text + ENTER to send a text intent.")
+	fmt.Println()
+
+	scanner := bufio.NewScanner(os.Stdin)
+	var recorder *audio.Recorder
+	var recorderPipe io.ReadCloser
+	recording := false
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		if line != "" {
+			// Non-empty line: send as text intent.
+			select {
+			case textIn <- line:
+				log.Printf("Voice: sent text intent: %s", line)
+			default:
+				log.Println("Voice: text channel full, dropping")
+			}
+			continue
+		}
+
+		// Empty line (just Enter): toggle recording.
+		if !recording {
+			// Start recording.
+			recorder = audio.NewRecorder()
+			var err error
+			recorderPipe, err = recorder.Start()
+			if err != nil {
+				log.Printf("Voice: failed to start recorder: %v", err)
+				continue
+			}
+			recording = true
+			fmt.Println("  [ Listening... ]")
+
+			// Feed mic channel from recorder pipe.
+			go func(pipe io.ReadCloser) {
+				buf := make([]byte, 3200) // 100ms of 16kHz 16-bit mono
+				for {
+					n, err := pipe.Read(buf)
+					if n > 0 {
+						chunk := make([]byte, n)
+						copy(chunk, buf[:n])
+						select {
+						case mic <- chunk:
+						case <-ctx.Done():
+							return
+						}
+					}
+					if err != nil {
+						return
+					}
+				}
+			}(recorderPipe)
+		} else {
+			// Stop recording.
+			recording = false
+			if recorder != nil {
+				_ = recorder.Stop()
+				recorder = nil
+			}
+			fmt.Println("  [ Paused. Press ENTER to resume. ]")
+		}
 	}
 }
 
