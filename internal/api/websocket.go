@@ -101,8 +101,9 @@ type Handler struct {
 	conn           *websocket.Conn
 	pending        []pendingAction
 	sessions       map[int]*TabSession
-	schemas        *schemaCache // domain+path → schema JSON
-	activeVoiceTab int          // tab ID for native voice mode (set by TAB_ACTIVATED)
+	schemas        *schemaCache     // domain+path → schema JSON
+	activeVoiceTab int              // tab ID for native voice mode (set by TAB_ACTIVATED)
+	openBrowserFn  func(url string) // fallback when no WS connection; nil = no-op (tests)
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveClient *genai.Client, navModel, liveModel, dbPath string) *Handler {
@@ -114,6 +115,9 @@ func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveCli
 		LiveModel:    liveModel,
 		sessions:     make(map[int]*TabSession),
 		schemas:      newSchemaCache(dbPath),
+		openBrowserFn: func(url string) {
+			_ = exec.Command("open", "-a", "Google Chrome", url).Start()
+		},
 	}
 }
 
@@ -258,6 +262,20 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	ctx := context.Background()
 	sess := h.getSession(msg.TabID)
 
+	// Early tab promotion: if the voice Doer is stranded on tab 0 (no extension
+	// was connected at voice-start time), unblock it now — before the slow
+	// Cartographer call. The Doer just needs to know "goto worked," and the
+	// real tab's schema will be ready independently for the next command.
+	h.mu.Lock()
+	if h.activeVoiceTab == 0 && msg.TabID != 0 {
+		h.activeVoiceTab = msg.TabID
+		log.Printf("WebSocket: active voice tab promoted to %d", msg.TabID)
+		if oldSess, ok := h.sessions[0]; ok {
+			oldSess.SignalSchemaReady()
+		}
+	}
+	h.mu.Unlock()
+
 	// Claim a generation number. If another snapshot starts processing while
 	// this one is in-flight (e.g., goto fires twice), the stale generation
 	// is discarded at apply time to prevent overwriting a newer schema.
@@ -379,20 +397,6 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 		log.Printf("Schema: generation %d superseded (tab %d), discarding stale Cartographer result", myGen, msg.TabID)
 		return
 	}
-
-	h.mu.Lock()
-	if h.activeVoiceTab == 0 && msg.TabID != 0 {
-		h.activeVoiceTab = msg.TabID
-		log.Printf("WebSocket: active voice tab initialized to %d", msg.TabID)
-		// Unblock any Doer stranded on the placeholder tab-0 session.
-		// The goto dispatched before the real tab was known; now that the
-		// extension responded with a real tab ID, signal the old session
-		// so the Doer can complete and future commands use the real tab.
-		if oldSess, ok := h.sessions[0]; ok {
-			oldSess.SignalSchemaReady()
-		}
-	}
-	h.mu.Unlock()
 
 	// Save schema to disk for reference
 	saveLog("schema", msg.URL, schemaJSON)
@@ -595,7 +599,9 @@ func (h *Handler) sendGoto(tabID int, url string) {
 	h.mu.Unlock()
 	if conn == nil {
 		log.Printf("Voice: no extension connected, opening Chrome: %s", url)
-		_ = exec.Command("open", "-a", "Google Chrome", url).Start()
+		if h.openBrowserFn != nil {
+			h.openBrowserFn(url)
+		}
 		return
 	}
 	h.sendMessage(conn, OutboundMessage{

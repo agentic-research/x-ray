@@ -297,3 +297,171 @@ func TestNewHandlerInitializesSessionsMap(t *testing.T) {
 		t.Errorf("sessions map should be empty, got %d entries", len(h.sessions))
 	}
 }
+
+// --- Tab promotion + voice resolution tests ---
+
+func TestActiveVoiceTabPromotion(t *testing.T) {
+	h := newTestHandler()
+
+	// Initially, activeVoiceTab is 0 (no extension connected).
+	if h.getVoiceTabID() != 0 {
+		t.Errorf("expected initial voice tab 0, got %d", h.getVoiceTabID())
+	}
+
+	// Simulate TAB_ACTIVATED from the extension.
+	h.mu.Lock()
+	h.activeVoiceTab = 12345
+	h.mu.Unlock()
+
+	if h.getVoiceTabID() != 12345 {
+		t.Errorf("expected voice tab 12345, got %d", h.getVoiceTabID())
+	}
+}
+
+func TestTabZeroPromotionSignalsSchemaReady(t *testing.T) {
+	h := newTestHandler()
+
+	// Create a tab-0 session and reset its schema (simulating a Doer goto).
+	sess0 := h.getSession(0)
+	sess0.ResetSchema()
+
+	// SchemaReady should be open (not signaled).
+	select {
+	case <-sess0.SchemaReady:
+		t.Fatal("SchemaReady should not be signaled yet")
+	default:
+	}
+
+	// Simulate the promotion that handleDOMSnapshot does when a real tab arrives.
+	h.mu.Lock()
+	if h.activeVoiceTab == 0 {
+		h.activeVoiceTab = 999
+		if oldSess, ok := h.sessions[0]; ok {
+			oldSess.SignalSchemaReady()
+		}
+	}
+	h.mu.Unlock()
+
+	// Tab-0 SchemaReady should now be signaled.
+	select {
+	case <-sess0.SchemaReady:
+		// OK — unblocked as expected.
+	default:
+		t.Fatal("tab-0 SchemaReady should have been signaled by promotion")
+	}
+}
+
+func TestTabZeroPromotionIdempotent(t *testing.T) {
+	h := newTestHandler()
+	sess0 := h.getSession(0)
+	sess0.ResetSchema()
+
+	// Promote once.
+	h.mu.Lock()
+	h.activeVoiceTab = 100
+	if oldSess, ok := h.sessions[0]; ok {
+		oldSess.SignalSchemaReady()
+	}
+	h.mu.Unlock()
+
+	// Promote again (should be a no-op because activeVoiceTab != 0).
+	h.mu.Lock()
+	prev := h.activeVoiceTab
+	if h.activeVoiceTab == 0 {
+		t.Error("should not re-promote; activeVoiceTab is already set")
+	}
+	h.mu.Unlock()
+
+	if prev != 100 {
+		t.Errorf("expected activeVoiceTab to remain 100, got %d", prev)
+	}
+}
+
+func TestGetVoiceSessionResolvesCorrectTab(t *testing.T) {
+	h := newTestHandler()
+
+	// Before promotion: voice session is tab 0.
+	sess0 := h.getVoiceSession()
+	if sess0.TabID != 0 {
+		t.Errorf("expected voice session tab 0, got %d", sess0.TabID)
+	}
+
+	// After promotion: voice session is the real tab.
+	h.mu.Lock()
+	h.activeVoiceTab = 42
+	h.mu.Unlock()
+
+	sess42 := h.getVoiceSession()
+	if sess42.TabID != 42 {
+		t.Errorf("expected voice session tab 42, got %d", sess42.TabID)
+	}
+
+	// Both sessions should be distinct objects.
+	if sess0 == sess42 {
+		t.Error("tab 0 and tab 42 sessions should be distinct")
+	}
+}
+
+func TestGetOrCreateDoerLazy(t *testing.T) {
+	h := newTestHandler()
+	sess := h.getSession(5)
+
+	// No Doer initially.
+	if sess.Doer != nil {
+		t.Error("fresh session should not have a Doer")
+	}
+
+	// First call creates a Doer.
+	d1 := h.getOrCreateDoer(5, sess)
+	if d1 == nil {
+		t.Fatal("getOrCreateDoer returned nil")
+	}
+	if sess.Doer != d1 {
+		t.Error("Doer should be stored on session")
+	}
+
+	// Second call returns the same Doer.
+	d2 := h.getOrCreateDoer(5, sess)
+	if d1 != d2 {
+		t.Error("getOrCreateDoer should return cached Doer")
+	}
+}
+
+func TestSchemaResetAndSignalCycle(t *testing.T) {
+	h := newTestHandler()
+	sess := h.getSession(1)
+
+	// Initial SchemaReady is open.
+	select {
+	case <-sess.SchemaReady:
+		t.Fatal("fresh SchemaReady should be open")
+	default:
+	}
+
+	// Signal it.
+	sess.SignalSchemaReady()
+	select {
+	case <-sess.SchemaReady:
+	default:
+		t.Fatal("SchemaReady should be closed after signal")
+	}
+
+	// Double-signal is a no-op (no panic).
+	sess.SignalSchemaReady()
+
+	// Reset creates a new open channel.
+	sess.ResetSchema()
+	select {
+	case <-sess.SchemaReady:
+		t.Fatal("SchemaReady should be open after reset")
+	default:
+	}
+
+	// Signal the new channel.
+	sess.SignalSchemaReady()
+	select {
+	case <-sess.SchemaReady:
+	default:
+		t.Fatal("new SchemaReady should be closed after signal")
+	}
+}
