@@ -87,6 +87,10 @@ function getPath(element, maxLevels = 3) {
 function generateSummary() {
   let summary = "Interactive Elements:\n";
   let count = 0;
+
+  const pageWidth = document.documentElement.scrollWidth || window.innerWidth;
+  const pageHeight = document.documentElement.scrollHeight || window.innerHeight;
+
   for (const [macheId, node] of elementRegistry) {
     if (count >= 300) break;
     const tag = node.tagName.toLowerCase();
@@ -100,6 +104,17 @@ function generateSummary() {
     }
     // Skip interactive elements with no text -- not useful for navigation
     if (!text && !node.children.length) continue;
+
+    // Spatial Grounding: Normalized coordinates [x, y, w, h]
+    const rect = node.getBoundingClientRect();
+    const x = (rect.left + window.scrollX) / pageWidth;
+    const y = (rect.top + window.scrollY) / pageHeight;
+    const w = rect.width / pageWidth;
+    const h = rect.height / pageHeight;
+    const bounds = `[${x.toFixed(3)}, ${y.toFixed(3)}, ${w.toFixed(3)}, ${h.toFixed(3)}]`;
+
+    const color = getSemanticColor(node).name;
+
     // Find nearest tagged parent via registry
     let parentID = 'none';
     let ancestor = node.parentElement;
@@ -110,7 +125,7 @@ function generateSummary() {
       }
       ancestor = ancestor.parentElement;
     }
-    summary += `ID: ${macheId} | Parent: ${parentID} | Tag: ${tag} | Text: "${text}" | Path: ${getPath(node)}\n`;
+    summary += `ID: ${macheId} | Color: ${color} | Bounds: ${bounds} | Parent: ${parentID} | Tag: ${tag} | Text: "${text}" | Path: ${getPath(node)}\n`;
     count++;
   }
   return summary;
@@ -196,16 +211,32 @@ function executeAction(macheId, actionType, payload) {
 
 const OVERLAY_ID = 'xray-overlay';
 
-// Distinct colors for visual separation of bounding boxes.
-const BOX_COLORS = [
-  'rgba(255, 0, 0, 0.3)',
-  'rgba(0, 128, 255, 0.3)',
-  'rgba(0, 200, 0, 0.3)',
-  'rgba(255, 165, 0, 0.3)',
-  'rgba(160, 32, 240, 0.3)',
-  'rgba(0, 200, 200, 0.3)',
-  'rgba(255, 105, 180, 0.3)',
-];
+// Semantic color legend for the ACI (Agent-Computer Interface).
+// Primary colors are used for high-accuracy identification by Vision models.
+const SEMANTIC_COLORS = {
+  link: { name: 'BLUE', value: 'rgba(0, 0, 255, 0.3)', border: 'rgba(0, 0, 255, 0.9)' },
+  button: { name: 'ORANGE', value: 'rgba(255, 165, 0, 0.3)', border: 'rgba(255, 165, 0, 0.9)' },
+  input: { name: 'GREEN', value: 'rgba(0, 200, 0, 0.3)', border: 'rgba(0, 200, 0, 0.9)' },
+  container: { name: 'PURPLE', value: 'rgba(160, 32, 240, 0.3)', border: 'rgba(160, 32, 240, 0.9)' },
+  other: { name: 'RED', value: 'rgba(255, 0, 0, 0.3)', border: 'rgba(255, 0, 0, 0.9)' }
+};
+
+function getSemanticColor(node) {
+  const tag = node.tagName.toLowerCase();
+  const role = node.getAttribute('role');
+
+  if (tag === 'a') return SEMANTIC_COLORS.link;
+  if (tag === 'button' || role === 'button') return SEMANTIC_COLORS.button;
+  if (['input', 'textarea', 'select'].includes(tag)) return SEMANTIC_COLORS.input;
+
+  // Containers are typically tagged in Phase 2
+  const containers = ['main', 'section', 'article', 'nav', 'header', 'footer', 'aside', 'form', 'ul', 'ol', 'dl', 'table'];
+  if (containers.includes(tag) || (role && ['navigation', 'main', 'list', 'group', 'region'].includes(role))) {
+    return SEMANTIC_COLORS.container;
+  }
+
+  return SEMANTIC_COLORS.other;
+}
 
 function drawOverlay() {
   removeOverlay();
@@ -216,14 +247,12 @@ function drawOverlay() {
     'position: absolute; top: 0; left: 0; width: 100%; height: 100%;' +
     'pointer-events: none; z-index: 2147483647;';
 
-  let colorIdx = 0;
   for (const [macheId, node] of elementRegistry) {
     const rect = node.getBoundingClientRect();
     // Skip elements that are off-screen or zero-sized
     if (rect.width === 0 || rect.height === 0) continue;
 
-    const color = BOX_COLORS[colorIdx % BOX_COLORS.length];
-    colorIdx++;
+    const color = getSemanticColor(node);
 
     // Bounding box with translucent fill + thick border
     const box = document.createElement('div');
@@ -233,8 +262,8 @@ function drawOverlay() {
       `top: ${rect.top + window.scrollY}px;` +
       `width: ${rect.width}px;` +
       `height: ${rect.height}px;` +
-      `background: ${color};` +
-      `border: 2px solid ${color.replace('0.3', '0.9')};` +
+      `background: ${color.value};` +
+      `border: 2px solid ${color.border};` +
       `pointer-events: none;` +
       `box-sizing: border-box;`;
 
@@ -253,7 +282,7 @@ function drawOverlay() {
   }
 
   document.documentElement.appendChild(overlay);
-  console.log(`X-Ray: Drew overlay with ${colorIdx} bounding boxes`);
+  console.log(`X-Ray: Drew semantic overlay with ${elementRegistry.size} boxes`);
 }
 
 function removeOverlay() {

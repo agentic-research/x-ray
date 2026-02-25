@@ -311,10 +311,12 @@ type SummaryElement struct {
 	Path     string // DOM breadcrumb path (optional, e.g., "div.post > h3.title > a")
 	AXRole   string // from CDP accessibility tree (optional)
 	AXName   string // from CDP accessibility tree (optional)
+	Color    string // semantic color name (e.g., "BLUE")
+	Bounds   string // normalized coordinates [x, y, w, h]
 }
 
 // parseSummary extracts structured elements from the summary text.
-// Expected format: ID: mache-X | Parent: mache-Y | Tag: a | Text: "..."
+// Expected format: ID: mache-X | Color: BLUE | Bounds: [x,y,w,h] | Parent: mache-Y | Tag: a | Text: "..."
 // Optional AX fields: ... | AXRole: navigation | AXName: "Primary nav"
 func parseSummary(summary string) []SummaryElement {
 	var elements []SummaryElement
@@ -323,47 +325,42 @@ func parseSummary(summary string) []SummaryElement {
 		if !strings.HasPrefix(line, "ID: ") {
 			continue
 		}
-		// Split first 4 fields (ID, Parent, Tag, Text+rest).
-		// Use SplitN to keep Text intact if it contains " | ".
-		parts := strings.SplitN(line, " | ", 4)
-		if len(parts) < 4 {
-			continue
-		}
-		id := strings.TrimPrefix(parts[0], "ID: ")
-		parentID := strings.TrimPrefix(parts[1], "Parent: ")
-		tag := strings.TrimPrefix(parts[2], "Tag: ")
 
-		// parts[3] = Text: "..." possibly followed by | AXRole: ... | AXName: "..."
-		// Find the closing quote of the Text value to split off AX fields.
-		rest := strings.TrimPrefix(parts[3], "Text: ")
-		var text string
-		var trailing string
-		if strings.HasPrefix(rest, "\"") {
-			if end := strings.Index(rest[1:], "\""); end >= 0 {
-				text = rest[1 : end+1]
-				trailing = rest[end+2:] // everything after closing quote
-			} else {
-				text = strings.Trim(rest, "\"")
-			}
-		} else {
-			text = rest
-		}
+		el := SummaryElement{ParentID: "none"}
 
-		el := SummaryElement{ID: id, ParentID: parentID, Tag: tag, Text: text}
-
-		// Parse optional trailing fields (Path, AXRole, AXName)
-		for _, segment := range strings.Split(trailing, " | ") {
+		// Split by " | " and handle key-value pairs
+		segments := strings.Split(line, " | ")
+		for _, segment := range segments {
 			segment = strings.TrimSpace(segment)
-			if v, ok := strings.CutPrefix(segment, "AXRole: "); ok {
+			if v, ok := strings.CutPrefix(segment, "ID: "); ok {
+				el.ID = v
+			} else if v, ok := strings.CutPrefix(segment, "Parent: "); ok {
+				el.ParentID = v
+			} else if v, ok := strings.CutPrefix(segment, "Tag: "); ok {
+				el.Tag = v
+			} else if v, ok := strings.CutPrefix(segment, "Color: "); ok {
+				el.Color = v
+			} else if v, ok := strings.CutPrefix(segment, "Bounds: "); ok {
+				el.Bounds = v
+			} else if v, ok := strings.CutPrefix(segment, "AXRole: "); ok {
 				el.AXRole = v
 			} else if v, ok := strings.CutPrefix(segment, "AXName: "); ok {
 				el.AXName = strings.Trim(v, "\"")
 			} else if v, ok := strings.CutPrefix(segment, "Path: "); ok {
 				el.Path = v
+			} else if v, ok := strings.CutPrefix(segment, "Text: "); ok {
+				// Handle quoted text
+				if strings.HasPrefix(v, "\"") && strings.HasSuffix(v, "\"") {
+					el.Text = strings.Trim(v, "\"")
+				} else {
+					el.Text = v
+				}
 			}
 		}
 
-		elements = append(elements, el)
+		if el.ID != "" {
+			elements = append(elements, el)
+		}
 	}
 	return elements
 }
@@ -589,7 +586,7 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 
 			children := []string{macheIDFileID, tagFileID, textFileID}
 
-			// Semantic enrichment: inject AX role, name, DOM path when available.
+			// Semantic enrichment: inject AX role, name, DOM path, color, and bounds when available.
 			if d.AXRole != "" {
 				id := childDirID + "/role"
 				e.store.AddNode(&graph.Node{ID: id, Data: []byte(d.AXRole)})
@@ -603,6 +600,16 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 			if d.Path != "" {
 				id := childDirID + "/path"
 				e.store.AddNode(&graph.Node{ID: id, Data: []byte(d.Path)})
+				children = append(children, id)
+			}
+			if d.Color != "" {
+				id := childDirID + "/color"
+				e.store.AddNode(&graph.Node{ID: id, Data: []byte(d.Color)})
+				children = append(children, id)
+			}
+			if d.Bounds != "" {
+				id := childDirID + "/bounds"
+				e.store.AddNode(&graph.Node{ID: id, Data: []byte(d.Bounds)})
 				children = append(children, id)
 			}
 
