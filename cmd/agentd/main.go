@@ -233,6 +233,11 @@ func runVoiceLoop(ctx context.Context, cancel context.CancelFunc, handler *api.H
 				_ = recorder.Stop()
 				recorder = nil
 			}
+			// Send a nil chunk to signal end of stream to the voice loop
+			select {
+			case mic <- nil:
+			default:
+			}
 			fmt.Println("  [ Paused. Press ENTER to resume. ]")
 		}
 	}

@@ -397,13 +397,16 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				return
 			case chunk, ok := <-mic:
 				if !ok {
-					// Mic channel closed — send AudioStreamEnd.
+					return
+				}
+				if chunk == nil {
+					// PTT button released — send AudioStreamEnd to tell Gemini we are done talking.
 					if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
 						AudioStreamEnd: true,
 					}); err != nil {
 						log.Printf("Voice: AudioStreamEnd error: %v", err)
 					}
-					return
+					continue
 				}
 				if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
 					Audio: &genai.Blob{
@@ -518,99 +521,103 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 			tabID := h.getVoiceTabID()
 			sess := h.getVoiceSession()
 
-			// Wire scroll for this interaction.
-			sess.Navigator.SetScrollFunc(func(scrollCtx context.Context, direction string) error {
-				return h.scrollVoice(scrollCtx, sess, tabID, direction)
-			})
-
-			// Schema gate — let goto through without a schema.
-			needsSchema := false
-			for _, fc := range tc.FunctionCalls {
-				if fc.Name != "goto" {
-					needsSchema = true
-					break
-				}
-			}
-			if needsSchema {
-				select {
-				case <-sess.SchemaReady:
-				case <-time.After(schemaWaitTimeout):
-					log.Printf("Voice: timed out waiting for schema (tab %d)", tabID)
-					var errResponses []*genai.FunctionResponse
-					for _, fc := range tc.FunctionCalls {
-						errResponses = append(errResponses, &genai.FunctionResponse{
-							ID:       fc.ID,
-							Name:     fc.Name,
-							Response: map[string]any{"output": "Error: page schema is still loading. Please wait."},
-						})
-					}
-					_ = session.SendToolResponse(genai.LiveToolResponseInput{
-						FunctionResponses: errResponses,
-					})
-					continue
-				}
-			}
-
 			inToolLoop = true
 
 			// Per-interaction cancellable context: cancelled on Interrupted.
 			toolCtx, toolCancelFn := context.WithCancel(ctx)
 			setActiveCancel(toolCancelFn)
 
-			var responses []*genai.FunctionResponse
-			for _, fc := range tc.FunctionCalls {
-				// Skip server-side tools (google_search etc.)
-				switch fc.Name {
-				case "ls", "cat", "act", "scroll", "goto":
-				default:
-					log.Printf("Voice: skipping server-side tool %s", fc.Name)
-					continue
+			go func(tc *genai.LiveServerToolCall, tabID int, sess *TabSession, toolCtx context.Context, toolCancelFn context.CancelFunc) {
+				defer toolCancelFn()
+
+				// Wire scroll for this interaction.
+				sess.Navigator.SetScrollFunc(func(scrollCtx context.Context, direction string) error {
+					return h.scrollVoice(scrollCtx, sess, tabID, direction)
+				})
+				defer sess.Navigator.SetScrollFunc(nil)
+
+				// Schema gate — let goto through without a schema.
+				needsSchema := false
+				for _, fc := range tc.FunctionCalls {
+					if fc.Name != "goto" {
+						needsSchema = true
+						break
+					}
 				}
-
-				log.Printf("Voice: tool %s(%v) (tab %d)", fc.Name, fc.Args, tabID)
-				result, action := sess.Navigator.ExecuteTool(toolCtx, fc)
-				log.Printf("Voice: result: %q", result)
-
-				if action != nil {
-					if action.Action == "goto" {
-						sess.ResetSchema()
-						sess.Engine = mache.NewEngine()
-						sess.Navigator.SetEngine(sess.Engine)
-						h.sendGoto(tabID, action.Path)
-						log.Printf("Voice: goto %s (tab %d)", action.Path, tabID)
-
-						select {
-						case <-sess.SchemaReady:
-							result = fmt.Sprintf("Navigated to %s. Page loaded. Use ls('/') to explore.", action.Path)
-						case <-time.After(schemaWaitTimeout):
-							result = fmt.Sprintf("Navigated to %s but timed out waiting for page.", action.Path)
-						case <-toolCtx.Done():
-							result = "Navigation cancelled."
+				if needsSchema {
+					select {
+					case <-sess.SchemaReady:
+					case <-time.After(schemaWaitTimeout):
+						log.Printf("Voice: timed out waiting for schema (tab %d)", tabID)
+						var errResponses []*genai.FunctionResponse
+						for _, fc := range tc.FunctionCalls {
+							errResponses = append(errResponses, &genai.FunctionResponse{
+								ID:       fc.ID,
+								Name:     fc.Name,
+								Response: map[string]any{"output": "Error: page schema is still loading. Please wait."},
+							})
 						}
-					} else {
-						h.SendActionToExtension(tabID, action.MacheID, action.Action)
+						_ = session.SendToolResponse(genai.LiveToolResponseInput{
+							FunctionResponses: errResponses,
+						})
+						return
+					case <-toolCtx.Done():
+						log.Printf("Voice: schema wait cancelled by interruption")
+						return
 					}
 				}
 
-				responses = append(responses, &genai.FunctionResponse{
-					ID:       fc.ID,
-					Name:     fc.Name,
-					Response: map[string]any{"output": result},
-				})
-			}
+				var responses []*genai.FunctionResponse
+				for _, fc := range tc.FunctionCalls {
+					// Skip server-side tools (google_search etc.)
+					switch fc.Name {
+					case "ls", "cat", "act", "scroll", "goto":
+					default:
+						log.Printf("Voice: skipping server-side tool %s", fc.Name)
+						continue
+					}
 
-			sess.Navigator.SetScrollFunc(nil)
+					log.Printf("Voice: tool %s(%v) (tab %d)", fc.Name, fc.Args, tabID)
+					result, action := sess.Navigator.ExecuteTool(toolCtx, fc)
+					log.Printf("Voice: result: %q", result)
 
-			if len(responses) > 0 {
-				if err := session.SendToolResponse(genai.LiveToolResponseInput{
-					FunctionResponses: responses,
-				}); err != nil {
-					log.Printf("Voice: SendToolResponse error: %v", err)
-					toolCancelFn()
-					break
+					if action != nil {
+						if action.Action == "goto" {
+							sess.ResetSchema()
+							sess.Engine = mache.NewEngine()
+							sess.Navigator.SetEngine(sess.Engine)
+							h.sendGoto(tabID, action.Path)
+							log.Printf("Voice: goto %s (tab %d)", action.Path, tabID)
+
+							select {
+							case <-sess.SchemaReady:
+								result = fmt.Sprintf("Navigated to %s. Page loaded. Use ls('/') to explore.", action.Path)
+							case <-time.After(schemaWaitTimeout):
+								result = fmt.Sprintf("Navigated to %s but timed out waiting for page.", action.Path)
+							case <-toolCtx.Done():
+								result = "Navigation cancelled."
+							}
+						} else {
+							h.SendActionToExtension(tabID, action.MacheID, action.Action)
+						}
+					}
+
+					responses = append(responses, &genai.FunctionResponse{
+						ID:       fc.ID,
+						Name:     fc.Name,
+						Response: map[string]any{"output": result},
+					})
 				}
-			}
-			toolCancelFn()
+
+				if len(responses) > 0 {
+					if err := session.SendToolResponse(genai.LiveToolResponseInput{
+						FunctionResponses: responses,
+					}); err != nil {
+						log.Printf("Voice: SendToolResponse error: %v", err)
+					}
+				}
+			}(tc, tabID, sess, toolCtx, toolCancelFn)
+
 			continue
 		}
 
@@ -622,8 +629,6 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 			continue
 		}
 	}
-
-	return nil
 }
 
 // sendVoiceJSON marshals a voiceMessage and writes it as a text frame. If mu
