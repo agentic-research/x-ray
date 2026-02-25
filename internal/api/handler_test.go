@@ -300,6 +300,13 @@ func TestNewHandlerInitializesSessionsMap(t *testing.T) {
 	}
 }
 
+func TestOpenBrowserFuncIsNilByDefault(t *testing.T) {
+	h := newTestHandler()
+	if h.openBrowserFn != nil {
+		t.Error("openBrowserFn should be nil by default to prevent opening windows during tests")
+	}
+}
+
 // --- Tab promotion + voice resolution tests ---
 
 func TestActiveVoiceTabPromotion(t *testing.T) {

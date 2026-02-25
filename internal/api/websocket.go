@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"sync"
 	"time"
 
@@ -116,10 +115,12 @@ func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveCli
 		LiveModel:    liveModel,
 		sessions:     make(map[int]*TabSession),
 		schemas:      newSchemaCache(dbPath),
-		openBrowserFn: func(url string) {
-			_ = exec.Command("open", "-a", "Google Chrome", url).Start()
-		},
 	}
+}
+
+// SetOpenBrowserFunc injects the logic for opening a browser when no extension is connected.
+func (h *Handler) SetOpenBrowserFunc(fn func(string)) {
+	h.openBrowserFn = fn
 }
 
 // getSession returns the TabSession for the given tab, creating one if needed.

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -105,6 +106,9 @@ func main() {
 
 	// Per-tab Engine + Navigator are created on demand inside Handler.
 	handler := api.NewHandler(cart, navGen, liveClient, navModel, liveModel, dbPath)
+	handler.SetOpenBrowserFunc(func(url string) {
+		_ = exec.Command("open", "-a", "Google Chrome", url).Start()
+	})
 
 	http.HandleFunc("/ws", handler.HandleWebSocket)
 	http.HandleFunc("/navigate", handler.HandleNavigateHTTP)
