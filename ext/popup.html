@@ -21,26 +21,11 @@
   }
   .btn:hover { background: #2a2a2a; border-color: #555; color: #fff; }
   .btn:active { background: #333; }
-  .btn.mic-on { background: #1a3a1a; border-color: #2d5a2d; color: #6fcf6f; }
-  .btn.mic-on:hover { background: #1f4a1f; }
   .row {
     display: flex; gap: 6px; margin-bottom: 8px;
   }
   .row .btn { margin-bottom: 0; }
   .row .btn.grow { flex: 1; }
-  .row .btn.kill {
-    width: 38px; flex-shrink: 0;
-    text-align: center; padding: 10px 0;
-    color: #666;
-  }
-  .row .btn.kill:hover { color: #e74c3c; border-color: #8a3a3a; background: #2a1a1a; }
-  .session-dot {
-    display: inline-block; width: 6px; height: 6px;
-    border-radius: 50%; margin-right: 6px;
-    background: #444; vertical-align: middle;
-  }
-  .session-dot.live { background: #4a8a4a; }
-  .session-dot.connecting { background: #8a8a2a; }
   .intent-row {
     display: flex; gap: 4px; margin-bottom: 8px;
   }
@@ -71,10 +56,6 @@
 <div class="intent-row">
   <input id="intent-input" type="text" placeholder="Type a command...">
   <button id="intent-btn" class="btn">Go</button>
-</div>
-<div class="row">
-  <button id="mic-btn" class="btn grow"><span id="session-dot" class="session-dot"></span>Mic: OFF</button>
-  <button id="kill-btn" class="btn kill" title="End voice session">&#x23FB;</button>
 </div>
 <div id="status">Checking connection...</div>
 

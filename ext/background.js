@@ -1,13 +1,4 @@
-// background.js - Service worker for X-Ray extension
-//
-// Voice session lifecycle:
-//   1. User clicks Snapshot → schema generates on server
-//   2. SCHEMA_READY arrives → offscreen doc auto-created, Gemini Live session starts (no mic yet)
-//   3. User toggles Mic ON → audio streams to Gemini
-//   4. User toggles Mic OFF → audio stops, session stays alive
-//   5. User clicks kill (power) button → session torn down
-
-importScripts('voice-state.js');
+// background.js - Service worker for X-Ray extension (DOM bridge only)
 
 const DEFAULT_WS_URL = 'ws://localhost:8080/ws';
 
@@ -15,50 +6,11 @@ let ws = null;
 let reconnectTimer = null;
 let wsUrl = DEFAULT_WS_URL;
 
-// Voice state: single object managed by voiceReducer (see voice-state.js).
-let voiceState = { ...voiceInitialState };
-
 const schemaReadyTabs = new Set();
 const pendingSnapshots = new Set();
 const pendingIntents = new Map(); // tabId → intent string (queued before schema ready)
 const lastKnownUrls = new Map(); // tabId → URL (for detecting manual navigation)
 const gotoInFlight = new Set();  // tabIds currently navigated by GOTO_URL (skip auto-snapshot)
-
-// --- Voice reducer dispatch + effect execution ---
-
-function dispatch(event) {
-  const { state: next, effects } = voiceReducer(voiceState, event);
-  voiceState = next;
-  for (const effect of effects) executeEffect(effect);
-}
-
-function executeEffect(effect) {
-  switch (effect.type) {
-    case 'CREATE_OFFSCREEN':
-      startSession(effect.tabId);
-      break;
-    case 'DESTROY_OFFSCREEN':
-      destroyOffscreen();
-      break;
-    case 'SET_MIC':
-      executeMic(effect.on);
-      break;
-    case 'UPDATE_BADGE':
-      updateBadge();
-      break;
-    case 'LOG':
-      voiceLog(voiceState.sessionTabId, effect.message);
-      break;
-  }
-}
-
-// Keep-alive: Chrome MV3 service workers die after ~30s of inactivity.
-chrome.alarms.create('keepalive', { periodInMinutes: 0.4 }); // ~24s
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'keepalive' && ws && ws.readyState === WebSocket.OPEN) {
-    // No-op — just being awake keeps the service worker alive.
-  }
-});
 
 // Load configured WebSocket URL, then connect.
 chrome.storage.local.get({ wsUrl: DEFAULT_WS_URL }, (items) => {
@@ -76,14 +28,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
     connectWebSocket();
   }
 });
-
-// Send a voice log message to agentd over the main WebSocket so it appears in the terminal.
-function voiceLog(tabId, message) {
-  console.log('X-Ray Voice:', message);
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'VOICE_LOG', tab_id: tabId || 0, message }));
-  }
-}
 
 function connectWebSocket() {
   if (ws && ws.readyState === WebSocket.OPEN) return;
@@ -247,10 +191,6 @@ function connectWebSocket() {
           console.log('X-Ray: Flushing queued intent for tab', tabId, ':', intent);
           ws.send(JSON.stringify({ type: 'NAVIGATE', tab_id: tabId, intent }));
         }
-
-        // Voice session is NOT auto-started. The user must explicitly activate
-        // it (e.g., via extension icon click or keyboard shortcut) to avoid
-        // unexpected mic access and audio streaming to Gemini Live API.
         break;
       }
 
@@ -454,115 +394,7 @@ async function captureAndSend(tabId) {
   }
 }
 
-// --- Voice session lifecycle (side effects only — state in voiceReducer) ---
-
-let sessionStarting = false; // Guard against concurrent startSession calls (TOCTOU).
-
-async function hasOffscreen() {
-  const contexts = await chrome.runtime.getContexts({
-    contextTypes: ['OFFSCREEN_DOCUMENT']
-  });
-  return contexts.length > 0;
-}
-
-// CREATE_OFFSCREEN effect: create offscreen doc for voice session.
-// If mic permission hasn't been granted yet, opens a popup to request it.
-// State is already set by the reducer — this function only does Chrome API work.
-async function startSession(tabId) {
-  if (sessionStarting) {
-    voiceLog(tabId, 'startSession already in progress, skipping');
-    return;
-  }
-  sessionStarting = true;
-  voiceLog(tabId, 'startSession called');
-
-  try {
-    // Check mic permission — offscreen docs can't show the Chrome prompt.
-    try {
-      const perm = await navigator.permissions.query({ name: 'microphone' });
-      voiceLog(tabId, `mic permission: ${perm.state}`);
-      if (perm.state !== 'granted') {
-        voiceLog(tabId, 'opening mic-setup.html grant window');
-        chrome.windows.create({
-          url: 'mic-setup.html',
-          type: 'popup',
-          width: 420, height: 320,
-          focused: true
-        });
-        return; // Wait for MIC_GRANTED event to retry.
-      }
-    } catch (e) {
-      voiceLog(tabId, `permissions.query error (non-fatal): ${e.message}`);
-    }
-
-    // Tear down any existing session first.
-    if (await hasOffscreen()) {
-      voiceLog(tabId, 'tearing down existing offscreen doc');
-      try { chrome.runtime.sendMessage({ type: 'VOICE_STOP' }); } catch (_) {}
-      await chrome.offscreen.closeDocument();
-    }
-
-    await chrome.offscreen.createDocument({
-      url: 'offscreen.html',
-      reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'],
-      justification: 'Voice navigator needs microphone and audio playback'
-    });
-    voiceLog(tabId, 'offscreen doc created (offscreen will request tab ID)');
-  } catch (e) {
-    voiceLog(tabId, `startSession FAILED: ${e.message}`);
-  } finally {
-    sessionStarting = false;
-  }
-}
-
-// DESTROY_OFFSCREEN effect: tear down offscreen doc.
-async function destroyOffscreen() {
-  if (await hasOffscreen()) {
-    try { chrome.runtime.sendMessage({ type: 'VOICE_STOP' }); } catch (_) {}
-    setTimeout(async () => {
-      try {
-        if (await hasOffscreen()) await chrome.offscreen.closeDocument();
-      } catch (_) {}
-    }, 200);
-  }
-}
-
-// SET_MIC effect: send mic command to offscreen + broadcast state change.
-function executeMic(on) {
-  voiceLog(voiceState.sessionTabId, `setMic(${on})`);
-  try {
-    chrome.runtime.sendMessage({ type: on ? 'MIC_ON' : 'MIC_OFF' });
-  } catch (_) {}
-  // Broadcast state change so popup updates without polling.
-  try {
-    chrome.runtime.sendMessage({ type: 'VOICE_STATE_CHANGED', ...getState() });
-  } catch (_) {}
-}
-
-// Badge on extension icon reflects session/mic state at a glance.
-function updateBadge() {
-  if (voiceState.micActive) {
-    chrome.action.setBadgeText({ text: 'MIC' });
-    chrome.action.setBadgeBackgroundColor({ color: '#22c55e' }); // green
-  } else if (voiceState.sessionTabId !== null && voiceState.sessionReady) {
-    chrome.action.setBadgeText({ text: 'ON' });
-    chrome.action.setBadgeBackgroundColor({ color: '#3b82f6' }); // blue
-  } else if (voiceState.sessionTabId !== null) {
-    chrome.action.setBadgeText({ text: '...' });
-    chrome.action.setBadgeBackgroundColor({ color: '#eab308' }); // yellow
-  } else {
-    chrome.action.setBadgeText({ text: '' });
-  }
-}
-
-function getState() {
-  return {
-    ...getComputedState(voiceState),
-    wsConnected: ws && ws.readyState === WebSocket.OPEN,
-  };
-}
-
-// --- Message handlers from popup and offscreen ---
+// --- Message handlers from popup ---
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
@@ -622,35 +454,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           }
           pendingSnapshots.add(tabId);
           captureAndSend(tabId);
-          updateBadge();
           sendResponse({ ok: true, tabId });
         } else {
           sendResponse({ ok: false, error: 'No active tab' });
         }
       });
       return true;
-
-    case 'TOGGLE_MIC':
-      if (voiceState.sessionTabId === null) {
-        // No session yet — need active tab to start one.
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs[0]) {
-            dispatch({ type: 'TOGGLE_MIC', tabId: tabs[0].id });
-            sendResponse({ ok: true, ...getState() });
-          } else {
-            sendResponse({ ok: false, error: 'No active tab' });
-          }
-        });
-        return true;
-      }
-      dispatch({ type: 'TOGGLE_MIC', tabId: voiceState.sessionTabId });
-      sendResponse({ ok: true, ...getState() });
-      return false;
-
-    case 'KILL_SESSION':
-      dispatch({ type: 'KILL_SESSION' });
-      sendResponse(getState());
-      return false;
 
     case 'SEND_INTENT':
       if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -667,7 +476,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const url = tabs[0].url || '';
         const restricted = /^(chrome|about|edge|brave):\/\//.test(url);
         if (restricted && !schemaReadyTabs.has(tabId)) {
-          sendResponse({ ok: false, error: 'Navigate to a website first (use voice: "go to reddit")' });
+          sendResponse({ ok: false, error: 'Navigate to a website first' });
           return;
         }
         if (!schemaReadyTabs.has(tabId)) {
@@ -692,35 +501,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({
           hasSchema: tabId ? schemaReadyTabs.has(tabId) : false,
           pending: tabId ? pendingSnapshots.has(tabId) : false,
+          wsConnected: ws && ws.readyState === WebSocket.OPEN,
           tabId
         });
       });
       return true;
+  }
+});
 
-    case 'GET_VOICE_STATE':
-      sendResponse(getState());
-      return false;
-
-    case 'MIC_GRANTED':
-      // mic-setup.html reports permission was granted — retry session creation.
-      console.log('X-Ray: Mic permission granted, retrying session');
-      dispatch({ type: 'MIC_GRANTED' });
-      break;
-
-    case 'VOICE_GET_TAB':
-      // Offscreen doc requests its tab ID — no race because offscreen initiates.
-      voiceLog(voiceState.sessionTabId, 'offscreen requested tab ID');
-      sendResponse({ tabId: voiceState.sessionTabId });
-      return false;
-
-    case 'VOICE_STATUS':
-      voiceLog(voiceState.sessionTabId, `offscreen → ${msg.status}: ${msg.text}`);
-      if (msg.status === 'ready') {
-        dispatch({ type: 'VOICE_READY' });
-      } else if (msg.status === 'disconnected' || msg.status === 'error') {
-        dispatch({ type: msg.status === 'disconnected' ? 'VOICE_DISCONNECTED' : 'VOICE_ERROR', text: msg.text });
-      }
-      break;
+// --- Track active tab for voice daemon ---
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'TAB_ACTIVATED', tab_id: activeInfo.tabId }));
   }
 });
 
@@ -768,14 +560,4 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   pendingSnapshots.delete(tabId);
   pendingIntents.delete(tabId);
   gotoInFlight.delete(tabId);
-});
-
-// --- Keyboard shortcut: Alt+V toggles mic ---
-
-chrome.commands.onCommand.addListener((command) => {
-  if (command === 'toggle-voice') {
-    if (voiceState.sessionTabId !== null && voiceState.sessionReady) {
-      dispatch({ type: 'TOGGLE_MIC', tabId: voiceState.sessionTabId });
-    }
-  }
 });

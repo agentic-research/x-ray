@@ -5,10 +5,8 @@
   "description": "Injects IDs and syncs DOM with X-Ray Agentd.",
   "permissions": [
     "activeTab",
-    "alarms",
     "debugger",
     "downloads",
-    "offscreen",
     "scripting",
     "storage",
     "tabs"
@@ -28,14 +26,5 @@
   ],
   "host_permissions": [
     "<all_urls>"
-  ],
-  "commands": {
-    "toggle-voice": {
-      "suggested_key": {
-        "default": "Alt+V",
-        "mac": "Alt+V"
-      },
-      "description": "Toggle voice navigator"
-    }
-  }
+  ]
 }

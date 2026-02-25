@@ -2,16 +2,16 @@ const snapshotBtn = document.getElementById('snapshot-btn');
 const exportBtn = document.getElementById('export-btn');
 const intentInput = document.getElementById('intent-input');
 const intentBtn = document.getElementById('intent-btn');
-const micBtn = document.getElementById('mic-btn');
-const killBtn = document.getElementById('kill-btn');
-const sessionDot = document.getElementById('session-dot');
 const statusEl = document.getElementById('status');
 
-// Poll initial state, auto-snapshot if no schema exists for this tab.
-chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
-  if (chrome.runtime.lastError) return;
-  updateUI(state);
-  if (!state.wsConnected) {
+// Check connection and auto-snapshot if no schema exists for this tab.
+chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
+  if (chrome.runtime.lastError || !resp) {
+    statusEl.textContent = 'Not connected to agentd';
+    statusEl.className = 'error';
+    return;
+  }
+  if (!resp.wsConnected) {
     statusEl.textContent = 'Not connected to agentd';
     statusEl.className = 'error';
     return;
@@ -21,44 +21,40 @@ chrome.runtime.sendMessage({ type: 'GET_VOICE_STATE' }, (state) => {
     const url = tabs[0]?.url || '';
     const restricted = /^(chrome|about|edge|brave):\/\//.test(url);
     if (restricted) {
-      intentInput.placeholder = 'Say "go to reddit" or type a URL...';
-      statusEl.textContent = 'Use voice or goto to navigate first';
+      intentInput.placeholder = 'Type a URL to navigate...';
+      statusEl.textContent = 'Navigate to a website first';
       statusEl.className = '';
       return;
     }
-    // Check if active tab already has a schema — if not, auto-snapshot.
-    chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
-      if (chrome.runtime.lastError) return;
-      if (resp?.hasSchema) {
-        intentInput.placeholder = 'Type a command...';
-        statusEl.textContent = 'Ready — type a command or use voice';
-        statusEl.className = 'connected';
-      } else if (resp?.pending) {
-        intentInput.placeholder = 'Type now — runs when ready...';
-        snapshotBtn.textContent = 'Capturing...';
-        snapshotBtn.disabled = true;
-        statusEl.textContent = 'Generating schema...';
-        statusEl.className = '';
-      } else {
-        intentInput.placeholder = 'Type now — runs when ready...';
-        // Auto-trigger snapshot.
-        snapshotBtn.textContent = 'Capturing...';
-        snapshotBtn.disabled = true;
-        statusEl.textContent = 'Auto-capturing page...';
-        statusEl.className = '';
-        chrome.runtime.sendMessage({ type: 'TRIGGER_SNAPSHOT' }, (snapResp) => {
-          if (chrome.runtime.lastError || !snapResp?.ok) {
-            statusEl.textContent = snapResp?.error || 'Snapshot failed';
-            statusEl.className = 'error';
-          } else {
-            statusEl.textContent = 'Generating schema...';
-            statusEl.className = '';
-          }
-          snapshotBtn.textContent = 'Snapshot';
-          snapshotBtn.disabled = false;
-        });
-      }
-    });
+    if (resp?.hasSchema) {
+      intentInput.placeholder = 'Type a command...';
+      statusEl.textContent = 'Ready';
+      statusEl.className = 'connected';
+    } else if (resp?.pending) {
+      intentInput.placeholder = 'Type now — runs when ready...';
+      snapshotBtn.textContent = 'Capturing...';
+      snapshotBtn.disabled = true;
+      statusEl.textContent = 'Generating schema...';
+      statusEl.className = '';
+    } else {
+      intentInput.placeholder = 'Type now — runs when ready...';
+      // Auto-trigger snapshot.
+      snapshotBtn.textContent = 'Capturing...';
+      snapshotBtn.disabled = true;
+      statusEl.textContent = 'Auto-capturing page...';
+      statusEl.className = '';
+      chrome.runtime.sendMessage({ type: 'TRIGGER_SNAPSHOT' }, (snapResp) => {
+        if (chrome.runtime.lastError || !snapResp?.ok) {
+          statusEl.textContent = snapResp?.error || 'Snapshot failed';
+          statusEl.className = 'error';
+        } else {
+          statusEl.textContent = 'Generating schema...';
+          statusEl.className = '';
+        }
+        snapshotBtn.textContent = 'Snapshot';
+        snapshotBtn.disabled = false;
+      });
+    }
   });
 });
 
@@ -69,15 +65,10 @@ intentInput.focus();
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'SCHEMA_READY_EVENT') {
     intentInput.placeholder = 'Type a command...';
-    statusEl.textContent = 'Ready — type a command or use voice';
+    statusEl.textContent = 'Ready';
     statusEl.className = 'connected';
     snapshotBtn.textContent = 'Snapshot';
     snapshotBtn.disabled = false;
-  }
-  if (msg.type === 'VOICE_STATE_CHANGED') {
-    updateUI(msg);
-    statusEl.textContent = msg.mic ? 'Mic active — speak naturally' : 'Voice session ready';
-    statusEl.className = msg.mic ? 'connected' : '';
   }
 });
 
@@ -140,55 +131,3 @@ intentBtn.addEventListener('click', sendIntent);
 intentInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendIntent();
 });
-
-micBtn.addEventListener('click', () => {
-  micBtn.disabled = true;
-  chrome.runtime.sendMessage({ type: 'TOGGLE_MIC' }, (resp) => {
-    if (chrome.runtime.lastError || !resp?.ok) {
-      statusEl.textContent = resp?.error || 'Mic toggle failed';
-      statusEl.className = 'error';
-    } else {
-      updateUI(resp);
-      if (resp.sessionConnecting) {
-        statusEl.textContent = 'Starting voice session...';
-        statusEl.className = '';
-      } else {
-        statusEl.textContent = resp.mic ? 'Mic active — speak naturally' : 'Mic muted';
-        statusEl.className = resp.mic ? 'connected' : '';
-      }
-    }
-    micBtn.disabled = false;
-  });
-});
-
-killBtn.addEventListener('click', () => {
-  killBtn.disabled = true;
-  chrome.runtime.sendMessage({ type: 'KILL_SESSION' }, (resp) => {
-    if (chrome.runtime.lastError) return;
-    updateUI(resp);
-    statusEl.textContent = 'Voice session ended';
-    statusEl.className = '';
-    killBtn.disabled = false;
-  });
-});
-
-function updateUI(state) {
-  // Session dot — check connecting BEFORE session (connecting implies session).
-  if (state.sessionConnecting) {
-    sessionDot.className = 'session-dot connecting';
-  } else if (state.session) {
-    sessionDot.className = 'session-dot live';
-  } else {
-    sessionDot.className = 'session-dot';
-  }
-
-  // Mic button
-  if (state.mic) {
-    micBtn.innerHTML = '<span id="session-dot" class="session-dot live"></span>Mic: ON';
-    micBtn.classList.add('mic-on');
-  } else {
-    const dotClass = state.session ? 'live' : (state.sessionConnecting ? 'connecting' : '');
-    micBtn.innerHTML = `<span id="session-dot" class="session-dot ${dotClass}"></span>Mic: OFF`;
-    micBtn.classList.remove('mic-on');
-  }
-}
