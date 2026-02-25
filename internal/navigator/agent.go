@@ -109,8 +109,13 @@ func ToolDefinitions() []*genai.Tool {
 			},
 			{
 				Name:        "rescan",
-				Description: "Rescan the current page with a fresh screenshot. Regenerates the semantic map using visual context. Use when you cannot find an element through the filesystem — the rescan captures a new screenshot and rebuilds the page structure. After rescanning, run ls('/') to see the updated layout.",
-				Parameters:  &genai.Schema{Type: genai.TypeObject, Properties: map[string]*genai.Schema{}},
+				Description: "Rescan the page or a specific zone with a fresh screenshot. Without a path, rescans the full page. With a path, zooms into that zone for higher detail (e.g., a video player's internal controls). After rescanning, run ls('/') to see the updated structure.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"path": {Type: genai.TypeString, Description: "Optional: virtual path to zoom into, e.g. '/main/player'. Omit for full-page rescan."},
+					},
+				},
 			},
 		},
 	}}
@@ -270,6 +275,15 @@ func (a *Agent) ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string
 			&ActionResult{Action: "goto", Path: u}
 
 	case "rescan":
+		p, _ := args["path"].(string)
+		if p != "" {
+			macheID, err := a.engine.ResolveMacheID(p)
+			if err != nil {
+				return fmt.Sprintf("Error: %v", err), nil
+			}
+			return fmt.Sprintf("Zooming into %s for detailed rescan...", p),
+				&ActionResult{Action: "rescan", MacheID: macheID, Path: p}
+		}
 		return "Rescanning page...", &ActionResult{Action: "rescan"}
 
 	default:
@@ -326,7 +340,7 @@ Your tools:
 - act(path, action): Execute a browser action on the element at this path. Actions: "click", "focus".
 - scroll(direction): Scroll the page to load more content. Direction: "down" or "up".
 - goto(url): Navigate the browser to a new URL. After navigation, the filesystem updates — run ls("/") to explore the new page.
-- rescan(): Rescan the page with a fresh screenshot. Regenerates the semantic map. Use when you can't find an element — the rescan may discover UI elements (video players, overlays, popups) that weren't in the original scan.
+- rescan(path?): Rescan the page with a fresh screenshot. Without a path, rescans the full page. With a path (e.g., rescan("/main/player")), zooms into that zone for higher detail — discovers internal controls like play buttons, volume sliders, etc. Use when you can't find an element or need finer detail within a zone.
 
 You are a NAVIGATIONAL agent. Words like "home", "back", "go to", and "open" are spatial/navigational — they refer to WHERE the user wants to be, not WHAT to click on the current page. When the user says "go home" or "take me home", they mean navigate to the site's homepage using goto(). Derive the homepage from the current domain (e.g., on reddit.com/r/news → goto("https://www.reddit.com")).
 
@@ -334,7 +348,7 @@ CRITICAL CONSTRAINTS:
 - Do NOT hallucinate tools or paths. Only use paths that you have confirmed exist via ls().
 - Never guess a path. Always ls() a directory before trying to cat() or act() on its children.
 - You have exactly six tools: ls, cat, act, scroll, goto, rescan. Do not attempt to use any other tool.
-- If you cannot find an element after exploring the filesystem, use rescan() before giving up. The rescan captures a fresh screenshot and may discover elements that weren't in the original scan.
+- If you cannot find an element after exploring the filesystem, use rescan() before giving up. The rescan captures a fresh screenshot and may discover elements that weren't in the original scan. If you can see the zone but need finer detail (e.g., video player controls), use rescan("/path/to/zone") to zoom in.
 
 Strategy:
 1. ls("/") to see the page structure.

@@ -143,8 +143,10 @@ function connectWebSocket() {
       case 'RESCAN': {
         const targetTab = msg.tab_id;
         if (targetTab) {
-          console.log('X-Ray: Rescan requested for tab', targetTab);
-          captureAndSend(targetTab, true);
+          const targetMacheId = msg.mache_id || null;
+          console.log('X-Ray: Rescan requested for tab', targetTab,
+            targetMacheId ? `(zoom: ${targetMacheId})` : '(full page)');
+          captureAndSend(targetTab, true, targetMacheId);
         }
         break;
       }
@@ -231,7 +233,9 @@ const CDP_JPEG_QUALITY = 60;   // Low quality is fine for zone identification
 
 // Single CDP session: scaled full-page JPEG screenshot + AX-to-mache-id mapping.
 // Falls back to viewport-only screenshot if debugger attach fails.
-async function captureWithCDP(tabId) {
+// When targetMacheId is provided, crops the screenshot to that element's bounding box
+// (magnifying glass mode for targeted rescan).
+async function captureWithCDP(tabId, targetMacheId = null) {
   try {
     await chrome.debugger.attach({ tabId }, '1.3');
   } catch (e) {
@@ -241,38 +245,75 @@ async function captureWithCDP(tabId) {
   }
 
   try {
-    // 1. Get page dimensions and capture scaled JPEG
+    // 1. Get page dimensions
     const { cssContentSize } = await chrome.debugger.sendCommand(
       { tabId }, 'Page.getLayoutMetrics', {}
     );
     const captureWidth = cssContentSize.width;
     const captureHeight = Math.min(cssContentSize.height, CDP_MAX_HEIGHT);
-    const scale = Math.min(1, CDP_TARGET_WIDTH / captureWidth);
 
+    // 2. Get DOM document root (needed for both crop and mache-id resolution)
+    const { root } = await chrome.debugger.sendCommand(
+      { tabId }, 'DOM.getDocument', { depth: 0 }
+    );
+
+    // 3. Build screenshot clip — crop to target element if magnifying glass mode
+    let clip;
+    if (targetMacheId) {
+      try {
+        const { nodeId } = await chrome.debugger.sendCommand(
+          { tabId }, 'DOM.querySelector',
+          { nodeId: root.nodeId, selector: `[data-mache-id="${targetMacheId}"]` }
+        );
+        if (nodeId) {
+          const { model } = await chrome.debugger.sendCommand(
+            { tabId }, 'DOM.getBoxModel', { nodeId }
+          );
+          // model.border = [x1,y1, x2,y1, x2,y2, x1,y2] (quad points)
+          const bx = model.border[0], by = model.border[1];
+          const bw = model.border[2] - model.border[0];
+          const bh = model.border[5] - model.border[1];
+          const pad = 50;
+          const cx = Math.max(0, bx - pad);
+          const cy = Math.max(0, by - pad);
+          const cw = Math.min(captureWidth - cx, bw + 2 * pad);
+          const ch = Math.min(captureHeight - cy, bh + 2 * pad);
+          clip = {
+            x: cx, y: cy, width: cw, height: ch,
+            scale: Math.min(1, CDP_TARGET_WIDTH / cw)
+          };
+          console.log(`X-Ray: Magnifying glass — cropping to ${Math.round(cw)}x${Math.round(ch)}px at (${Math.round(cx)},${Math.round(cy)})`);
+        }
+      } catch (e) {
+        console.warn('X-Ray: Failed to get bounding box for', targetMacheId, '— falling back to full page:', e.message);
+      }
+    }
+    if (!clip) {
+      const scale = Math.min(1, CDP_TARGET_WIDTH / captureWidth);
+      clip = { x: 0, y: 0, width: captureWidth, height: captureHeight, scale };
+    }
+
+    // 4. Capture screenshot with clip
     const { data: screenshot } = await chrome.debugger.sendCommand(
       { tabId }, 'Page.captureScreenshot', {
         format: 'jpeg',
         quality: CDP_JPEG_QUALITY,
         captureBeyondViewport: true,
-        clip: { x: 0, y: 0, width: captureWidth, height: captureHeight, scale }
+        clip
       }
     );
 
-    // 2. Get full AX tree (needed for per-element role/name enrichment)
+    // 5. Get full AX tree (needed for per-element role/name enrichment)
     const { nodes: axNodes } = await chrome.debugger.sendCommand(
       { tabId }, 'Accessibility.getFullAXTree', {}
     );
 
-    // 3. Get DOM document root + find all tagged elements
-    const { root } = await chrome.debugger.sendCommand(
-      { tabId }, 'DOM.getDocument', { depth: 0 }
-    );
+    // 6. Find all tagged elements and batch resolve macheId → backendNodeId
     const { nodeIds } = await chrome.debugger.sendCommand(
       { tabId }, 'DOM.querySelectorAll',
       { nodeId: root.nodeId, selector: '[data-mache-id]' }
     );
 
-    // 4. Batch resolve macheId → backendNodeId
     const descriptions = await Promise.all(
       nodeIds.map(nid =>
         chrome.debugger.sendCommand({ tabId }, 'DOM.describeNode', { nodeId: nid })
@@ -289,7 +330,7 @@ async function captureWithCDP(tabId) {
       }
     }
 
-    // 5. Build backendNodeId → AX node lookup, then join
+    // 7. Build backendNodeId → AX node lookup, then join
     const backendToAX = new Map();
     for (const ax of axNodes) {
       if (ax.backendDOMNodeId) backendToAX.set(ax.backendDOMNodeId, ax);
@@ -308,9 +349,10 @@ async function captureWithCDP(tabId) {
       }
     }
 
-    const scaledW = Math.round(captureWidth * scale);
-    const scaledH = Math.round(captureHeight * scale);
-    console.log(`X-Ray: CDP capture — ${scaledW}x${scaledH}px JPEG (q${CDP_JPEG_QUALITY}), ${axMap.size} AX-mapped`);
+    const scaledW = Math.round(clip.width * clip.scale);
+    const scaledH = Math.round(clip.height * clip.scale);
+    console.log(`X-Ray: CDP capture — ${scaledW}x${scaledH}px JPEG (q${CDP_JPEG_QUALITY}), ${axMap.size} AX-mapped`,
+      targetMacheId ? `[zoomed: ${targetMacheId}]` : '');
     return { screenshot, axMap };
   } finally {
     try {
@@ -337,7 +379,7 @@ function enrichSummaryWithAX(summary, axMap) {
 
 // Capture snapshot from the given tab and send to server with tab_id.
 // Flow: build registry → draw overlay → CDP screenshot (overlay visible) → remove overlay → send.
-async function captureAndSend(tabId, isRescan = false) {
+async function captureAndSend(tabId, isRescan = false, targetMacheId = null) {
   // Step 1: Get summary from content script (builds registry).
   // If the content script isn't loaded (extension reloaded while tab was open), inject it first.
   let response;
@@ -373,7 +415,8 @@ async function captureAndSend(tabId, isRescan = false) {
   }
 
   // Step 3: CDP screenshot (overlay is visible in capture) + AX enrichment.
-  const cdpData = await captureWithCDP(tabId).catch(e => {
+  // For targeted rescan, pass mache_id so captureWithCDP crops to that element.
+  const cdpData = await captureWithCDP(tabId, targetMacheId).catch(e => {
     console.warn('X-Ray: CDP capture failed, sending without screenshot:', e);
     return { screenshot: '', axMap: new Map() };
   });

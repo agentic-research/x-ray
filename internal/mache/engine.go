@@ -93,6 +93,26 @@ func (e *Engine) ApplySchema(schemaJSON string) error {
 	return nil
 }
 
+// MergeSchema grafts new mounts into the existing filesystem.
+// Unlike ApplySchema, it preserves the existing MemoryStore and mounts.
+// The Cartographer is instructed to output absolute paths (e.g., /main/player/controls),
+// so no prefix concatenation is needed — just insert directly.
+func (e *Engine) MergeSchema(schemaJSON string) error {
+	var output CartographerOutput
+	if err := json.Unmarshal([]byte(schemaJSON), &output); err != nil {
+		return fmt.Errorf("parse cartographer output: %w", err)
+	}
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	for _, m := range output.Mounts {
+		e.insertMount(m)
+	}
+	e.mounts = append(e.mounts, output.Mounts...)
+	return nil
+}
+
 // insertMount creates directory nodes along the path and leaf file nodes.
 func (e *Engine) insertMount(m Mount) {
 	p := strings.TrimPrefix(m.VirtualPath, "/")

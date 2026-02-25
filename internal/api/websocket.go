@@ -48,6 +48,7 @@ type TabSession struct {
 	SchemaReady       chan struct{}            // closed when schema is applied
 	DOMUpdateCh       chan DOMUpdate           // receives summary + resolved items after scroll
 	SelectorsResolved chan map[string][]string // receives resolved items from RESOLVE_SELECTORS round-trip
+	RescanPath        string                   // set by voice handler for targeted rescan, consumed by handleDOMSnapshot
 
 	schemaMu     sync.Mutex // protects SchemaReady close
 	schemaClosed bool
@@ -252,6 +253,13 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 		}
 	}
 
+	// Check if this is a targeted rescan (magnifying glass mode).
+	rescanPath := ""
+	if msg.IsRescan {
+		rescanPath = sess.RescanPath
+		sess.RescanPath = "" // consume
+	}
+
 	if !fromCache {
 		h.sendMessage(conn, OutboundMessage{
 			Type: MsgStatus, TabID: msg.TabID, Message: "Generating semantic schema...", Stage: "cartographer",
@@ -269,9 +277,22 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 
 		mimeType := "image/jpeg"
 
+		// For targeted rescan, hint the Cartographer to output absolute sub-zone paths.
+		cartSummary := msg.Summary
+		if rescanPath != "" {
+			cartSummary = fmt.Sprintf(
+				"[FOCUSED RESCAN: You are zoomed into the component at %s. "+
+					"Map its internal sub-zones. CRITICAL: Output your virtual_paths as "+
+					"absolute paths starting from the component path, e.g. %s/controls, "+
+					"%s/progress_bar. Do NOT output bare paths like /controls.]\n\n%s",
+				rescanPath, rescanPath, rescanPath, msg.Summary,
+			)
+			log.Printf("Schema: focused rescan hint for %q (tab %d)", rescanPath, msg.TabID)
+		}
+
 		cartStart := time.Now()
 		var err error
-		schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, msg.Summary)
+		schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, cartSummary)
 		if err != nil {
 			log.Printf("Cartographer failed after %s: %v", time.Since(cartStart), err)
 			h.sendMessage(conn, OutboundMessage{
@@ -288,7 +309,7 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 			h.sendMessage(conn, OutboundMessage{
 				Type: MsgStatus, TabID: msg.TabID, Message: "Schema had invalid IDs, retrying...", Stage: "cartographer",
 			})
-			schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, msg.Summary)
+			schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, cartSummary)
 			if err != nil {
 				log.Printf("Cartographer retry failed: %v", err)
 				h.sendMessage(conn, OutboundMessage{
@@ -320,12 +341,24 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	saveLog("schema", msg.URL, schemaJSON)
 	saveLog("summary", msg.URL, msg.Summary)
 
-	if err := sess.Engine.ApplySchema(schemaJSON); err != nil {
-		log.Printf("Engine apply failed: %v", err)
-		h.sendMessage(conn, OutboundMessage{
-			Type: MsgStatus, TabID: msg.TabID, Message: "Engine failed: " + err.Error(), Stage: "error",
-		})
-		return
+	if rescanPath != "" {
+		// Targeted rescan: graft new sub-zones into existing filesystem.
+		if err := sess.Engine.MergeSchema(schemaJSON); err != nil {
+			log.Printf("Engine merge failed: %v", err)
+			h.sendMessage(conn, OutboundMessage{
+				Type: MsgStatus, TabID: msg.TabID, Message: "Engine merge failed: " + err.Error(), Stage: "error",
+			})
+			return
+		}
+		log.Printf("Schema: merged sub-zones under %q (tab %d)", rescanPath, msg.TabID)
+	} else {
+		if err := sess.Engine.ApplySchema(schemaJSON); err != nil {
+			log.Printf("Engine apply failed: %v", err)
+			h.sendMessage(conn, OutboundMessage{
+				Type: MsgStatus, TabID: msg.TabID, Message: "Engine failed: " + err.Error(), Stage: "error",
+			})
+			return
+		}
 	}
 
 	// Resolve CSS selectors via the browser so LoadChildren has the full item list.
@@ -517,7 +550,7 @@ func (h *Handler) sendGoto(tabID int, url string) {
 // sendRescan triggers a fresh DOM snapshot + screenshot from the extension.
 // The extension calls captureAndSend() which flows through the normal
 // DOM_SNAPSHOT → Cartographer → schema cache pipeline.
-func (h *Handler) sendRescan(tabID int) {
+func (h *Handler) sendRescan(tabID int, macheID string) {
 	h.mu.Lock()
 	conn := h.conn
 	h.mu.Unlock()
@@ -526,8 +559,9 @@ func (h *Handler) sendRescan(tabID int) {
 		return
 	}
 	h.sendMessage(conn, OutboundMessage{
-		Type:  MsgRescan,
-		TabID: tabID,
+		Type:    MsgRescan,
+		TabID:   tabID,
+		MacheID: macheID,
 	})
 }
 

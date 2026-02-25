@@ -317,14 +317,27 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 							result = "Navigation cancelled."
 						}
 					case "rescan":
-						sess.ResetSchema()
-						sess.Engine = mache.NewEngine()
-						sess.Navigator.SetEngine(sess.Engine)
-						h.sendRescan(tabID)
-						log.Printf("Voice: rescan — waiting for fresh schema (tab %d)", tabID)
+						if action.Path != "" {
+							// Targeted rescan: keep existing engine, zoom into zone.
+							sess.ResetSchema()
+							sess.RescanPath = action.Path
+							h.sendRescan(tabID, action.MacheID)
+							log.Printf("Voice: targeted rescan %q (mache_id %s, tab %d)", action.Path, action.MacheID, tabID)
+						} else {
+							// Full-page rescan: reset everything.
+							sess.ResetSchema()
+							sess.Engine = mache.NewEngine()
+							sess.Navigator.SetEngine(sess.Engine)
+							h.sendRescan(tabID, "")
+							log.Printf("Voice: full rescan — waiting for fresh schema (tab %d)", tabID)
+						}
 						select {
 						case <-sess.SchemaReady:
-							result = "Page rescanned with fresh screenshot. Schema regenerated. Use ls('/') to see the updated structure."
+							if action.Path != "" {
+								result = fmt.Sprintf("Zoomed into %s and discovered sub-zones. Use ls('%s') to see the detailed structure.", action.Path, action.Path)
+							} else {
+								result = "Page rescanned with fresh screenshot. Schema regenerated. Use ls('/') to see the updated structure."
+							}
 						case <-time.After(schemaWaitTimeout):
 							result = "Rescan timed out waiting for new schema."
 						case <-ctx.Done():
@@ -615,14 +628,27 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 								result = "Navigation cancelled."
 							}
 						case "rescan":
-							sess.ResetSchema()
-							sess.Engine = mache.NewEngine()
-							sess.Navigator.SetEngine(sess.Engine)
-							h.sendRescan(tabID)
-							log.Printf("Voice: rescan — waiting for fresh schema (tab %d)", tabID)
+							if action.Path != "" {
+								// Targeted rescan: keep existing engine, zoom into zone.
+								sess.ResetSchema()
+								sess.RescanPath = action.Path
+								h.sendRescan(tabID, action.MacheID)
+								log.Printf("Voice: targeted rescan %q (mache_id %s, tab %d)", action.Path, action.MacheID, tabID)
+							} else {
+								// Full-page rescan: reset everything.
+								sess.ResetSchema()
+								sess.Engine = mache.NewEngine()
+								sess.Navigator.SetEngine(sess.Engine)
+								h.sendRescan(tabID, "")
+								log.Printf("Voice: full rescan — waiting for fresh schema (tab %d)", tabID)
+							}
 							select {
 							case <-sess.SchemaReady:
-								result = "Page rescanned with fresh screenshot. Schema regenerated. Use ls('/') to see the updated structure."
+								if action.Path != "" {
+									result = fmt.Sprintf("Zoomed into %s and discovered sub-zones. Use ls('%s') to see the detailed structure.", action.Path, action.Path)
+								} else {
+									result = "Page rescanned with fresh screenshot. Schema regenerated. Use ls('/') to see the updated structure."
+								}
 							case <-time.After(schemaWaitTimeout):
 								result = "Rescan timed out waiting for new schema."
 							case <-toolCtx.Done():
