@@ -1,10 +1,11 @@
 # X-Ray: See Through the Web
 
-> **The web is a graph. Browsers render it as pixels. X-Ray renders it as a filesystem.**
+> **"Go to Reddit. Click the first post. What's it about?"**
+> Three voice commands. Hands-free. The browser just does it.
 
-X-Ray is a hybrid edge-cloud browser agent that projects the chaotic, modern web — React, SPAs, Shadow DOMs, virtual scroll — into a clean, deterministic POSIX filesystem. A local 7B-parameter model navigates Reddit flawlessly using `ls`, `cat`, and `act`. No pixel guessing. No brittle DOM paths. No API costs for execution.
+X-Ray is a voice-driven browser agent that lets you navigate any website by talking to it. A Chrome extension projects the chaotic, modern web — React, SPAs, Shadow DOMs, virtual scroll — into a semantic virtual filesystem. You speak, Gemini Live listens, and a background agent swarm navigates the page in real-time while staying responsive to your voice the entire time.
 
-**3.5 seconds. Two tool calls. One correct click on Reddit.**
+**Say "click the 5th post." 3.5 seconds later, it's clicked. Two tool calls. Zero pixel guessing.**
 
 ---
 
@@ -24,11 +25,33 @@ This is [Mache](https://github.com/agentic-research/mache): the Agent-Computer I
 
 ## What It Does
 
-X-Ray turns any webpage into a navigable filesystem. The Chrome extension builds an in-memory element registry, draws colored Set-of-Mark bounding boxes over every interactive element, and captures a screenshot — giving the Cartographer (Gemini) visual anchors that tie spatial zones to element IDs:
+### Voice-First Browser Navigation
+
+X-Ray turns conversation into browser actions. You talk to your browser like a copilot:
+
+- *"Go to Reddit"* — Chrome navigates, the page is mapped into a filesystem, and the agent confirms: "Done, Reddit is loaded."
+- *"Click the first post"* — the agent traverses the filesystem, finds the element, clicks it. "Done, I clicked the first post."
+- *"What are you doing?"* — while the agent is working, you can interrupt and ask for a status update: "I'm currently scanning the feed, almost there!"
+- *"Actually, switch to my GitHub tab"* — the agent lists your open tabs, finds GitHub, switches to it. No URL needed.
+- *"Stop"* — cancels whatever the agent is doing, instantly.
+
+The voice session never blocks. You're always heard, even while the agent is navigating a complex page in the background.
+
+### The Talker/Doer Swarm
+
+This is the core architectural innovation: X-Ray splits voice into **two cooperating agents** that share the same virtual filesystem:
+
+**The Talker** (Gemini Live) is always listening. It has three instant tools — `issue_command`, `check_status`, `cancel_task` — that never block audio. When you say "click the first post," the Talker dispatches the goal and immediately responds: "On it."
+
+**The Doer** (background goroutine) receives the goal and runs the Navigator's tool-use loop — `ls`, `cat`, `act` — against the semantic filesystem. When it finishes, it notifies the Talker, who announces the result aloud: "Done, I clicked the first post."
+
+Both agents read and write the same Mache virtual filesystem. The Talker checks the Doer's progress. The Doer modifies the browser state. Neither blocks the other. This is what makes voice feel fluid — the user is never left in awkward silence wondering if the AI is dead or thinking.
+
+### The Semantic Filesystem
+
+The Chrome extension builds an in-memory element registry, draws colored Set-of-Mark bounding boxes over every interactive element, captures the browser's accessibility tree via CDP, and sends it all to Gemini Vision — which maps the page into a filesystem:
 
 ![Set-of-Mark overlay on Reddit](overlay.jpg)
-
-When a user visits Reddit, the agent sees:
 
 ```
 /
@@ -39,35 +62,25 @@ When a user visits Reddit, the agent sees:
 │       ├── description         # "Main content feed of Reddit posts"
 │       ├── children            # [1] "First post title"
 │       │                       # [2] "Second post title"
-│       │                       # ...
 │       └── _c/
 │           ├── 1/              # Ordinal child — no raw IDs exposed
 │           │   ├── mache_id    # Internal element reference
 │           │   ├── tag         # "a"
-│           │   └── text        # "First post title"
+│           │   ├── text        # "First post title"
+│           │   ├── role        # "link" (from accessibility tree)
+│           │   ├── name        # "First Post" (computed accessible name)
+│           │   ├── path        # "article.w-full > h3.title > a"
+│           │   ├── color       # "BLUE" (semantic: links=blue, buttons=orange)
+│           │   └── bounds      # "[0.10, 0.25, 0.80, 0.05]" (normalized)
 │           ├── 2/
 │           └── ...
 ├── sidebar/
-│   └── recent_posts/           # Sidebar widgets
+│   └── recent_posts/
 └── footer/
-    └── links/                  # Legal links
+    └── links/
 ```
 
-The user says: *"Click the 5th post."*
-
-The local model runs two commands:
-1. `cat("/main/feed/children")` — reads the ordinal list
-2. `act("/main/feed/_c/5", "click")` — clicks the element
-
-**3.5 seconds. Zero cloud API calls for execution. Works on Reddit, Hacker News, GitHub, Wikipedia, eBay.**
-
-### Voice Mode
-
-X-Ray supports real-time voice interaction via the **Gemini Live API**. The user speaks naturally, Gemini handles voice activity detection and conversational flow, and X-Ray's filesystem tools execute actions in the browser — all streamed bidirectionally over WebSocket with sub-second latency.
-
-For example: the user says, *"Scroll down and find the post about Python."* Gemini Live understands the intent, X-Ray's tools silently execute `scroll("down")` and `cat("/main/feed/children")` in the background, and Gemini replies aloud: *"I found it — clicking now"* — as the browser navigates to the post. The user never sees a terminal, a command, or a loading spinner. It just works.
-
-**Voice daemon mode** (`go run ./cmd/agentd --voice`) provides native mic/speaker interaction via `sox` — no browser audio permissions needed. It opens Chrome automatically on cold start, connects to Gemini Live with the full tool set, and falls back gracefully when the extension hasn't reported the active tab yet.
+Every element is enriched with the browser's own accessibility metadata — role, name, bounds, DOM path, semantic color. The agent doesn't guess what a "button" is; it reads the browser's computed accessibility role. This is the difference between navigating a dark room with a flashlight versus having the architectural blueprints.
 
 ---
 
@@ -75,65 +88,104 @@ For example: the user says, *"Scroll down and find the post about Python."* Gemi
 
 ### The Two-Stage Architecture
 
-**Stage 1: The Cartographer (Cloud Vision)**
+**Stage 1: The Cartographer (Gemini Vision)**
 
-When the user clicks the X-Ray extension icon, the Chrome extension:
+When a page loads, the Chrome extension:
 - Builds an in-memory registry of interactive elements (no DOM mutation — SPA-safe)
-- Draws colored Set-of-Mark bounding boxes over every element
-- Captures a screenshot with the overlay visible
-- Sends the screenshot + a structured element summary to the backend
+- Draws semantic color bounding boxes (blue=links, orange=buttons, green=inputs, purple=containers)
+- Freezes page JavaScript via CDP during screenshot capture to prevent DOM staleness
+- Captures the browser's full accessibility tree and enriches each element with `AXRole` and `AXName`
+- Sends the screenshot + structured element summary to the backend
 
-Gemini 2.5 Flash receives both the visual screenshot and the text summary. Because it's natively multimodal, it instantly understands the spatial layout ("the top bar is navigation, the main area is a feed of posts, the right side is a sidebar"). It outputs a strict JSON schema mapping visual zones to DOM elements, including:
+Gemini 2.5 Flash receives both the visual screenshot and the text summary. It outputs a strict JSON schema mapping visual zones to DOM elements, including:
 - **Primary items**: the specific clickable elements in each list zone (post titles, not metadata links)
 - **CSS `item_selector`**: a structural query for discovering new content after scroll
 
-**Stage 2: The Navigator (Local Edge Execution)**
+The schema is cached in SQLite (keyed by domain+path) and validated against the current DOM on each visit — stale entries with missing element IDs trigger re-generation automatically.
 
-The JSON schema feeds into the Mache Engine, which builds an in-memory virtual filesystem. Now the execution loop is trivially simple — a local 7B model (Qwen 2.5 Coder) uses six bash-like tools:
+**Stage 2: The Navigator (Edge Execution)**
+
+The JSON schema feeds into the Mache Engine, which builds the in-memory virtual filesystem. The Navigator agent uses eight tools:
 
 | Tool | Description |
 |------|-------------|
-| `ls(path)` | List directory contents |
-| `cat(path)` | Read a file |
-| `act(path, action)` | Click or focus an element |
-| `scroll(direction)` | Scroll to load more content |
+| `ls(path)` | List directory contents in the semantic filesystem |
+| `cat(path)` | Read a file (description, children, role, bounds) |
+| `act(path, action)` | Click, focus, type, or press enter on an element |
+| `scroll(direction)` | Scroll and discover new content via CSS selectors |
 | `goto(url)` | Navigate the browser to a new URL |
-| `rescan(path?)` | Rescan the page — full or targeted (magnifying glass) |
+| `rescan(path?)` | Rescan the page — full or targeted magnifying glass |
+| `list_tabs()` | List all open browser tabs |
+| `switch_tab(tab_id)` | Switch to an existing open tab |
 
-The model sees the full filesystem tree upfront (pre-filled via a tree dump), reads the children file, and acts. Two calls. No hallucinated paths. No wasted iterations.
+The model sees the full filesystem tree upfront (pre-filled via a tree dump), reads the children file, and acts. Two calls for a simple click. No hallucinated paths. No wasted iterations.
+
+### Voice Architecture: Gemini Live + Swarm
+
+The voice system uses the **Gemini Live API** for native audio streaming with automatic voice activity detection — no push-to-talk needed (though daemon mode supports it too).
+
+The key innovation is the **Talker/Doer split**:
+
+```
+User (mic/speaker)
+    ↕ native audio stream
+[Talker] — Gemini Live session (always responsive)
+    │ tools: check_status(), issue_command(goal), cancel_task()
+    │ + Google Search Grounding (for general knowledge questions)
+    │
+    ├── issue_command("click first story") → goal channel
+    │                                          ↓
+    │                                    [Doer goroutine]
+    │                                      │ Navigator tool-use loop
+    │                                      │ ls → cat → act (against VFS)
+    │                                      │ dispatches actions to Chrome extension
+    │                                      ↓
+    ├── ← resultNotifyFn("Done, clicked first story")
+    │      (injected as synthetic message → Gemini speaks it)
+    │
+    └── check_status() → reads Doer state snapshot (instant, no blocking)
+```
+
+Traditional voice agents go silent during tool execution — the model enters a tool-use loop, and the user waits in awkward silence for 5-30 seconds. X-Ray solves this by separating the conversational agent (Talker) from the execution agent (Doer). The Talker's tools return instantly, so audio is never interrupted. The user can ask "what are you doing?" mid-execution and get a real-time progress update.
+
+**Native voice daemon** (`task demo`) uses `sox` for mic/speaker — no browser audio permissions, no WebRTC. An echo gate with a 1-second cooldown prevents speaker output from feeding back into the mic. Chrome opens automatically on cold start.
+
+### Tab Management: Browser OS, Not Just Page Agent
+
+The Navigator can see all open browser tabs via `list_tabs()` and switch between them with `switch_tab()`. When the user says "go to GitHub," the agent first checks if GitHub is already open in another tab — and switches to it instantly instead of reloading the page. This makes X-Ray feel like a browser OS, not just a single-page tool.
 
 ### Self-Healing Rescan & Magnifying Glass
 
-When the Navigator can't find what it needs, it doesn't give up — it calls `rescan()` to capture a fresh screenshot and regenerate the schema. But a full-page rescan has a resolution limit: at 800px wide, a video player's internal controls (play, volume, scrubber) are too small to map.
+When the Navigator can't find what it needs, it calls `rescan()` to capture a fresh screenshot and regenerate the schema. But a full-page rescan has a resolution limit: at 800px wide, a video player's internal controls (play, volume, scrubber) are too small to map.
 
 The **magnifying glass** solves this. When the Navigator calls `rescan("/main/player")`, X-Ray:
-1. Crops the CDP screenshot to just that element's bounding box (via `DOM.getBoxModel`)
-2. Runs the Cartographer on the zoomed-in image
-3. Merges the new sub-zones into the existing filesystem — like tree-sitter re-parsing a single AST node
+1. Resolves the zone's bounding box via CDP `DOM.getBoxModel`
+2. Crops the screenshot to just that region with padding
+3. Runs the Cartographer on the zoomed-in image
+4. **Merges** the new sub-zones into the existing filesystem (non-destructive graft)
 
-The agent retries and now sees `/main/player/controls/`, `/main/player/progress_bar/` — sub-zones invisible at full-page scale.
+The agent retries and now sees `/main/player/controls/`, `/main/player/progress_bar/` — sub-zones invisible at full-page scale. Like tree-sitter re-parsing a single AST node instead of the whole file.
 
 ### The Hybrid Edge-Cloud Split
 
-This is the key architectural insight: **the hard part and the easy part require different tools.**
+**The hard part and the easy part require different tools.**
 
 | Capability | Where | Why |
 |-----------|-------|-----|
-| Visual page mapping | Gemini Cloud | Requires multimodal spatial reasoning |
-| Voice interaction | Gemini Live API | Requires real-time audio streaming |
-| Navigation execution | Local 7B SLM | Simple text-based filesystem traversal |
+| Visual page mapping | Gemini 2.5 Flash | Requires multimodal spatial reasoning |
+| Voice conversation | Gemini Live API | Requires real-time native audio streaming |
+| General knowledge | Google Search (via Gemini) | Grounded web search, server-side |
+| Navigation execution | Local 7B SLM (or Gemini) | Simple filesystem traversal |
 
-Gemini's vision is so good at building the filesystem abstraction that even a 7-billion-parameter local model can navigate it blindfolded. The complex visual web → cloud. The simple filesystem traversal → edge. Zero latency, high privacy, no API costs for the execution loop.
+Gemini's vision is so good at building the filesystem abstraction that even a 7-billion-parameter local model can navigate it. The complex visual web goes to cloud. The simple filesystem traversal runs at the edge. High privacy, low latency, zero API costs for the execution loop.
+
+### SPA Compatibility (The Registry)
+
+Traditional browser agents mutate the DOM (adding `data-` attributes), which triggers React/Vue re-renders and breaks SPAs like Reddit. X-Ray uses an **in-memory element registry** — two JavaScript Maps (`elementID → Element` and `Element → elementID`) — with zero DOM mutation. The page never knows it's being observed. Element IDs are stable across registry rebuilds: if the same DOM element exists in both the old and new registry, it keeps its original ID.
 
 ### Context-Limit Bypassing
 
 When the local model hits a limit (e.g., a feed has 300 posts but only 25 are visible), the agent calls `scroll("down")`. The browser scrolls, evaluates the Cartographer's CSS selector via native `querySelectorAll`, discovers fresh elements, and updates the children file — all without another LLM call. The agent re-reads the file and continues.
-
-This hybrid keeps the LLM for pattern recognition and delegates execution to browser-native APIs.
-
-### SPA Compatibility (The Registry)
-
-Traditional browser agents mutate the DOM (adding `data-` attributes), which triggers React/Vue re-renders and breaks SPAs like Reddit. X-Ray uses an **in-memory element registry** — two JavaScript Maps (`elementID → Element` and `Element → elementID`) — with zero DOM mutation. The page never knows it's being observed.
 
 ---
 
@@ -153,7 +205,11 @@ The Cartographer (Gemini) visually identifies primary items and writes a CSS sel
 
 The fix: **union, don't overwrite.** Both lists are merged, deduplicated, with stale IDs filtered out. The LLM's visual intelligence handles the weird SPA edge cases, and the CSS selector handles infinite scroll and lazy LLM edge cases. Best of both worlds.
 
-I also tightened the Cartographer prompt to require selectors that match **exactly one element per item** (the title link, not metadata), using child combinators (`>`) instead of broad descendant selectors.
+### The Awkward Silence Problem
+
+The original voice implementation used a single Gemini Live session for both conversation AND tool execution. When the model entered a tool-use loop (ls → cat → act), it went silent for 5-30 seconds. The user had no idea if the agent was working or frozen.
+
+**Fix: The Talker/Doer swarm split.** The conversational agent never blocks. It dispatches work to a background goroutine and stays responsive. When the Doer finishes, it injects a synthetic message into the Gemini Live session, and the Talker announces the result naturally. The user can interrupt at any time to ask for status or cancel.
 
 ### Small Models Guess Zone Names
 
@@ -169,17 +225,19 @@ Different model families output function calls in different JSON formats. Gemma 
 
 ## Accomplishments I'm Proud Of
 
+- **Always-responsive voice** — the Talker/Doer swarm means the user is never left in silence. Ask "what are you doing?" mid-navigation and get a real-time progress update. This is the UX that voice agents should have
 - **3.5-second Reddit navigation** with a local 7B model — two tool calls, correct click, zero cloud API costs for execution
+- **Accessibility-enriched VFS** — every element carries the browser's computed AXRole, AXName, DOM path, semantic color, and normalized bounds. The agent reads the browser's own metadata, not guesses
+- **Tab-aware browser OS** — `list_tabs` + `switch_tab` means the agent manages your browser, not just one page. It checks existing tabs before opening new ones
+- **Schema caching** — SQLite-backed cache validates element IDs against the live DOM. Revisiting a page is instant; stale entries auto-regenerate
 - **Zero DOM mutation** — works on React, Vue, and Web Component-heavy SPAs without triggering re-renders
-- **Set-of-Mark visual grounding** — colored bounding boxes visible in screenshots give the Cartographer spatial anchors
-- **The filesystem abstraction works** — projecting complex UI into POSIX paths makes even tiny models effective navigators
+- **Set-of-Mark visual grounding** — semantic color bounding boxes with ID labels give the Cartographer spatial anchors that tie visual zones to real DOM elements
 - **CSS selector unions** — a novel approach that combines LLM visual intelligence with browser-native `querySelectorAll` for robust item discovery
 - **Model-agnostic Navigator** — tested with Gemini Flash, Gemma 12B, Qwen 2.5 Coder 7B, and Llama 3.2 3B. The filesystem abstraction is the constant; the model is a variable
-- **Voice mode via Gemini Live API** — real-time bidirectional audio with server-side tool execution, audio suppression during tool loops, and sub-second latency
-- **Self-healing rescan** — the Navigator autonomously recaptures the page when the schema goes stale, adapting to dynamic content without manual intervention
-- **Magnifying glass rescan** — targeted `rescan("/path")` crops the screenshot to a specific zone, runs the Cartographer on the zoomed region, and merges sub-zones into the existing filesystem. Like tree-sitter re-parsing a single AST node
-- **Proactive navigation** — `goto(url)` lets the agent open new pages, navigate home, or follow cross-site links. The filesystem rebuilds automatically after each navigation
-- **Voice daemon with cold-start** — `--voice` mode opens Chrome automatically, uses native mic/speaker via sox, and works end-to-end without any browser UI
+- **Self-healing rescan + magnifying glass** — the Navigator autonomously recaptures the page (full or zoomed to a specific zone) when the schema goes stale
+- **CDP page freeze** — JavaScript is frozen during screenshot capture to prevent DOM changes between overlay and screenshot, then unfrozen in a `finally` block
+- **Echo gate** — native voice daemon suppresses mic input for 1 second after speaker output, preventing audio feedback loops
+- **Voice daemon with cold-start** — `task demo` opens Chrome automatically, connects to Gemini Live, and works end-to-end without any browser UI
 
 ---
 
@@ -189,29 +247,32 @@ The core thesis from the [Mache article](https://jamestexas.medium.com/the-ide-s
 
 The difference wasn't intelligence. It was interface design.
 
+The second surprise was the swarm. Splitting voice into Talker + Doer wasn't just a concurrency trick — it proved that Mache is a **swarm protocol**. Two agents with different capabilities (conversation vs. execution) collaborating over shared filesystem state. The Talker reads status. The Doer writes state. Neither knows about the other's implementation. The filesystem is the interface between them.
+
 ---
 
 ## What's Next for X-Ray
 
-- **Multi-page workflows** — chain navigations across pages ("search for X, click the first result, add to cart"). The `goto` tool enables cross-site navigation; next is persistent context across page transitions
-- **Write actions** — form filling, text input, drag-and-drop via the same filesystem metaphor
+- **Multi-page workflows** — chain navigations across pages ("search for X, click the first result, add to cart"). The `goto` and `switch_tab` tools enable cross-site navigation; next is persistent context across page transitions
+- **Write actions** — form filling, text input, drag-and-drop via the same filesystem metaphor (`act(path, "type", "search query")` already works for text inputs)
 - **FUSE mount** — expose the virtual filesystem as a real mount point so any terminal tool (`grep`, `find`, `tree`) works natively against a live webpage
-- **Mache for the web** — generalize the schema format so any web agent framework can consume X-Ray's output
-- **Fine-tuned Navigator** — train a purpose-built tiny model on filesystem navigation traces, potentially bringing the execution loop down to sub-1B parameters
 - **Recursive magnifying glass** — allow nested rescans (zoom into a zone, then zoom into a sub-zone) for arbitrarily deep UI hierarchies
+- **Fine-tuned Navigator** — train a purpose-built tiny model on filesystem navigation traces, potentially bringing the execution loop down to sub-1B parameters
 
 ---
 
 ## Built With
 
-- **Google Gemini 2.5 Flash** — Cartographer vision + structured output
-- **Google Gemini Live API** — Real-time voice interaction + voice daemon
+- **Google Gemini 2.5 Flash** — Cartographer (multimodal vision + structured JSON output)
+- **Google Gemini Live API** — Real-time native audio streaming for the Talker voice agent
+- **Google Search Grounding** — Server-side web search via Gemini for general knowledge questions
 - **Google Cloud Run** — Backend hosting
-- **Go** — Backend (agentd), voice daemon, WebSocket hub
-- **Chrome Extension (Manifest V3)** — DOM analysis, Set-of-Mark overlay, CDP screenshot cropping, action execution
-- **Chrome DevTools Protocol** — Accessibility tree, box model queries, targeted screenshot capture
-- **Mache** — Virtual filesystem engine with schema merging
-- **Ollama + Qwen 2.5 Coder 7B** — Local Navigator execution
+- **Go** — Backend server, Talker/Doer swarm, WebSocket hub, voice daemon
+- **Chrome Extension (Manifest V3)** — DOM registry, Set-of-Mark overlay, CDP page freeze, accessibility tree capture, action execution
+- **Chrome DevTools Protocol** — Accessibility tree, box model queries, targeted screenshot crop, JavaScript freeze/unfreeze
+- **Mache** — Agent-Computer Interface: virtual filesystem engine with schema merging and graph-backed storage
+- **SQLite** — Schema cache with DOM-validated entries
+- **Ollama + Qwen 2.5 Coder 7B** — Local Navigator execution (swappable; also tested with Gemma 12B, Llama 3.2 3B)
 - **sox** — Native mic/speaker for voice daemon mode
 
 ---
@@ -223,20 +284,20 @@ git clone https://github.com/agentic-research/x-ray.git
 cd x-ray
 export GEMINI_API_KEY="your-key"
 
-# Cloud-only (Gemini for everything):
+# Voice daemon (recommended — native mic/speaker, opens Chrome automatically):
+task demo
+
+# WebSocket-only (extension connects, navigate via curl):
 task run
 
-# Voice daemon (native mic/speaker, opens Chrome automatically):
-go run ./cmd/agentd --voice
-
-# Hybrid edge-cloud (local Navigator):
+# Hybrid edge-cloud (local Navigator via Ollama):
 export NAVIGATOR_ENDPOINT=http://localhost:11434/v1
 export NAVIGATOR_MODEL=qwen2.5-coder:7b
 export NAVIGATOR_FORMAT=gemma
-task run
+task demo
 ```
 
-Load the `ext/` directory as an unpacked Chrome extension, visit any page, and click the X-Ray icon. For voice daemon mode, just run `--voice` — Chrome opens automatically.
+Load the `ext/` directory as an unpacked Chrome extension, visit any page, and click the X-Ray icon. For voice mode, just run `task demo` — Chrome opens automatically and you start talking.
 
 ---
 
