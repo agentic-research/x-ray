@@ -177,12 +177,6 @@ function reportStatus(status, text) {
 // --- Listen for commands from service worker ---
 chrome.runtime.onMessage.addListener((msg) => {
   switch (msg.type) {
-    case 'VOICE_START':
-      // Tab ID sent via messaging — URL fragments are stripped in MV3 offscreen docs.
-      if (msg.tabId != null) {
-        connectVoice(msg.tabId);
-      }
-      break;
     case 'MIC_ON':
       if (sessionReady) {
         recording = true;
@@ -203,7 +197,15 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
-// Signal that listeners are registered and offscreen is ready for VOICE_START.
-chrome.runtime.sendMessage(
-  { type: 'VOICE_STATUS', status: 'loaded', text: 'offscreen.js ready' }
-).catch(() => {});
+// Request tab ID from background — offscreen initiates so there's no race condition.
+chrome.runtime.sendMessage({ type: 'VOICE_GET_TAB' }, (resp) => {
+  if (chrome.runtime.lastError) {
+    reportStatus('error', 'Failed to get tab ID: ' + chrome.runtime.lastError.message);
+    return;
+  }
+  if (resp?.tabId != null) {
+    connectVoice(resp.tabId);
+  } else {
+    reportStatus('error', 'No tab ID from background');
+  }
+});

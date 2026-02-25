@@ -461,8 +461,7 @@ async function startSession(tabId) {
       reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'],
       justification: 'Voice navigator needs microphone and audio playback'
     });
-    voiceLog(tabId, 'offscreen doc created, waiting for loaded signal');
-    // VOICE_START is sent when "loaded" VOICE_STATUS arrives (ensures listener is registered).
+    voiceLog(tabId, 'offscreen doc created (offscreen will request tab ID)');
   } catch (e) {
     voiceLog(tabId, `offscreen createDocument FAILED: ${e.message}`);
   }
@@ -680,13 +679,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
       break;
 
+    case 'VOICE_GET_TAB':
+      // Offscreen doc requests its tab ID — no race because offscreen initiates.
+      voiceLog(sessionTabId, 'offscreen requested tab ID');
+      sendResponse({ tabId: sessionTabId });
+      return false;
+
     case 'VOICE_STATUS':
       voiceLog(sessionTabId, `offscreen → ${msg.status}: ${msg.text}`);
-      if (msg.status === 'loaded' && sessionTabId !== null) {
-        // Offscreen doc is ready with listeners registered — send tab ID.
-        voiceLog(sessionTabId, 'sending VOICE_START');
-        chrome.runtime.sendMessage({ type: 'VOICE_START', tabId: sessionTabId });
-      } else if (msg.status === 'ready') {
+      if (msg.status === 'ready') {
         sessionReady = true;
         // One-click flow: auto-enable mic once session is ready.
         if (pendingAutoMic) {
