@@ -10,9 +10,9 @@
 // Session stays alive independently of mic state.
 
 // Immediately report that offscreen JS loaded — helps debug silent failures.
-try {
-  chrome.runtime.sendMessage({ type: 'VOICE_STATUS', status: 'loaded', text: 'offscreen.js executing' });
-} catch (_) {}
+chrome.runtime.sendMessage(
+  { type: 'VOICE_STATUS', status: 'loaded', text: 'offscreen.js executing' }
+).catch(() => {});
 
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
@@ -176,16 +176,18 @@ function disconnectVoice() {
 }
 
 function reportStatus(status, text) {
-  try {
-    chrome.runtime.sendMessage({ type: 'VOICE_STATUS', status, text });
-  } catch (_) {
-    // Service worker may not be listening.
-  }
+  chrome.runtime.sendMessage({ type: 'VOICE_STATUS', status, text }).catch(() => {});
 }
 
 // --- Listen for commands from service worker ---
 chrome.runtime.onMessage.addListener((msg) => {
   switch (msg.type) {
+    case 'VOICE_START':
+      // Tab ID sent via messaging — URL fragments are stripped in MV3 offscreen docs.
+      if (msg.tabId != null) {
+        connectVoice(msg.tabId);
+      }
+      break;
     case 'MIC_ON':
       if (sessionReady) {
         recording = true;
@@ -205,12 +207,3 @@ chrome.runtime.onMessage.addListener((msg) => {
       break;
   }
 });
-
-// --- Auto-connect on load using URL fragment ---
-const hashParams = new URLSearchParams(location.hash.slice(1));
-const tabId = hashParams.get('tab');
-if (tabId) {
-  connectVoice(parseInt(tabId, 10));
-} else {
-  console.warn('Offscreen: no tab ID in URL fragment');
-}

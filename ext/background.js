@@ -457,11 +457,13 @@ async function startSession(tabId) {
 
   try {
     await chrome.offscreen.createDocument({
-      url: 'offscreen.html#tab=' + tabId,
+      url: 'offscreen.html',
       reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'],
       justification: 'Voice navigator needs microphone and audio playback'
     });
-    voiceLog(tabId, 'offscreen doc created, voice WS connecting');
+    voiceLog(tabId, 'offscreen doc created, sending VOICE_START');
+    // Send tab ID via messaging — URL fragments are stripped in MV3 offscreen docs.
+    chrome.runtime.sendMessage({ type: 'VOICE_START', tabId });
   } catch (e) {
     voiceLog(tabId, `offscreen createDocument FAILED: ${e.message}`);
   }
