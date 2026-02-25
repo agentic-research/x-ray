@@ -175,13 +175,15 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 	})
 	defer d.sess.Navigator.SetProgressFunc(nil)
 
-	// Wait for schema if needed.
+	// Wait briefly for schema, but proceed without one.
+	// HandleIntent works with empty state for goto intents (e.g., "go to reddit.com"
+	// produces a goto action regardless of whether a page schema exists).
 	d.updateStep("waiting for page schema")
 	select {
 	case <-d.sess.SchemaReady:
-	case <-time.After(schemaWaitTimeout):
-		d.finishGoal(goal.ID, false, "Page schema is still loading.", "schema timeout")
-		return
+		// Schema is ready — full tree available.
+	case <-time.After(3 * time.Second):
+		log.Printf("Doer [tab %d]: schema not ready after 3s, proceeding without", d.tabID)
 	case <-goalCtx.Done():
 		d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
 		return

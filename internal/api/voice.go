@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -391,6 +392,23 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 	})
 	defer doer.SetResultNotifyFn(nil)
 
+	// Echo gate: suppress mic input while Gemini is speaking to prevent feedback.
+	// Set to 1 when audio flows to the speaker, cleared 300ms after the last chunk.
+	var speaking atomic.Int32
+	var speakingTimer *time.Timer
+
+	markSpeaking := func() {
+		speaking.Store(1)
+		if speakingTimer != nil {
+			speakingTimer.Stop()
+		}
+		// Clear the flag 300ms after the last audio chunk — gives time for the
+		// speaker to finish playing before the mic re-opens.
+		speakingTimer = time.AfterFunc(300*time.Millisecond, func() {
+			speaking.Store(0)
+		})
+	}
+
 	// --- goroutine: mic + text → Gemini ---
 	go func() {
 		for {
@@ -408,6 +426,10 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 					}); err != nil {
 						log.Printf("Voice: AudioStreamEnd error: %v", err)
 					}
+					continue
+				}
+				// Echo gate: drop mic data while Gemini is speaking.
+				if speaking.Load() != 0 {
 					continue
 				}
 				if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
@@ -455,10 +477,11 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 		}
 
 		if sc := msg.ServerContent; sc != nil {
-			// Always forward audio to speaker — no suppression.
+			// Forward audio to speaker; mark echo gate so mic is suppressed.
 			if sc.ModelTurn != nil {
 				for _, part := range sc.ModelTurn.Parts {
 					if part.InlineData != nil && len(part.InlineData.Data) > 0 {
+						markSpeaking()
 						select {
 						case speaker <- part.InlineData.Data:
 						case <-ctx.Done():
