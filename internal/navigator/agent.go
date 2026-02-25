@@ -96,6 +96,17 @@ func ToolDefinitions() []*genai.Tool {
 					},
 				},
 			},
+			{
+				Name:        "goto",
+				Description: "Navigate the browser to a new URL. Use when the user wants to visit a different website (e.g., 'go to Reddit'). After navigation, the filesystem updates to reflect the new page — run ls('/') to explore it.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"url": {Type: genai.TypeString, Description: "Fully qualified URL, e.g. 'https://www.reddit.com'"},
+					},
+					Required: []string{"url"},
+				},
+			},
 		},
 	}}
 }
@@ -242,6 +253,17 @@ func (a *Agent) ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string
 		}
 		return fmt.Sprintf("Scrolled %s. Use cat on the children file to see updated content.", direction), nil
 
+	case "goto":
+		u, _ := args["url"].(string)
+		if u == "" {
+			return "Error: url is required", nil
+		}
+		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+			u = "https://" + u
+		}
+		return fmt.Sprintf("Navigating to %s", u),
+			&ActionResult{Action: "goto", Path: u}
+
 	default:
 		return fmt.Sprintf("Unknown tool: %s", fc.Name), nil
 	}
@@ -295,11 +317,12 @@ Your tools:
 - cat(path): Read a file. Use this to read "description" or "children" files.
 - act(path, action): Execute a browser action on the element at this path. Actions: "click", "focus".
 - scroll(direction): Scroll the page to load more content. Direction: "down" or "up".
+- goto(url): Navigate the browser to a new URL. After navigation, the filesystem updates — run ls("/") to explore the new page.
 
 CRITICAL CONSTRAINTS:
 - Do NOT hallucinate tools or paths. Only use paths that you have confirmed exist via ls().
 - Never guess a path. Always ls() a directory before trying to cat() or act() on its children.
-- You have exactly four tools: ls, cat, act, scroll. Do not attempt to use any other tool.
+- You have exactly five tools: ls, cat, act, scroll, goto. Do not attempt to use any other tool.
 
 Strategy:
 1. ls("/") to see the page structure.

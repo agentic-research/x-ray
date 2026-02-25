@@ -360,12 +360,20 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 	if action != nil {
 		result, _ := json.MarshalIndent(action, "", "  ")
 		saveLog("navigate", msg.Intent, string(result))
-		h.sendMessage(conn, OutboundMessage{
-			Type:    MsgExecuteAction,
-			TabID:   msg.TabID,
-			MacheID: action.MacheID,
-			Action:  action.Action,
-		})
+		if action.Action == "goto" {
+			h.sendMessage(conn, OutboundMessage{
+				Type:  MsgGotoURL,
+				TabID: msg.TabID,
+				URL:   action.Path,
+			})
+		} else {
+			h.sendMessage(conn, OutboundMessage{
+				Type:    MsgExecuteAction,
+				TabID:   msg.TabID,
+				MacheID: action.MacheID,
+				Action:  action.Action,
+			})
+		}
 	} else if textResponse != "" {
 		saveLog("navigate", msg.Intent, textResponse)
 		h.sendMessage(conn, OutboundMessage{
@@ -430,6 +438,23 @@ func (h *Handler) scrollPage(ctx context.Context, conn *websocket.Conn, sess *Ta
 	case <-time.After(scrollWaitTimeout):
 		return fmt.Errorf("scroll timed out waiting for DOM update")
 	}
+}
+
+// sendGoto navigates the browser to a new URL via the extension WebSocket.
+// Used by voice mode's goto tool. The extension handles navigation + auto-snapshot.
+func (h *Handler) sendGoto(tabID int, url string) {
+	h.mu.Lock()
+	conn := h.conn
+	h.mu.Unlock()
+	if conn == nil {
+		log.Printf("Voice: extension not connected, cannot navigate to %s", url)
+		return
+	}
+	h.sendMessage(conn, OutboundMessage{
+		Type:  MsgGotoURL,
+		TabID: tabID,
+		URL:   url,
+	})
 }
 
 // scrollVoice scrolls the page via the extension WebSocket. Used by voice mode

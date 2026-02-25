@@ -11,6 +11,7 @@ const (
 	MsgDOMUpdate         = "DOM_UPDATE"
 	MsgResolveSelectors  = "RESOLVE_SELECTORS"
 	MsgSelectorsResolved = "SELECTORS_RESOLVED"
+	MsgGotoURL           = "GOTO_URL"
 )
 
 // InboundMessage is the envelope for all browser -> server messages.
@@ -34,5 +35,6 @@ type OutboundMessage struct {
 	Message   string            `json:"message,omitempty"`
 	Stage     string            `json:"stage,omitempty"`
 	Direction string            `json:"direction,omitempty"`
+	URL       string            `json:"url,omitempty"`
 	Selectors map[string]string `json:"selectors,omitempty"` // zone mache-id → CSS selector
 }

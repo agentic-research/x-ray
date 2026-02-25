@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/jamesgardner/x-ray/internal/mache"
 	"github.com/jamesgardner/x-ray/internal/navigator"
 	"google.golang.org/genai"
 )
@@ -268,14 +270,35 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				result, action := sess.Navigator.ExecuteTool(ctx, fc)
 				log.Printf("Voice: tool result: %q", result)
 
-				// If act() returned an action, dispatch to the extension.
+				// Handle actions: goto navigates + re-maps, act dispatches a click.
 				if action != nil {
-					h.SendActionToExtension(tabID, action.MacheID, action.Action)
-					sendVoiceJSON(conn, &wsMu, voiceMessage{
-						Type:    MsgExecuteAction,
-						MacheID: action.MacheID,
-						Action:  action.Action,
-					})
+					if action.Action == "goto" {
+						// Reset schema state for the new page.
+						sess.SchemaReady = make(chan struct{})
+						sess.Engine = mache.NewEngine()
+						sess.Navigator.SetEngine(sess.Engine)
+
+						// Navigate browser via extension WebSocket.
+						h.sendGoto(tabID, action.Path)
+						log.Printf("Voice: goto %s — waiting for new page schema (tab %d)", action.Path, tabID)
+
+						// Block until the new page's schema is ready.
+						select {
+						case <-sess.SchemaReady:
+							result = fmt.Sprintf("Navigated to %s. Page is loaded and mapped. Use ls('/') to see the new page structure.", action.Path)
+						case <-time.After(schemaWaitTimeout):
+							result = fmt.Sprintf("Navigated to %s but timed out waiting for page to load.", action.Path)
+						case <-ctx.Done():
+							result = "Navigation cancelled."
+						}
+					} else {
+						h.SendActionToExtension(tabID, action.MacheID, action.Action)
+						sendVoiceJSON(conn, &wsMu, voiceMessage{
+							Type:    MsgExecuteAction,
+							MacheID: action.MacheID,
+							Action:  action.Action,
+						})
+					}
 				}
 
 				responses = append(responses, &genai.FunctionResponse{

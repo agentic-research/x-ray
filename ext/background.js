@@ -120,6 +120,28 @@ function connectWebSocket() {
         break;
       }
 
+      case 'GOTO_URL': {
+        const targetTab = msg.tab_id;
+        const url = msg.url;
+        if (targetTab && url) {
+          console.log('X-Ray: Navigating tab', targetTab, 'to', url);
+          schemaReadyTabs.delete(targetTab);
+          chrome.tabs.update(targetTab, { url }, () => {
+            // Wait for page to finish loading, then auto-snapshot.
+            const listener = (tabId, changeInfo) => {
+              if (tabId === targetTab && changeInfo.status === 'complete') {
+                chrome.tabs.onUpdated.removeListener(listener);
+                console.log('X-Ray: Page loaded, auto-capturing snapshot for tab', targetTab);
+                pendingSnapshots.add(targetTab);
+                captureAndSend(targetTab);
+              }
+            };
+            chrome.tabs.onUpdated.addListener(listener);
+          });
+        }
+        break;
+      }
+
       case 'RESOLVE_SELECTORS': {
         const targetTab = msg.tab_id;
         if (targetTab) {
