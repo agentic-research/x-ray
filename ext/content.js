@@ -8,11 +8,12 @@ const elementRegistry = new Map();   // "mache-42" -> Element
 const reverseRegistry = new Map();   // Element -> "mache-42"
 
 function buildRegistry() {
-  elementRegistry.clear();
-  reverseRegistry.clear();
-  idCounter = 0;
+  // Incremental rebuild: don't reset idCounter or clear registries.
+  // Existing elements keep their IDs across rebuilds (stable mache-IDs).
+  // New elements get new IDs. Stale elements are pruned at the end.
 
-  // Phase 1: Tag interactive leaf elements
+  // Phase 1: Tag interactive leaf elements + count interactive descendants per ancestor.
+  const interactiveAncestors = new Map(); // node → count of interactive descendants
   const interactiveNodes = document.querySelectorAll('a, button, input, select, textarea, [role="button"]');
   interactiveNodes.forEach(node => {
     if (!reverseRegistry.has(node)) {
@@ -20,29 +21,35 @@ function buildRegistry() {
       elementRegistry.set(id, node);
       reverseRegistry.set(node, id);
     }
+    // Walk up to count interactive descendants for Phase 2 (replaces O(N*M) nested query).
+    let parent = node.parentElement;
+    while (parent) {
+      interactiveAncestors.set(parent, (interactiveAncestors.get(parent) || 0) + 1);
+      parent = parent.parentElement;
+    }
   });
 
-  // Phase 2: Tag structural containers that hold 2+ interactive elements.
-  // This gives the Cartographer container elements to select as zone roots,
-  // and gives children a tagged parent for the Parent: field.
+  // Phase 2: Tag structural containers with 2+ interactive descendants.
+  // Uses precomputed ancestor counts — O(C) where C = containers, not O(N*M).
   const containers = document.querySelectorAll(
     'main, section, article, nav, header, footer, aside, form, ul, ol, dl, table, tbody, ' +
     '[role="navigation"], [role="main"], [role="list"], [role="group"], [role="region"]'
   );
   containers.forEach(node => {
-    if (!reverseRegistry.has(node)) {
-      let childCount = 0;
-      for (const child of node.querySelectorAll('*')) {
-        if (reverseRegistry.has(child)) childCount++;
-        if (childCount >= 2) break;
-      }
-      if (childCount >= 2) {
-        const id = `mache-${idCounter++}`;
-        elementRegistry.set(id, node);
-        reverseRegistry.set(node, id);
-      }
+    if (!reverseRegistry.has(node) && (interactiveAncestors.get(node) || 0) >= 2) {
+      const id = `mache-${idCounter++}`;
+      elementRegistry.set(id, node);
+      reverseRegistry.set(node, id);
     }
   });
+
+  // Prune stale entries (elements removed from DOM by SPA frameworks, lazy unloading, etc.)
+  for (const [id, node] of elementRegistry) {
+    if (!document.contains(node)) {
+      elementRegistry.delete(id);
+      reverseRegistry.delete(node);
+    }
+  }
 }
 
 // Walk up 2-3 parent levels collecting tag.firstClass segments.
