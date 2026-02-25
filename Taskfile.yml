@@ -67,6 +67,12 @@ tasks:
     cmds:
       - ./{{.BINARY_NAME}}
 
+  demo:
+    desc: Build and run the voice demo (Talker/Doer swarm)
+    deps: [build]
+    cmds:
+      - ./{{.BINARY_NAME}} --voice
+
   bench:
     desc: Run navigation accuracy benchmark (requires GEMINI_API_KEY)
     cmds:
