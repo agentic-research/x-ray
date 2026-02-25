@@ -144,7 +144,7 @@ function connectWebSocket() {
         const targetTab = msg.tab_id;
         if (targetTab) {
           console.log('X-Ray: Rescan requested for tab', targetTab);
-          captureAndSend(targetTab);
+          captureAndSend(targetTab, true);
         }
         break;
       }
@@ -337,7 +337,7 @@ function enrichSummaryWithAX(summary, axMap) {
 
 // Capture snapshot from the given tab and send to server with tab_id.
 // Flow: build registry → draw overlay → CDP screenshot (overlay visible) → remove overlay → send.
-async function captureAndSend(tabId) {
+async function captureAndSend(tabId, isRescan = false) {
   // Step 1: Get summary from content script (builds registry).
   // If the content script isn't loaded (extension reloaded while tab was open), inject it first.
   let response;
@@ -389,14 +389,17 @@ async function captureAndSend(tabId) {
     : response.summary;
 
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({
+    const payload = {
       type: 'DOM_SNAPSHOT',
       tab_id: tabId,
       url: response.url,
       summary: enrichedSummary,
       screenshot: cdpData.screenshot
-    }));
+    };
+    if (isRescan) payload.is_rescan = true;
+    ws.send(JSON.stringify(payload));
     console.log('X-Ray: Sent DOM_SNAPSHOT for tab', tabId,
+      isRescan ? '(RESCAN — cache bypass)' : '',
       cdpData.axMap.size > 0 ? `(${cdpData.axMap.size} AX-enriched)` : '(no AX)');
   } else {
     console.error('X-Ray: WebSocket not connected');

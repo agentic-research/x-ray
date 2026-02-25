@@ -227,12 +227,14 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	ctx := context.Background()
 	sess := h.getSession(msg.TabID)
 
-	// --- Schema cache lookup ---
+	// --- Schema cache lookup (bypassed on rescan) ---
 	key := cacheKey(msg.URL)
 	var schemaJSON string
 	var fromCache bool
 
-	if key != "" {
+	if msg.IsRescan {
+		log.Printf("Schema CACHE BYPASS (rescan) for %q (tab %d)", key, msg.TabID)
+	} else if key != "" {
 		if cached, ok := h.schemas.Get(key); ok {
 			if bad := mache.ValidateSchema(cached, msg.Summary); len(bad) == 0 {
 				schemaJSON = cached

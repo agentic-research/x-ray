@@ -27,6 +27,7 @@ type InboundMessage struct {
 	Intent        string              `json:"intent,omitempty"`
 	ResolvedItems map[string][]string `json:"resolved_items,omitempty"` // zone mache-id → resolved child mache-ids
 	Message       string              `json:"message,omitempty"`        // VOICE_LOG text
+	IsRescan      bool                `json:"is_rescan,omitempty"`      // bypass schema cache on rescan
 }
 
 // OutboundMessage is the envelope for all server -> browser messages.
