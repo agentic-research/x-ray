@@ -63,6 +63,11 @@ chrome.runtime.onMessage.addListener((msg) => {
     snapshotBtn.textContent = 'Snapshot';
     snapshotBtn.disabled = false;
   }
+  if (msg.type === 'VOICE_STATE_CHANGED') {
+    updateUI(msg);
+    statusEl.textContent = msg.mic ? 'Mic active — speak naturally' : 'Voice session ready';
+    statusEl.className = msg.mic ? 'connected' : '';
+  }
 });
 
 snapshotBtn.addEventListener('click', () => {

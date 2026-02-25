@@ -473,6 +473,10 @@ function setMic(on) {
   try {
     chrome.runtime.sendMessage({ type: on ? 'MIC_ON' : 'MIC_OFF' });
   } catch (_) {}
+  // Broadcast state change so popup updates without polling.
+  try {
+    chrome.runtime.sendMessage({ type: 'VOICE_STATE_CHANGED', ...getState() });
+  } catch (_) {}
   updateBadge();
 }
 
@@ -566,9 +570,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     case 'TOGGLE_MIC':
       if (sessionTabId === null) {
-        // No session yet — start one for the active tab.
+        // No session yet — start one and auto-enable mic once ready.
         chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
           if (tabs[0]) {
+            pendingAutoMic = true;
             await startSession(tabs[0].id);
             sendResponse({ ok: true, ...getState() });
           } else {
