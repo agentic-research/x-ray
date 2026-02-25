@@ -167,10 +167,17 @@ function connectWebSocket() {
           gotoInFlight.add(targetTab); // Suppress auto-snapshot from persistent listener
           chrome.tabs.update(targetTab, { url }, () => {
             // Wait for page to finish loading, then auto-snapshot.
+            // Safety timeout: remove listener if page never completes (blocked, stopped, error).
+            let cleaned = false;
+            const cleanup = () => {
+              if (cleaned) return;
+              cleaned = true;
+              chrome.tabs.onUpdated.removeListener(listener);
+              gotoInFlight.delete(targetTab);
+            };
             const listener = (tabId, changeInfo) => {
               if (tabId === targetTab && changeInfo.status === 'complete') {
-                chrome.tabs.onUpdated.removeListener(listener);
-                gotoInFlight.delete(targetTab);
+                cleanup();
                 lastKnownUrls.set(targetTab, url); // Sync tracked URL
                 console.log('X-Ray: Page loaded, auto-capturing snapshot for tab', targetTab);
                 pendingSnapshots.add(targetTab);
@@ -178,6 +185,12 @@ function connectWebSocket() {
               }
             };
             chrome.tabs.onUpdated.addListener(listener);
+            setTimeout(() => {
+              if (!cleaned) {
+                console.warn('X-Ray: GOTO_URL listener timeout for tab', targetTab, '— cleaning up');
+                cleanup();
+              }
+            }, 30000); // 30s safety net
           });
         }
         break;
@@ -443,6 +456,8 @@ async function captureAndSend(tabId) {
 
 // --- Voice session lifecycle (side effects only — state in voiceReducer) ---
 
+let sessionStarting = false; // Guard against concurrent startSession calls (TOCTOU).
+
 async function hasOffscreen() {
   const contexts = await chrome.runtime.getContexts({
     contextTypes: ['OFFSCREEN_DOCUMENT']
@@ -454,34 +469,39 @@ async function hasOffscreen() {
 // If mic permission hasn't been granted yet, opens a popup to request it.
 // State is already set by the reducer — this function only does Chrome API work.
 async function startSession(tabId) {
+  if (sessionStarting) {
+    voiceLog(tabId, 'startSession already in progress, skipping');
+    return;
+  }
+  sessionStarting = true;
   voiceLog(tabId, 'startSession called');
 
-  // Check mic permission — offscreen docs can't show the Chrome prompt.
   try {
-    const perm = await navigator.permissions.query({ name: 'microphone' });
-    voiceLog(tabId, `mic permission: ${perm.state}`);
-    if (perm.state !== 'granted') {
-      voiceLog(tabId, 'opening mic-setup.html grant window');
-      chrome.windows.create({
-        url: 'mic-setup.html',
-        type: 'popup',
-        width: 420, height: 320,
-        focused: true
-      });
-      return; // Wait for MIC_GRANTED event to retry.
+    // Check mic permission — offscreen docs can't show the Chrome prompt.
+    try {
+      const perm = await navigator.permissions.query({ name: 'microphone' });
+      voiceLog(tabId, `mic permission: ${perm.state}`);
+      if (perm.state !== 'granted') {
+        voiceLog(tabId, 'opening mic-setup.html grant window');
+        chrome.windows.create({
+          url: 'mic-setup.html',
+          type: 'popup',
+          width: 420, height: 320,
+          focused: true
+        });
+        return; // Wait for MIC_GRANTED event to retry.
+      }
+    } catch (e) {
+      voiceLog(tabId, `permissions.query error (non-fatal): ${e.message}`);
     }
-  } catch (e) {
-    voiceLog(tabId, `permissions.query error (non-fatal): ${e.message}`);
-  }
 
-  // Tear down any existing session first.
-  if (await hasOffscreen()) {
-    voiceLog(tabId, 'tearing down existing offscreen doc');
-    try { chrome.runtime.sendMessage({ type: 'VOICE_STOP' }); } catch (_) {}
-    await chrome.offscreen.closeDocument();
-  }
+    // Tear down any existing session first.
+    if (await hasOffscreen()) {
+      voiceLog(tabId, 'tearing down existing offscreen doc');
+      try { chrome.runtime.sendMessage({ type: 'VOICE_STOP' }); } catch (_) {}
+      await chrome.offscreen.closeDocument();
+    }
 
-  try {
     await chrome.offscreen.createDocument({
       url: 'offscreen.html',
       reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'],
@@ -489,7 +509,9 @@ async function startSession(tabId) {
     });
     voiceLog(tabId, 'offscreen doc created (offscreen will request tab ID)');
   } catch (e) {
-    voiceLog(tabId, `offscreen createDocument FAILED: ${e.message}`);
+    voiceLog(tabId, `startSession FAILED: ${e.message}`);
+  } finally {
+    sessionStarting = false;
   }
 }
 
@@ -721,9 +743,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   lastKnownUrls.set(tabId, url);
   if (prev === url) return;
 
-  // Skip if already have a schema or snapshot in progress for this tab.
-  if (schemaReadyTabs.has(tabId) || pendingSnapshots.has(tabId)) {
-    // URL changed but we had a schema — invalidate it for the new page.
+  // Skip if snapshot already in progress for this tab.
+  if (pendingSnapshots.has(tabId)) {
+    schemaReadyTabs.delete(tabId); // Invalidate stale schema for new URL.
+    return;
+  }
+  // Invalidate stale schema (URL changed, old schema is for the previous page).
+  if (schemaReadyTabs.has(tabId)) {
     schemaReadyTabs.delete(tabId);
   }
 
