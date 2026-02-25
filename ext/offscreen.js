@@ -4,15 +4,10 @@
 // streams PCM to Gemini, plays back audio responses.
 //
 // Host is read from chrome.storage.local (same as background.js).
-// Tab ID is passed via URL fragment: offscreen.html#tab=12345
+// Tab ID is sent via VOICE_START message (MV3 strips URL fragments from offscreen docs).
 //
 // Mic starts OFF. Background sends MIC_ON/MIC_OFF to toggle streaming.
 // Session stays alive independently of mic state.
-
-// Immediately report that offscreen JS loaded — helps debug silent failures.
-chrome.runtime.sendMessage(
-  { type: 'VOICE_STATUS', status: 'loaded', text: 'offscreen.js executing' }
-).catch(() => {});
 
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
@@ -207,3 +202,8 @@ chrome.runtime.onMessage.addListener((msg) => {
       break;
   }
 });
+
+// Signal that listeners are registered and offscreen is ready for VOICE_START.
+chrome.runtime.sendMessage(
+  { type: 'VOICE_STATUS', status: 'loaded', text: 'offscreen.js ready' }
+).catch(() => {});
