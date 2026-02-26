@@ -327,7 +327,13 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		d.sess.ResetSchema()
 		newEngine := mache.NewEngine()
 		d.sess.SwapEngine(newEngine)
-		d.sess.Navigator.SetEngine(newEngine)
+		if err := d.sess.Composite.Unmount("browser"); err != nil {
+			log.Printf("Doer [tab %d]: unmount browser: %v", d.tabID, err)
+		}
+		if err := d.sess.Composite.Mount("browser", newEngine); err != nil {
+			log.Printf("Doer [tab %d]: mount browser: %v", d.tabID, err)
+		}
+		d.sess.Navigator.SetGraph(d.sess.Composite)
 		d.handler.sendGoto(d.tabID, action.Path)
 		d.updateStep(fmt.Sprintf("navigating to %s", action.Path))
 		log.Printf("Doer [tab %d]: goto %s", d.tabID, action.Path)
@@ -354,7 +360,13 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 			d.sess.ResetSchema()
 			newEngine := mache.NewEngine()
 			d.sess.SwapEngine(newEngine)
-			d.sess.Navigator.SetEngine(newEngine)
+			if err := d.sess.Composite.Unmount("browser"); err != nil {
+				log.Printf("Doer [tab %d]: unmount browser: %v", d.tabID, err)
+			}
+			if err := d.sess.Composite.Mount("browser", newEngine); err != nil {
+				log.Printf("Doer [tab %d]: mount browser: %v", d.tabID, err)
+			}
+			d.sess.Navigator.SetGraph(d.sess.Composite)
 			d.handler.sendRescan(d.tabID, "")
 			d.updateStep("rescanning full page")
 			log.Printf("Doer [tab %d]: full rescan", d.tabID)

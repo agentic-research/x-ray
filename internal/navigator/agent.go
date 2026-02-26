@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/jamesgardner/x-ray/internal/mache"
+	"github.com/agentic-research/mache/graph"
 	"google.golang.org/genai"
 )
 
@@ -36,8 +36,8 @@ type TabInfo struct {
 type Agent struct {
 	generator  ContentGenerator
 	model      string
-	engine     *mache.Engine
-	mu         sync.RWMutex // protects progressFn
+	fs         *NavFS // unified filesystem over CompositeGraph
+	mu         sync.RWMutex
 	progressFn func(toolName string, args map[string]any)
 
 	registry   *ToolRegistry
@@ -49,17 +49,21 @@ type Agent struct {
 	rescanTool *RescanTool
 }
 
-func NewAgent(gen ContentGenerator, model string, engine *mache.Engine) *Agent {
+// NewAgent creates a Navigator agent backed by a unified graph.Graph.
+// The graph is typically a CompositeGraph with mounts like "browser" and "iterm".
+func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 	if model == "" {
 		model = "gemini-2.5-flash"
 	}
 
-	ls := &LsTool{engine: engine}
-	cat := &CatTool{engine: engine}
-	act := &ActTool{engine: engine}
+	fs := NewNavFS(g)
+
+	ls := &LsTool{fs: fs}
+	cat := &CatTool{fs: fs}
+	act := &ActTool{fs: fs}
 	scroll := &ScrollTool{}
 	goTo := &GotoTool{}
-	rescan := &RescanTool{engine: engine}
+	rescan := &RescanTool{fs: fs}
 	listTabs := &ListTabsTool{}
 	switchTab := &SwitchTabTool{}
 
@@ -76,7 +80,7 @@ func NewAgent(gen ContentGenerator, model string, engine *mache.Engine) *Agent {
 	return &Agent{
 		generator:  gen,
 		model:      model,
-		engine:     engine,
+		fs:         fs,
 		registry:   reg,
 		scrollTool: scroll,
 		listTabs:   listTabs,
@@ -87,13 +91,14 @@ func NewAgent(gen ContentGenerator, model string, engine *mache.Engine) *Agent {
 	}
 }
 
-// SetEngine updates the engine when a new schema is applied.
-func (a *Agent) SetEngine(engine *mache.Engine) {
-	a.engine = engine
-	a.lsTool.engine = engine
-	a.catTool.engine = engine
-	a.actTool.engine = engine
-	a.rescanTool.engine = engine
+// SetGraph swaps the underlying graph (e.g., after remounting browser engine).
+func (a *Agent) SetGraph(g graph.Graph) {
+	newFS := NewNavFS(g)
+	a.fs = newFS
+	a.lsTool.fs = newFS
+	a.catTool.fs = newFS
+	a.actTool.fs = newFS
+	a.rescanTool.fs = newFS
 }
 
 // SetScrollFunc injects the scroll callback used by the scroll tool.
@@ -141,8 +146,6 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 	}
 
 	// Pre-fill a tree dump so the model sees the full filesystem structure upfront.
-	// This prevents small models from guessing zone names (e.g., /main/story_list
-	// when the actual path is /main/feed) and wasting iterations on 404s.
 	treeDump := a.buildTreeDump()
 	log.Printf("Navigator: pre-filled tree:\n%s", treeDump)
 
@@ -247,21 +250,19 @@ func (a *Agent) ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string
 }
 
 // buildTreeDump generates a compact tree listing of the virtual filesystem.
-// Shows zone structure (2 levels) with leaf contents but skips recursing into
-// _c/ subdirectories — the model uses "children" for item details.
 func (a *Agent) buildTreeDump() string {
-	var sb strings.Builder
-	rootEntries, err := a.engine.ListDir("/")
-	if err != nil {
-		return "(empty filesystem)"
+	rootEntries, err := a.fs.ListDir("/")
+	if err != nil || len(rootEntries) == 0 {
+		return ""
 	}
+	var sb strings.Builder
 	for _, entry := range rootEntries {
 		a.walkTree(&sb, "/"+strings.TrimSuffix(entry, "/"), entry, "", 0)
 	}
 	return strings.TrimRight(sb.String(), "\n")
 }
 
-const maxTreeDepth = 3 // root → top-level → zone → zone contents
+const maxTreeDepth = 3
 
 func (a *Agent) walkTree(sb *strings.Builder, fullPath, name, indent string, depth int) {
 	isDir := strings.HasSuffix(name, "/")
@@ -270,12 +271,11 @@ func (a *Agent) walkTree(sb *strings.Builder, fullPath, name, indent string, dep
 		return
 	}
 	// Don't recurse into _c/ — it can have dozens of entries.
-	// The model reads the "children" file instead.
 	if name == "_c/" {
 		return
 	}
 	dirPath := strings.TrimSuffix(fullPath, "/")
-	entries, err := a.engine.ListDir(dirPath)
+	entries, err := a.fs.ListDir(dirPath)
 	if err != nil {
 		return
 	}
@@ -285,74 +285,56 @@ func (a *Agent) walkTree(sb *strings.Builder, fullPath, name, indent string, dep
 }
 
 // NavigatorSystemPrompt is the system instruction shared by text and voice modes.
-const NavigatorSystemPrompt = `You are 'The Navigator', an agent that helps users interact with web pages through a semantic filesystem.
+const NavigatorSystemPrompt = `You are 'The Navigator', an agent that helps users interact with web pages and terminal sessions through a semantic filesystem.
 
-You have access to a semantic filesystem that represents the current web page. The filesystem organizes interactive elements into logical zones (e.g., /header/nav, /main/content, /sidebar/filters).
+You have access to a semantic filesystem with multiple mount points:
+- /browser/ — web page elements organized into logical zones (e.g., /browser/header/nav, /browser/main/content)
+- /iterm/ — terminal sessions (if iTerm2 is running). Contains windows/tabs/sessions with buffer content, status, and cwd.
 
 Your tools:
-- ls(path): List directory contents. Always start with ls("/") to see the top-level zones.
-- cat(path): Read a file. Use this to read "description" or "children" files.
-- act(path, action, payload?): Execute a browser action on the element at this path. Actions: "click", "focus", "type", "enter". For "type", include the text as the payload parameter. For "enter", dispatches an Enter keypress (useful for search bars without a visible submit button).
-- scroll(direction): Scroll the page to load more content. Direction: "down" or "up".
-- goto(url): Navigate the browser to a new URL. After navigation, the filesystem updates — run ls("/") to explore the new page.
-- rescan(path?): Rescan the page with a fresh screenshot. Without a path, rescans the full page. With a path (e.g., rescan("/main/player")), zooms into that zone for higher detail — discovers internal controls like play buttons, volume sliders, etc. Use when you can't find an element or need finer detail within a zone.
-- list_tabs(): List all open browser tabs (ID, title, URL). ALWAYS call this before goto() — if the site is already open in another tab, use switch_tab() instead. Switching is instant; navigating reloads.
-- switch_tab(tab_id): Switch to an existing open tab by ID. The filesystem updates to reflect the new page.
+- ls(path): List directory contents. Start with ls("/") to see available mount points.
+- cat(path): Read a file. Use for "description", "children", "buffer", "status" files.
+- act(path, action, payload?): Execute an action on the element at this path.
+  For browser elements: "click", "focus", "type", "enter".
+  For terminal sessions: "type" (send text — include \n for Enter), "enter" (send special key like "ctrl-c"), "focus" (bring window to front).
+- scroll(direction): Scroll the browser page. Direction: "down" or "up".
+- goto(url): Navigate the browser to a new URL.
+- rescan(path?): Rescan the browser page with a fresh screenshot.
+- list_tabs(): List all open browser tabs.
+- switch_tab(tab_id): Switch to an existing open browser tab by ID.
 
-You are a NAVIGATIONAL agent. Words like "home", "back", "go to", and "open" are spatial/navigational — they refer to WHERE the user wants to be, not WHAT to click on the current page. When the user says "go home" or "take me home", they mean navigate to the site's homepage using goto(). Derive the homepage from the current domain (e.g., on reddit.com/r/news → goto("https://www.reddit.com")).
+TERMINAL SESSIONS:
+When working with /iterm/ terminal sessions:
+1. cat the "buffer" file to see recent terminal output
+2. cat the "status" file to check if the session is "idle" or "running"
+3. Use act(path, "type", "command\n") to type and execute a command
+4. Use act(path, "enter", "ctrl-c") to send special keys
+5. After typing a command, cat the buffer again to see the result
+
+You are a NAVIGATIONAL agent. Words like "home", "back", "go to", and "open" are spatial/navigational — they refer to WHERE the user wants to be.
 
 INTENT CLASSIFICATION — READ vs ACT:
 Before calling act(), ALWAYS classify the user's intent:
 - INFORMATION intents → respond with TEXT, never call act():
-  Questions like "what is…", "what was I…", "what's playing", "tell me about…",
-  "show me…", "list…", "which…", "how many…", "what's on the page", "describe…",
-  "read…", "what are my options", "what do you see".
-  → Use ls() and cat() to gather information, then respond with a text answer. Do NOT click.
+  Questions like "what is…", "what's playing", "tell me about…", "show me…", "list…"
+  → Use ls() and cat() to gather information, then respond with text.
 - ACTION intents → use act() to interact:
-  Commands like "click…", "play…", "open…", "go to…", "search for…", "type…",
-  "select…", "press…", "subscribe…", "pause…", "skip…", "next…", "close…".
-  → Navigate the filesystem and use act() to perform the requested action.
-If the intent is informational, you MUST stop after reading and reply with text. Never click "just in case".
+  Commands like "click…", "play…", "type…", "run…", "search for…"
+  → Navigate the filesystem and use act() to perform the action.
 
 CRITICAL CONSTRAINTS:
-- Do NOT hallucinate tools or paths. Only use paths that you have confirmed exist via ls().
-- Never guess a path. Always ls() a directory before trying to cat() or act() on its children.
-- You have exactly eight tools: ls, cat, act, scroll, goto, rescan, list_tabs, switch_tab. Do not attempt to use any other tool.
-- If you cannot find an element after exploring the filesystem, use rescan() before giving up. The rescan captures a fresh screenshot and may discover elements that weren't in the original scan. If you can see the zone but need finer detail (e.g., video player controls), use rescan("/path/to/zone") to zoom in.
+- Do NOT hallucinate tools or paths. Only use paths confirmed via ls().
+- Never guess a path. Always ls() a directory before trying to cat() or act().
+- You have exactly eight tools: ls, cat, act, scroll, goto, rescan, list_tabs, switch_tab.
+- If you cannot find an element, use rescan() before giving up.
 
 Strategy:
-1. ls("/") to see the page structure.
-2. Navigate into the most relevant zone based on the user's intent.
-3. Read the "description" file to confirm you've found the right zone.
-4. If the user needs a specific element inside the zone (e.g., "click the first story"):
-   a. cat the zone's "children" file. Each line is: [N] "text"
-   b. The number in brackets is the item number. Use it as the _c/ path.
-      Example: to click the 3rd item, act on "_c/3".
-   c. act on "_c/N" inside that zone to target the specific child element.
-5. If the zone has no "children" file, or the zone itself is the target, act on the zone path directly.
-6. If the user asks for an item beyond what's visible (e.g., "click the 10th post" but only 3 shown), scroll("down") to load more content, then cat the children file again.
+1. ls("/") to see mount points (browser/, iterm/).
+2. Navigate into the relevant mount based on the user's intent.
+3. Read description/status files to confirm context.
+4. For browser: cat "children" → act on "_c/N".
+5. For terminal: cat "buffer" → act with "type" to send commands.
 
-Example workflow for "click the first story" on a news page:
-  ls("/") already shows the full tree:
-    header/
-      nav/
-        description  mache_id
-    main/
-      feed/
-        _c/  children  description  mache_id
-    footer/
-      description  mache_id
-  cat("/main/feed/children")           → [1] "First Story Title"
-                                         [2] "Second Story Title"
-  act("/main/feed/_c/1", "click")      → clicks the first story
+Be decisive. Two calls should be enough: cat children → act.
 
-Example workflow for "search for Golang tutorials" on YouTube:
-  ls("/") shows: header/ main/ sidebar/
-  cat("/header/search_bar/description")  → "Search input field"
-  act("/header/search_bar", "type", "Golang tutorials")
-  act("/header/search_bar", "enter")
-
-Be decisive. You already know the full tree from ls("/"). Two calls should be enough: cat children → act.
-If you need more items, add scroll → cat children → act (up to 8 iterations total).
-
-CONTINUATION: When your intent starts with [CONTINUATION], a previous action was executed and the page may have changed. The filesystem reflects the current state. First, VERIFY the previous action worked: use ls/cat to check the page actually changed as expected. If you clicked a button and it's still there, it may have failed — try a different approach. Then continue toward the original goal: if you can answer by reading page content, respond with text. If more actions are needed, take the next step.`
+CONTINUATION: When your intent starts with [CONTINUATION], a previous action was executed and the page may have changed. Verify the action worked, then continue toward the original goal.`

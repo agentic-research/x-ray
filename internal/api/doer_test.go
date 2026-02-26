@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jamesgardner/x-ray/internal/mache"
+	"github.com/agentic-research/mache/graph"
 	"github.com/jamesgardner/x-ray/internal/navigator"
 	"google.golang.org/genai"
 )
@@ -28,7 +28,7 @@ type mockIntentHandler struct {
 	err         error
 	delay       time.Duration // artificial latency
 	handleCalls atomic.Int32
-	engine      *mache.Engine
+	graph       graph.Graph
 
 	mu         sync.Mutex
 	responses  []mockResponse
@@ -59,7 +59,7 @@ func (m *mockIntentHandler) ExecuteTool(_ context.Context, _ *genai.FunctionCall
 	return "", nil
 }
 
-func (m *mockIntentHandler) SetEngine(engine *mache.Engine) { m.engine = engine }
+func (m *mockIntentHandler) SetGraph(g graph.Graph) { m.graph = g }
 
 func (m *mockIntentHandler) SetScrollFunc(fn func(ctx context.Context, direction string) error) {
 	m.mu.Lock()

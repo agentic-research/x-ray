@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 
-	"github.com/jamesgardner/x-ray/internal/mache"
+	"github.com/agentic-research/mache/graph"
 	"github.com/jamesgardner/x-ray/internal/navigator"
 	"google.golang.org/genai"
 )
@@ -21,7 +21,7 @@ type SchemaGenerator interface {
 type IntentHandler interface {
 	HandleIntent(ctx context.Context, intent string, readOnly bool) (*navigator.ActionResult, string, error)
 	ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string, *navigator.ActionResult)
-	SetEngine(engine *mache.Engine)
+	SetGraph(g graph.Graph)
 	SetScrollFunc(fn func(ctx context.Context, direction string) error)
 	SetProgressFunc(fn func(toolName string, args map[string]any))
 	SetListTabsFunc(fn func(ctx context.Context) ([]navigator.TabInfo, error))

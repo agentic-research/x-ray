@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/agentic-research/mache/graph"
 	"github.com/gorilla/websocket"
 	"github.com/jamesgardner/x-ray/internal/mache"
 	"github.com/jamesgardner/x-ray/internal/navigator"
@@ -48,6 +49,7 @@ type DOMUpdate struct {
 type TabSession struct {
 	TabID             int
 	Engine            *mache.Engine
+	Composite         *graph.CompositeGraph // multiplexes browser + iterm
 	Navigator         IntentHandler
 	SchemaReady       chan struct{}            // closed when schema is applied
 	DOMUpdateCh       chan DOMUpdate           // receives summary + resolved items after scroll
@@ -164,10 +166,15 @@ func (h *Handler) getSession(tabID int) *TabSession {
 	}
 
 	engine := mache.NewEngine()
-	nav := navigator.NewAgent(h.NavGen, h.NavModel, engine)
+	composite := graph.NewCompositeGraph()
+	if err := composite.Mount("browser", engine); err != nil {
+		log.Printf("Session: mount browser (tab %d): %v", tabID, err)
+	}
+	nav := navigator.NewAgent(h.NavGen, h.NavModel, composite)
 	sess := &TabSession{
 		TabID:             tabID,
 		Engine:            engine,
+		Composite:         composite,
 		Navigator:         nav,
 		SchemaReady:       make(chan struct{}),
 		DOMUpdateCh:       make(chan DOMUpdate, 1),
@@ -516,7 +523,7 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	}
 
 	sess.Engine.LoadChildren(msg.Summary, resolvedItems)
-	sess.Navigator.SetEngine(sess.Engine)
+	sess.Navigator.SetGraph(sess.Composite)
 
 	// Signal that schema is ready — unblocks any waiting handleNavigate or voice tool call.
 	sess.SignalSchemaReady()
