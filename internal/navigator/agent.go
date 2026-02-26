@@ -175,18 +175,24 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult,
 			}
 			return nil, "", fmt.Errorf("empty response from model (finish_reason: %v)", candidate.FinishReason)
 		}
-		part := candidate.Content.Parts[0]
-
-		if part.Text != "" {
-			return nil, part.Text, nil
+		var fc *genai.FunctionCall
+		var finalMsg string
+		for _, p := range candidate.Content.Parts {
+			if p.FunctionCall != nil {
+				fc = p.FunctionCall
+				break
+			}
+			if p.Text != "" && !p.Thought {
+				finalMsg = p.Text
+			}
 		}
 
-		if part.FunctionCall != nil {
-			fc := part.FunctionCall
-			history = append(history, &genai.Content{
-				Role:  "model",
-				Parts: []*genai.Part{{FunctionCall: fc}},
-			})
+		if fc == nil && finalMsg != "" {
+			return nil, finalMsg, nil
+		}
+
+		if fc != nil {
+			history = append(history, candidate.Content)
 
 			if a.progressFn != nil {
 				a.progressFn(fc.Name, fc.Args)
