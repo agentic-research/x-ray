@@ -2,11 +2,17 @@ module github.com/jamesgardner/x-ray
 
 go 1.25.0
 
+// Local replace: mache feat/iterm-bridge has Act() and CompositeGraph.
+// Remove once mache v0.5.0 is released.
+replace github.com/agentic-research/mache => /Users/jamesgardner/remotes/art/mache
+
 require (
 	github.com/agentic-research/mache v0.4.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
+	github.com/tmc/it2 v0.0.0-20251116041255-d10afde85159
 	google.golang.org/genai v1.47.0
+	google.golang.org/protobuf v1.35.2
 )
 
 require (
@@ -33,7 +39,6 @@ require (
 	golang.org/x/text v0.25.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/grpc v1.66.2 // indirect
-	google.golang.org/protobuf v1.34.2 // indirect
 	modernc.org/libc v1.67.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
