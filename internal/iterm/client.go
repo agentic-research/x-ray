@@ -28,6 +28,7 @@ import (
 // request/response correlation.
 type Client struct {
 	conn    *websocket.Conn
+	writeMu sync.Mutex                       // protects WriteMessage calls
 	msgs    chan *pb.ServerOriginatedMessage // notifications (id==0)
 	done    chan struct{}
 	counter atomic.Int64
@@ -162,7 +163,12 @@ func (c *Client) send(ctx context.Context, msg *pb.ClientOriginatedMessage) (*pb
 	if err != nil {
 		return nil, fmt.Errorf("iterm2: marshal: %w", err)
 	}
-	if err := c.conn.WriteMessage(websocket.BinaryMessage, data); err != nil {
+
+	c.writeMu.Lock()
+	err = c.conn.WriteMessage(websocket.BinaryMessage, data)
+	c.writeMu.Unlock()
+
+	if err != nil {
 		c.mu.Lock()
 		delete(c.pending, id)
 		c.mu.Unlock()
