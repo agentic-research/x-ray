@@ -312,6 +312,16 @@ function connectWebSocket() {
     console.error('X-Ray: WebSocket error', err);
     ws.close();
   };
+
+  // Keep the Manifest V3 service worker alive by sending a heartbeat.
+  // The Go server ignores PING messages — their arrival alone keeps Chrome awake.
+  if (!self.xrayPingInterval) {
+    self.xrayPingInterval = setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'PING' }));
+      }
+    }, 20000);
+  }
 }
 
 // --- Layout stabilization: wait for DOM to stop mutating before snapshot ---

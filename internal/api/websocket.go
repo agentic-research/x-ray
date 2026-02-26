@@ -295,6 +295,8 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			h.handleTabsListed(msg)
 		case MsgVoiceLog:
 			log.Printf("Voice [ext tab %d]: %s", msg.TabID, msg.Message)
+		case MsgPing:
+			// Client-side keep-alive heartbeat — no action needed.
 		default:
 			log.Printf("WebSocket: unknown message type: %s", msg.Type)
 		}

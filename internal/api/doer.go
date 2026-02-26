@@ -223,6 +223,19 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 
 		lastSummary = d.dispatchAction(goalCtx, action)
 
+		// If we started on Tab 0 (disconnected), the goto woke up the extension
+		// which reported its real tab ID. Rebind the Doer to the new session.
+		d.handler.mu.Lock()
+		activeTab := d.handler.activeVoiceTab
+		d.handler.mu.Unlock()
+
+		if activeTab != 0 && activeTab != d.tabID {
+			log.Printf("Doer [tab %d]: tab promoted to %d, rebinding", d.tabID, activeTab)
+			d.tabID = activeTab
+			d.sess = d.handler.getSession(activeTab)
+			d.wireNavigatorCallbacks()
+		}
+
 		// For interactive actions (click/type/enter/focus), detect if the page navigated.
 		if isInteractiveAction(action.Action) {
 			d.sess.ResetSchema()

@@ -101,13 +101,13 @@ func TestBug_NavigatorCallbackOverwrite(t *testing.T) {
 }
 
 func TestBug_DoerTeleportationTab0(t *testing.T) {
-	// Demonstrates the architectural flaw where Doer starts on Tab 0,
-	// a real tab connects, and the Doer is still holding onto Tab 0's Engine.
+	// Verifies that a Doer starting on Tab 0 (disconnected extension) correctly
+	// rebinds to the real tab when the extension wakes up mid-goal.
 
 	mock := &mockIntentHandler{
 		responses: []mockResponse{
 			{action: &navigator.ActionResult{Action: "goto", Path: "https://example.com"}},
-			{textResp: "I am stuck reading the empty tab 0 engine."},
+			{textResp: "Successfully reading the real tab 99 engine."},
 		},
 	}
 
@@ -119,6 +119,12 @@ func TestBug_DoerTeleportationTab0(t *testing.T) {
 
 	// Pre-signal schema so the Doer doesn't wait 3s for the initial soft wait.
 	sess0.SignalSchemaReady()
+
+	// Pre-create sess99 with a navigator so the rebind has something to work with.
+	// In production, handleDOMSnapshot sets up the navigator on the real session.
+	sess99 := h.getSession(99)
+	sess99.Navigator = mock
+	sess99.SwapEngine(mache.NewEngine())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -143,11 +149,7 @@ func TestBug_DoerTeleportationTab0(t *testing.T) {
 	h.activeVoiceTab = 99
 	h.mu.Unlock()
 
-	// Simulate the snapshot arriving on the real tab
-	sess99 := h.getSession(99)
-	sess99.SwapEngine(mache.NewEngine()) // Give it a real engine
-
-	// The handleDOMSnapshot logic detects the 0 -> 99 transition and unblocks Tab 0
+	// Signal Tab 0's schema so the goto unblocks.
 	if oldSess, ok := h.sessions[0]; ok {
 		oldSess.SignalSchemaReady()
 	}
@@ -161,13 +163,13 @@ func TestBug_DoerTeleportationTab0(t *testing.T) {
 	}
 	_, _, _, result := doer.State().Snapshot()
 
-	// Known architectural limitation: The Doer finishes on tab 0's engine
-	// because it doesn't rebind mid-goal when the real tab arrives.
-	// This is acceptable because the early tab promotion in handleDOMSnapshot
-	// unblocks the Doer's goto wait, and the next voice command will route
-	// to the correct tab via resolveDoer().
 	if !result.Success {
 		t.Errorf("expected Doer to complete, got error: %s", result.Error)
+	}
+
+	// Verify the Doer rebound to the real tab.
+	if doer.tabID != 99 {
+		t.Errorf("expected Doer to rebind to tab 99, got tab %d", doer.tabID)
 	}
 }
 

@@ -22,6 +22,7 @@ const (
 	MsgSwitchTab         = "SWITCH_TAB"
 	MsgTabClosed         = "TAB_CLOSED"
 	MsgDOMMutated        = "DOM_MUTATED"
+	MsgPing              = "PING"
 )
 
 // TabInfo is an alias for navigator.TabInfo (canonical definition lives there).
