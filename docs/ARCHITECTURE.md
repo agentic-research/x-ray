@@ -18,6 +18,7 @@ graph TB
         WS[WebSocket Handler<br/>internal/api/websocket.go]
         TALKER[Talker — voice.go<br/>Gemini Live, always responsive<br/>3 tools: check_status, issue_command, cancel_task]
         DOER[Doer — doer.go<br/>Background goroutine<br/>Runs Navigator tool loops]
+        EDGE[Edge Detection — edges.go<br/>Canny pipeline: Sobel + NMS + hysteresis<br/>Detects canvas/WebGL UI regions]
         CART[Cartographer<br/>Stage 1]
         NAV[Navigator — agent.go<br/>Stage 2, 8 tools]
         ENG[Mache Engine<br/>Virtual Filesystem]
@@ -27,7 +28,8 @@ graph TB
         WS --> SESS
         TALKER --> DOER
         DOER --> NAV
-        SESS --> CART
+        SESS --> EDGE
+        EDGE --> CART
         SESS --> NAV
         CART --> ENG
         CART --> CACHE
@@ -170,6 +172,7 @@ The Set-of-Mark overlay in `content.js` uses semantic colors so the Cartographer
 | Green | Inputs | `<input>`, `<textarea>`, `<select>` |
 | Purple | Containers | `<main>`, `<section>`, `<article>`, `<nav>`, semantic roles |
 | Red | Other | Anything else |
+| Cyan | Canvas-detected | Edge-detected regions inside `<canvas>` / WebGL (cv-N IDs) |
 
 Each element in the DOM summary includes normalized `[x, y, w, h]` bounds (coordinates divided by page dimensions) and a Color field, both of which are carried into the VFS as files under `_c/N/`.
 
@@ -203,7 +206,11 @@ sequenceDiagram
         Cache-->>WS: cached schema
         WS->>WS: ValidateSchema against current summary
     else Cache MISS or STALE
-        WS->>Cart: GenerateSchema(screenshot, summary)
+        WS->>WS: DetectCanvasRegions(screenshot, existingBounds)
+        Note over WS: Canny edge detection: grayscale → blur → Sobel → NMS → hysteresis → contours
+        WS->>WS: Filter by IoU overlap with mache bounds, assign cv-N IDs
+        WS->>WS: Draw cyan boxes on screenshot, append cv-N to summary
+        WS->>Cart: GenerateSchema(annotated screenshot, enriched summary)
         Cart->>Cart: Gemini Vision (structured output, T=0.1)
         Cart-->>WS: JSON {mounts: [{virtual_path, mache_id, description, primary_items, item_selector}]}
         WS->>WS: ValidateSchema — retry on hallucinated IDs
@@ -323,6 +330,7 @@ Each `TabSession` contains:
 - `SchemaReady` — channel that unblocks when schema is applied
 - `DOMMutatedCh` — channel signalled by MutationObserver for instant settle (~150ms)
 - `CurrentURL` — prevents redundant goto navigation
+- `CVRegions` — edge-detected canvas regions (cv-N), used for CDP pixel-click dispatch
 
 **Session pruning**: When a tab is closed, the extension sends a `TAB_CLOSED` message. The daemon cancels the corresponding Doer context and deletes the session from memory to prevent leaks.
 
@@ -481,6 +489,34 @@ sequenceDiagram
     N->>M: ls("/main/player") → controls/, progress_bar/, volume/
 ```
 
+## Canvas Edge Detection (Canvas Blindspot)
+
+Standard DOM parsing fails on `<canvas>`, WebGL, and other pixel-rendered content (Google Maps, Figma, games) where the DOM is a single opaque element. The edge detection pipeline runs server-side on the screenshot JPEG before the Cartographer call, detecting rectangular UI regions inside canvas elements.
+
+### Pipeline (`edges.go`)
+
+```
+JPEG decode → grayscale → Gaussian blur (5×5, edge-clamped)
+  → Sobel edges (gradient magnitude + direction)
+  → Non-maximum suppression (thin to 1px)
+  → Double threshold + hysteresis (BFS flood, thresholds 50/150)
+  → Connected component flood-fill (8-connectivity)
+  → Bounding boxes → merge overlapping (IoU > 0.3)
+  → Filter: skip area < 400px² or > 50% image area
+  → Filter: skip IoU > 0.3 with existing mache bounds
+  → Assign cv-0, cv-1, ... IDs
+  → Draw cyan rectangles + labels on screenshot
+```
+
+### Click Dispatch
+
+Actions targeting `cv-N` IDs bypass the content script's `el.click()` path entirely:
+
+1. `SendActionToExtension` resolves the cv-N region's pixel center from `sess.CVRegions`
+2. `OutboundMessage` includes `pixel_x` and `pixel_y` fields
+3. `background.js` intercepts the pixel coordinates and uses CDP `Input.dispatchMouseEvent` (mousePressed + mouseReleased) at the mapped viewport coordinates
+4. Screenshot coordinates (scaled to 800px) are mapped back to actual viewport dimensions via `Page.getLayoutMetrics`
+
 ## WebSocket Message Types
 
 ### Inbound (extension → server)
@@ -500,7 +536,7 @@ sequenceDiagram
 | Message | Fields | Description |
 |---------|--------|-------------|
 | `SCHEMA_READY` | tab_id, schema | Cartographer output applied |
-| `EXECUTE_ACTION` | tab_id, mache_id, action, payload | Click/type/enter/focus on element |
+| `EXECUTE_ACTION` | tab_id, mache_id, action, payload, pixel_x?, pixel_y? | Click/type/enter/focus on element (pixel coords for cv-N canvas clicks via CDP) |
 | `SCROLL` | tab_id, direction, selectors | Scroll with CSS selectors for re-evaluation |
 | `GOTO_URL` | tab_id, url | Navigate to URL |
 | `RESCAN` | tab_id, mache_id? | Trigger fresh snapshot (optional zoom target) |
@@ -527,7 +563,7 @@ sequenceDiagram
 Seven files, no build step, no dependencies.
 
 - **`content.js`**: Injected into every page. Builds an in-memory element registry (zero DOM mutation -- SPA-safe, stable mache-IDs across rebuilds), draws/removes semantic color overlay (Blue=links, Orange=buttons, Green=inputs, Purple=containers, Red=other) with bounding boxes + ID labels, generates flat text summary with Color, normalized Bounds, and DOM breadcrumb Paths, executes browser actions on command, evaluates CSS selectors after scroll to resolve fresh primary items.
-- **`background.js`**: Service worker. WebSocket to agentd, CDP page freeze (`Emulation.setScriptExecutionDisabled`) during screenshot capture, scaled JPEG screenshot (800px wide, q60), CDP accessibility tree capture + AX-to-mache-id mapping, per-tab schema tracking, auto-snapshot on manual navigation. Handles `RESCAN` (with optional mache_id for magnifying glass crop), `GOTO_URL`, `SCROLL`, `EXECUTE_ACTION`, `LIST_TABS`, `SWITCH_TAB`, `RESOLVE_SELECTORS`. Sends `TAB_ACTIVATED` on connect and tab switch.
+- **`background.js`**: Service worker. WebSocket to agentd, CDP page freeze (`Emulation.setScriptExecutionDisabled`) during screenshot capture, scaled JPEG screenshot (800px wide, q60), CDP accessibility tree capture + AX-to-mache-id mapping, per-tab schema tracking, auto-snapshot on manual navigation. Handles `RESCAN` (with optional mache_id for magnifying glass crop), `GOTO_URL`, `SCROLL`, `EXECUTE_ACTION` (with CDP pixel-click for cv-N canvas regions via `Input.dispatchMouseEvent`), `LIST_TABS`, `SWITCH_TAB`, `RESOLVE_SELECTORS`. Sends `TAB_ACTIVATED` on connect and tab switch.
 - **`popup.html/js`**: Extension popup. Snapshot button, mic toggle, session kill button.
 - **`offscreen.html/js`**: Persistent voice audio bridge. Mic capture (48 -> 16kHz downsample), PCM streaming, audio playback (24kHz).
 - **`manifest.json`**: Manifest V3. Permissions: `activeTab`, `debugger`, `scripting`, `tabs`, `offscreen`.
@@ -537,6 +573,7 @@ Seven files, no build step, no dependencies.
 - Per-tab session registry (`sessions map[int]*TabSession`)
 - `SchemaGenerator`, `IntentHandler`, and `ContentGenerator` interfaces decouple Cartographer/Navigator/LLM for testability
 - **Schema cache**: `schemacache.go` -- mache `MemoryStore` graph persisted to SQLite (`~/.xray/schemas.db`). Keys are `domain+path`. Cache hit validates IDs against current DOM summary; stale entries trigger re-generation. Rescan bypasses cache via `IsRescan` flag.
+- **Canvas edge detection**: Before the Cartographer call, `DetectCanvasRegions()` runs a pure-Go Canny pipeline (grayscale → Gaussian blur → Sobel → NMS → hysteresis → contour flood-fill) on the screenshot JPEG. Detected regions that don't overlap existing mache bounds get `cv-N` IDs, cyan overlay boxes on the screenshot, and summary entries. Actions targeting `cv-N` IDs dispatch via CDP `Input.dispatchMouseEvent` at the region's pixel center instead of DOM `el.click()`.
 - **Generation counter**: Each `handleDOMSnapshot` increments `schemaGen` on the session. If a newer snapshot starts processing (e.g., double goto), the stale Cartographer result is discarded before caching or applying.
 - **Voice handler**: `/voice?tab=N` -- Talker with Gemini Live, delegates work to Doer. No audio suppression needed (Talker tools are instant).
 - **Voice daemon**: `StartVoiceLoop` -- native mic/speaker via sox, same Talker/Doer architecture + Google Search Grounding + echo gate.
