@@ -1,5 +1,25 @@
 # Investigation Log
 
+## 2026-02-25: Navigator Read-Only Intent Bug
+
+### Bug
+User asked "what was I watching recently?" on Crunchyroll. The Navigator correctly read the `continue_watching/children` file and identified 4 shows, but then **also** dispatched `act(click, /main/continue_watching/_c/2)` — clicking Jujutsu Kaisen. This was a read-only question that should have returned text only.
+
+### Root Cause
+The Navigator system prompt (`NavigatorSystemPrompt` in `internal/navigator/agent.go`) was entirely action-oriented. The strategy section always culminated in `act()`, and there was zero guidance for distinguishing informational questions from action commands. Small models (qwen2.5-coder:7b) are especially susceptible — they follow the dominant pattern in the prompt.
+
+### Fix
+Added an **INTENT CLASSIFICATION — READ vs ACT** section to the system prompt, placed before CRITICAL CONSTRAINTS:
+- **INFORMATION intents** ("what is…", "what was I…", "tell me about…", "list…", "which…", etc.) → respond with text, never call `act()`
+- **ACTION intents** ("click…", "play…", "open…", "search for…", "type…", etc.) → use `act()` to interact
+
+The key line: "If the intent is informational, you MUST stop after reading and reply with text. Never click 'just in case'."
+
+### Takeaway
+Prompt-steered agents need explicit negative examples for small models. The absence of "don't click for questions" was interpreted as "always click." Larger models (Gemini 2.5 Flash) might have inferred the distinction, but 7B local models need it spelled out.
+
+---
+
 ## 2026-02-24: Voice Mode Bug Fixes (5 issues)
 
 ### Bugs Fixed

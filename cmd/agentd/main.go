@@ -110,6 +110,8 @@ func main() {
 	handler := api.NewHandler(cart, navGen, liveClient, navModel, liveModel, dbPath)
 	handler.SetOpenBrowserFunc(func(url string) {
 		_ = exec.Command("open", "-a", "Google Chrome", url).Start()
+		// Bring Chrome to foreground — "open -a" doesn't always focus the window.
+		_ = exec.Command("osascript", "-e", `tell application "Google Chrome" to activate`).Start()
 	})
 
 	http.HandleFunc("/ws", handler.HandleWebSocket)
