@@ -76,6 +76,50 @@ func (m *mockIntentHandler) SetProgressFunc(fn func(toolName string, args map[st
 func (m *mockIntentHandler) SetListTabsFunc(_ func(ctx context.Context) ([]navigator.TabInfo, error)) {
 }
 
+// waitForDone blocks until the Doer finishes (DoerDone or DoerFailed) or times out.
+// It wires a completion channel through SetResultNotifyFn internally.
+func waitForDone(t *testing.T, doer *Doer, timeout time.Duration) *DoerResult {
+	t.Helper()
+	done := make(chan struct{}, 1)
+	doer.SetResultNotifyFn(func(_ string) {
+		select {
+		case done <- struct{}{}:
+		default:
+		}
+	})
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		status, _, step, _ := doer.State().Snapshot()
+		t.Fatalf("Doer did not complete within %s (status=%d, step=%q)", timeout, status, step)
+	}
+	_, _, _, result := doer.State().Snapshot()
+	return result
+}
+
+// waitForDoneWithNotify is like waitForDone but also calls extraFn on completion.
+func waitForDoneWithNotify(t *testing.T, doer *Doer, timeout time.Duration, extraFn func(string)) *DoerResult {
+	t.Helper()
+	done := make(chan struct{}, 1)
+	doer.SetResultNotifyFn(func(summary string) {
+		if extraFn != nil {
+			extraFn(summary)
+		}
+		select {
+		case done <- struct{}{}:
+		default:
+		}
+	})
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		status, _, step, _ := doer.State().Snapshot()
+		t.Fatalf("Doer did not complete within %s (status=%d, step=%q)", timeout, status, step)
+	}
+	_, _, _, result := doer.State().Snapshot()
+	return result
+}
+
 // newDoerTestHarness wires up a Handler + TabSession + Doer for unit tests.
 // The returned Doer is NOT started (call go doer.Run(ctx) yourself).
 func newDoerTestHarness(nav IntentHandler) (*Handler, *TabSession, *Doer) {
@@ -109,30 +153,18 @@ func TestDoerStateTransitions(t *testing.T) {
 
 	// Submit a goal.
 	var notified atomic.Value
-	doer.SetResultNotifyFn(func(summary string) { notified.Store(summary) })
 	doer.Submit(DoerGoal{ID: "g1", Text: "describe the page"})
 
-	// Wait for completion.
-	deadline := time.After(2 * time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if status == DoerDone && result != nil {
-			if result.GoalID != "g1" {
-				t.Errorf("expected goal ID g1, got %s", result.GoalID)
-			}
-			if !result.Success {
-				t.Errorf("expected success, got failure: %s", result.Error)
-			}
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatalf("Doer did not complete within 2s (status=%d)", status)
-		case <-time.After(10 * time.Millisecond):
-		}
-	}
+	result := waitForDoneWithNotify(t, doer, 2*time.Second, func(summary string) {
+		notified.Store(summary)
+	})
 
-	// resultNotifyFn should have been called.
+	if result.GoalID != "g1" {
+		t.Errorf("expected goal ID g1, got %s", result.GoalID)
+	}
+	if !result.Success {
+		t.Errorf("expected success, got failure: %s", result.Error)
+	}
 	if v := notified.Load(); v == nil {
 		t.Error("resultNotifyFn was never called")
 	}
@@ -178,7 +210,6 @@ func TestDoerCancel(t *testing.T) {
 }
 
 func TestDoerSubmitCancelsPrevious(t *testing.T) {
-	callCount := &atomic.Int32{}
 	mock := &mockIntentHandler{
 		textResp: "done",
 		delay:    200 * time.Millisecond,
@@ -197,18 +228,21 @@ func TestDoerSubmitCancelsPrevious(t *testing.T) {
 	// Submit second goal — should cancel the first.
 	doer.Submit(DoerGoal{ID: "g-new", Text: "new task"})
 
-	// Wait for the second goal to complete.
-	deadline := time.After(3 * time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if status == DoerDone && result != nil && result.GoalID == "g-new" {
-			break
+	// Wait for g-new specifically (g-old's cancellation also fires resultNotifyFn).
+	done := make(chan struct{}, 1)
+	doer.SetResultNotifyFn(func(_ string) {
+		_, _, _, r := doer.State().Snapshot()
+		if r != nil && r.GoalID == "g-new" {
+			select {
+			case done <- struct{}{}:
+			default:
+			}
 		}
-		select {
-		case <-deadline:
-			t.Fatalf("second goal never completed (status=%d, calls=%d)", status, callCount.Load())
-		case <-time.After(10 * time.Millisecond):
-		}
+	})
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("second goal never completed")
 	}
 
 	// HandleIntent should have been called at least twice (once for each goal,
@@ -242,23 +276,12 @@ func TestDoerGotoDispatch(t *testing.T) {
 		sess.SignalSchemaReady()
 	}()
 
-	deadline := time.After(3 * time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if status == DoerDone && result != nil {
-			if !result.Success {
-				t.Errorf("expected success, got error: %s", result.Error)
-			}
-			if result.GoalID != "g-goto" {
-				t.Errorf("expected goal g-goto, got %s", result.GoalID)
-			}
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatalf("goto goal never completed (status=%d)", status)
-		case <-time.After(10 * time.Millisecond):
-		}
+	result := waitForDone(t, doer, 3*time.Second)
+	if !result.Success {
+		t.Errorf("expected success, got error: %s", result.Error)
+	}
+	if result.GoalID != "g-goto" {
+		t.Errorf("expected goal g-goto, got %s", result.GoalID)
 	}
 
 	// Verify the engine was reset (new Engine created for goto).
@@ -326,19 +349,7 @@ func TestDoerSchemaWaitSoftProceed(t *testing.T) {
 		sess.SignalSchemaReady()
 	}()
 
-	deadline := time.After(10 * time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if (status == DoerDone || status == DoerFailed) && result != nil {
-			// The Doer should have proceeded without schema and dispatched goto.
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatalf("Doer never completed (status=%d)", status)
-		case <-time.After(50 * time.Millisecond):
-		}
-	}
+	_ = waitForDone(t, doer, 10*time.Second)
 }
 
 func TestDoerActionDispatch(t *testing.T) {
@@ -372,20 +383,9 @@ func TestDoerActionDispatch(t *testing.T) {
 		sess.SignalSchemaReady()
 	}()
 
-	deadline := time.After(10 * time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if status == DoerDone && result != nil {
-			if !result.Success {
-				t.Errorf("expected success, got error: %s", result.Error)
-			}
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatalf("click goal never completed (status=%d)", status)
-		case <-time.After(10 * time.Millisecond):
-		}
+	result := waitForDone(t, doer, 10*time.Second)
+	if !result.Success {
+		t.Errorf("expected success, got error: %s", result.Error)
 	}
 
 	if v := actionNotified.Load(); v != "mache-42:click" {
@@ -410,18 +410,7 @@ func TestDoerProgressCallback(t *testing.T) {
 
 	doer.Submit(DoerGoal{ID: "g-prog", Text: "find the link"})
 
-	deadline := time.After(2 * time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if status == DoerDone && result != nil {
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatal("goal never completed")
-		case <-time.After(10 * time.Millisecond):
-		}
-	}
+	_ = waitForDone(t, doer, 2*time.Second)
 
 	// Verify progressFn was wired during execution (set by Doer, cleared after).
 	// After completion, it should be nil (defer clears it).
@@ -456,23 +445,12 @@ func TestDoerMultiStepGotoThenRead(t *testing.T) {
 		sess.SignalSchemaReady()
 	}()
 
-	deadline := time.After(3 * time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if status == DoerDone && result != nil {
-			if !result.Success {
-				t.Errorf("expected success, got error: %s", result.Error)
-			}
-			if result.Summary != "The top story is about AI safety regulations." {
-				t.Errorf("unexpected summary: %s", result.Summary)
-			}
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatalf("multi-step goto goal never completed (status=%d)", status)
-		case <-time.After(10 * time.Millisecond):
-		}
+	result := waitForDone(t, doer, 3*time.Second)
+	if !result.Success {
+		t.Errorf("expected success, got error: %s", result.Error)
+	}
+	if result.Summary != "The top story is about AI safety regulations." {
+		t.Errorf("unexpected summary: %s", result.Summary)
 	}
 
 	if calls := mock.handleCalls.Load(); calls != 2 {
@@ -504,23 +482,12 @@ func TestDoerMultiStepClickNavigates(t *testing.T) {
 		sess.SignalSchemaReady()
 	}()
 
-	deadline := time.After(3 * time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if status == DoerDone && result != nil {
-			if !result.Success {
-				t.Errorf("expected success, got error: %s", result.Error)
-			}
-			if result.Summary != "The article discusses quantum computing breakthroughs." {
-				t.Errorf("unexpected summary: %s", result.Summary)
-			}
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatalf("multi-step click-nav goal never completed (status=%d)", status)
-		case <-time.After(10 * time.Millisecond):
-		}
+	result := waitForDone(t, doer, 3*time.Second)
+	if !result.Success {
+		t.Errorf("expected success, got error: %s", result.Error)
+	}
+	if result.Summary != "The article discusses quantum computing breakthroughs." {
+		t.Errorf("unexpected summary: %s", result.Summary)
 	}
 
 	if calls := mock.handleCalls.Load(); calls != 2 {
@@ -556,20 +523,9 @@ func TestDoerMultiStepClickNoNav(t *testing.T) {
 		sess.SignalSchemaReady()
 	}()
 
-	deadline := time.After(5 * time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if status == DoerDone && result != nil {
-			if !result.Success {
-				t.Errorf("expected success, got error: %s", result.Error)
-			}
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatalf("click-no-nav goal never completed (status=%d)", status)
-		case <-time.After(10 * time.Millisecond):
-		}
+	result := waitForDone(t, doer, 5*time.Second)
+	if !result.Success {
+		t.Errorf("expected success, got error: %s", result.Error)
 	}
 
 	if calls := mock.handleCalls.Load(); calls != 2 {
@@ -600,22 +556,10 @@ func TestDoerMultiStepClickNoNavFallbackTimeout(t *testing.T) {
 		sess.SignalSchemaReady()
 	}()
 
-	deadline := time.After(10 * time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if status == DoerDone && result != nil {
-			if !result.Success {
-				t.Errorf("expected success, got error: %s", result.Error)
-			}
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatalf("click-no-nav fallback goal never completed (status=%d)", status)
-		case <-time.After(10 * time.Millisecond):
-		}
+	result := waitForDone(t, doer, 10*time.Second)
+	if !result.Success {
+		t.Errorf("expected success, got error: %s", result.Error)
 	}
-
 	if calls := mock.handleCalls.Load(); calls != 2 {
 		t.Errorf("expected 2 HandleIntent calls (click + text), got %d", calls)
 	}
@@ -644,20 +588,10 @@ func TestDoerMultiStepMaxSteps(t *testing.T) {
 		}
 	}()
 
-	deadline := time.After(time.Duration(maxGoalSteps)*(actionSettleTimeout+500*time.Millisecond) + 5*time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if status == DoerDone && result != nil {
-			if !result.Success {
-				t.Errorf("expected success (exhausted steps), got error: %s", result.Error)
-			}
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatalf("max-steps goal never completed (status=%d, calls=%d)", status, mock.handleCalls.Load())
-		case <-time.After(50 * time.Millisecond):
-		}
+	timeout := time.Duration(maxGoalSteps)*(actionSettleTimeout+500*time.Millisecond) + 5*time.Second
+	result := waitForDone(t, doer, timeout)
+	if !result.Success {
+		t.Errorf("expected success (exhausted steps), got error: %s", result.Error)
 	}
 
 	if calls := mock.handleCalls.Load(); int(calls) != maxGoalSteps {
@@ -708,23 +642,12 @@ func TestDoerMultiStepClickOpensNewTab(t *testing.T) {
 		sess99.SignalSchemaReady()
 	}()
 
-	deadline := time.After(10 * time.Second)
-	for {
-		status, _, _, result := doer.State().Snapshot()
-		if status == DoerDone && result != nil {
-			if !result.Success {
-				t.Errorf("expected success, got error: %s", result.Error)
-			}
-			if result.Summary != "New tab page content." {
-				t.Errorf("unexpected summary: %s", result.Summary)
-			}
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatalf("cross-tab goal never completed (status=%d)", status)
-		case <-time.After(10 * time.Millisecond):
-		}
+	result := waitForDone(t, doer, 10*time.Second)
+	if !result.Success {
+		t.Errorf("expected success, got error: %s", result.Error)
+	}
+	if result.Summary != "New tab page content." {
+		t.Errorf("unexpected summary: %s", result.Summary)
 	}
 
 	// Tab 0 mock: 1 call (click). Tab 99 mock: 1 call (text answer).

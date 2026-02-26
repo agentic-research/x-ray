@@ -10,8 +10,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/jamesgardner/x-ray/internal/api"
@@ -122,9 +124,10 @@ func main() {
 	port = ":" + port
 
 	// Start HTTP server in background.
+	server := &http.Server{Addr: port}
 	go func() {
 		log.Printf("Listening on %s", port)
-		if err := http.ListenAndServe(port, nil); err != nil {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server failed: %v", err)
 		}
 	}()
@@ -133,11 +136,28 @@ func main() {
 		if !audio.Available() {
 			log.Fatal("Voice mode requires sox (brew install sox)")
 		}
+		// Trap signals so Ctrl+C cancels the voice loop context.
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		go func() {
+			sig := <-sigCh
+			log.Printf("Received %s, shutting down...", sig)
+			cancel()
+		}()
 		runVoiceLoop(ctx, cancel, handler)
 	} else {
-		// No voice mode — block on HTTP server.
-		log.Printf("Listening on %s (no voice mode, use --voice to enable)", port)
-		select {}
+		// No voice mode — block until signal, then shut down gracefully.
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		sig := <-sigCh
+		log.Printf("Received %s, shutting down...", sig)
+
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("HTTP shutdown error: %v", err)
+		}
+		cancel()
 	}
 }
 
