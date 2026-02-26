@@ -300,6 +300,36 @@ func (e *Engine) ZoneSelectors() map[string]string {
 }
 
 // ---------------------------------------------------------------------------
+// graph.Graph interface — allows Engine to be mounted in a CompositeGraph
+// ---------------------------------------------------------------------------
+
+func (e *Engine) GetNode(id string) (*graph.Node, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.store.GetNode(cleanPath(id))
+}
+
+func (e *Engine) ListChildren(id string) ([]string, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.store.ListChildren(cleanPath(id))
+}
+
+func (e *Engine) ReadContent(id string, buf []byte, offset int64) (int, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.store.ReadContent(cleanPath(id), buf, offset)
+}
+
+func (e *Engine) GetCallers(token string) ([]*graph.Node, error) { return nil, nil }
+func (e *Engine) GetCallees(id string) ([]*graph.Node, error)    { return nil, nil }
+func (e *Engine) Invalidate(id string)                           {}
+
+func (e *Engine) Act(id, action, payload string) (*graph.ActionResult, error) {
+	return nil, graph.ErrActNotSupported
+}
+
+// ---------------------------------------------------------------------------
 // DOM summary parsing (unchanged — DOM-specific helpers)
 // ---------------------------------------------------------------------------
 

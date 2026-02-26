@@ -2,17 +2,18 @@ package navigator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 
-	"github.com/jamesgardner/x-ray/internal/mache"
+	"github.com/agentic-research/mache/graph"
 	"google.golang.org/genai"
 )
 
 // --- ls ---
 
-type LsTool struct{ engine *mache.Engine }
+type LsTool struct{ fs *NavFS }
 
 func (t *LsTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
@@ -21,7 +22,7 @@ func (t *LsTool) Declaration() *genai.FunctionDeclaration {
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
-				"path": {Type: genai.TypeString, Description: "Directory path, e.g. '/' or '/header/nav'"},
+				"path": {Type: genai.TypeString, Description: "Directory path, e.g. '/' or '/browser/header/nav' or '/iterm/windows'"},
 			},
 			Required: []string{"path"},
 		},
@@ -30,7 +31,7 @@ func (t *LsTool) Declaration() *genai.FunctionDeclaration {
 
 func (t *LsTool) Execute(_ context.Context, args map[string]any) (string, *ActionResult) {
 	p, _ := args["path"].(string)
-	entries, err := t.engine.ListDir(p)
+	entries, err := t.fs.ListDir(p)
 	if err != nil {
 		return fmt.Sprintf("Error: %v", err), nil
 	}
@@ -39,16 +40,16 @@ func (t *LsTool) Execute(_ context.Context, args map[string]any) (string, *Actio
 
 // --- cat ---
 
-type CatTool struct{ engine *mache.Engine }
+type CatTool struct{ fs *NavFS }
 
 func (t *CatTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
 		Name:        "cat",
-		Description: "Read the contents of a file in the semantic filesystem. Use this to read 'description' files for context about a zone.",
+		Description: "Read the contents of a file in the semantic filesystem. Use this to read 'description', 'buffer', or 'children' files.",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
-				"path": {Type: genai.TypeString, Description: "File path, e.g. '/header/nav/description'"},
+				"path": {Type: genai.TypeString, Description: "File path, e.g. '/browser/header/nav/description' or '/iterm/.../buffer'"},
 			},
 			Required: []string{"path"},
 		},
@@ -57,7 +58,7 @@ func (t *CatTool) Declaration() *genai.FunctionDeclaration {
 
 func (t *CatTool) Execute(_ context.Context, args map[string]any) (string, *ActionResult) {
 	p, _ := args["path"].(string)
-	content, err := t.engine.ReadFile(p)
+	content, err := t.fs.ReadFile(p)
 	if err != nil {
 		return fmt.Sprintf("Error: %v", err), nil
 	}
@@ -66,18 +67,18 @@ func (t *CatTool) Execute(_ context.Context, args map[string]any) (string, *Acti
 
 // --- act ---
 
-type ActTool struct{ engine *mache.Engine }
+type ActTool struct{ fs *NavFS }
 
 func (t *ActTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
 		Name:        "act",
-		Description: "Execute a browser action on the element at this virtual path. This triggers a real click/focus/type/enter in the browser.",
+		Description: "Execute an action on the element at this virtual path. For browser elements: click, focus, type, enter. For terminal sessions: type (send text), enter (send keypress), focus (bring to front).",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
-				"path":    {Type: genai.TypeString, Description: "Virtual path to the element, e.g. '/main/trending'"},
+				"path":    {Type: genai.TypeString, Description: "Virtual path to the element, e.g. '/browser/main/trending' or '/iterm/.../sessions/{id}'"},
 				"action":  {Type: genai.TypeString, Description: "Action type: 'click', 'focus', 'type', or 'enter'"},
-				"payload": {Type: genai.TypeString, Description: "Text to type into the element (required for 'type' action, ignored otherwise)"},
+				"payload": {Type: genai.TypeString, Description: "Text to type (required for 'type' action, ignored otherwise)"},
 			},
 			Required: []string{"path", "action"},
 		},
@@ -91,7 +92,25 @@ func (t *ActTool) Execute(_ context.Context, args map[string]any) (string, *Acti
 	if action == "" {
 		action = "click"
 	}
-	macheID, err := t.engine.ResolveMacheID(p)
+
+	// Try graph-level Act() first. Interactive graphs (terminal, future AX)
+	// handle the action directly and return a result.
+	_, err := t.fs.Act(p, action, payload)
+	if err == nil {
+		// Action executed directly by the graph — no Doer dispatch needed.
+		desc := fmt.Sprintf("Performed %s on %s", action, p)
+		if payload != "" {
+			desc = fmt.Sprintf("Typed %q into %s", payload, p)
+		}
+		return desc, nil
+	}
+	if !errors.Is(err, graph.ErrActNotSupported) {
+		return fmt.Sprintf("Error: %v", err), nil
+	}
+
+	// Graph doesn't support Act() (browser MemoryStore) — fall back to
+	// ActionResult so the Doer dispatches via the Chrome extension.
+	macheID, err := t.fs.ResolveMacheID(p)
 	if err != nil {
 		return fmt.Sprintf("Error: %v", err), nil
 	}
@@ -171,7 +190,7 @@ func (t *GotoTool) Execute(_ context.Context, args map[string]any) (string, *Act
 
 // --- rescan ---
 
-type RescanTool struct{ engine *mache.Engine }
+type RescanTool struct{ fs *NavFS }
 
 func (t *RescanTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
@@ -180,7 +199,7 @@ func (t *RescanTool) Declaration() *genai.FunctionDeclaration {
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
-				"path": {Type: genai.TypeString, Description: "Optional: virtual path to zoom into, e.g. '/main/player'. Omit for full-page rescan."},
+				"path": {Type: genai.TypeString, Description: "Optional: virtual path to zoom into, e.g. '/browser/main/player'. Omit for full-page rescan."},
 			},
 		},
 	}
@@ -189,7 +208,7 @@ func (t *RescanTool) Declaration() *genai.FunctionDeclaration {
 func (t *RescanTool) Execute(_ context.Context, args map[string]any) (string, *ActionResult) {
 	p, _ := args["path"].(string)
 	if p != "" && p != "/" {
-		macheID, err := t.engine.ResolveMacheID(p)
+		macheID, err := t.fs.ResolveMacheID(p)
 		if err != nil {
 			return fmt.Sprintf("Error: %v", err), nil
 		}

@@ -19,6 +19,7 @@ import (
 	"github.com/jamesgardner/x-ray/internal/api"
 	"github.com/jamesgardner/x-ray/internal/audio"
 	"github.com/jamesgardner/x-ray/internal/cartographer"
+	"github.com/jamesgardner/x-ray/internal/iterm"
 	"github.com/jamesgardner/x-ray/internal/navigator"
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
@@ -113,6 +114,15 @@ func main() {
 		// Bring Chrome to foreground — "open -a" doesn't always focus the window.
 		_ = exec.Command("osascript", "-e", `tell application "Google Chrome" to activate`).Start()
 	})
+
+	// iTerm2 bridge: connect if iTerm is running. Non-fatal if unavailable.
+	bridge := iterm.NewBridge()
+	if err := bridge.Start(ctx); err != nil {
+		log.Printf("iTerm2 bridge: %v (terminal features disabled)", err)
+	} else {
+		log.Println("iTerm2 bridge: connected — terminal sessions available at /iterm/")
+		handler.SetTermBridge(bridge)
+	}
 
 	http.HandleFunc("/ws", handler.HandleWebSocket)
 	http.HandleFunc("/navigate", handler.HandleNavigateHTTP)
