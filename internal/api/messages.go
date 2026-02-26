@@ -54,4 +54,6 @@ type OutboundMessage struct {
 	Direction string            `json:"direction,omitempty"`
 	URL       string            `json:"url,omitempty"`
 	Selectors map[string]string `json:"selectors,omitempty"` // zone mache-id → CSS selector
+	PixelX    int               `json:"pixel_x,omitempty"`   // viewport-relative X for CDP pixel click (cv-N)
+	PixelY    int               `json:"pixel_y,omitempty"`   // viewport-relative Y for CDP pixel click (cv-N)
 }

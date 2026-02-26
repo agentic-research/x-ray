@@ -8,6 +8,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +19,8 @@ import (
 	"github.com/jamesgardner/x-ray/internal/navigator"
 	"google.golang.org/genai"
 )
+
+var boundsRe = regexp.MustCompile(`Bounds: \[([\d.]+), ([\d.]+), ([\d.]+), ([\d.]+)\]`)
 
 const (
 	schemaWaitTimeout = 30 * time.Second
@@ -52,6 +57,7 @@ type TabSession struct {
 	CurrentURL        string                   // URL of the page currently loaded or loading (prevents redundant goto)
 	Doer              *Doer                    // background execution agent (created lazily on first voice session)
 	TabsListedCh      chan []TabInfo           // receives tab list from LIST_TABS round-trip
+	CVRegions         []EdgeRegion             // canvas regions detected via edge analysis, used for CDP pixel-click
 
 	schemaMu     sync.Mutex // protects SchemaReady close + schemaGen
 	schemaClosed bool
@@ -344,8 +350,34 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 
 		mimeType := "image/jpeg"
 
+		// --- Canvas edge detection: find UI regions inside <canvas> / WebGL ---
+		if len(screenshotBytes) > 0 {
+			existingBounds := parseBounds(msg.Summary)
+			cvRegions, annotatedJPEG, edgeErr := DetectCanvasRegions(screenshotBytes, existingBounds)
+			if edgeErr != nil {
+				log.Printf("Edge detection failed (tab %d): %v", msg.TabID, edgeErr)
+			} else if len(cvRegions) > 0 {
+				screenshotBytes = annotatedJPEG
+				sess.CVRegions = cvRegions
+				log.Printf("Edge detection: found %d cv regions (tab %d)", len(cvRegions), msg.TabID)
+			} else {
+				sess.CVRegions = nil
+			}
+		}
+
 		// For targeted rescan, hint the Cartographer to output absolute sub-zone paths.
 		cartSummary := msg.Summary
+
+		// Append cv-N entries so the Cartographer sees canvas-detected regions.
+		if len(sess.CVRegions) > 0 {
+			for _, r := range sess.CVRegions {
+				cartSummary += fmt.Sprintf(
+					"ID: %s | Color: CYAN | Bounds: [%.3f, %.3f, %.3f, %.3f] | Parent: none | Tag: canvas | Text: \"[CV detected]\" | Path: canvas\n",
+					r.ID, r.X, r.Y, r.W, r.H,
+				)
+			}
+		}
+
 		if rescanPath != "" {
 			cartSummary = fmt.Sprintf(
 				"[FOCUSED RESCAN: You are zoomed into the component at %s. "+
@@ -765,13 +797,29 @@ func (h *Handler) SendActionToExtension(tabID int, macheID, action, payload stri
 		return
 	}
 	h.mu.Unlock()
-	h.sendMessage(conn, OutboundMessage{
+
+	msg := OutboundMessage{
 		Type:    MsgExecuteAction,
 		TabID:   tabID,
 		MacheID: macheID,
 		Action:  action,
 		Payload: payload,
-	})
+	}
+
+	// For cv-N IDs, look up pixel center from edge-detected regions for CDP click.
+	if strings.HasPrefix(macheID, "cv-") {
+		sess := h.getSession(tabID)
+		for _, r := range sess.CVRegions {
+			if r.ID == macheID {
+				msg.PixelX = r.PixelX + r.PixelW/2
+				msg.PixelY = r.PixelY + r.PixelH/2
+				log.Printf("CV click: %s → pixel (%d, %d) (tab %d)", macheID, msg.PixelX, msg.PixelY, tabID)
+				break
+			}
+		}
+	}
+
+	h.sendMessage(conn, msg)
 }
 
 // HandleNavigateHTTP provides a POST /navigate endpoint for curl/UI testing.
@@ -820,4 +868,18 @@ func (h *Handler) HandleNavigateHTTP(w http.ResponseWriter, r *http.Request) {
 	}); err != nil {
 		log.Printf("Failed to encode navigate response: %v", err)
 	}
+}
+
+// parseBounds extracts normalized [x, y, w, h] bounds from the DOM summary text.
+func parseBounds(summary string) [][4]float64 {
+	matches := boundsRe.FindAllStringSubmatch(summary, -1)
+	bounds := make([][4]float64, 0, len(matches))
+	for _, m := range matches {
+		x, _ := strconv.ParseFloat(m[1], 64)
+		y, _ := strconv.ParseFloat(m[2], 64)
+		w, _ := strconv.ParseFloat(m[3], 64)
+		h, _ := strconv.ParseFloat(m[4], 64)
+		bounds = append(bounds, [4]float64{x, y, w, h})
+	}
+	return bounds
 }

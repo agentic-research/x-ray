@@ -52,13 +52,27 @@ function connectWebSocket() {
     });
   };
 
-  ws.onmessage = (event) => {
+  ws.onmessage = async (event) => {
     const msg = JSON.parse(event.data);
     console.log('X-Ray: Received', msg.type, msg);
 
     switch (msg.type) {
       case 'EXECUTE_ACTION': {
         const targetTab = msg.tab_id || null;
+
+        // CV pixel-click: use CDP Input.dispatchMouseEvent for canvas-detected regions.
+        if (msg.pixel_x != null && msg.pixel_y != null && msg.pixel_x > 0 && msg.pixel_y > 0) {
+          const tabForClick = targetTab || (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id;
+          if (tabForClick) {
+            cdpPixelClick(tabForClick, msg.pixel_x, msg.pixel_y).then(() => {
+              console.log('X-Ray: CV pixel click dispatched at', msg.pixel_x, msg.pixel_y, 'on tab', tabForClick);
+            }).catch(e => {
+              console.error('X-Ray: CV pixel click failed:', e.message);
+            });
+          }
+          break;
+        }
+
         const actionMsg = {
           type: 'EXECUTE_ACTION',
           mache_id: msg.mache_id,
@@ -280,6 +294,45 @@ function connectWebSocket() {
     console.error('X-Ray: WebSocket error', err);
     ws.close();
   };
+}
+
+// --- CDP pixel-click: dispatches mouse events at viewport-relative coordinates ---
+
+// cdpPixelClick attaches the debugger briefly to dispatch a click at (x, y).
+// The coordinates are from the scaled screenshot (800px width target), so we
+// map them back to the actual viewport dimensions before dispatching.
+async function cdpPixelClick(tabId, scaledX, scaledY) {
+  // Get actual viewport dimensions to map from screenshot coordinates.
+  await chrome.debugger.attach({ tabId }, '1.3');
+  try {
+    const { cssContentSize } = await chrome.debugger.sendCommand(
+      { tabId }, 'Page.getLayoutMetrics', {}
+    );
+    const actualWidth = cssContentSize.width;
+    const scale = Math.min(1, CDP_TARGET_WIDTH / actualWidth);
+    // Map screenshot pixel coords back to actual viewport coords.
+    const viewportX = scaledX / scale;
+    const viewportY = scaledY / scale;
+
+    await chrome.debugger.sendCommand({ tabId }, 'Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      x: viewportX,
+      y: viewportY,
+      button: 'left',
+      clickCount: 1
+    });
+    await chrome.debugger.sendCommand({ tabId }, 'Input.dispatchMouseEvent', {
+      type: 'mouseReleased',
+      x: viewportX,
+      y: viewportY,
+      button: 'left',
+      clickCount: 1
+    });
+  } finally {
+    try {
+      await chrome.debugger.detach({ tabId });
+    } catch (_) { /* already detached */ }
+  }
 }
 
 // --- CDP capture: scaled screenshot + AX enrichment ---

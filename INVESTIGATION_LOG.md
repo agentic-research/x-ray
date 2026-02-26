@@ -164,3 +164,39 @@ Chrome Manifest V3 and browser audio sandbox (requiring offscreen documents and 
 - `cmd/gate/main.go` does NOT duplicate types (already imports from internal packages)
 - `cmd/warm/main.go`'s `systemPrompt` and `validateSchema` are intentionally different (URL context vs DOM+screenshot), not duplicates
 - Voice tool dispatch switch has an intentional difference (`doer` vs `resolveDoer()` for tab-switching support)
+
+---
+
+## 2026-02-25: Canvas Blindspot — Canny Edge Detection for Pixel-Rendered UI
+
+### Problem
+Cartographer uses DOM parsing to identify interactive elements, but `<canvas>`, WebGL, and other pixel-rendered content (Google Maps, Figma, games) appear as a single opaque DOM element. No interactive sub-elements are discoverable.
+
+### Solution
+Pure-Go Canny edge detection pipeline that runs on the screenshot JPEG server-side, detects rectangular UI regions inside canvas elements, and enables CDP pixel-coordinate clicks.
+
+### Pipeline (edges.go)
+1. JPEG decode → grayscale → Gaussian blur (5×5, edge-clamped to avoid border artifacts)
+2. Sobel edge detection → gradient magnitude + direction
+3. Non-maximum suppression (thin to 1px) → double threshold + hysteresis (BFS flood)
+4. Connected component flood-fill (8-connectivity) → bounding boxes → merge overlapping boxes
+5. Filter: skip area < 400px² (noise) or > 50% image area; skip IoU > 0.3 with existing mache bounds
+6. Assign `cv-N` IDs, draw cyan rectangles + labels on screenshot
+
+### Integration
+- `handleDOMSnapshot`: after screenshot decode, runs `DetectCanvasRegions()`, replaces screenshot with annotated version, appends `cv-N` entries to Cartographer summary
+- `SendActionToExtension`: for `cv-` prefixed IDs, looks up pixel center from `TabSession.CVRegions` and populates `PixelX`/`PixelY` on the outbound message
+- `background.js`: intercepts `EXECUTE_ACTION` with `pixel_x`/`pixel_y`, dispatches via CDP `Input.dispatchMouseEvent` (maps scaled screenshot coords back to viewport dimensions)
+
+### Key Design Decisions
+- **No bild dependency** — implemented Canny from scratch (~300 lines) to minimize dependency surface. Pure Go, zero cgo.
+- **Edge-clamped Gaussian blur** — initial implementation zeroed border pixels, creating artificial edges that merged all components into one giant blob. Fixed by clamping kernel coordinates to image bounds.
+- **8-connectivity flood fill** — must match hysteresis connectivity; 4-connectivity fragmented diagonal edge segments into separate components.
+- **Overlap filtering via IoU** — prevents cv-N regions from duplicating already-tagged mache elements.
+
+### Files
+- `internal/api/edges.go` — DetectCanvasRegions + full Canny pipeline
+- `internal/api/edges_test.go` — 7 tests (blank, rect detection, overlap filter, min-size, IoU math, invalid JPEG)
+- `internal/api/messages.go` — PixelX/PixelY fields on OutboundMessage
+- `internal/api/websocket.go` — CVRegions on TabSession, parseBounds, wiring in handleDOMSnapshot + SendActionToExtension
+- `ext/background.js` — cdpPixelClick helper, cv-N interception in EXECUTE_ACTION
