@@ -136,7 +136,13 @@ function connectWebSocket() {
           console.log('X-Ray: Navigating tab', targetTab, 'to', url);
           schemaReadyTabs.delete(targetTab);
           gotoInFlight.add(targetTab); // Suppress auto-snapshot from persistent listener
-          chrome.tabs.update(targetTab, { url }, () => {
+          // Reset content.js registry so mache-IDs restart from 0 (Bug #7 fix).
+          chrome.tabs.sendMessage(targetTab, { type: 'RESET_REGISTRY' }).catch(() => {});
+          chrome.tabs.update(targetTab, { url }, (tab) => {
+            // Bring the Chrome window to the foreground (Bug #1 fix).
+            if (tab && tab.windowId) {
+              chrome.windows.update(tab.windowId, { focused: true });
+            }
             // Wait for page to finish loading, then auto-snapshot.
             // Safety timeout: remove listener if page never completes (blocked, stopped, error).
             let cleaned = false;
@@ -150,9 +156,13 @@ function connectWebSocket() {
               if (tabId === targetTab && changeInfo.status === 'complete') {
                 cleanup();
                 lastKnownUrls.set(targetTab, url); // Sync tracked URL
-                console.log('X-Ray: Page loaded, auto-capturing snapshot for tab', targetTab);
-                pendingSnapshots.add(targetTab);
-                captureAndSend(targetTab);
+                console.log('X-Ray: Page loaded, waiting for layout to stabilize (tab', targetTab, ')');
+                // Wait for SPA layout shifts to settle before snapshot (Bug #9 fix).
+                waitForLayoutStable(targetTab).then(() => {
+                  console.log('X-Ray: Layout stable, auto-capturing snapshot for tab', targetTab);
+                  pendingSnapshots.add(targetTab);
+                  captureAndSend(targetTab);
+                });
               }
             };
             chrome.tabs.onUpdated.addListener(listener);
@@ -182,6 +192,10 @@ function connectWebSocket() {
         const doRescan = (tabId) => {
           console.log('X-Ray: Rescan requested for tab', tabId,
             targetMacheId ? `(zoom: ${targetMacheId})` : '(full page)');
+          // Reset registry on full-page rescan so IDs restart from 0 (Bug #7 fix).
+          if (!targetMacheId) {
+            chrome.tabs.sendMessage(tabId, { type: 'RESET_REGISTRY' }).catch(() => {});
+          }
           captureAndSend(tabId, true, targetMacheId);
         };
         if (msg.tab_id) {
@@ -211,10 +225,14 @@ function connectWebSocket() {
         const targetTab = msg.tab_id;
         if (!targetTab) break;
         console.log('X-Ray: Switching to tab', targetTab);
-        chrome.tabs.update(targetTab, { active: true }, () => {
+        chrome.tabs.update(targetTab, { active: true }, (tab) => {
           if (chrome.runtime.lastError) {
             console.error('X-Ray: Switch tab failed', chrome.runtime.lastError);
             return;
+          }
+          // Bring the Chrome window to the foreground (Bug #1 fix).
+          if (tab && tab.windowId) {
+            chrome.windows.update(tab.windowId, { focused: true });
           }
           // Auto-snapshot the newly active tab so the schema updates.
           captureAndSend(targetTab);
@@ -294,6 +312,36 @@ function connectWebSocket() {
     console.error('X-Ray: WebSocket error', err);
     ws.close();
   };
+}
+
+// --- Layout stabilization: wait for DOM to stop mutating before snapshot ---
+// Injects a MutationObserver into the page and resolves after 500ms of quiet
+// (no DOM changes). Safety cap prevents indefinite waiting on busy pages.
+async function waitForLayoutStable(tabId, timeoutMs = 3000) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (timeout) => {
+        return new Promise(resolve => {
+          const quiet = 500;
+          let timer = null;
+          const reset = () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => { observer.disconnect(); resolve(); }, quiet);
+          };
+          const observer = new MutationObserver(reset);
+          observer.observe(document.body || document.documentElement, {
+            childList: true, subtree: true, attributes: true
+          });
+          reset();
+          setTimeout(() => { observer.disconnect(); resolve(); }, timeout);
+        });
+      },
+      args: [timeoutMs]
+    });
+  } catch (e) {
+    console.warn('X-Ray: waitForLayoutStable failed, proceeding:', e.message);
+  }
 }
 
 // --- CDP pixel-click: dispatches mouse events at viewport-relative coordinates ---
@@ -731,9 +779,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // Not connected to server — no point snapshotting.
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-  console.log('X-Ray: URL changed (manual nav), auto-snapshot for tab', tabId, '→', url);
+  console.log('X-Ray: URL changed (manual nav), waiting for layout to stabilize (tab', tabId, ')');
   pendingSnapshots.add(tabId);
-  captureAndSend(tabId);
+  // Wait for SPA layout shifts to settle before snapshot (Bug #9 fix).
+  waitForLayoutStable(tabId).then(() => {
+    console.log('X-Ray: Layout stable, auto-snapshot for tab', tabId, '→', url);
+    captureAndSend(tabId);
+  });
 });
 
 // Clean up tracking when tabs close and notify the server to prune the session.

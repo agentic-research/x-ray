@@ -180,7 +180,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 	// produces a goto action regardless of whether a page schema exists).
 	d.updateStep("waiting for page schema")
 	select {
-	case <-d.sess.SchemaReady:
+	case <-d.sess.GetSchemaReady():
 		// Schema is ready — full tree available.
 	case <-time.After(3 * time.Second):
 		log.Printf("Doer [tab %d]: schema not ready after 3s, proceeding without", d.tabID)
@@ -232,7 +232,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 			default:
 			}
 			select {
-			case <-d.sess.SchemaReady:
+			case <-d.sess.GetSchemaReady():
 				// Same-tab navigation (URL change → auto-snapshot) — continue loop.
 			case <-d.sess.DOMMutatedCh:
 				// In-page DOM mutation detected via MutationObserver.
@@ -240,7 +240,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 				d.sess.ResetSchema()
 				d.handler.sendRescan(d.tabID, "")
 				select {
-				case <-d.sess.SchemaReady:
+				case <-d.sess.GetSchemaReady():
 				case <-time.After(schemaWaitTimeout):
 				case <-goalCtx.Done():
 					d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
@@ -259,7 +259,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 					d.sess = d.handler.getSession(newTabID)
 					d.wireNavigatorCallbacks()
 					select {
-					case <-d.sess.SchemaReady:
+					case <-d.sess.GetSchemaReady():
 						// New tab loaded — continue loop.
 					case <-time.After(schemaWaitTimeout):
 						// Timed out waiting for new tab.
@@ -272,7 +272,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 					d.sess.ResetSchema()
 					d.handler.sendRescan(d.tabID, "")
 					select {
-					case <-d.sess.SchemaReady:
+					case <-d.sess.GetSchemaReady():
 						// Rescan complete — continue loop with fresh VFS.
 					case <-time.After(schemaWaitTimeout):
 						// Give up waiting for rescan.
@@ -302,7 +302,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		if d.sess.CurrentURL == action.Path {
 			d.updateStep(fmt.Sprintf("already on %s, waiting for schema", action.Path))
 			select {
-			case <-d.sess.SchemaReady:
+			case <-d.sess.GetSchemaReady():
 				return fmt.Sprintf("Already on %s, page is loaded.", action.Path)
 			case <-time.After(schemaWaitTimeout):
 				return fmt.Sprintf("Already on %s but schema is still loading.", action.Path)
@@ -312,14 +312,15 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		}
 		d.sess.CurrentURL = action.Path
 		d.sess.ResetSchema()
-		d.sess.Engine = mache.NewEngine()
-		d.sess.Navigator.SetEngine(d.sess.Engine)
+		newEngine := mache.NewEngine()
+		d.sess.SwapEngine(newEngine)
+		d.sess.Navigator.SetEngine(newEngine)
 		d.handler.sendGoto(d.tabID, action.Path)
 		d.updateStep(fmt.Sprintf("navigating to %s", action.Path))
 		log.Printf("Doer [tab %d]: goto %s", d.tabID, action.Path)
 
 		select {
-		case <-d.sess.SchemaReady:
+		case <-d.sess.GetSchemaReady():
 			return fmt.Sprintf("Navigated to %s. Page is loaded.", action.Path)
 		case <-time.After(schemaWaitTimeout):
 			return fmt.Sprintf("Navigated to %s but page load timed out.", action.Path)
@@ -338,14 +339,15 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		} else {
 			// Full-page rescan: reset everything.
 			d.sess.ResetSchema()
-			d.sess.Engine = mache.NewEngine()
-			d.sess.Navigator.SetEngine(d.sess.Engine)
+			newEngine := mache.NewEngine()
+			d.sess.SwapEngine(newEngine)
+			d.sess.Navigator.SetEngine(newEngine)
 			d.handler.sendRescan(d.tabID, "")
 			d.updateStep("rescanning full page")
 			log.Printf("Doer [tab %d]: full rescan", d.tabID)
 		}
 		select {
-		case <-d.sess.SchemaReady:
+		case <-d.sess.GetSchemaReady():
 			if action.Path != "" {
 				return fmt.Sprintf("Zoomed into %s for more detail.", action.Path)
 			}
@@ -375,7 +377,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		newSess := d.handler.getSession(switchTabID)
 		newSess.ResetSchema()
 		select {
-		case <-newSess.SchemaReady:
+		case <-newSess.GetSchemaReady():
 			return fmt.Sprintf("Switched to tab %d. Page is loaded.", switchTabID)
 		case <-time.After(schemaWaitTimeout):
 			return fmt.Sprintf("Switched to tab %d but schema timed out.", switchTabID)

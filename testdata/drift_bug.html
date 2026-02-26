@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Layout Shift Bug Demo</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .banner {
+            width: 100%;
+            height: 0; /* Starts at 0 height */
+            background-color: #f0f0f0;
+            transition: height 0.5s ease-out; /* Simulates a slow-loading image/font */
+            margin-bottom: 20px;
+        }
+        .banner.loaded {
+            height: 300px; /* Shifts everything down by 300px after loading */
+            background-color: #ffcccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>X-Ray SPA Layout Shift Demo</h1>
+    <p>This page simulates a React SPA or a page with lazy-loaded images.</p>
+
+    <div id="lazy-banner" class="banner">
+        <span style="display:none;" id="banner-text">I am a late-loading hero image!</span>
+    </div>
+
+    <!-- This is the element X-Ray wants to tag -->
+    <button data-mache-id="mache-target">Click Me (Target)</button>
+
+    <script>
+        // Simulate a network request that takes 800ms to resolve AFTER window.onload
+        window.addEventListener('load', () => {
+            console.log("window.onload fired. X-Ray draws the overlay NOW.");
+
+            // X-Ray draws the bounding box right here, while the button is near the top of the page.
+
+            setTimeout(() => {
+                console.log("Async data arrived. Expanding banner. Layout shifts down!");
+                const banner = document.getElementById('lazy-banner');
+                banner.classList.add('loaded');
+                document.getElementById('banner-text').style.display = 'block';
+
+                // If X-Ray takes the screenshot now, the bounding box will be floating in empty space
+                // 300px above the actual button.
+            }, 800);
+        });
+    </script>
+</body>
+</html>

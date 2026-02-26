@@ -337,6 +337,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
     }
 
+    case 'RESET_REGISTRY':
+      idCounter = 0;
+      elementRegistry.clear();
+      reverseRegistry.clear();
+      console.log('X-Ray: Registry reset (idCounter=0, maps cleared)');
+      sendResponse({ success: true });
+      return true;
+
     case 'EXECUTE_ACTION':
       executeAction(message.mache_id, message.action, message.payload);
       sendResponse({ success: true });

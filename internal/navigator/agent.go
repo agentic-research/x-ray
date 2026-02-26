@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/jamesgardner/x-ray/internal/mache"
 	"google.golang.org/genai"
@@ -36,6 +37,7 @@ type Agent struct {
 	generator  ContentGenerator
 	model      string
 	engine     *mache.Engine
+	mu         sync.RWMutex // protects progressFn
 	progressFn func(toolName string, args map[string]any)
 
 	registry   *ToolRegistry
@@ -96,17 +98,23 @@ func (a *Agent) SetEngine(engine *mache.Engine) {
 
 // SetScrollFunc injects the scroll callback used by the scroll tool.
 func (a *Agent) SetScrollFunc(fn func(ctx context.Context, direction string) error) {
+	a.scrollTool.mu.Lock()
+	defer a.scrollTool.mu.Unlock()
 	a.scrollTool.scrollFn = fn
 }
 
 // SetProgressFunc injects a callback fired before each tool execution,
 // allowing the Doer to report its current step to the Talker.
 func (a *Agent) SetProgressFunc(fn func(toolName string, args map[string]any)) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.progressFn = fn
 }
 
 // SetListTabsFunc injects the callback used by the list_tabs tool.
 func (a *Agent) SetListTabsFunc(fn func(ctx context.Context) ([]TabInfo, error)) {
+	a.listTabs.mu.Lock()
+	defer a.listTabs.mu.Unlock()
 	a.listTabs.listTabsFn = fn
 }
 
@@ -201,8 +209,11 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 		if fc != nil {
 			history = append(history, candidate.Content)
 
-			if a.progressFn != nil {
-				a.progressFn(fc.Name, fc.Args)
+			a.mu.RLock()
+			pfn := a.progressFn
+			a.mu.RUnlock()
+			if pfn != nil {
+				pfn(fc.Name, fc.Args)
 			}
 			result, action := a.registry.Execute(ctx, fc)
 			log.Printf("Navigator: tool=%s args=%v result=%q", fc.Name, fc.Args, result)

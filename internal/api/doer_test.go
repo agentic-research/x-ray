@@ -412,6 +412,10 @@ func TestDoerProgressCallback(t *testing.T) {
 
 	_ = waitForDone(t, doer, 2*time.Second)
 
+	// Give the defer cleanup in executeGoal a moment to run — the resultNotifyFn
+	// fires before the deferred SetProgressFunc(nil) executes.
+	time.Sleep(50 * time.Millisecond)
+
 	// Verify progressFn was wired during execution (set by Doer, cleared after).
 	// After completion, it should be nil (defer clears it).
 	mock.mu.Lock()

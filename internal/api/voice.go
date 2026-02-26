@@ -225,6 +225,8 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 
 		// --- goroutine 1: browser → Gemini (audio chunks) ---
 		// Each reconnect starts a new sender goroutine tied to this session.
+		// sessionCtx is cancelled on GoAway to kill the old sender (Bug #8 fix).
+		sessionCtx, sessionCancel := context.WithCancel(ctx)
 		senderDone := make(chan struct{})
 		go func() {
 			defer close(senderDone)
@@ -236,6 +238,10 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					log.Printf("Voice: browser read error: %v", err)
 					_ = session.Close()
+					return
+				}
+				// Check if this session was cancelled (GoAway reconnect).
+				if sessionCtx.Err() != nil {
 					return
 				}
 				switch msgType {
@@ -400,6 +406,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		sessionCancel() // kill the sender goroutine (Bug #8 fix)
 		_ = session.Close()
 		doer.SetResultNotifyFn(nil)
 		if !shouldReconnect {
@@ -474,12 +481,14 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 		}
 
 		// --- goroutine: mic + text → Gemini ---
+		// sessionCtx is cancelled on GoAway to kill the old sender (Bug #8 fix).
+		sessionCtx, sessionCancel := context.WithCancel(ctx)
 		sendDone := make(chan struct{})
 		go func() {
 			defer close(sendDone)
 			for {
 				select {
-				case <-ctx.Done():
+				case <-sessionCtx.Done():
 					return
 				case chunk, ok := <-mic:
 					if !ok {
@@ -530,6 +539,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 			msg, err := session.Receive()
 			if err != nil {
 				if ctx.Err() != nil {
+					sessionCancel()
 					_ = session.Close()
 					return ctx.Err()
 				}
@@ -537,6 +547,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				if shouldReconnect {
 					break
 				}
+				sessionCancel()
 				return fmt.Errorf("voice: Receive: %w", err)
 			}
 
@@ -562,6 +573,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 							select {
 							case speaker <- part.InlineData.Data:
 							case <-ctx.Done():
+								sessionCancel()
 								_ = session.Close()
 								return ctx.Err()
 							}
@@ -632,6 +644,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 			}
 		}
 
+		sessionCancel() // kill the sender goroutine (Bug #8 fix)
 		_ = session.Close()
 		if !shouldReconnect {
 			return nil

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/jamesgardner/x-ray/internal/mache"
 	"google.golang.org/genai"
@@ -104,6 +105,7 @@ func (t *ActTool) Execute(_ context.Context, args map[string]any) (string, *Acti
 // --- scroll ---
 
 type ScrollTool struct {
+	mu       sync.RWMutex
 	scrollFn func(ctx context.Context, direction string) error
 }
 
@@ -125,10 +127,13 @@ func (t *ScrollTool) Execute(ctx context.Context, args map[string]any) (string, 
 	if direction == "" {
 		direction = "down"
 	}
-	if t.scrollFn == nil {
+	t.mu.RLock()
+	fn := t.scrollFn
+	t.mu.RUnlock()
+	if fn == nil {
 		return "Error: scroll not available in this context", nil
 	}
-	if err := t.scrollFn(ctx, direction); err != nil {
+	if err := fn(ctx, direction); err != nil {
 		return fmt.Sprintf("Error scrolling: %v", err), nil
 	}
 	return fmt.Sprintf("Scrolled %s. Use cat on the children file to see updated content.", direction), nil
@@ -197,6 +202,7 @@ func (t *RescanTool) Execute(_ context.Context, args map[string]any) (string, *A
 // --- list_tabs ---
 
 type ListTabsTool struct {
+	mu         sync.RWMutex
 	listTabsFn func(ctx context.Context) ([]TabInfo, error)
 }
 
@@ -208,10 +214,13 @@ func (t *ListTabsTool) Declaration() *genai.FunctionDeclaration {
 }
 
 func (t *ListTabsTool) Execute(ctx context.Context, _ map[string]any) (string, *ActionResult) {
-	if t.listTabsFn == nil {
+	t.mu.RLock()
+	fn := t.listTabsFn
+	t.mu.RUnlock()
+	if fn == nil {
 		return "Error: list_tabs not available in this context", nil
 	}
-	tabs, err := t.listTabsFn(ctx)
+	tabs, err := fn(ctx)
 	if err != nil {
 		return fmt.Sprintf("Error listing tabs: %v", err), nil
 	}

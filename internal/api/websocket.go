@@ -56,12 +56,14 @@ type TabSession struct {
 	RescanPath        string                   // set by voice handler for targeted rescan, consumed by handleDOMSnapshot
 	CurrentURL        string                   // URL of the page currently loaded or loading (prevents redundant goto)
 	Doer              *Doer                    // background execution agent (created lazily on first voice session)
+	doerCancel        context.CancelFunc       // cancels the Doer's Run goroutine (not just the current goal)
 	TabsListedCh      chan []TabInfo           // receives tab list from LIST_TABS round-trip
 	CVRegions         []EdgeRegion             // canvas regions detected via edge analysis, used for CDP pixel-click
 
 	schemaMu     sync.Mutex // protects SchemaReady close + schemaGen
 	schemaClosed bool
-	schemaGen    uint64 // monotonically increasing; only the latest generation applies
+	schemaGen    uint64       // monotonically increasing; only the latest generation applies
+	engineMu     sync.RWMutex // protects Engine pointer swaps
 }
 
 // SignalSchemaReady safely closes SchemaReady. No-op if already closed.
@@ -80,6 +82,28 @@ func (s *TabSession) ResetSchema() {
 	defer s.schemaMu.Unlock()
 	s.SchemaReady = make(chan struct{})
 	s.schemaClosed = false
+}
+
+// GetSchemaReady returns the SchemaReady channel under the lock, preventing
+// a data race between select-reading the channel and ResetSchema replacing it.
+func (s *TabSession) GetSchemaReady() <-chan struct{} {
+	s.schemaMu.Lock()
+	defer s.schemaMu.Unlock()
+	return s.SchemaReady
+}
+
+// GetEngine returns the Engine pointer under a read lock.
+func (s *TabSession) GetEngine() *mache.Engine {
+	s.engineMu.RLock()
+	defer s.engineMu.RUnlock()
+	return s.Engine
+}
+
+// SwapEngine atomically replaces the Engine pointer.
+func (s *TabSession) SwapEngine(engine *mache.Engine) {
+	s.engineMu.Lock()
+	defer s.engineMu.Unlock()
+	s.Engine = engine
 }
 
 // GetCurrentURL returns the URL currently associated with this session.
@@ -181,7 +205,9 @@ func (h *Handler) getOrCreateDoer(tabID int, sess *TabSession) *Doer {
 	}
 	doer := NewDoer(h, tabID, sess)
 	sess.Doer = doer
-	go doer.Run(context.Background())
+	runCtx, runCancel := context.WithCancel(context.Background())
+	sess.doerCancel = runCancel
+	go doer.Run(runCtx)
 	return doer
 }
 
@@ -505,13 +531,13 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 	sess := h.getSession(msg.TabID)
 
 	// Wait for schema if it hasn't arrived yet (intent queued before snapshot finished).
-	if !sess.Engine.HasSchema() {
+	if !sess.GetEngine().HasSchema() {
 		log.Printf("Navigator: waiting for schema (tab %d) before handling: %s", msg.TabID, msg.Intent)
 		h.sendMessage(conn, OutboundMessage{
 			Type: MsgStatus, TabID: msg.TabID, Message: "Waiting for schema...", Stage: "navigator",
 		})
 		select {
-		case <-sess.SchemaReady:
+		case <-sess.GetSchemaReady():
 			log.Printf("Navigator: schema ready, proceeding (tab %d)", msg.TabID)
 		case <-time.After(schemaWaitTimeout):
 			log.Printf("Navigator: timed out waiting for schema (tab %d)", msg.TabID)
@@ -576,6 +602,9 @@ func (h *Handler) handleTabClosed(msg InboundMessage) {
 	if sess, ok := h.sessions[msg.TabID]; ok {
 		if sess.Doer != nil {
 			sess.Doer.Cancel()
+		}
+		if sess.doerCancel != nil {
+			sess.doerCancel() // kills the Doer's Run goroutine (Bug #6 fix)
 		}
 		delete(h.sessions, msg.TabID)
 	}
@@ -841,9 +870,9 @@ func (h *Handler) HandleNavigateHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	// Wait for schema if needed.
-	if !sess.Engine.HasSchema() {
+	if !sess.GetEngine().HasSchema() {
 		select {
-		case <-sess.SchemaReady:
+		case <-sess.GetSchemaReady():
 		case <-time.After(schemaWaitTimeout):
 			http.Error(w, "timed out waiting for schema", http.StatusServiceUnavailable)
 			return
