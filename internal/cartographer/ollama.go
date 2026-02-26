@@ -77,7 +77,11 @@ func (o *OllamaAgent) GenerateSchema(ctx context.Context, screenshot []byte, mim
 	if err != nil {
 		return "", fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close() //nolint:errcheck
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			log.Printf("Cartographer (local): error closing response body: %v", cerr)
+		}
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {

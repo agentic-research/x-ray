@@ -413,11 +413,7 @@ async function captureWithCDP(tabId, targetMacheId = null) {
   }
 
   try {
-    // 0. Freeze page JS so the DOM doesn't change between overlay draw and screenshot.
-    // Content scripts run in an isolated world and are unaffected.
-    await chrome.debugger.sendCommand(
-      { tabId }, 'Emulation.setScriptExecutionDisabled', { value: true }
-    );
+    // 0. (Removed) Freeze page JS logic was here, but it breaks SPAs like GitHub traffic graphs.
 
     // 1. Get page dimensions
     const { cssContentSize } = await chrome.debugger.sendCommand(
@@ -529,11 +525,6 @@ async function captureWithCDP(tabId, targetMacheId = null) {
       targetMacheId ? `[zoomed: ${targetMacheId}]` : '');
     return { screenshot, axMap };
   } finally {
-    try {
-      await chrome.debugger.sendCommand(
-        { tabId }, 'Emulation.setScriptExecutionDisabled', { value: false }
-      );
-    } catch (_) { /* best-effort unfreeze */ }
     try {
       await chrome.debugger.detach({ tabId });
     } catch (_) { /* already detached */ }
