@@ -1,5 +1,7 @@
 package api
 
+import "github.com/jamesgardner/x-ray/internal/navigator"
+
 // Message type constants for WebSocket communication.
 const (
 	MsgDOMSnapshot       = "DOM_SNAPSHOT"
@@ -22,12 +24,8 @@ const (
 	MsgDOMMutated        = "DOM_MUTATED"
 )
 
-// TabInfo describes an open browser tab (returned by LIST_TABS round-trip).
-type TabInfo struct {
-	ID    int    `json:"id"`
-	Title string `json:"title"`
-	URL   string `json:"url"`
-}
+// TabInfo is an alias for navigator.TabInfo (canonical definition lives there).
+type TabInfo = navigator.TabInfo
 
 // InboundMessage is the envelope for all browser -> server messages.
 type InboundMessage struct {

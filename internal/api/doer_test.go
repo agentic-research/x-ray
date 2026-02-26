@@ -272,7 +272,9 @@ func TestDoerGotoDispatch(t *testing.T) {
 	_ = h // used for sendGoto side-effect (conn is nil, opens Chrome)
 }
 
-func TestDoerGotoTimeout(t *testing.T) {
+func TestDoerGotoCancellation(t *testing.T) {
+	// Verify that cancelling the context while a goto is waiting for SchemaReady
+	// causes the Doer to exit cleanly (not block forever).
 	mock := &mockIntentHandler{
 		responses: []mockResponse{
 			{action: &navigator.ActionResult{Action: "goto", Path: "https://slow-page.example.com"}},
@@ -281,19 +283,13 @@ func TestDoerGotoTimeout(t *testing.T) {
 	_, sess, doer := newDoerTestHarness(mock)
 	sess.SignalSchemaReady()
 
-	// Override schemaWaitTimeout for test speed — the Doer uses the package-level
-	// constant, so we test the timeout branch by never signaling SchemaReady.
-	// The default 30s is too slow for tests; the Doer will timeout eventually.
-	// Instead, we'll just verify the Doer finishes (success=true with timeout msg).
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go doer.Run(ctx)
 
 	doer.Submit(DoerGoal{ID: "g-slow", Text: "go to slow page"})
 
-	// Don't signal SchemaReady. The Doer should timeout after schemaWaitTimeout (30s).
-	// That's too long for a unit test, so instead cancel the context after 200ms.
+	// Cancel the context after 200ms rather than waiting for the real 30s timeout.
 	time.Sleep(200 * time.Millisecond)
 	cancel()
 
@@ -301,7 +297,6 @@ func TestDoerGotoTimeout(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	status, _, _, result := doer.State().Snapshot()
-	// After ctx cancel, the Doer should have finished (cancelled or failed).
 	if status == DoerExecuting {
 		t.Error("Doer should not still be Executing after context cancel")
 	}

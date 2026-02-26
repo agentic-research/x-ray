@@ -19,28 +19,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jamesgardner/x-ray/internal/mache"
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )
-
-// ---------------------------------------------------------------------------
-// Schema types (mirrors internal/mache/engine.go)
-// ---------------------------------------------------------------------------
-
-// Mount represents one entry from the Cartographer's output.
-type Mount struct {
-	VirtualPath  string   `json:"virtual_path"`
-	MacheID      string   `json:"mache_id"`
-	Description  string   `json:"description"`
-	CSSSelector  string   `json:"css_selector,omitempty"`
-	PrimaryItems []string `json:"primary_items,omitempty"`
-	ItemSelector string   `json:"item_selector,omitempty"`
-}
-
-// CartographerOutput is the top-level JSON from the Cartographer.
-type CartographerOutput struct {
-	Mounts []Mount `json:"mounts"`
-}
 
 // ---------------------------------------------------------------------------
 // Prompt (same as experiments/url-schema-gen)
@@ -88,7 +70,7 @@ Output a valid JSON object with a top-level "mounts" array. Each mount must have
 // result holds the output of a single URL schema generation run.
 type result struct {
 	URL           string
-	Schema        *CartographerOutput
+	Schema        *mache.CartographerOutput
 	RawJSON       string
 	InputTokens   int32
 	OutputTokens  int32
@@ -158,7 +140,7 @@ func generateSchema(ctx context.Context, client *genai.Client, model, targetURL 
 	r.RawJSON = text
 
 	// Parse and validate.
-	var output CartographerOutput
+	var output mache.CartographerOutput
 	if err := json.Unmarshal([]byte(text), &output); err != nil {
 		r.Error = fmt.Errorf("JSON parse error: %w", err)
 		return r
@@ -215,7 +197,7 @@ func getSchemaDefinition() *genai.Schema {
 }
 
 // validateSchema checks structural validity of the generated schema.
-func validateSchema(output *CartographerOutput) (bool, string) {
+func validateSchema(output *mache.CartographerOutput) (bool, string) {
 	var issues []string
 
 	if len(output.Mounts) == 0 {

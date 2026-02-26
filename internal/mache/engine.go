@@ -18,6 +18,7 @@ type Mount struct {
 	VirtualPath  string   `json:"virtual_path"`
 	MacheID      string   `json:"mache_id"`
 	Description  string   `json:"description"`
+	CSSSelector  string   `json:"css_selector,omitempty"`
 	PrimaryItems []string `json:"primary_items"`
 	ItemSelector string   `json:"item_selector,omitempty"`
 }

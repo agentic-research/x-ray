@@ -118,3 +118,49 @@ Chrome Manifest V3 and browser audio sandbox (requiring offscreen documents and 
 ### Implementation
 - Added `internal/audio/audio.go` which uses `sox` to capture 16kHz PCM audio for Gemini Live input and play 24kHz PCM audio from Gemini Live output.
 - `Available()` function checks if `sox` is installed on the host machine.
+
+---
+
+## 2026-02-25: Full Codebase Review (4 categories)
+
+### Findings
+
+**1. Duplicated Code (6 instances)**
+- `Mount` + `CartographerOutput` structs re-declared in `cmd/warm/main.go` and `cmd/gate/main.go` instead of importing from `internal/mache` / `internal/cartographer`
+- `systemPrompt` + `getSchemaDefinition()` + `validateSchema()` copy-pasted into `cmd/warm/main.go` from internal packages
+- `TabInfo` struct identical in `internal/api/messages.go` and `internal/navigator/agent.go`
+- Voice session setup (`LiveConnectConfig`, tool definitions, tool dispatch switch) duplicated between `HandleVoice` and `StartVoiceLoop` in `internal/api/voice.go`
+- CSS selector resolution block duplicated between SCROLL and RESOLVE_SELECTORS handlers in `ext/content.js`
+- `buildNavGenerator()` in `cmd/bench/main.go` duplicates generator selection from `cmd/agentd/main.go`
+
+**2. Bad Patterns**
+- **Data race**: `Doer.SetResultNotifyFn` / `SetActionNotifyFn` write function pointers without mutex while the Doer goroutine reads them
+- **Disk leak**: `saveLog()` in websocket.go writes to `x-ray-logs/` on every snapshot with no rotation or cleanup
+- **O(n²)**: `appendUnique()` in engine.go is O(n) per call, used in loops → quadratic for large pages
+- **No graceful shutdown**: `select {}` in main.go with no signal handling
+
+**3. Design Anti-Patterns**
+- 5-place tool registration (noted in interfaces.go TODO) — voice layer re-declares tool definitions separately
+- Giant inline system prompt const (60+ lines) — better as `//go:embed`
+- Time.Sleep polling in doer_test.go — should use channel signaling
+- `TestDoerGotoTimeout` tests context cancellation, not the actual 30s timeout
+
+**4. Fake Tests**
+- `TestAvailable` (audio_test.go) — no assertion, just logs
+- `TestOllamaIntegrationToolFormatDiagnostic` (model_test.go) — self-described "not a pass/fail test"
+- `TestVoiceWaitingForSchema` / `TestVoiceConnectsWithSchema` (voice_test.go) — test Engine construction, not voice behavior
+- `TestVoiceMessageJSON` (voice_test.go) — tests `json.Marshal` on a tagged struct (stdlib behavior)
+
+### Fixes Applied
+
+1. **Data race** — Renamed `cancelMu`→`mu` in Doer, extended to protect `resultNotifyFn`/`actionNotifyFn` setters and readers (copy-under-lock pattern). Verified with `go test -race`.
+2. **TabInfo dedup** — `api.TabInfo` replaced with type alias to `navigator.TabInfo`. Eliminated field-by-field copy in `doer.go:wireNavigatorCallbacks`.
+3. **cmd/warm dedup** — Added `CSSSelector` field to `mache.Mount` (omitempty). `cmd/warm` now imports `mache.Mount`/`mache.CartographerOutput` instead of re-declaring. `systemPrompt`, `validateSchema`, `getSchemaDefinition` left separate (intentionally different for URL-based pre-warming).
+4. **Voice dedup** — Extracted `buildLiveConfig()` helper in voice.go. Tool dispatch switch left separate (intentional difference: `doer` vs `resolveDoer()`).
+5. **Fake tests** — Deleted `TestAvailable`. Renamed `TestVoiceWaitingForSchema`→`TestSessionFreshHasNoSchema`, `TestVoiceConnectsWithSchema`→`TestSessionApplySchemaWorks`, `TestDoerGotoTimeout`→`TestDoerGotoCancellation`.
+6. **saveLog guard** — Made opt-in via `XRAY_SAVE_LOGS=1` env var.
+
+### Corrections from Initial Review
+- `cmd/gate/main.go` does NOT duplicate types (already imports from internal packages)
+- `cmd/warm/main.go`'s `systemPrompt` and `validateSchema` are intentionally different (URL context vs DOM+screenshot), not duplicates
+- Voice tool dispatch switch has an intentional difference (`doer` vs `resolveDoer()` for tab-switching support)

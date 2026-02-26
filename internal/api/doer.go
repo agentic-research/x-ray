@@ -63,7 +63,7 @@ type Doer struct {
 	sess     *TabSession
 	state    *DoerState
 	goalCh   chan DoerGoal
-	cancelMu sync.Mutex
+	mu       sync.Mutex
 	cancelFn context.CancelFunc
 
 	resultNotifyFn func(summary string)                  // called when goal completes
@@ -84,13 +84,17 @@ func NewDoer(handler *Handler, tabID int, sess *TabSession) *Doer {
 // SetResultNotifyFn sets the callback fired when a goal completes.
 // The Talker uses this to inject a synthetic message into the Live session.
 func (d *Doer) SetResultNotifyFn(fn func(summary string)) {
+	d.mu.Lock()
 	d.resultNotifyFn = fn
+	d.mu.Unlock()
 }
 
 // SetActionNotifyFn sets the callback fired when an action is dispatched.
 // The Talker uses this to forward EXECUTE_ACTION to the voice WebSocket.
 func (d *Doer) SetActionNotifyFn(fn func(macheID, action, payload string)) {
+	d.mu.Lock()
 	d.actionNotifyFn = fn
+	d.mu.Unlock()
 }
 
 // State returns the DoerState for the Talker to poll.
@@ -113,11 +117,11 @@ func (d *Doer) Run(ctx context.Context) {
 // Submit sends a goal to the Doer. Cancels any in-flight work first.
 func (d *Doer) Submit(goal DoerGoal) {
 	// Cancel current work.
-	d.cancelMu.Lock()
+	d.mu.Lock()
 	if d.cancelFn != nil {
 		d.cancelFn()
 	}
-	d.cancelMu.Unlock()
+	d.mu.Unlock()
 
 	// Drain stale goal if any.
 	select {
@@ -130,12 +134,12 @@ func (d *Doer) Submit(goal DoerGoal) {
 
 // Cancel aborts the current goal.
 func (d *Doer) Cancel() {
-	d.cancelMu.Lock()
+	d.mu.Lock()
 	if d.cancelFn != nil {
 		d.cancelFn()
 		d.cancelFn = nil
 	}
-	d.cancelMu.Unlock()
+	d.mu.Unlock()
 
 	d.state.mu.Lock()
 	d.state.Status = DoerIdle
@@ -147,9 +151,9 @@ func (d *Doer) Cancel() {
 
 func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 	goalCtx, cancelFn := context.WithCancel(parentCtx)
-	d.cancelMu.Lock()
+	d.mu.Lock()
 	d.cancelFn = cancelFn
-	d.cancelMu.Unlock()
+	d.mu.Unlock()
 	defer cancelFn()
 
 	// Update state: executing.
@@ -382,8 +386,11 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		// Click/focus/type/enter — dispatch to extension.
 		d.updateStep(fmt.Sprintf("performing %s on %s", action.Action, action.Path))
 		d.handler.SendActionToExtension(d.tabID, action.MacheID, action.Action, action.Payload)
-		if d.actionNotifyFn != nil {
-			d.actionNotifyFn(action.MacheID, action.Action, action.Payload)
+		d.mu.Lock()
+		actionNotify := d.actionNotifyFn
+		d.mu.Unlock()
+		if actionNotify != nil {
+			actionNotify(action.MacheID, action.Action, action.Payload)
 		}
 		if action.Payload != "" {
 			return fmt.Sprintf("Typed %q into %s.", action.Payload, action.Path)
@@ -416,11 +423,7 @@ func (d *Doer) wireNavigatorCallbacks() {
 		d.handler.sendListTabs()
 		select {
 		case tabs := <-d.sess.TabsListedCh:
-			result := make([]navigator.TabInfo, len(tabs))
-			for i, t := range tabs {
-				result[i] = navigator.TabInfo{ID: t.ID, Title: t.Title, URL: t.URL}
-			}
-			return result, nil
+			return tabs, nil
 		case <-time.After(5 * time.Second):
 			return nil, fmt.Errorf("list_tabs timed out")
 		case <-ltCtx.Done():
@@ -454,8 +457,11 @@ func (d *Doer) finishGoal(goalID string, success bool, summary, errStr string) {
 	log.Printf("Doer [tab %d]: goal %s finished (success=%v): %s", d.tabID, goalID, success, summary)
 
 	// Notify the Talker so it can announce the result.
-	if d.resultNotifyFn != nil {
-		d.resultNotifyFn(summary)
+	d.mu.Lock()
+	notify := d.resultNotifyFn
+	d.mu.Unlock()
+	if notify != nil {
+		notify(summary)
 	}
 }
 

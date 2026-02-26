@@ -60,12 +60,6 @@ func TestPlayerCreation(t *testing.T) {
 	}
 }
 
-func TestAvailable(t *testing.T) {
-	// Just exercise the function; the result depends on the host.
-	result := Available()
-	t.Logf("Available() = %v", result)
-}
-
 func TestRecorderStartStop(t *testing.T) {
 	if _, err := exec.LookPath("rec"); err != nil {
 		t.Skip("sox not installed")

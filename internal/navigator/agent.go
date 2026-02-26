@@ -24,7 +24,7 @@ type ActionResult struct {
 	Payload string `json:"payload,omitempty"`
 }
 
-// TabInfo describes an open browser tab (mirrored from api.TabInfo for the navigator layer).
+// TabInfo describes an open browser tab (returned by LIST_TABS round-trip).
 type TabInfo struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`

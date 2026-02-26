@@ -715,8 +715,14 @@ func (h *Handler) scrollVoice(ctx context.Context, sess *TabSession, tabID int, 
 	return h.scrollPage(ctx, conn, sess, tabID, direction)
 }
 
+var enableSaveLog = os.Getenv("XRAY_SAVE_LOGS") == "1"
+
 // saveLog writes a timestamped log entry to logs/<kind>/.
+// Opt-in via XRAY_SAVE_LOGS=1 to avoid unbounded disk usage.
 func saveLog(kind, label, content string) {
+	if !enableSaveLog {
+		return
+	}
 	dir := fmt.Sprintf("logs/%s", kind)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		log.Printf("Failed to create log dir: %v", err)

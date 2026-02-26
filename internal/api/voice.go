@@ -115,6 +115,22 @@ BEHAVIOR:
 
 Your navigator can read the full page structure, so ALWAYS delegate page questions to it — never say "I can't see the page."`
 
+// buildLiveConfig returns the LiveConnectConfig shared by HandleVoice and StartVoiceLoop.
+func buildLiveConfig() *genai.LiveConnectConfig {
+	tools := append(talkerToolDefinitions(), &genai.Tool{
+		GoogleSearch: &genai.GoogleSearch{},
+	})
+	return &genai.LiveConnectConfig{
+		ResponseModalities: []genai.Modality{genai.ModalityAudio},
+		SystemInstruction: &genai.Content{
+			Parts: []*genai.Part{{Text: talkerSystemPrompt}},
+		},
+		Tools:                    tools,
+		InputAudioTranscription:  &genai.AudioTranscriptionConfig{},
+		OutputAudioTranscription: &genai.AudioTranscriptionConfig{},
+	}
+}
+
 // HandleVoice upgrades to WebSocket and proxies audio between the browser and
 // Gemini's Live API. Navigation work is delegated to the Doer goroutine;
 // the Talker stays responsive with instant check_status/issue_command tools.
@@ -147,18 +163,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	doer := h.getOrCreateDoer(tabID, sess)
 
 	// Connect to Gemini Live with Talker tools (NOT navigator tools).
-	tools := append(talkerToolDefinitions(), &genai.Tool{
-		GoogleSearch: &genai.GoogleSearch{},
-	})
-	session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, &genai.LiveConnectConfig{
-		ResponseModalities: []genai.Modality{genai.ModalityAudio},
-		SystemInstruction: &genai.Content{
-			Parts: []*genai.Part{{Text: talkerSystemPrompt}},
-		},
-		Tools:                    tools,
-		InputAudioTranscription:  &genai.AudioTranscriptionConfig{},
-		OutputAudioTranscription: &genai.AudioTranscriptionConfig{},
-	})
+	session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, buildLiveConfig())
 	if err != nil {
 		log.Printf("Voice: Live API connect failed: %v", err)
 		sendVoiceJSON(conn, nil, voiceMessage{Type: "error", Text: "Live API connect failed: " + err.Error()})
@@ -353,18 +358,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 // textIn delivers typed text intents from stdin. Runs until ctx is cancelled.
 func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker chan<- []byte, textIn <-chan string) error {
 	// Connect to Gemini Live with Talker tools + Google Search Grounding.
-	tools := append(talkerToolDefinitions(), &genai.Tool{
-		GoogleSearch: &genai.GoogleSearch{},
-	})
-	session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, &genai.LiveConnectConfig{
-		ResponseModalities: []genai.Modality{genai.ModalityAudio},
-		SystemInstruction: &genai.Content{
-			Parts: []*genai.Part{{Text: talkerSystemPrompt}},
-		},
-		Tools:                    tools,
-		InputAudioTranscription:  &genai.AudioTranscriptionConfig{},
-		OutputAudioTranscription: &genai.AudioTranscriptionConfig{},
-	})
+	session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, buildLiveConfig())
 	if err != nil {
 		return fmt.Errorf("voice: Live API connect: %w", err)
 	}
