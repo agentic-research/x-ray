@@ -102,7 +102,7 @@ type Handler struct {
 	conn           *websocket.Conn
 	pending        []pendingAction
 	sessions       map[int]*TabSession
-	schemas        *schemaCache     // domain+path → schema JSON
+	schemas        *SchemaCache     // domain+path → schema JSON
 	activeVoiceTab int              // tab ID for native voice mode (set by TAB_ACTIVATED)
 	openBrowserFn  func(url string) // fallback when no WS connection; nil = no-op (tests)
 }
@@ -115,7 +115,7 @@ func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveCli
 		NavModel:     navModel,
 		LiveModel:    liveModel,
 		sessions:     make(map[int]*TabSession),
-		schemas:      newSchemaCache(dbPath),
+		schemas:      NewSchemaCache(dbPath),
 	}
 }
 
@@ -296,7 +296,7 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	sess.schemaMu.Unlock()
 
 	// --- Schema cache lookup (bypassed on rescan) ---
-	key := cacheKey(msg.URL)
+	key := CacheKey(msg.URL)
 	var schemaJSON string
 	var fromCache bool
 

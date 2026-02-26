@@ -24,15 +24,15 @@ func TestCacheKey(t *testing.T) {
 		{"not-a-url", ""},
 	}
 	for _, tt := range tests {
-		got := cacheKey(tt.url)
+		got := CacheKey(tt.url)
 		if got != tt.want {
-			t.Errorf("cacheKey(%q) = %q, want %q", tt.url, got, tt.want)
+			t.Errorf("CacheKey(%q) = %q, want %q", tt.url, got, tt.want)
 		}
 	}
 }
 
 func TestSchemaCacheHitMiss(t *testing.T) {
-	c := newSchemaCache("")
+	c := NewSchemaCache("")
 
 	// Miss on empty cache.
 	if _, ok := c.Get("example.com/"); ok {
@@ -61,11 +61,11 @@ func TestSchemaCacheSQLitePersistence(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test-schemas.db")
 
 	// Create a cache backed by SQLite, put an entry.
-	c1 := newSchemaCache(dbPath)
+	c1 := NewSchemaCache(dbPath)
 	c1.Put("example.com/page", `{"mounts":[{"virtual_path":"/main"}]}`)
 
 	// Create a new cache with the same path — entry should be loaded from disk.
-	c2 := newSchemaCache(dbPath)
+	c2 := NewSchemaCache(dbPath)
 
 	got, ok := c2.Get("example.com/page")
 	if !ok {
@@ -79,11 +79,11 @@ func TestSchemaCacheSQLitePersistence(t *testing.T) {
 func TestSchemaCacheSQLiteOverwrite(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test-overwrite.db")
 
-	c1 := newSchemaCache(dbPath)
+	c1 := NewSchemaCache(dbPath)
 	c1.Put("example.com/", `{"v":1}`)
 	c1.Put("example.com/", `{"v":2}`)
 
-	c2 := newSchemaCache(dbPath)
+	c2 := NewSchemaCache(dbPath)
 
 	got, ok := c2.Get("example.com/")
 	if !ok {
@@ -100,7 +100,7 @@ func TestSchemaCacheSQLiteOverwrite(t *testing.T) {
 func TestSchemaCacheMacheGraphIntegrity(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test-graph.db")
 
-	c := newSchemaCache(dbPath)
+	c := NewSchemaCache(dbPath)
 	c.Put("example.com/page", `{"mounts":[{"virtual_path":"/main"}]}`)
 	c.Put("news.ycombinator.com/news", `{"mounts":[{"virtual_path":"/feed"}]}`)
 

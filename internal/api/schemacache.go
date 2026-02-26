@@ -14,7 +14,7 @@ import (
 	"github.com/agentic-research/mache/graph"
 )
 
-// schemaCache stores schema JSON in a mache MemoryStore graph, persisted
+// SchemaCache stores schema JSON in a mache MemoryStore graph, persisted
 // to SQLite via graph.ExportSQLite. This proves that x-ray's cached state
 // is a transferrable semantic graph readable by any mache-aware tool.
 //
@@ -23,17 +23,17 @@ import (
 //	{url_key}/              (dir, root node)
 //	├── schema_json         (file: raw Cartographer JSON)
 //	└── cached_at           (file: unix timestamp)
-type schemaCache struct {
+type SchemaCache struct {
 	mu     sync.RWMutex
 	store  *graph.MemoryStore
 	dbPath string // empty = pure in-memory mode
 }
 
-// newSchemaCache creates a schema cache. If dbPath is empty, the cache is
+// NewSchemaCache creates a schema cache. If dbPath is empty, the cache is
 // purely in-memory (suitable for tests). Otherwise it loads any previously
 // persisted graph from SQLite.
-func newSchemaCache(dbPath string) *schemaCache {
-	c := &schemaCache{
+func NewSchemaCache(dbPath string) *SchemaCache {
+	c := &SchemaCache{
 		store:  graph.NewMemoryStore(),
 		dbPath: dbPath,
 	}
@@ -66,9 +66,9 @@ func newSchemaCache(dbPath string) *schemaCache {
 	return c
 }
 
-// cacheKey extracts "host/path" from a raw URL, stripping query params
+// CacheKey extracts "host/path" from a raw URL, stripping query params
 // and fragments. Returns empty string if the URL is unparseable or empty.
-func cacheKey(rawURL string) string {
+func CacheKey(rawURL string) string {
 	if rawURL == "" {
 		return ""
 	}
@@ -84,7 +84,7 @@ func cacheKey(rawURL string) string {
 }
 
 // Get returns the cached schema for the given URL key, or ("", false).
-func (c *schemaCache) Get(key string) (string, bool) {
+func (c *SchemaCache) Get(key string) (string, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	node, err := c.store.GetNode(key + "/schema_json")
@@ -95,7 +95,7 @@ func (c *schemaCache) Get(key string) (string, bool) {
 }
 
 // Put stores a schema in the graph and persists to SQLite.
-func (c *schemaCache) Put(key, schemaJSON string) {
+func (c *SchemaCache) Put(key, schemaJSON string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -126,7 +126,7 @@ func (c *schemaCache) Put(key, schemaJSON string) {
 }
 
 // persistLocked exports the full graph to SQLite. Caller must hold c.mu.
-func (c *schemaCache) persistLocked() {
+func (c *SchemaCache) persistLocked() {
 	if c.dbPath == "" {
 		return
 	}
@@ -136,6 +136,6 @@ func (c *schemaCache) persistLocked() {
 }
 
 // Close is a no-op — ExportSQLite manages its own DB connections.
-func (c *schemaCache) Close() error {
+func (c *SchemaCache) Close() error {
 	return nil
 }

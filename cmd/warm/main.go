@@ -2,8 +2,9 @@
 // context tool. This allows cache-warming for known sites WITHOUT requiring
 // the Chrome extension, a screenshot, or a DOM summary.
 //
-// The generated schemas are printed to stdout as JSON. SQLite storage will be
-// added when the schema-cache layer (Lane A) merges.
+// Valid schemas are persisted to ~/.xray/schemas.db (the same SQLite graph
+// used by the main x-ray server), so a subsequent server start sees them
+// as cache hits.
 //
 // Usage:
 //
@@ -16,9 +17,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/jamesgardner/x-ray/internal/api"
 	"github.com/jamesgardner/x-ray/internal/mache"
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
@@ -335,6 +338,12 @@ func main() {
 		model = "gemini-2.5-flash"
 	}
 
+	// Schema cache — same default path as the main server.
+	home, _ := os.UserHomeDir()
+	dbPath := filepath.Join(home, ".xray", "schemas.db")
+	cache := api.NewSchemaCache(dbPath)
+	defer func() { _ = cache.Close() }()
+
 	log.Printf("Model: %s", model)
 	log.Printf("Warming %d URL(s)...", len(urls))
 
@@ -346,6 +355,9 @@ func main() {
 
 		if r.Error != nil || !r.Valid {
 			exitCode = 1
+		} else if key := api.CacheKey(r.URL); key != "" {
+			cache.Put(key, r.RawJSON)
+			log.Printf("Cached schema for %q → %s", key, dbPath)
 		}
 
 		// Small delay between requests to avoid rate limits.

@@ -128,6 +128,16 @@ func buildLiveConfig() *genai.LiveConnectConfig {
 		Tools:                    tools,
 		InputAudioTranscription:  &genai.AudioTranscriptionConfig{},
 		OutputAudioTranscription: &genai.AudioTranscriptionConfig{},
+		SessionResumption:        &genai.SessionResumptionConfig{},
+	}
+}
+
+// applyResumeHandle sets the session resumption handle on a LiveConnectConfig.
+// If handle is empty, the config retains its default empty SessionResumption
+// (opt-in to resumption updates without restoring a previous session).
+func applyResumeHandle(config *genai.LiveConnectConfig, handle string) {
+	if handle != "" {
+		config.SessionResumption = &genai.SessionResumptionConfig{Handle: handle}
 	}
 }
 
@@ -162,32 +172,6 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	// Create/get the Doer for this tab.
 	doer := h.getOrCreateDoer(tabID, sess)
 
-	// Connect to Gemini Live with Talker tools (NOT navigator tools).
-	session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, buildLiveConfig())
-	if err != nil {
-		log.Printf("Voice: Live API connect failed: %v", err)
-		sendVoiceJSON(conn, nil, voiceMessage{Type: "error", Text: "Live API connect failed: " + err.Error()})
-		return
-	}
-	defer func() { _ = session.Close() }()
-	log.Printf("Voice: Gemini Live session established (tab %d)", tabID)
-
-	// Wire Doer callbacks: result announcement + action UI forwarding.
-	doer.SetResultNotifyFn(func(summary string) {
-		if err := session.SendClientContent(genai.LiveClientContentInput{
-			Turns: []*genai.Content{{
-				Role: "user",
-				Parts: []*genai.Part{{Text: fmt.Sprintf(
-					"[SYSTEM: Background task completed. Result: %s. Announce this to the user briefly.]",
-					summary,
-				)}},
-			}},
-		}); err != nil {
-			log.Printf("Voice: result notify SendClientContent error: %v", err)
-		}
-	})
-	defer doer.SetResultNotifyFn(nil)
-
 	doer.SetActionNotifyFn(func(macheID, action, payload string) {
 		sendVoiceJSON(conn, &wsMu, voiceMessage{
 			Type:    MsgExecuteAction,
@@ -198,156 +182,223 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	})
 	defer doer.SetActionNotifyFn(nil)
 
-	// --- goroutine 1: browser → Gemini (audio chunks) ---
-	go func() {
-		var audioChunks int
-		var audioBytes int
-		lastLog := time.Now()
-		for {
-			msgType, data, err := conn.ReadMessage()
-			if err != nil {
-				log.Printf("Voice: browser read error: %v", err)
-				_ = session.Close()
-				return
+	// Session resumption: reconnect-on-GoAway outer loop.
+	// The browser WS stays open; only the Gemini Live session reconnects.
+	var resumeHandle string
+	for {
+		config := buildLiveConfig()
+		applyResumeHandle(config, resumeHandle)
+
+		session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, config)
+		if err != nil {
+			log.Printf("Voice: Live API connect failed: %v", err)
+			sendVoiceJSON(conn, nil, voiceMessage{Type: "error", Text: "Live API connect failed: " + err.Error()})
+			return
+		}
+		if resumeHandle != "" {
+			log.Printf("Voice: reconnected with resume handle (tab %d)", tabID)
+		} else {
+			log.Printf("Voice: Gemini Live session established (tab %d)", tabID)
+		}
+
+		// Wire Doer result callback to this session.
+		doer.SetResultNotifyFn(func(summary string) {
+			if err := session.SendClientContent(genai.LiveClientContentInput{
+				Turns: []*genai.Content{{
+					Role: "user",
+					Parts: []*genai.Part{{Text: fmt.Sprintf(
+						"[SYSTEM: Background task completed. Result: %s. Announce this to the user briefly.]",
+						summary,
+					)}},
+				}},
+			}); err != nil {
+				log.Printf("Voice: result notify SendClientContent error: %v", err)
 			}
-			switch msgType {
-			case websocket.BinaryMessage:
-				audioChunks++
-				audioBytes += len(data)
-				if time.Since(lastLog) >= 5*time.Second {
-					log.Printf("Voice [tab %d]: receiving audio — %d chunks, %d bytes in last 5s", tabID, audioChunks, audioBytes)
-					audioChunks = 0
-					audioBytes = 0
-					lastLog = time.Now()
-				}
-				if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
-					Audio: &genai.Blob{
-						Data:     data,
-						MIMEType: "audio/pcm;rate=16000",
-					},
-				}); err != nil {
-					log.Printf("Voice: SendRealtimeInput error: %v", err)
+		})
+
+		// --- goroutine 1: browser → Gemini (audio chunks) ---
+		// Each reconnect starts a new sender goroutine tied to this session.
+		senderDone := make(chan struct{})
+		go func() {
+			defer close(senderDone)
+			var audioChunks int
+			var audioBytes int
+			lastLog := time.Now()
+			for {
+				msgType, data, err := conn.ReadMessage()
+				if err != nil {
+					log.Printf("Voice: browser read error: %v", err)
+					_ = session.Close()
 					return
 				}
-			case websocket.TextMessage:
-				var cmd voiceMessage
-				if err := json.Unmarshal(data, &cmd); err != nil {
-					continue
-				}
-				switch cmd.Type {
-				case "mic_stop":
-					log.Println("Voice: mic released, sending AudioStreamEnd")
+				switch msgType {
+				case websocket.BinaryMessage:
+					audioChunks++
+					audioBytes += len(data)
+					if time.Since(lastLog) >= 5*time.Second {
+						log.Printf("Voice [tab %d]: receiving audio — %d chunks, %d bytes in last 5s", tabID, audioChunks, audioBytes)
+						audioChunks = 0
+						audioBytes = 0
+						lastLog = time.Now()
+					}
 					if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
-						AudioStreamEnd: true,
-					}); err != nil {
-						log.Printf("Voice: AudioStreamEnd error: %v", err)
-					}
-				case "text_input":
-					if cmd.Text == "" {
-						continue
-					}
-					log.Printf("Voice [tab %d]: text input: %s", tabID, cmd.Text)
-					if err := session.SendClientContent(genai.LiveClientContentInput{
-						Turns: []*genai.Content{
-							{Role: "user", Parts: []*genai.Part{{Text: cmd.Text}}},
+						Audio: &genai.Blob{
+							Data:     data,
+							MIMEType: "audio/pcm;rate=16000",
 						},
 					}); err != nil {
-						log.Printf("Voice: SendClientContent error: %v", err)
+						log.Printf("Voice: SendRealtimeInput error: %v", err)
+						return
+					}
+				case websocket.TextMessage:
+					var cmd voiceMessage
+					if err := json.Unmarshal(data, &cmd); err != nil {
+						continue
+					}
+					switch cmd.Type {
+					case "mic_stop":
+						log.Println("Voice: mic released, sending AudioStreamEnd")
+						if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+							AudioStreamEnd: true,
+						}); err != nil {
+							log.Printf("Voice: AudioStreamEnd error: %v", err)
+						}
+					case "text_input":
+						if cmd.Text == "" {
+							continue
+						}
+						log.Printf("Voice [tab %d]: text input: %s", tabID, cmd.Text)
+						if err := session.SendClientContent(genai.LiveClientContentInput{
+							Turns: []*genai.Content{
+								{Role: "user", Parts: []*genai.Part{{Text: cmd.Text}}},
+							},
+						}); err != nil {
+							log.Printf("Voice: SendClientContent error: %v", err)
+						}
 					}
 				}
 			}
-		}
-	}()
+		}()
 
-	// --- goroutine 2 (this goroutine): Gemini → browser ---
-	// No inToolLoop — Talker tools are instant, audio is always forwarded.
-	for {
-		msg, err := session.Receive()
-		if err != nil {
-			log.Printf("Voice: Receive error: %v", err)
+		// --- goroutine 2 (this goroutine): Gemini → browser ---
+		shouldReconnect := false
+		for {
+			msg, err := session.Receive()
+			if err != nil {
+				log.Printf("Voice: Receive error: %v", err)
+				break
+			}
+
+			if msg.SetupComplete != nil {
+				log.Println("Voice: Live session setup complete")
+				sendVoiceJSON(conn, &wsMu, voiceMessage{Type: "ready"})
+				continue
+			}
+
+			if sc := msg.ServerContent; sc != nil {
+				// Always forward audio — browser handles its own buffer flush on interruption.
+				if sc.ModelTurn != nil {
+					for _, part := range sc.ModelTurn.Parts {
+						if part.InlineData != nil && len(part.InlineData.Data) > 0 {
+							wsMu.Lock()
+							_ = conn.WriteMessage(websocket.BinaryMessage, part.InlineData.Data)
+							wsMu.Unlock()
+						}
+						if part.Text != "" {
+							sendVoiceJSON(conn, &wsMu, voiceMessage{
+								Type: "model_text", Text: part.Text,
+							})
+						}
+					}
+				}
+
+				// Transcriptions.
+				if sc.InputTranscription != nil && sc.InputTranscription.Text != "" {
+					log.Printf("Voice [tab %d] User: %s", tabID, sc.InputTranscription.Text)
+					sendVoiceJSON(conn, &wsMu, voiceMessage{
+						Type: "input_transcription", Text: sc.InputTranscription.Text,
+					})
+				}
+				if sc.OutputTranscription != nil && sc.OutputTranscription.Text != "" {
+					log.Printf("Voice [tab %d] Talker: %s", tabID, sc.OutputTranscription.Text)
+					sendVoiceJSON(conn, &wsMu, voiceMessage{
+						Type: "output_transcription", Text: sc.OutputTranscription.Text,
+					})
+				}
+
+				if sc.Interrupted {
+					sendVoiceJSON(conn, &wsMu, voiceMessage{Type: "interrupted"})
+				}
+				if sc.GenerationComplete {
+					sendVoiceJSON(conn, &wsMu, voiceMessage{Type: "generation_complete"})
+				}
+				if sc.TurnComplete {
+					sendVoiceJSON(conn, &wsMu, voiceMessage{Type: "turn_complete"})
+				}
+				continue
+			}
+
+			// ToolCall — Talker tools execute instantly.
+			if tc := msg.ToolCall; tc != nil {
+				var responses []*genai.FunctionResponse
+				for _, fc := range tc.FunctionCalls {
+					switch fc.Name {
+					case "check_status", "issue_command", "cancel_task":
+						result := h.executeTalkerTool(fc, doer)
+						log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
+						responses = append(responses, &genai.FunctionResponse{
+							ID:       fc.ID,
+							Name:     fc.Name,
+							Response: map[string]any{"output": result},
+						})
+					default:
+						log.Printf("Voice: skipping server-side tool %s (tab %d)", fc.Name, tabID)
+						continue
+					}
+				}
+				if len(responses) > 0 {
+					if err := session.SendToolResponse(genai.LiveToolResponseInput{
+						FunctionResponses: responses,
+					}); err != nil {
+						log.Printf("Voice: SendToolResponse error: %v", err)
+						break
+					}
+				}
+				continue
+			}
+
+			if msg.ToolCallCancellation != nil {
+				log.Printf("Voice: tool call cancelled: %v", msg.ToolCallCancellation)
+				continue
+			}
+
+			if msg.UsageMetadata != nil {
+				log.Printf("Voice [tab %d]: tokens: %d total (%d prompt, %d response)",
+					tabID,
+					msg.UsageMetadata.TotalTokenCount,
+					msg.UsageMetadata.PromptTokenCount,
+					msg.UsageMetadata.ResponseTokenCount)
+			}
+
+			// Session resumption: store handle for reconnect.
+			if msg.SessionResumptionUpdate != nil && msg.SessionResumptionUpdate.Resumable {
+				resumeHandle = msg.SessionResumptionUpdate.NewHandle
+			}
+
+			// GoAway: server is about to disconnect, reconnect with resume handle.
+			if msg.GoAway != nil {
+				log.Printf("Voice [tab %d]: GoAway received (time left: %s), reconnecting...", tabID, msg.GoAway.TimeLeft)
+				shouldReconnect = true
+				break
+			}
+		}
+
+		_ = session.Close()
+		doer.SetResultNotifyFn(nil)
+		if !shouldReconnect {
 			break
 		}
-
-		if msg.SetupComplete != nil {
-			log.Println("Voice: Live session setup complete")
-			sendVoiceJSON(conn, &wsMu, voiceMessage{Type: "ready"})
-			continue
-		}
-
-		if sc := msg.ServerContent; sc != nil {
-			// Always forward audio — no suppression.
-			if sc.ModelTurn != nil {
-				for _, part := range sc.ModelTurn.Parts {
-					if part.InlineData != nil && len(part.InlineData.Data) > 0 {
-						wsMu.Lock()
-						_ = conn.WriteMessage(websocket.BinaryMessage, part.InlineData.Data)
-						wsMu.Unlock()
-					}
-					if part.Text != "" {
-						sendVoiceJSON(conn, &wsMu, voiceMessage{
-							Type: "model_text", Text: part.Text,
-						})
-					}
-				}
-			}
-
-			// Transcriptions.
-			if sc.InputTranscription != nil && sc.InputTranscription.Text != "" {
-				log.Printf("Voice [tab %d] User: %s", tabID, sc.InputTranscription.Text)
-				sendVoiceJSON(conn, &wsMu, voiceMessage{
-					Type: "input_transcription", Text: sc.InputTranscription.Text,
-				})
-			}
-			if sc.OutputTranscription != nil && sc.OutputTranscription.Text != "" {
-				log.Printf("Voice [tab %d] Talker: %s", tabID, sc.OutputTranscription.Text)
-				sendVoiceJSON(conn, &wsMu, voiceMessage{
-					Type: "output_transcription", Text: sc.OutputTranscription.Text,
-				})
-			}
-
-			if sc.Interrupted {
-				sendVoiceJSON(conn, &wsMu, voiceMessage{Type: "interrupted"})
-			}
-			if sc.TurnComplete {
-				sendVoiceJSON(conn, &wsMu, voiceMessage{Type: "turn_complete"})
-			}
-			continue
-		}
-
-		// ToolCall — Talker tools execute instantly.
-		if tc := msg.ToolCall; tc != nil {
-			var responses []*genai.FunctionResponse
-			for _, fc := range tc.FunctionCalls {
-				switch fc.Name {
-				case "check_status", "issue_command", "cancel_task":
-					result := h.executeTalkerTool(fc, doer)
-					log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
-					responses = append(responses, &genai.FunctionResponse{
-						ID:       fc.ID,
-						Name:     fc.Name,
-						Response: map[string]any{"output": result},
-					})
-				default:
-					// Google Search or other server-side tools — skip.
-					log.Printf("Voice: skipping server-side tool %s (tab %d)", fc.Name, tabID)
-					continue
-				}
-			}
-			if len(responses) > 0 {
-				if err := session.SendToolResponse(genai.LiveToolResponseInput{
-					FunctionResponses: responses,
-				}); err != nil {
-					log.Printf("Voice: SendToolResponse error: %v", err)
-					break
-				}
-			}
-			continue
-		}
-
-		if msg.ToolCallCancellation != nil {
-			log.Printf("Voice: tool call cancelled: %v", msg.ToolCallCancellation)
-			continue
-		}
+		log.Printf("Voice [tab %d]: reconnecting after GoAway...", tabID)
 	}
 
 	log.Printf("Voice: session ended (tab %d)", tabID)
@@ -357,41 +408,6 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 // mic delivers PCM chunks from the Recorder. speaker receives PCM chunks to play.
 // textIn delivers typed text intents from stdin. Runs until ctx is cancelled.
 func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker chan<- []byte, textIn <-chan string) error {
-	// Connect to Gemini Live with Talker tools + Google Search Grounding.
-	session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, buildLiveConfig())
-	if err != nil {
-		return fmt.Errorf("voice: Live API connect: %w", err)
-	}
-	defer func() { _ = session.Close() }()
-	log.Println("Voice: Gemini Live session established (native mode)")
-
-	// resultNotifyFn injects a synthetic message so Gemini speaks the Doer's result.
-	// Defined once (captures the stable Gemini session); wired to whatever Doer is active.
-	resultNotifyFn := func(summary string) {
-		if err := session.SendClientContent(genai.LiveClientContentInput{
-			Turns: []*genai.Content{{
-				Role: "user",
-				Parts: []*genai.Part{{Text: fmt.Sprintf(
-					"[SYSTEM: Background task completed. Result: %s. Announce this to the user briefly.]",
-					summary,
-				)}},
-			}},
-		}); err != nil {
-			log.Printf("Voice: result notify SendClientContent error: %v", err)
-		}
-	}
-
-	// resolveDoer returns the Doer for the currently active voice tab.
-	// The tab may change when the extension connects or the user switches tabs,
-	// so we resolve it fresh on each tool call instead of locking at startup.
-	resolveDoer := func() *Doer {
-		tabID := h.getVoiceTabID()
-		sess := h.getVoiceSession()
-		doer := h.getOrCreateDoer(tabID, sess)
-		doer.SetResultNotifyFn(resultNotifyFn)
-		return doer
-	}
-
 	// Echo gate: suppress mic input while Gemini is speaking to prevent feedback.
 	// Set to 1 when audio flows to the speaker, cleared 1s after the last chunk.
 	var speaking atomic.Int32
@@ -402,140 +418,218 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 		if speakingTimer != nil {
 			speakingTimer.Stop()
 		}
-		// Clear the flag 300ms after the last audio chunk — gives time for the
-		// speaker to finish playing before the mic re-opens.
 		speakingTimer = time.AfterFunc(1000*time.Millisecond, func() {
 			speaking.Store(0)
 		})
 	}
 
-	// --- goroutine: mic + text → Gemini ---
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case chunk, ok := <-mic:
-				if !ok {
-					return
-				}
-				if chunk == nil {
-					// PTT button released — send AudioStreamEnd.
-					if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
-						AudioStreamEnd: true,
-					}); err != nil {
-						log.Printf("Voice: AudioStreamEnd error: %v", err)
-					}
-					continue
-				}
-				// Echo gate: drop mic data while Gemini is speaking.
-				if speaking.Load() != 0 {
-					continue
-				}
-				if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
-					Audio: &genai.Blob{
-						Data:     chunk,
-						MIMEType: "audio/pcm;rate=16000",
-					},
-				}); err != nil {
-					log.Printf("Voice: SendRealtimeInput error: %v", err)
-					return
-				}
-			case text, ok := <-textIn:
-				if !ok {
-					continue
-				}
-				if text == "" {
-					continue
-				}
-				log.Printf("Voice: text input: %s", text)
-				if err := session.SendClientContent(genai.LiveClientContentInput{
-					Turns: []*genai.Content{
-						{Role: "user", Parts: []*genai.Part{{Text: text}}},
-					},
-				}); err != nil {
-					log.Printf("Voice: SendClientContent error: %v", err)
-				}
-			}
-		}
-	}()
+	// VAD interruption: suppress buffered audio when the user speaks over the model.
+	var interrupted atomic.Bool
 
-	// --- main loop: Gemini → speaker ---
-	// No inToolLoop — Talker tools are instant, audio is always forwarded.
+	// Session resumption: reconnect-on-GoAway outer loop.
+	var resumeHandle string
 	for {
-		msg, err := session.Receive()
+		config := buildLiveConfig()
+		applyResumeHandle(config, resumeHandle)
+
+		session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, config)
 		if err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
+			return fmt.Errorf("voice: Live API connect: %w", err)
+		}
+		if resumeHandle != "" {
+			log.Printf("Voice: reconnected with resume handle (native mode)")
+		} else {
+			log.Println("Voice: Gemini Live session established (native mode)")
+		}
+
+		// resultNotifyFn injects a synthetic message so Gemini speaks the Doer's result.
+		resultNotifyFn := func(summary string) {
+			if err := session.SendClientContent(genai.LiveClientContentInput{
+				Turns: []*genai.Content{{
+					Role: "user",
+					Parts: []*genai.Part{{Text: fmt.Sprintf(
+						"[SYSTEM: Background task completed. Result: %s. Announce this to the user briefly.]",
+						summary,
+					)}},
+				}},
+			}); err != nil {
+				log.Printf("Voice: result notify SendClientContent error: %v", err)
 			}
-			return fmt.Errorf("voice: Receive: %w", err)
 		}
 
-		if msg.SetupComplete != nil {
-			log.Println("Voice: Live session setup complete (native mode)")
-			continue
+		// resolveDoer returns the Doer for the currently active voice tab.
+		resolveDoer := func() *Doer {
+			tabID := h.getVoiceTabID()
+			sess := h.getVoiceSession()
+			doer := h.getOrCreateDoer(tabID, sess)
+			doer.SetResultNotifyFn(resultNotifyFn)
+			return doer
 		}
 
-		if sc := msg.ServerContent; sc != nil {
-			// Forward audio to speaker; mark echo gate so mic is suppressed.
-			if sc.ModelTurn != nil {
-				for _, part := range sc.ModelTurn.Parts {
-					if part.InlineData != nil && len(part.InlineData.Data) > 0 {
-						markSpeaking()
-						select {
-						case speaker <- part.InlineData.Data:
-						case <-ctx.Done():
-							return ctx.Err()
+		// --- goroutine: mic + text → Gemini ---
+		sendDone := make(chan struct{})
+		go func() {
+			defer close(sendDone)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case chunk, ok := <-mic:
+					if !ok {
+						return
+					}
+					if chunk == nil {
+						if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+							AudioStreamEnd: true,
+						}); err != nil {
+							log.Printf("Voice: AudioStreamEnd error: %v", err)
+						}
+						continue
+					}
+					if speaking.Load() != 0 {
+						continue
+					}
+					if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+						Audio: &genai.Blob{
+							Data:     chunk,
+							MIMEType: "audio/pcm;rate=16000",
+						},
+					}); err != nil {
+						log.Printf("Voice: SendRealtimeInput error: %v", err)
+						return
+					}
+				case text, ok := <-textIn:
+					if !ok {
+						continue
+					}
+					if text == "" {
+						continue
+					}
+					log.Printf("Voice: text input: %s", text)
+					if err := session.SendClientContent(genai.LiveClientContentInput{
+						Turns: []*genai.Content{
+							{Role: "user", Parts: []*genai.Part{{Text: text}}},
+						},
+					}); err != nil {
+						log.Printf("Voice: SendClientContent error: %v", err)
+					}
+				}
+			}
+		}()
+
+		// --- main loop: Gemini → speaker ---
+		shouldReconnect := false
+		for {
+			msg, err := session.Receive()
+			if err != nil {
+				if ctx.Err() != nil {
+					_ = session.Close()
+					return ctx.Err()
+				}
+				_ = session.Close()
+				if shouldReconnect {
+					break
+				}
+				return fmt.Errorf("voice: Receive: %w", err)
+			}
+
+			if msg.SetupComplete != nil {
+				log.Println("Voice: Live session setup complete (native mode)")
+				continue
+			}
+
+			if sc := msg.ServerContent; sc != nil {
+				if sc.Interrupted {
+					interrupted.Store(true)
+					log.Println("Voice: interrupted by user, suppressing buffered audio")
+				}
+
+				if sc.ModelTurn != nil {
+					for _, part := range sc.ModelTurn.Parts {
+						if part.InlineData != nil && len(part.InlineData.Data) > 0 {
+							if interrupted.Load() {
+								interrupted.Store(false)
+								log.Println("Voice: new model turn, resuming audio")
+							}
+							markSpeaking()
+							select {
+							case speaker <- part.InlineData.Data:
+							case <-ctx.Done():
+								_ = session.Close()
+								return ctx.Err()
+							}
 						}
 					}
 				}
-			}
 
-			if sc.InputTranscription != nil && sc.InputTranscription.Text != "" {
-				log.Printf("Voice User: %s", sc.InputTranscription.Text)
-			}
-			if sc.OutputTranscription != nil && sc.OutputTranscription.Text != "" {
-				log.Printf("Voice Talker: %s", sc.OutputTranscription.Text)
-			}
-
-			if sc.Interrupted {
-				log.Println("Voice: interrupted by user")
-			}
-			continue
-		}
-
-		// ToolCall — Talker tools execute instantly.
-		if tc := msg.ToolCall; tc != nil {
-			var responses []*genai.FunctionResponse
-			for _, fc := range tc.FunctionCalls {
-				switch fc.Name {
-				case "check_status", "issue_command", "cancel_task":
-					result := h.executeTalkerTool(fc, resolveDoer())
-					log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
-					responses = append(responses, &genai.FunctionResponse{
-						ID:       fc.ID,
-						Name:     fc.Name,
-						Response: map[string]any{"output": result},
-					})
-				default:
-					log.Printf("Voice: skipping server-side tool %s", fc.Name)
-					continue
+				if sc.InputTranscription != nil && sc.InputTranscription.Text != "" {
+					log.Printf("Voice User: %s", sc.InputTranscription.Text)
 				}
-			}
-			if len(responses) > 0 {
-				if err := session.SendToolResponse(genai.LiveToolResponseInput{
-					FunctionResponses: responses,
-				}); err != nil {
-					log.Printf("Voice: SendToolResponse error: %v", err)
+				if sc.OutputTranscription != nil && sc.OutputTranscription.Text != "" {
+					log.Printf("Voice Talker: %s", sc.OutputTranscription.Text)
 				}
+
+				continue
 			}
-			continue
+
+			// ToolCall — Talker tools execute instantly.
+			if tc := msg.ToolCall; tc != nil {
+				var responses []*genai.FunctionResponse
+				for _, fc := range tc.FunctionCalls {
+					switch fc.Name {
+					case "check_status", "issue_command", "cancel_task":
+						result := h.executeTalkerTool(fc, resolveDoer())
+						log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
+						responses = append(responses, &genai.FunctionResponse{
+							ID:       fc.ID,
+							Name:     fc.Name,
+							Response: map[string]any{"output": result},
+						})
+					default:
+						log.Printf("Voice: skipping server-side tool %s", fc.Name)
+						continue
+					}
+				}
+				if len(responses) > 0 {
+					if err := session.SendToolResponse(genai.LiveToolResponseInput{
+						FunctionResponses: responses,
+					}); err != nil {
+						log.Printf("Voice: SendToolResponse error: %v", err)
+					}
+				}
+				continue
+			}
+
+			if msg.ToolCallCancellation != nil {
+				log.Printf("Voice: tool call cancelled: %v", msg.ToolCallCancellation)
+				continue
+			}
+
+			if msg.UsageMetadata != nil {
+				log.Printf("Voice: tokens: %d total (%d prompt, %d response)",
+					msg.UsageMetadata.TotalTokenCount,
+					msg.UsageMetadata.PromptTokenCount,
+					msg.UsageMetadata.ResponseTokenCount)
+			}
+
+			// Session resumption: store handle for reconnect.
+			if msg.SessionResumptionUpdate != nil && msg.SessionResumptionUpdate.Resumable {
+				resumeHandle = msg.SessionResumptionUpdate.NewHandle
+			}
+
+			// GoAway: server is about to disconnect, reconnect with resume handle.
+			if msg.GoAway != nil {
+				log.Printf("Voice: GoAway received (time left: %s), reconnecting...", msg.GoAway.TimeLeft)
+				shouldReconnect = true
+				break
+			}
 		}
 
-		if msg.ToolCallCancellation != nil {
-			log.Printf("Voice: tool call cancelled: %v", msg.ToolCallCancellation)
-			continue
+		_ = session.Close()
+		if !shouldReconnect {
+			return nil
 		}
+		log.Println("Voice: reconnecting after GoAway...")
 	}
 }
 
