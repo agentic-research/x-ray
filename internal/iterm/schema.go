@@ -34,9 +34,14 @@ func ProjectToGraph(sessions []SessionInfo, buffers, statuses map[string]string,
 	}
 	store.AddRoot(windowsDir)
 
-	// active_session file at root.
-	activeFile := &graph.Node{ID: "active_session", Data: []byte(activeSession)}
-	store.AddRoot(activeFile)
+	// Instead of a string file, active_session is a directory mirroring the active session.
+	// We'll populate its children below if an active session is found.
+	activeDir := &graph.Node{
+		ID:       "active_session",
+		Mode:     fs.ModeDir,
+		Children: []string{},
+	}
+	store.AddRoot(activeDir)
 
 	// Track which window/tab dirs we've already created.
 	createdDirs := make(map[string]bool)
@@ -152,6 +157,25 @@ func ProjectToGraph(sessions []SessionInfo, buffers, statuses map[string]string,
 		store.AddNode(&graph.Node{ID: sDirID + "/buffer", Data: []byte(buf)})
 		store.AddNode(&graph.Node{ID: sDirID + "/cwd", Data: []byte(cwd)})
 		store.AddNode(&graph.Node{ID: sDirID + "/status", Data: []byte(status)})
+
+		// If this is the active session, alias its children into /active_session/
+		if sid == activeSession {
+			activeDir.Children = []string{
+				"active_session/description",
+				"active_session/mache_id",
+				"active_session/buffer",
+				"active_session/cwd",
+				"active_session/status",
+			}
+			activeDir.Properties = map[string][]byte{
+				"mache_id": []byte("iterm:" + sid),
+			}
+			store.AddNode(&graph.Node{ID: "active_session/description", Data: []byte(desc)})
+			store.AddNode(&graph.Node{ID: "active_session/mache_id", Data: []byte("iterm:" + sid)})
+			store.AddNode(&graph.Node{ID: "active_session/buffer", Data: []byte(buf)})
+			store.AddNode(&graph.Node{ID: "active_session/cwd", Data: []byte(cwd)})
+			store.AddNode(&graph.Node{ID: "active_session/status", Data: []byte(status)})
+		}
 	}
 
 	return store

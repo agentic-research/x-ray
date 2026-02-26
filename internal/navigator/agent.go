@@ -305,8 +305,10 @@ Your tools:
 
 TERMINAL SESSIONS:
 When working with /iterm/ terminal sessions:
-1. cat the "buffer" file to see recent terminal output
-2. cat the "status" file to check if the session is "idle" or "running"
+- Terminal sessions are located at /iterm/windows/{id}/tabs/{id}/sessions/{id}/
+- You can ALSO use the shortcut /iterm/active_session/ to interact with the currently focused terminal.
+1. cat the "buffer" file (e.g., /iterm/active_session/buffer) to see recent terminal output
+2. cat the "status" file (e.g., /iterm/active_session/status) to check if the session is "idle" or "running"
 3. Use act(path, "type", "command\n") to type and execute a command
 4. Use act(path, "enter", "ctrl-c") to send special keys
 5. After typing a command, cat the buffer again to see the result

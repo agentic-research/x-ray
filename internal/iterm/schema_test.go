@@ -23,13 +23,28 @@ func TestProjectToGraph_BasicStructure(t *testing.T) {
 		t.Fatalf("expected 2 roots, got %d: %v", len(roots), roots)
 	}
 
-	// active_session file.
+	// active_session directory.
 	node, err := store.GetNode("active_session")
 	if err != nil {
 		t.Fatalf("GetNode active_session: %v", err)
 	}
-	if string(node.Data) != "abc-123" {
-		t.Errorf("active_session = %q, want %q", node.Data, "abc-123")
+	if !node.Mode.IsDir() {
+		t.Error("active_session should be a directory")
+	}
+
+	// active_session should have children aliased to the active session.
+	children, _ := store.ListChildren("active_session")
+	if len(children) != 5 {
+		t.Errorf("expected 5 children in active_session, got %d", len(children))
+	}
+
+	// Verify buffer file inside active_session.
+	bufNode, err := store.GetNode("active_session/buffer")
+	if err != nil {
+		t.Fatalf("GetNode active_session/buffer: %v", err)
+	}
+	if string(bufNode.Data) != "$ git status\nOn branch main\n$ " {
+		t.Errorf("active_session/buffer = %q", bufNode.Data)
 	}
 
 	// Session directory should exist.
