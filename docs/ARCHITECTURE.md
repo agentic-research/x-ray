@@ -1,5 +1,36 @@
 # X-Ray Architecture
 
+## Table of Contents
+
+- [System Diagram](#system-diagram)
+- [Talker / Doer Swarm Architecture](#talker--doer-swarm-architecture)
+  - [Multi-Step Loop](#multi-step-loop-closed-loop-verification)
+  - [Talker Tools](#talker-tools-instant-no-io)
+  - [Dynamic Tab Resolution](#dynamic-tab-resolution)
+- [Echo Gate](#echo-gate)
+- [CDP Page Freeze](#cdp-page-freeze)
+- [Semantic Color Overlay](#semantic-color-overlay)
+- [DOM Snapshot → Cartographer → Schema → VFS Pipeline](#dom-snapshot--cartographer--schema--vfs-pipeline)
+- [Virtual Filesystem Layout](#virtual-filesystem-layout)
+  - [VFS Enrichment](#vfs-enrichment)
+- [Schema Cache](#schema-cache)
+- [Per-Tab Session Architecture](#per-tab-session-architecture)
+- [Dynamic CSS Selectors (Scroll Architecture)](#dynamic-css-selectors-scroll-architecture)
+- [Navigator Tools](#navigator-tools)
+- [Voice Data Flow (Browser)](#voice-data-flow-browser)
+- [Voice Data Flow (Native Daemon)](#voice-data-flow-native-daemon)
+- [Rescan Flow (Self-Healing + Magnifying Glass)](#rescan-flow-self-healing--magnifying-glass)
+- [Canvas Edge Detection (Canvas Blindspot)](#canvas-edge-detection-canvas-blindspot)
+- [WebSocket Message Types](#websocket-message-types)
+- [Audio Formats](#audio-formats)
+- [Components](#components)
+  - [Chrome Extension](#chrome-extension-ext)
+  - [WebSocket Handler](#websocket-handler-internalapi)
+  - [Cartographer](#cartographer-internalcartographer)
+  - [Navigator](#navigator-internalnavigator)
+  - [Mache Engine](#mache-engine-internalmache)
+- [Google Cloud Services](#google-cloud-services)
+
 ## System Diagram
 
 ```mermaid

@@ -5,7 +5,7 @@
 
 > **"Topology is the missing half of semantics."**
 
-X-Ray is a voice-driven browser agent OS. A Chrome extension captures the DOM and a screenshot, then a Go daemon runs the **Cartographer** (Gemini Vision) to project the page into a semantic virtual filesystem (VFS). The **Navigator** agent (a local SLM via Ollama, or Gemini) explores that VFS to fulfill user intents using simple POSIX tools (`ls`, `cat`, `act`). Voice mode uses **Gemini Live** with a Talker/Doer swarm split for hands-free, real-time browser control.
+X-Ray is a voice-driven browser agent OS. A Chrome extension captures the DOM and a screenshot, then a Go daemon runs the **Cartographer** (Gemini Vision) to project the page into a semantic virtual filesystem (VFS). The **Navigator** agent (a local SLM via Ollama, or Gemini) explores that VFS to fulfill user intents using simple POSIX tools (`ls`, `cat`, `act`). For pixel-rendered content like `<canvas>` and WebGL (Google Maps, Figma, games), a pure-Go **Canny edge detection** pipeline detects UI regions invisible to DOM parsing. Voice mode uses **Gemini Live** with a Talker/Doer swarm split for hands-free, real-time browser control.
 
 Powered by [`agentic-research/mache`](https://github.com/agentic-research/mache) -- an agent-computer interface that projects structured data into virtual filesystems.
 
@@ -158,6 +158,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system diagram, da
 - **CSS Selector Unions**: Primary items from the Cartographer's visual pass are unioned with browser-resolved CSS selector results (deduplicated, stale IDs filtered). Neither source alone is reliable -- together they handle both SPA edge cases and infinite scroll.
 - **Accessibility Tree Enrichment**: The extension captures the browser's computed accessibility tree via `chrome.debugger` + CDP. Each summary line is enriched with `AXRole` and `AXName`.
 - **DOM Breadcrumb Injection**: Each summary line includes a `Path` field with 2-3 levels of DOM ancestry and CSS classes. The Cartographer uses these structural patterns to synthesize CSS selectors per zone.
+- **Canvas Blindspot Detection**: Pure-Go Canny edge detection (Sobel + NMS + hysteresis) runs on the screenshot before the Cartographer call, detecting rectangular UI regions inside `<canvas>` and WebGL elements that are invisible to DOM parsing. Detected regions get `cv-N` IDs and are clicked via CDP `Input.dispatchMouseEvent` at pixel coordinates instead of `el.click()`.
 - **Self-Healing Rescan**: When the Navigator can't find an element, it calls `rescan()` to capture a fresh screenshot and regenerate the schema -- adapting to dynamic page changes without manual intervention.
 - **Temperature 0.1**: Both Cartographer and Navigator run at near-deterministic temperature for reproducible results.
 
@@ -171,7 +172,7 @@ x-ray/
 │   ├── bench/           # Navigation accuracy benchmark
 │   └── gate/            # Offline accuracy gate test
 ├── internal/
-│   ├── api/             # WebSocket handler, voice handler, message types
+│   ├── api/             # WebSocket handler, voice handler, message types, edge detection
 │   ├── audio/           # sox-based mic/speaker for voice daemon
 │   ├── cartographer/    # Stage 1: Gemini Vision → semantic schema
 │   ├── mache/           # Virtual filesystem engine
