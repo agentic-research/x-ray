@@ -3,7 +3,7 @@
 > **"Go to Reddit. Click the first post. What's it about?"**
 > Three voice commands. Hands-free. The browser just does it.
 
-X-Ray is a voice-driven browser agent that lets you navigate any website by talking to it. A Chrome extension projects the chaotic, modern web — React, SPAs, Shadow DOMs, virtual scroll — into a semantic virtual filesystem. You speak, Gemini Live listens, and a background agent swarm navigates the page in real-time while staying responsive to your voice the entire time.
+X-Ray is a voice-driven browser agent that lets you navigate any website by talking to it. A Chrome extension projects the chaotic, modern web — React, SPAs, Shadow DOMs, virtual scroll — into a semantic virtual filesystem. For pixel-rendered content like `<canvas>` and WebGL (Google Maps, Figma, games), a pure-Go Canny edge detection pipeline detects UI regions invisible to DOM parsing. You speak, Gemini Live listens, and a background agent swarm navigates the page in real-time while staying responsive to your voice the entire time.
 
 **Say "click the 5th post." 3.5 seconds later, it's clicked. Two tool calls. Zero pixel guessing.**
 
@@ -166,6 +166,21 @@ The **magnifying glass** solves this. When the Navigator calls `rescan("/main/pl
 
 The agent retries and now sees `/main/player/controls/`, `/main/player/progress_bar/` — sub-zones invisible at full-page scale. Like tree-sitter re-parsing a single AST node instead of the whole file.
 
+### Canvas Blindspot Detection
+
+Standard DOM parsing fails completely on `<canvas>`, WebGL, and pixel-rendered content — the DOM sees a single opaque element where there might be dozens of buttons, controls, and interactive regions. Google Maps, Figma, HTML5 games — all invisible to traditional browser agents.
+
+X-Ray solves this with a pure-Go **Canny edge detection** pipeline that runs on the screenshot JPEG server-side, before the Cartographer call:
+
+```
+JPEG → grayscale → Gaussian blur → Sobel edges → non-maximum suppression
+  → hysteresis (BFS flood) → connected components → bounding boxes
+  → filter by area + overlap with existing mache bounds → assign cv-N IDs
+  → draw cyan overlay boxes on screenshot → append to Cartographer summary
+```
+
+Detected regions get `cv-N` IDs that the Navigator references just like `mache-N` IDs. When the Navigator calls `act("cv-2", "click")`, the backend resolves the pixel center of that region and the extension dispatches a CDP `Input.dispatchMouseEvent` — a real mouse click at exact viewport coordinates, bypassing DOM entirely. No cgo, no external image libraries, ~300 lines of pure Go.
+
 ### The Hybrid Edge-Cloud Split
 
 **The hard part and the easy part require different tools.**
@@ -235,6 +250,7 @@ Different model families output function calls in different JSON formats. Gemma 
 - **CSS selector unions** — a novel approach that combines LLM visual intelligence with browser-native `querySelectorAll` for robust item discovery
 - **Model-agnostic Navigator** — tested with Gemini Flash, Gemma 12B, Qwen 2.5 Coder 7B, and Llama 3.2 3B. The filesystem abstraction is the constant; the model is a variable
 - **Self-healing rescan + magnifying glass** — the Navigator autonomously recaptures the page (full or zoomed to a specific zone) when the schema goes stale
+- **Canvas blindspot detection** — pure-Go Canny edge detection detects UI regions inside `<canvas>` and WebGL, enabling pixel-coordinate clicks on content invisible to DOM parsing
 - **CDP page freeze** — JavaScript is frozen during screenshot capture to prevent DOM changes between overlay and screenshot, then unfrozen in a `finally` block
 - **Echo gate** — native voice daemon suppresses mic input for 1 second after speaker output, preventing audio feedback loops
 - **Voice daemon with cold-start** — `task demo` opens Chrome automatically, connects to Gemini Live, and works end-to-end without any browser UI
@@ -254,6 +270,7 @@ The second surprise was the swarm. Splitting voice into Talker + Doer wasn't jus
 ## What's Next for X-Ray
 
 - **Multi-page workflows** — chain navigations across pages ("search for X, click the first result, add to cart"). The `goto` and `switch_tab` tools enable cross-site navigation; next is persistent context across page transitions
+- **Canvas edge detection tuning** — the Canny thresholds (50/150) and minimum region area (400px²) work well on high-contrast UI elements; real-world canvas content (maps, games) may benefit from adaptive thresholds based on image statistics
 - **Write actions** — form filling, text input, drag-and-drop via the same filesystem metaphor (`act(path, "type", "search query")` already works for text inputs)
 - **FUSE mount** — expose the virtual filesystem as a real mount point so any terminal tool (`grep`, `find`, `tree`) works natively against a live webpage
 - **Recursive magnifying glass** — allow nested rescans (zoom into a zone, then zoom into a sub-zone) for arbitrarily deep UI hierarchies
