@@ -28,8 +28,9 @@ const (
 
 // DoerGoal is sent from the Talker to the Doer.
 type DoerGoal struct {
-	ID   string // unique goal ID for correlation
-	Text string // natural language intent
+	ID       string // unique goal ID for correlation
+	Text     string // natural language intent
+	ReadOnly bool   // true → Navigator cannot use act(); must answer with text
 }
 
 // DoerResult is produced when a goal completes or fails.
@@ -199,7 +200,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 			d.updateStep("exploring page structure")
 		}
 
-		action, textResponse, err := d.sess.Navigator.HandleIntent(goalCtx, enrichedIntent)
+		action, textResponse, err := d.sess.Navigator.HandleIntent(goalCtx, enrichedIntent, goal.ReadOnly)
 		if err != nil {
 			if goalCtx.Err() != nil {
 				d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")

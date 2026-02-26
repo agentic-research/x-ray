@@ -40,6 +40,22 @@ func (r *ToolRegistry) Definitions() []*genai.Tool {
 	return []*genai.Tool{{FunctionDeclarations: decls}}
 }
 
+// DefinitionsExcluding returns tool definitions minus the named tools.
+// Used to strip act() from read-only intent sessions.
+func (r *ToolRegistry) DefinitionsExcluding(names ...string) []*genai.Tool {
+	exclude := make(map[string]bool, len(names))
+	for _, n := range names {
+		exclude[n] = true
+	}
+	var decls []*genai.FunctionDeclaration
+	for _, t := range r.tools {
+		if !exclude[t.Declaration().Name] {
+			decls = append(decls, t.Declaration())
+		}
+	}
+	return []*genai.Tool{{FunctionDeclarations: decls}}
+}
+
 // Execute dispatches a FunctionCall to the matching tool.
 func (r *ToolRegistry) Execute(ctx context.Context, fc *genai.FunctionCall) (string, *ActionResult) {
 	t, ok := r.byName[fc.Name]

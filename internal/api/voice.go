@@ -41,7 +41,8 @@ func talkerToolDefinitions() []*genai.Tool {
 				Parameters: &genai.Schema{
 					Type: genai.TypeObject,
 					Properties: map[string]*genai.Schema{
-						"goal": {Type: genai.TypeString, Description: "Natural language navigation goal"},
+						"goal":      {Type: genai.TypeString, Description: "Natural language navigation goal"},
+						"read_only": {Type: genai.TypeBoolean, Description: "Set true when the user asks a QUESTION about the page (what, which, list, describe, tell me). Leave false/omit when the user wants an ACTION (click, play, open, search, type)."},
 					},
 					Required: []string{"goal"},
 				},
@@ -83,8 +84,12 @@ func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 		if goal == "" {
 			return "Error: goal is required."
 		}
+		readOnly, _ := fc.Args["read_only"].(bool)
 		goalID := fmt.Sprintf("goal-%d", time.Now().UnixMilli())
-		doer.Submit(DoerGoal{ID: goalID, Text: goal})
+		doer.Submit(DoerGoal{ID: goalID, Text: goal, ReadOnly: readOnly})
+		if readOnly {
+			log.Printf("Voice: issue_command (read_only=true): %q", goal)
+		}
 		return fmt.Sprintf("Command accepted: %q. Working on it in the background.", goal)
 
 	case "cancel_task":
@@ -100,12 +105,14 @@ func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 var talkerSystemPrompt = `You are a VOICE assistant with a background navigator that can see and interact with the user's browser.
 
 YOUR TOOLS:
-- issue_command(goal): Dispatch ANY page-related task to your background navigator. This works for actions AND questions about the page. Examples: "click the first story", "go to reddit.com", "check if I'm logged in", "read the main heading", "what repositories are pinned?", "describe what's on the page".
+- issue_command(goal, read_only?): Dispatch ANY page-related task to your background navigator. This works for actions AND questions about the page. Examples: "click the first story", "go to reddit.com", "check if I'm logged in", "read the main heading", "what repositories are pinned?", "describe what's on the page".
+  Set read_only=true when the user asks a QUESTION about the page (e.g., "what's playing?", "what was I watching?", "what are my options?", "describe the page", "list the items").
+  Leave read_only=false (or omit) when the user wants an ACTION (e.g., "click...", "play...", "open...", "search for...", "type...", "go to...").
 - check_status(): Check what the navigator is currently doing. Returns goal, current step, and result if finished.
 - cancel_task(): Cancel the current background task.
 
 BEHAVIOR:
-1. When the user asks you to do something on a web page OR asks a question about what's on the page, use issue_command() and briefly acknowledge: "Let me check."
+1. When the user asks you to do something on a web page OR asks a question about what's on the page, use issue_command() and briefly acknowledge: "Let me check." Always set read_only appropriately.
 2. When a task is running, stay SILENT and wait for the system to notify you of completion — unless the user asks.
 3. If the user asks "what are you doing?" or "are you almost done?", call check_status() and report briefly.
 4. When the system notifies you a task completed, announce the result naturally.

@@ -124,7 +124,7 @@ func TestHandleIntentWithMockGenerator(t *testing.T) {
 	}
 
 	agent := newTestAgentWithGen(mock, engine)
-	action, _, err := agent.HandleIntent(context.Background(), "click the first story")
+	action, _, err := agent.HandleIntent(context.Background(), "click the first story", false)
 	if err != nil {
 		t.Fatalf("HandleIntent: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestHandleIntentTextResponse(t *testing.T) {
 	}
 
 	agent := newTestAgentWithGen(mock, engine)
-	action, text, err := agent.HandleIntent(context.Background(), "where is the nav?")
+	action, text, err := agent.HandleIntent(context.Background(), "where is the nav?", false)
 	if err != nil {
 		t.Fatalf("HandleIntent: %v", err)
 	}
@@ -614,7 +614,7 @@ func TestOllamaIntegrationMultiTurn(t *testing.T) {
 	defer cancel()
 
 	t.Log("Sending intent: 'click the first story'")
-	action, text, err := agent.HandleIntent(ctx, "click the first story")
+	action, text, err := agent.HandleIntent(ctx, "click the first story", false)
 	if err != nil {
 		t.Fatalf("HandleIntent: %v", err)
 	}

@@ -114,14 +114,21 @@ const maxToolIterations = 8
 
 // HandleIntent processes a user intent by navigating the semantic FS.
 // Returns an ActionResult if the agent acts, or a text response otherwise.
-func (a *Agent) HandleIntent(ctx context.Context, intent string) (*ActionResult, string, error) {
-	log.Printf("Navigator: Handling intent: %s", intent)
+// When readOnly is true, the act() tool is stripped from the schema so the
+// model cannot dispatch clicks — it must answer with text.
+func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) (*ActionResult, string, error) {
+	log.Printf("Navigator: Handling intent (readOnly=%v): %s", readOnly, intent)
+
+	tools := a.registry.Definitions()
+	if readOnly {
+		tools = a.registry.DefinitionsExcluding("act")
+	}
 
 	config := &genai.GenerateContentConfig{
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{{Text: NavigatorSystemPrompt}},
 		},
-		Tools:       a.registry.Definitions(),
+		Tools:       tools,
 		Temperature: genai.Ptr(float32(0.1)),
 	}
 

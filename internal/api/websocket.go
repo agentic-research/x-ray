@@ -533,7 +533,7 @@ func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
 	defer sess.Navigator.SetScrollFunc(nil)
 
 	navStart := time.Now()
-	action, textResponse, err := sess.Navigator.HandleIntent(ctx, msg.Intent)
+	action, textResponse, err := sess.Navigator.HandleIntent(ctx, msg.Intent, false)
 	if err != nil {
 		log.Printf("Navigator failed after %s: %v", time.Since(navStart), err)
 		h.sendMessage(conn, OutboundMessage{
@@ -850,7 +850,7 @@ func (h *Handler) HandleNavigateHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	action, textResponse, err := sess.Navigator.HandleIntent(ctx, req.Intent)
+	action, textResponse, err := sess.Navigator.HandleIntent(ctx, req.Intent, false)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

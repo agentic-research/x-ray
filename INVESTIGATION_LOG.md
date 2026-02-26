@@ -8,15 +8,22 @@ User asked "what was I watching recently?" on Crunchyroll. The Navigator correct
 ### Root Cause
 The Navigator system prompt (`NavigatorSystemPrompt` in `internal/navigator/agent.go`) was entirely action-oriented. The strategy section always culminated in `act()`, and there was zero guidance for distinguishing informational questions from action commands. Small models (qwen2.5-coder:7b) are especially susceptible — they follow the dominant pattern in the prompt.
 
-### Fix
-Added an **INTENT CLASSIFICATION — READ vs ACT** section to the system prompt, placed before CRITICAL CONSTRAINTS:
-- **INFORMATION intents** ("what is…", "what was I…", "tell me about…", "list…", "which…", etc.) → respond with text, never call `act()`
-- **ACTION intents** ("click…", "play…", "open…", "search for…", "type…", etc.) → use `act()` to interact
+### Fix (two layers)
 
-The key line: "If the intent is informational, you MUST stop after reading and reply with text. Never click 'just in case'."
+**Layer 1 — Prompt guidance** (initial fix):
+Added an **INTENT CLASSIFICATION — READ vs ACT** section to the Navigator system prompt, placed before CRITICAL CONSTRAINTS. Tells the model to classify intent and never call `act()` for informational questions.
+
+**Layer 2 — Programmatic guardrail** (belt and suspenders):
+Added `read_only` boolean to the Talker → Doer → Navigator pipeline:
+1. `issue_command` tool gains a `read_only` param; Talker prompt instructs Gemini to set it for questions
+2. `DoerGoal.ReadOnly` carries the flag through the Doer
+3. `HandleIntent(ctx, intent, readOnly)` — when `readOnly=true`, uses `ToolRegistry.DefinitionsExcluding("act")` to strip `act()` from the tool schema entirely
+4. The 7B model literally cannot click — `act()` is not in the schema
+
+This is defense in depth: Layer 1 helps capable models self-regulate; Layer 2 makes it physically impossible for any model to click on a read-only intent.
 
 ### Takeaway
-Prompt-steered agents need explicit negative examples for small models. The absence of "don't click for questions" was interpreted as "always click." Larger models (Gemini 2.5 Flash) might have inferred the distinction, but 7B local models need it spelled out.
+Prompt-steered agents need explicit negative examples for small models. The absence of "don't click for questions" was interpreted as "always click." But prompt guidance alone is fragile — the real fix is **removing the tool from the schema**, which no amount of model confusion can override. The Talker (Gemini Live) is the right place to classify because it's already parsing user intent to formulate the goal.
 
 ---
 

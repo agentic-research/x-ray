@@ -36,7 +36,7 @@ type mockIntentHandler struct {
 	progressFn func(toolName string, args map[string]any)
 }
 
-func (m *mockIntentHandler) HandleIntent(ctx context.Context, intent string) (*navigator.ActionResult, string, error) {
+func (m *mockIntentHandler) HandleIntent(ctx context.Context, intent string, _ bool) (*navigator.ActionResult, string, error) {
 	idx := int(m.handleCalls.Add(1)) - 1
 	if m.delay > 0 {
 		select {

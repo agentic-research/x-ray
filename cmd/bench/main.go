@@ -86,7 +86,7 @@ func main() {
 		nav := navigator.NewAgent(navGen, navModel, engine)
 
 		start := time.Now()
-		action, _, err := nav.HandleIntent(ctx, tc.Intent)
+		action, _, err := nav.HandleIntent(ctx, tc.Intent, false)
 		elapsed := time.Since(start)
 
 		r := benchResult{
