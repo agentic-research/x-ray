@@ -1,11 +1,18 @@
-# X-Ray: Voice-Driven Browser Agent OS
+# X-Ray: Pluggable Universal Agent OS
 
 [![Gemini Live Agent Challenge](https://img.shields.io/badge/Gemini%20Live%20Agent%20Challenge-UI%20Navigator-4285F4?logo=google&logoColor=white)](https://ai.google.dev/competition/gemini-live-agent-challenge)
 [![CI](https://github.com/agentic-research/x-ray/actions/workflows/ci.yml/badge.svg)](https://github.com/agentic-research/x-ray/actions/workflows/ci.yml)
 
 > **"Topology is the missing half of semantics."**
 
-X-Ray is a voice-driven browser agent OS. A Chrome extension captures the DOM and a screenshot, then a Go daemon runs the **Cartographer** (Gemini Vision) to project the page into a semantic virtual filesystem (VFS). The **Navigator** agent (a local SLM via Ollama, or Gemini) explores that VFS to fulfill user intents using simple POSIX tools (`ls`, `cat`, `act`). For pixel-rendered content like `<canvas>` and WebGL (Google Maps, Figma, games), a pure-Go **Canny edge detection** pipeline detects UI regions invisible to DOM parsing. Voice mode uses **Gemini Live** with a Talker/Doer swarm split for hands-free, real-time browser control.
+X-Ray is a pluggable, voice-driven agent OS that unifies browsers and terminals under a single semantic virtual filesystem. A **CompositeGraph** — like Linux's `fstab` — mounts domain-specific plugins at named paths. The **Navigator** LLM only ever uses three tools (`ls`, `cat`, `act`), and Mache routes those commands to the right backend:
+
+- **`/browser/`** — driven by a Chrome CDP plugin. A **Cartographer** (Gemini Vision or a local VLM) projects the DOM into the filesystem.
+- **`/iterm/`** — driven by a zero-latency Unix Domain Socket bridge. Terminal sessions are already structured text — no vision model needed.
+
+For pixel-rendered content like `<canvas>` and WebGL, a pure-Go **Canny edge detection** pipeline detects UI regions invisible to DOM parsing. Voice mode uses **Gemini Live** with a Talker/Doer swarm split for hands-free, real-time cross-domain control — tell the agent to spin up a server in `/iterm/`, then switch to `/browser/` to test the UI.
+
+The entire ACI can run 100% air-gapped on local Apple Silicon: swap Gemini for a local VLM (Cartographer) and a local SLM (Navigator) via environment variables.
 
 Powered by [`agentic-research/mache`](https://github.com/agentic-research/mache) -- an agent-computer interface that projects structured data into virtual filesystems.
 
@@ -91,6 +98,8 @@ open http://localhost:8080/voice-ui
 | `NAVIGATOR_ENDPOINT` | *(unset -- uses Gemini)* | OpenAI-compatible endpoint for local Navigator (e.g., `http://localhost:11434/v1`) |
 | `NAVIGATOR_MODEL` | `functiongemma:270m` | Model name when using a local Navigator endpoint |
 | `NAVIGATOR_FORMAT` | `openai` | `gemma` for native Gemma function calling, `openai` for OpenAI-compatible format |
+| `CARTOGRAPHER_ENDPOINT` | *(unset -- uses Gemini)* | OpenAI-compatible vision endpoint for local Cartographer (e.g., `http://localhost:11434/v1`) |
+| `CARTOGRAPHER_MODEL` | `llava:13b` | Model name when using a local Cartographer endpoint |
 | `PORT` | `8080` | HTTP server port |
 | `XRAY_DB` | `~/.xray/schemas.db` | Path to the SQLite schema cache |
 
@@ -110,13 +119,47 @@ An LLM already knows what a "Checkout" button *means* (semantics), but when you 
 
 **Stage 2 -- The Navigator (Voice + Action):** That JSON schema feeds into the Mache Engine, which mounts a virtual filesystem tailored to the page. The agent runs `ls /` and sees a clean structure like `/header/global_nav/`, `/main/trending_repositories/`, `/footer/legal/`. Children are addressed by ordinal number (`_c/1`, `_c/2`, ...). When the user says "Click the first trending repository," the Navigator traverses the filesystem and executes the action. Because Gemini handles the heavy multimodal reasoning in Stage 1, the execution loop is simple enough for a local 7B SLM to drive the browser flawlessly.
 
+### The Virtual Filesystem (CompositeGraph)
+
+Mache acts like Linux's `fstab`. The Navigator LLM only ever uses three simple tools (`ls`, `cat`, `act`), and Mache routes those commands to high-speed, domain-specific plugins:
+
+```
+/
+├── browser/          ← Chrome CDP plugin (Cartographer vision model)
+│   ├── header/nav/
+│   ├── main/feed/
+│   └── footer/
+└── iterm/            ← Unix Domain Socket bridge (no vision model needed)
+    └── windows/
+        └── 0/
+            └── sessions/
+                └── {id}/
+                    ├── buffer    # last 100 lines of terminal output
+                    ├── title     # shell title / running command
+                    └── cwd       # current working directory
+```
+
+The `/iterm/` mount does **not** use the Cartographer vision model — terminal data is already perfectly structured text. The Bridge connects via iTerm2's Unix Domain Socket, reads session metadata directly, and exposes it as graph nodes. When the Navigator calls `act("/iterm/.../sessions/abc", "type", "ls -la")`, the text is sent directly to the terminal — zero latency.
+
+### Cross-Domain Swarm
+
+The Talker/Doer swarm can seamlessly jump between domains in a single conversation:
+
+1. `ls("/iterm/windows/0/sessions/")` — see running terminal sessions
+2. `act("/iterm/.../sessions/abc", "type", "npm start")` — start a server
+3. `cat("/iterm/.../sessions/abc/buffer")` — wait for "listening on :3000"
+4. `act("/browser/main/url_bar", "type", "http://localhost:3000")` — test in browser
+5. `ls("/browser/main/")` — explore the rendered UI
+
+Voice makes this hands-free: "spin up the dev server in my terminal, then check if the homepage loads."
+
 ### Navigator Tools
 
 | Tool | Description |
 |------|-------------|
 | `ls(path)` | List directory contents |
-| `cat(path)` | Read a file (description, children) |
-| `act(path, action)` | Click, focus, type, or press Enter on an element |
+| `cat(path)` | Read a file (description, children, buffer) |
+| `act(path, action)` | Click, focus, type, or press Enter — routes to browser or terminal |
 | `scroll(direction)` | Scroll to load more content |
 | `goto(url)` | Navigate the browser to a new URL |
 | `rescan(path?)` | Rescan the page -- full or targeted (magnifying glass) |
@@ -174,9 +217,10 @@ x-ray/
 ├── internal/
 │   ├── api/             # WebSocket handler, voice handler, message types, edge detection
 │   ├── audio/           # sox-based mic/speaker for voice daemon
-│   ├── cartographer/    # Stage 1: Gemini Vision → semantic schema
-│   ├── mache/           # Virtual filesystem engine
-│   └── navigator/       # Stage 2: Gemini Tool-Use → browser actions
+│   ├── cartographer/    # Stage 1: Gemini Vision or local VLM → semantic schema
+│   ├── iterm/           # iTerm2 bridge: Unix Domain Socket → graph.Graph
+│   ├── mache/           # Virtual filesystem engine (browser graph backend)
+│   └── navigator/       # Stage 2: Gemini Tool-Use → browser/terminal actions
 ├── ext/                 # Chrome extension (content.js, background.js, CDP AX tree)
 ├── static/              # Standalone voice UI (voice.html)
 ├── testdata/            # Captured page snapshots for gate tests + benchmarks
@@ -208,9 +252,23 @@ To test with a local Navigator model:
 ```bash
 NAVIGATOR_ENDPOINT=http://localhost:11434/v1 \
 NAVIGATOR_MODEL=qwen2.5-coder:7b \
-NAVIGATOR_FORMAT=gemma \
+NAVIGATOR_FORMAT=openai \
 task bench
 ```
+
+### 100% Air-Gapped / Local Mode
+
+The entire ACI can run completely offline on local Apple Silicon. While X-Ray uses Gemini Pro/Flash by default for the cloud swarm, every model is pluggable via environment variables:
+
+```bash
+# Fully local — no cloud API calls (defaults: llava:13b + qwen2.5-coder:7b)
+task demo-local
+
+# Or override models:
+CARTOGRAPHER_MODEL=qwen2-vl:7b NAVIGATOR_MODEL=gemma:12b task demo-local
+```
+
+The `/iterm/` terminal bridge is always local (Unix Domain Socket) — no model required.
 
 ## Task Commands
 
@@ -218,6 +276,7 @@ task bench
 |---------|-------------|
 | `task run` | Build, codesign, and run agentd |
 | `task demo` | Build and run the voice daemon (Talker/Doer swarm) |
+| `task demo-local` | Fully air-gapped: local VLM + local SLM, no cloud API |
 | `task build` | Build and codesign the binary |
 | `task test` | Run all tests (`go test -race -v ./...`) |
 | `task bench` | Run navigation accuracy benchmark |

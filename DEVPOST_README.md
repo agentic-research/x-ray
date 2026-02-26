@@ -1,9 +1,11 @@
-# X-Ray: See Through the Web
+# X-Ray: Pluggable Universal Agent OS
 
-> **"Go to Reddit. Click the first post. What's it about?"**
-> Three voice commands. Hands-free. The browser just does it.
+> **"Spin up the dev server in my terminal. Now switch to Chrome and test the homepage."**
+> Two domains. One voice session. Hands-free.
 
-X-Ray is a voice-driven browser agent that lets you navigate any website by talking to it. A Chrome extension projects the chaotic, modern web — React, SPAs, Shadow DOMs, virtual scroll — into a semantic virtual filesystem. For pixel-rendered content like `<canvas>` and WebGL (Google Maps, Figma, games), a pure-Go Canny edge detection pipeline detects UI regions invisible to DOM parsing. You speak, Gemini Live listens, and a background agent swarm navigates the page in real-time while staying responsive to your voice the entire time.
+X-Ray is a pluggable, voice-driven agent OS that unifies browsers and terminals under a single semantic virtual filesystem. A **CompositeGraph** — like Linux's `fstab` — mounts domain-specific plugins at named paths (`/browser/`, `/iterm/`). The Navigator LLM only ever uses three tools (`ls`, `cat`, `act`), and Mache routes those commands to the right backend. A Chrome extension projects the chaotic, modern web — React, SPAs, Shadow DOMs, virtual scroll — into the filesystem. For pixel-rendered content like `<canvas>` and WebGL (Google Maps, Figma, games), a pure-Go Canny edge detection pipeline detects UI regions invisible to DOM parsing. You speak, Gemini Live listens, and a background agent swarm navigates across domains in real-time while staying responsive to your voice the entire time.
+
+The entire ACI is 100% air-gappable: swap Gemini for local models via environment variables and run completely offline on Apple Silicon.
 
 **Say "click the 5th post." 3.5 seconds later, it's clicked. Two tool calls. Zero pixel guessing.**
 
@@ -47,40 +49,59 @@ This is the core architectural innovation: X-Ray splits voice into **two coopera
 
 Both agents read and write the same Mache virtual filesystem. The Talker checks the Doer's progress. The Doer modifies the browser state. Neither blocks the other. This is what makes voice feel fluid — the user is never left in awkward silence wondering if the AI is dead or thinking.
 
-### The Semantic Filesystem
+### The Virtual Filesystem (CompositeGraph)
 
-The Chrome extension builds an in-memory element registry, draws colored Set-of-Mark bounding boxes over every interactive element, captures the browser's accessibility tree via CDP, and sends it all to Gemini Vision — which maps the page into a filesystem:
-
-![Set-of-Mark overlay on Reddit](overlay.jpg)
+Mache acts like Linux's `fstab`. The Navigator LLM only ever uses three simple tools (`ls`, `cat`, `act`), and the CompositeGraph routes those commands to high-speed, domain-specific plugins:
 
 ```
 /
-├── header/
-│   └── nav/                    # Global navigation
-├── main/
-│   └── feed/
-│       ├── description         # "Main content feed of Reddit posts"
-│       ├── children            # [1] "First post title"
-│       │                       # [2] "Second post title"
-│       └── _c/
-│           ├── 1/              # Ordinal child — no raw IDs exposed
-│           │   ├── mache_id    # Internal element reference
-│           │   ├── tag         # "a"
-│           │   ├── text        # "First post title"
-│           │   ├── role        # "link" (from accessibility tree)
-│           │   ├── name        # "First Post" (computed accessible name)
-│           │   ├── path        # "article.w-full > h3.title > a"
-│           │   ├── color       # "BLUE" (semantic: links=blue, buttons=orange)
-│           │   └── bounds      # "[0.10, 0.25, 0.80, 0.05]" (normalized)
-│           ├── 2/
-│           └── ...
-├── sidebar/
-│   └── recent_posts/
-└── footer/
-    └── links/
+├── browser/                     ← Chrome CDP plugin (Cartographer vision model)
+│   ├── header/
+│   │   └── nav/                 # Global navigation
+│   ├── main/
+│   │   └── feed/
+│   │       ├── description      # "Main content feed of Reddit posts"
+│   │       ├── children         # [1] "First post title"  [2] "Second..."
+│   │       └── _c/
+│   │           ├── 1/           # Ordinal child — no raw IDs exposed
+│   │           │   ├── mache_id
+│   │           │   ├── tag      # "a"
+│   │           │   ├── text     # "First post title"
+│   │           │   ├── role     # "link" (from accessibility tree)
+│   │           │   ├── name     # "First Post" (computed accessible name)
+│   │           │   ├── path     # "article.w-full > h3.title > a"
+│   │           │   ├── color    # "BLUE" (semantic: links=blue, buttons=orange)
+│   │           │   └── bounds   # "[0.10, 0.25, 0.80, 0.05]" (normalized)
+│   │           └── 2/
+│   ├── sidebar/
+│   └── footer/
+└── iterm/                       ← Unix Domain Socket bridge (no vision model)
+    └── windows/
+        └── 0/
+            └── sessions/
+                └── {id}/
+                    ├── buffer   # last 100 lines of terminal output
+                    ├── title    # shell title / running command
+                    └── cwd      # current working directory
 ```
 
-Every element is enriched with the browser's own accessibility metadata — role, name, bounds, DOM path, semantic color. The agent doesn't guess what a "button" is; it reads the browser's computed accessibility role. This is the difference between navigating a dark room with a flashlight versus having the architectural blueprints.
+![Set-of-Mark overlay on Reddit](overlay.jpg)
+
+The `/browser/` mount uses the Cartographer vision model to project the DOM into the filesystem. Every element is enriched with the browser's own accessibility metadata — role, name, bounds, DOM path, semantic color.
+
+The `/iterm/` mount does **not** use the Cartographer — terminal data is already perfectly structured text. The Bridge connects via iTerm2's Unix Domain Socket, reads session metadata directly, and exposes it as graph nodes. When the Navigator calls `act("/iterm/.../sessions/abc", "type", "ls -la")`, the text is sent directly to the terminal — zero latency.
+
+### Cross-Domain Swarm
+
+The Talker/Doer swarm can seamlessly jump between domains in a single voice conversation. Tell the agent to `cd` into `/iterm/`, spin up a local server, wait for the prompt, then `cd` into `/browser/` to visually test the UI:
+
+1. `ls("/iterm/windows/0/sessions/")` — see running terminal sessions
+2. `act("/iterm/.../sessions/abc", "type", "npm start")` — start a dev server
+3. `cat("/iterm/.../sessions/abc/buffer")` — confirm "listening on :3000"
+4. `act("/browser/main/url_bar", "type", "http://localhost:3000")` — open in Chrome
+5. `ls("/browser/main/")` — explore the rendered UI
+
+Voice makes this hands-free: *"Spin up the dev server in my terminal, then check if the homepage loads."*
 
 ---
 
@@ -105,18 +126,20 @@ The schema is cached in SQLite (keyed by domain+path) and validated against the 
 
 **Stage 2: The Navigator (Edge Execution)**
 
-The JSON schema feeds into the Mache Engine, which builds the in-memory virtual filesystem. The Navigator agent uses eight tools:
+The JSON schema feeds into the Mache Engine, which is mounted as `/browser/` in the CompositeGraph. If iTerm2 is running, the terminal bridge is mounted as `/iterm/`. The Navigator agent uses eight tools that work across all mounted domains:
 
 | Tool | Description |
 |------|-------------|
-| `ls(path)` | List directory contents in the semantic filesystem |
-| `cat(path)` | Read a file (description, children, role, bounds) |
-| `act(path, action)` | Click, focus, type, or press enter on an element |
+| `ls(path)` | List directory contents — routes to browser or terminal |
+| `cat(path)` | Read a file (description, children, buffer, cwd) |
+| `act(path, action)` | Click, focus, type, or press enter — dispatched to the right backend |
 | `scroll(direction)` | Scroll and discover new content via CSS selectors |
 | `goto(url)` | Navigate the browser to a new URL |
 | `rescan(path?)` | Rescan the page — full or targeted magnifying glass |
 | `list_tabs()` | List all open browser tabs |
 | `switch_tab(tab_id)` | Switch to an existing open tab |
+
+When the Navigator calls `act()` on a `/browser/` path, the action is dispatched to Chrome via the extension. When it calls `act()` on an `/iterm/` path, the text is sent directly to the terminal session via the Unix Domain Socket — no vision model, no CDP, zero latency.
 
 The model sees the full filesystem tree upfront (pre-filled via a tree dump), reads the children file, and acts. Two calls for a simple click. No hallucinated paths. No wasted iterations.
 
@@ -183,16 +206,31 @@ Detected regions get `cv-N` IDs that the Navigator references just like `mache-N
 
 ### The Hybrid Edge-Cloud Split
 
-**The hard part and the easy part require different tools.**
+**The hard part and the easy part require different tools.** Every model is pluggable via environment variables.
 
-| Capability | Where | Why |
-|-----------|-------|-----|
-| Visual page mapping | Gemini 2.5 Flash | Requires multimodal spatial reasoning |
-| Voice conversation | Gemini Live API | Requires real-time native audio streaming |
-| General knowledge | Google Search (via Gemini) | Grounded web search, server-side |
-| Navigation execution | Local 7B SLM (or Gemini) | Simple filesystem traversal |
+| Capability | Default (Cloud) | Local Alternative | Env Var |
+|-----------|----------------|-------------------|---------|
+| Visual page mapping | Gemini 2.5 Flash | LLaVA, Qwen2-VL | `CARTOGRAPHER_ENDPOINT` |
+| Voice conversation | Gemini Live API | — | — |
+| General knowledge | Google Search (via Gemini) | — | — |
+| Navigation execution | Gemini Flash | Qwen 2.5 Coder 7B, Gemma 12B | `NAVIGATOR_ENDPOINT` |
+| Terminal sessions | Local (Unix socket) | — | Always local |
 
 Gemini's vision is so good at building the filesystem abstraction that even a 7-billion-parameter local model can navigate it. The complex visual web goes to cloud. The simple filesystem traversal runs at the edge. High privacy, low latency, zero API costs for the execution loop.
+
+### 100% Air-Gapped / Local Mode
+
+The entire ACI can run completely offline on local Apple Silicon. While X-Ray uses Gemini by default, every model stage is pluggable:
+
+```bash
+# Fully local — no cloud API calls
+task demo-local
+
+# Override models:
+CARTOGRAPHER_MODEL=qwen2-vl:7b NAVIGATOR_MODEL=gemma:12b task demo-local
+```
+
+The `/iterm/` terminal bridge is always local — it connects via Unix Domain Socket, reads session metadata directly, and requires no model at all.
 
 ### SPA Compatibility (The Registry)
 
@@ -310,7 +348,7 @@ task run
 # Hybrid edge-cloud (local Navigator via Ollama):
 export NAVIGATOR_ENDPOINT=http://localhost:11434/v1
 export NAVIGATOR_MODEL=qwen2.5-coder:7b
-export NAVIGATOR_FORMAT=gemma
+export NAVIGATOR_FORMAT=openai
 task demo
 ```
 

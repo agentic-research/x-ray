@@ -62,8 +62,18 @@ func main() {
 		liveModel = "gemini-2.5-flash-native-audio-preview-12-2025"
 	}
 
-	// Cartographer is stateless — shared across all tabs.
-	cart := cartographer.NewAgent(client, model)
+	// Cartographer: default to Gemini, override with CARTOGRAPHER_ENDPOINT for local VLM.
+	var cart api.SchemaGenerator
+	if ep := os.Getenv("CARTOGRAPHER_ENDPOINT"); ep != "" {
+		cartModel := os.Getenv("CARTOGRAPHER_MODEL")
+		if cartModel == "" {
+			cartModel = "llava:13b"
+		}
+		cart = &cartographer.OllamaAgent{Endpoint: ep, Model: cartModel}
+		log.Printf("Cartographer: using local VLM %s at %s", cartModel, ep)
+	} else {
+		cart = cartographer.NewAgent(client, model)
+	}
 
 	// Navigator model: default to Gemini, override with NAVIGATOR_ENDPOINT for local SLM.
 	var navGen navigator.ContentGenerator = &navigator.GeminiGenerator{Client: client}

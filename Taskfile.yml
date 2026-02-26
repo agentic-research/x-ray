@@ -111,6 +111,18 @@ tasks:
     cmds:
       - ./{{.BINARY_NAME}} --voice
 
+  demo-local:
+    desc: Build and run fully air-gapped (local VLM + local SLM, no cloud API)
+    deps: [build]
+    env:
+      CARTOGRAPHER_ENDPOINT: http://localhost:11434/v1
+      CARTOGRAPHER_MODEL: '{{.CARTOGRAPHER_MODEL | default "llava:13b"}}'
+      NAVIGATOR_ENDPOINT: http://localhost:11434/v1
+      NAVIGATOR_MODEL: '{{.NAVIGATOR_MODEL | default "qwen2.5-coder:7b"}}'
+      NAVIGATOR_FORMAT: openai
+    cmds:
+      - ./{{.BINARY_NAME}} --voice
+
   bench:
     desc: Run navigation accuracy benchmark (requires GEMINI_API_KEY)
     cmds:

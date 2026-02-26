@@ -1,5 +1,104 @@
 # Investigation Log
 
+## 2026-02-26: Air-gapped Support & Universal ACI Documentation
+
+### What was built
+- Added `demo-local` task to `Taskfile.yml` which runs the entire ACI completely offline on local Apple Silicon. It overrides the Cartographer and Navigator models with local ones (`qwen2-vl:7b` for vision, `qwen2.5-coder:7b` for navigation) via environment variables.
+- Added `internal/cartographer/ollama.go` to support connecting to local Vision-Language Models (VLMs) via an OpenAI-compatible endpoint.
+- Updated `cmd/agentd/main.go` to read `CARTOGRAPHER_ENDPOINT` and `CARTOGRAPHER_MODEL` and initialize the new `OllamaAgent` if set.
+- Major documentation update in `README.md` and `DEVPOST_README.md` to shift the narrative from "voice-driven browser agent" to "Pluggable Universal Agent OS". Highlighted the `CompositeGraph` architecture that mounts both `/browser/` (via Chrome CDP plugin and Cartographer) and `/iterm/` (via Unix Domain Socket, no vision model needed) and demonstrated the cross-domain swarm capabilities.
+
+
+## 2026-02-26: Phase 1 Complete — CompositeGraph + Act() in mache
+
+### What was built
+On `feat/iterm-bridge` branch in mache (`50ee72b`):
+- **`Act(id, action, payload)` on Graph interface** — makes the read-only Graph read-write. Passive graphs (MemoryStore, SQLiteGraph, WritableGraph) return `ErrActNotSupported`. Interactive graphs (browser, iTerm2, macOS AX) implement real actions.
+- **`CompositeGraph`** — multi-mount router. `Mount("browser", g)` → all `/browser/...` paths delegate to `g` with prefix stripped. Root `ListChildren` returns mount names. All Graph methods route by prefix, including `Act()`.
+- **Key design decision**: Navigator's ActTool calls `engine.Act()` — zero knowledge of mount points. No `strings.HasPrefix` routing in x-ray. The graph layer handles it.
+
+### Architectural insight: AX belongs in mache, not x-ray
+mache already gates optional platform integrations behind build tags (`//go:build leyline` for Rust FFI). AX → Graph projection is a schema concern. mache already has cgo deps (tree-sitter, cgofuse) and darwin-specific code, so AX adds no new dependency category. Any mache consumer gets native app navigation for free.
+
+### gofumpt lesson
+Pre-commit hooks run gofumpt which groups identical parameter types: `(id string, action string, payload string)` → `(id, action, payload string)`. Write it that way from the start.
+
+## 2026-02-26: Universal ACI — Terminal as Proving Ground
+
+### Context
+Discussion about extending the stack beyond browser-only to universal Agent-Computer Interface (ACI). The progression: frame buffer → mache → HID. ADR-008 written in ley-line covering HID injection, frame capture, coordinate transforms, security model.
+
+### Key Insight: macOS Accessibility API = DOM for Native Apps
+On macOS, AXUIElement provides a hierarchical tree per application — role, title, value, position, size, children, actions. Covers ~85-90% of interactive elements on a typical desktop. Only custom-rendered content (canvas, games, Figma) needs vision/Canny/FFT.
+
+### Terminal is the Best v1 for Universal ACI
+Terminal content is pure text — no vision model, no screenshot, no Cartographer needed. The perception problem collapses to "read the buffer." This makes terminal the cheapest and most reliable proving ground for the mache abstraction beyond browsers.
+
+### iTerm2 Approach Options
+
+**Option A: iTerm2 WebSocket/Protobuf API**
+iTerm2's Python API wraps a local WebSocket connection using protobufs. Could write a Go client that speaks the protobuf protocol directly — no Python dependency. Provides: session list, buffer content, send keystrokes, create/destroy panes.
+- Pro: Rich, real-time, event-driven (subscribe to screen updates)
+- Con: iTerm2-specific, need to reverse-engineer or use the published protobuf schema
+- Risk: Protobuf API stability unclear — is it documented/stable or internal?
+
+**Option B: macOS Accessibility API (AXUIElement)**
+Works for ANY terminal (iTerm2, Terminal.app, Alacritty, Kitty). AX tree exposes windows, tabs, text areas. Can read buffer and inject keystrokes via CGEvent.
+- Pro: Universal across all macOS terminal apps
+- Con: Less rich than iTerm2's native API, no session management
+
+**Option C: tmux control mode**
+`tmux -CC` is what iTerm2 uses internally for tmux integration. Raw pipe-based protocol.
+- Pro: Works headless, not tied to any GUI terminal
+- Con: Requires tmux, different UX model
+
+### Proposed Schema Projection (Terminal → Mache)
+```
+/iterm/
+  window-1/
+    tab-1/
+      session-1/
+        mache_id, process, working_dir, buffer, cursor
+      session-2/
+        ...
+```
+
+Navigator tools: `ls`, `cat` (read buffer), `act` (type text, send Ctrl sequences). Same tool contract as browser — Navigator doesn't know it's talking to a terminal.
+
+### Meta-Circular Use Case: Gemini Voice → Claude Code
+Voice → Gemini Live (Talker) → issue_command → Doer reads terminal buffer → types into Claude Code prompt → polls for completion → reports result via voice. AI managing AI through a terminal.
+
+### Open Questions
+1. Is iTerm2's protobuf WebSocket protocol stable/documented or internal?
+2. Should we start with AX (universal) or iTerm2 API (richer)?
+3. How to detect "command complete" in terminal buffer? (prompt detection heuristic)
+4. Buffer size — how much scrollback to expose? Full history or last N lines?
+5. Security: should the agent be allowed to `Ctrl+C` arbitrary processes?
+
+---
+
+## 2026-02-26: FFT for GUI Layout Detection
+
+### Idea
+Replace/augment Canny edge detection with FFT (Fast Fourier Transform) for detecting periodic UI structures (grids, lists, rows, columns). GUIs are fundamentally periodic — FFT detects the spatial rhythm directly instead of tracing individual edges.
+
+### Approach: 1D Projections
+- Sum pixels per row → 1D signal → FFT → peaks = row boundaries
+- Sum pixels per column → 1D signal → FFT → peaks = column boundaries
+- Much cheaper than 2D FFT, effective for structured layouts
+
+### Implementation Location
+SQLite extension in mache (not ley-line). Pure Rust `cdylib` using `rustfft` crate, loaded via `sqlite3_load_extension`. Exposes `fft_peaks(blob, axis)`, `row_projection(blob)`, `col_projection(blob)` as SQL functions.
+
+### Combo Pipeline
+- FFT → macro structure (grid spacing, zone boundaries)
+- Canny → micro structure (widgets within grid cells)
+
+### Limitation
+FFT assumes periodicity. Asymmetric layouts, modal dialogs, freeform canvases still need Canny or vision model.
+
+---
+
 ## 2026-02-25: Navigator Read-Only Intent Bug
 
 ### Bug
