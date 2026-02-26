@@ -137,6 +137,7 @@ type Handler struct {
 	schemas        *SchemaCache     // domain+path → schema JSON
 	activeVoiceTab int              // tab ID for native voice mode (set by TAB_ACTIVATED)
 	openBrowserFn  func(url string) // fallback when no WS connection; nil = no-op (tests)
+	termBridge     graph.Graph      // global iTerm2 bridge (nil if iTerm not available)
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveClient *genai.Client, navModel, liveModel, dbPath string) *Handler {
@@ -156,6 +157,15 @@ func (h *Handler) SetOpenBrowserFunc(fn func(string)) {
 	h.openBrowserFn = fn
 }
 
+// SetTermBridge registers the global iTerm2 bridge. When set, every new
+// TabSession mounts it as "iterm" in its CompositeGraph so the Navigator
+// can browse and act on terminal sessions alongside browser elements.
+func (h *Handler) SetTermBridge(bridge graph.Graph) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.termBridge = bridge
+}
+
 // getSession returns the TabSession for the given tab, creating one if needed.
 func (h *Handler) getSession(tabID int) *TabSession {
 	h.mu.Lock()
@@ -169,6 +179,11 @@ func (h *Handler) getSession(tabID int) *TabSession {
 	composite := graph.NewCompositeGraph()
 	if err := composite.Mount("browser", engine); err != nil {
 		log.Printf("Session: mount browser (tab %d): %v", tabID, err)
+	}
+	if h.termBridge != nil {
+		if err := composite.Mount("iterm", h.termBridge); err != nil {
+			log.Printf("Session: mount iterm (tab %d): %v", tabID, err)
+		}
 	}
 	nav := navigator.NewAgent(h.NavGen, h.NavModel, composite)
 	sess := &TabSession{
