@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/agentic-research/mache/graph"
 	pb "github.com/tmc/it2/proto"
@@ -322,8 +323,9 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("new_window failed: %w", err)
 		}
-		// Force sync reconcile so the next `ls` from the agent sees the new window
-		// and doesn't get caught in a retry loop.
+		// iTerm2 API is async; it takes a moment to physically create the tab and update its layout state.
+		// Wait briefly before forcing sync reconcile so the next `ls` sees the new window.
+		time.Sleep(500 * time.Millisecond)
 		_ = b.reconcileSessions(ctx)
 		return &graph.ActionResult{
 			NodeID:  "iterm:" + newSession,
@@ -339,7 +341,8 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("new_tab failed: %w", err)
 		}
-		// Force sync reconcile so the next `ls` from the agent sees the new tab.
+		// iTerm2 API is async; wait briefly before forcing sync reconcile so the next `ls` sees the new tab.
+		time.Sleep(500 * time.Millisecond)
 		_ = b.reconcileSessions(ctx)
 		return &graph.ActionResult{
 			NodeID:  "iterm:" + newSession,
