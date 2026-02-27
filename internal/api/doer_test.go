@@ -327,7 +327,9 @@ func TestDoerGotoCancellation(t *testing.T) {
 }
 
 func TestDoerSchemaWaitSoftProceed(t *testing.T) {
-	// Verify the Doer proceeds without schema after the 3s soft wait.
+	// Verify the Doer proceeds when initial schema is delayed (not pre-signaled).
+	// Signal twice: once for the initial soft-wait, once for goto's post-navigate
+	// SchemaReady wait (which calls ResetSchema internally, creating a new channel).
 	mock := &mockIntentHandler{
 		responses: []mockResponse{
 			{action: &navigator.ActionResult{Action: "browser.goto", Path: "https://example.com"}},
@@ -335,7 +337,7 @@ func TestDoerSchemaWaitSoftProceed(t *testing.T) {
 		},
 	}
 	_, sess, doer := newDoerTestHarness(mock)
-	// Do NOT signal SchemaReady — the 3s soft wait should proceed.
+	// Do NOT signal SchemaReady upfront — test the delayed schema path.
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -343,10 +345,11 @@ func TestDoerSchemaWaitSoftProceed(t *testing.T) {
 
 	doer.Submit(DoerGoal{ID: "g-noscema", Text: "go to example.com"})
 
-	// Signal SchemaReady for the goto's post-navigate wait (dispatchAction).
 	go func() {
-		time.Sleep(4 * time.Second) // after the 3s soft wait, before 30s timeout
-		sess.SignalSchemaReady()
+		time.Sleep(100 * time.Millisecond)
+		sess.SignalSchemaReady() // unblocks initial soft-wait
+		time.Sleep(2 * time.Second)
+		sess.SignalSchemaReady() // unblocks goto's post-navigate wait
 	}()
 
 	_ = waitForDone(t, doer, 10*time.Second)

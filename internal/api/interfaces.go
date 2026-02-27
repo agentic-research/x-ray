@@ -14,10 +14,6 @@ type SchemaGenerator interface {
 }
 
 // IntentHandler abstracts the Navigator for testing.
-// TODO: Adding a new Navigator tool requires changes in 5 places: tool definition
-// (agent.go ToolDefinitions), execution (agent.go ExecuteTool), system prompt
-// (agent.go NavigatorSystemPrompt), callback wiring (doer.go executeGoal), and
-// this interface. Consider a tool registry pattern to consolidate.
 type IntentHandler interface {
 	HandleIntent(ctx context.Context, intent string, readOnly bool) (*navigator.ActionResult, string, error)
 	ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string, *navigator.ActionResult)

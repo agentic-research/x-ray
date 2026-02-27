@@ -18,8 +18,11 @@ Added `response_format: {"type": "json_object"}` to OllamaGenerator requests, en
 ### Key Insight
 The `new_window`/`new_tab` actions were hidden inside `act()` as generic action strings routed through `Bridge.Act()`. Making them first-class tools means the model sees them in the tool schema and doesn't need to know the magic action strings. They still call through `NavFS.Act()` internally, so `iterm/bridge.go` was untouched.
 
-### Pre-existing Issue Noted
-`TestDoerSchemaWaitSoftProceed` fails because `schemaWaitTimeout` was increased to 15s (commit `33b0690`) but the test deadline is only 10s.
+### Test Fix: `TestDoerSchemaWaitSoftProceed`
+This test was broken since commit `33b0690` (schema wait 3s→15s). The goroutine signaled `SchemaReady` at 4s — which now unblocked the initial wait *early* instead of after timeout. Then `dispatchAction`'s `browser.goto` called `ResetSchema()` (creating a new channel) that nobody signaled, causing a 30s hang vs the 10s test deadline. Fix: signal twice — once for initial wait, once for the post-goto wait.
+
+### Stale TODO Removed
+`interfaces.go` had a TODO suggesting a "tool registry pattern to consolidate." The `ToolRegistry` in `tool.go` already implements exactly this. Removed the dead comment.
 
 ---
 
