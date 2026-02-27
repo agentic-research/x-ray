@@ -23,16 +23,21 @@ func GetFrontmostApp() (string, error) {
 type Router struct {
 	composite  *graph.CompositeGraph
 	appMapping map[string]string // e.g. "Google Chrome" -> "browser"
+	getApp     func() (string, error)
 }
 
 // NewRouter creates a new focus router.
 func NewRouter(composite *graph.CompositeGraph, appMapping map[string]string) *Router {
-	return &Router{composite: composite, appMapping: appMapping}
+	return &Router{
+		composite:  composite,
+		appMapping: appMapping,
+		getApp:     GetFrontmostApp,
+	}
 }
 
 // resolvePath prepends the correct prefix to the ID based on the active app.
 func (r *Router) resolvePath(id string) (string, error) {
-	app, err := GetFrontmostApp()
+	app, err := r.getApp()
 	if err != nil {
 		return "", fmt.Errorf("focus: %w", err)
 	}

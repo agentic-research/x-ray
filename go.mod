@@ -4,10 +4,9 @@ go 1.25.0
 
 // Local replace: mache feat/iterm-bridge has Act() and CompositeGraph.
 // Remove once mache v0.5.0 is released.
-replace github.com/agentic-research/mache => /Users/jamesgardner/remotes/art/mache
 
 require (
-	github.com/agentic-research/mache v0.4.0
+	github.com/agentic-research/mache v0.5.2-0.20260227211625-10e57422ceaf
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/tmc/it2 v0.0.0-20251116041255-d10afde85159
@@ -32,11 +31,11 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20260212183809-81e46e3db34a // indirect
-	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/grpc v1.66.2 // indirect
 	modernc.org/libc v1.67.7 // indirect
