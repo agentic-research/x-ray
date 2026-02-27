@@ -26,6 +26,9 @@ jobs:
       - name: Test
         run: go test -race -v ./...
 
+      - name: Regression tests (known bugs)
+        run: go test -race -v -run TestBug_ ./...
+
   lint:
     runs-on: ubuntu-latest
     steps:

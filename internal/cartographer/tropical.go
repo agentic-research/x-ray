@@ -873,7 +873,22 @@ func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropic
 		if len(z.elems) == 0 {
 			continue
 		}
+		// Pick a real DOM element as root — skip synthetic cv-* regions
+		// that edge detection appends to the cartographer summary.
 		rootEl := elements[z.rootIdx]
+		if strings.HasPrefix(rootEl.id, "cv-") {
+			found := false
+			for _, idx := range z.elems {
+				if !strings.HasPrefix(elements[idx].id, "cv-") {
+					rootEl = elements[idx]
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue // all-cv zone, skip entirely
+			}
+		}
 
 		cat := inferCategory(z, lt)
 		subcat := inferSubcategory(z, elements, lt)
@@ -892,6 +907,9 @@ func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropic
 
 		if z.isList && len(z.listIdxs) > 0 {
 			for _, idx := range z.listIdxs {
+				if strings.HasPrefix(elements[idx].id, "cv-") {
+					continue
+				}
 				m.PrimaryItems = append(m.PrimaryItems, elements[idx].id)
 			}
 			m.ItemSelector = z.selector
