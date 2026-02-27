@@ -112,9 +112,9 @@ YOUR TOOLS:
 - cancel_task(): Cancel the current background task.
 
 BEHAVIOR:
-1. When the user asks you to do something OR asks a question about their environment (browser or terminal), use issue_command() and briefly acknowledge: "Let me check." Always set read_only appropriately.
+1. When the user asks you to do something OR asks a question about their environment (browser or terminal), use issue_command() IMMEDIATELY. Do NOT add conversational filler like "Let me check" or "Working on it" — just execute the tool silently. Always set read_only appropriately.
 2. When a task is running, stay SILENT and wait for the system to notify you of completion — unless the user asks.
-3. If the user asks "what are you doing?" or "are you almost done?", call check_status() and report briefly.
+3. If the user asks "what are you doing?" or "are you almost done?", call check_status() and report the current step briefly and directly, without filler.
 4. When the system notifies you a task completed, announce the result naturally.
 5. If the user says "stop" or "cancel", use cancel_task() and confirm: "Cancelled."
 6. You can answer general knowledge questions directly using Google Search — no need to issue_command for those.
@@ -208,8 +208,13 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Voice: Gemini Live session established (tab %d)", tabID)
 		}
 
+		// Mutex protects concurrent writes to the Gemini Live session (Bug fix).
+		var sessionMu sync.Mutex
+
 		// Wire Doer result callback to this session.
 		doer.SetResultNotifyFn(func(summary string) {
+			sessionMu.Lock()
+			defer sessionMu.Unlock()
 			if err := session.SendClientContent(genai.LiveClientContentInput{
 				Turns: []*genai.Content{{
 					Role: "user",
@@ -254,12 +259,15 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 						audioBytes = 0
 						lastLog = time.Now()
 					}
-					if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+					sessionMu.Lock()
+					err := session.SendRealtimeInput(genai.LiveRealtimeInput{
 						Audio: &genai.Blob{
 							Data:     data,
 							MIMEType: "audio/pcm;rate=16000",
 						},
-					}); err != nil {
+					})
+					sessionMu.Unlock()
+					if err != nil {
 						log.Printf("Voice: SendRealtimeInput error: %v", err)
 						return
 					}
@@ -271,9 +279,12 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 					switch cmd.Type {
 					case "mic_stop":
 						log.Println("Voice: mic released, sending AudioStreamEnd")
-						if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+						sessionMu.Lock()
+						err := session.SendRealtimeInput(genai.LiveRealtimeInput{
 							AudioStreamEnd: true,
-						}); err != nil {
+						})
+						sessionMu.Unlock()
+						if err != nil {
 							log.Printf("Voice: AudioStreamEnd error: %v", err)
 						}
 					case "text_input":
@@ -281,11 +292,14 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 							continue
 						}
 						log.Printf("Voice [tab %d]: text input: %s", tabID, cmd.Text)
-						if err := session.SendClientContent(genai.LiveClientContentInput{
+						sessionMu.Lock()
+						err := session.SendClientContent(genai.LiveClientContentInput{
 							Turns: []*genai.Content{
 								{Role: "user", Parts: []*genai.Part{{Text: cmd.Text}}},
 							},
-						}); err != nil {
+						})
+						sessionMu.Unlock()
+						if err != nil {
 							log.Printf("Voice: SendClientContent error: %v", err)
 						}
 					}
@@ -370,9 +384,12 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				if len(responses) > 0 {
-					if err := session.SendToolResponse(genai.LiveToolResponseInput{
+					sessionMu.Lock()
+					err := session.SendToolResponse(genai.LiveToolResponseInput{
 						FunctionResponses: responses,
-					}); err != nil {
+					})
+					sessionMu.Unlock()
+					if err != nil {
 						log.Printf("Voice: SendToolResponse error: %v", err)
 						break
 					}
@@ -456,8 +473,13 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 			log.Println("Voice: Gemini Live session established (native mode)")
 		}
 
+		// Mutex protects concurrent writes to the Gemini Live session (Bug fix).
+		var sessionMu sync.Mutex
+
 		// resultNotifyFn injects a synthetic message so Gemini speaks the Doer's result.
 		resultNotifyFn := func(summary string) {
+			sessionMu.Lock()
+			defer sessionMu.Unlock()
 			if err := session.SendClientContent(genai.LiveClientContentInput{
 				Turns: []*genai.Content{{
 					Role: "user",
@@ -495,9 +517,12 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 						return
 					}
 					if chunk == nil {
-						if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+						sessionMu.Lock()
+						err := session.SendRealtimeInput(genai.LiveRealtimeInput{
 							AudioStreamEnd: true,
-						}); err != nil {
+						})
+						sessionMu.Unlock()
+						if err != nil {
 							log.Printf("Voice: AudioStreamEnd error: %v", err)
 						}
 						continue
@@ -505,12 +530,15 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 					if speaking.Load() != 0 {
 						continue
 					}
-					if err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+					sessionMu.Lock()
+					err := session.SendRealtimeInput(genai.LiveRealtimeInput{
 						Audio: &genai.Blob{
 							Data:     chunk,
 							MIMEType: "audio/pcm;rate=16000",
 						},
-					}); err != nil {
+					})
+					sessionMu.Unlock()
+					if err != nil {
 						log.Printf("Voice: SendRealtimeInput error: %v", err)
 						return
 					}
@@ -522,11 +550,14 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 						continue
 					}
 					log.Printf("Voice: text input: %s", text)
-					if err := session.SendClientContent(genai.LiveClientContentInput{
+					sessionMu.Lock()
+					err := session.SendClientContent(genai.LiveClientContentInput{
 						Turns: []*genai.Content{
 							{Role: "user", Parts: []*genai.Part{{Text: text}}},
 						},
-					}); err != nil {
+					})
+					sessionMu.Unlock()
+					if err != nil {
 						log.Printf("Voice: SendClientContent error: %v", err)
 					}
 				}
@@ -610,9 +641,12 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 					}
 				}
 				if len(responses) > 0 {
-					if err := session.SendToolResponse(genai.LiveToolResponseInput{
+					sessionMu.Lock()
+					err := session.SendToolResponse(genai.LiveToolResponseInput{
 						FunctionResponses: responses,
-					}); err != nil {
+					})
+					sessionMu.Unlock()
+					if err != nil {
 						log.Printf("Voice: SendToolResponse error: %v", err)
 					}
 				}
