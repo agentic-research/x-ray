@@ -1,5 +1,30 @@
 # Investigation Log
 
+## 2026-02-26: The "Room of Mirrors" iTerm Bug and Sync Reconciles
+
+### The Log Inception Loop
+Because `agentd` was running inside an active iTerm2 session, the Navigator sometimes asked to `cat(/iterm/active_session/buffer)` and ended up reading its own daemon logs. This created a "room of mirrors" where the JSON logs containing massive unescaped strings completely blew out the SLM's context window, causing it to retry commands wildly.
+
+### Fix 1: The Blind Spot (`ITERM_SESSION_ID`)
+iTerm2 injects `ITERM_SESSION_ID` into every spawned shell.
+- Read this ID on daemon startup.
+- In `reconcileSessions()`, the bridge now explicitly skips the agent's own terminal session.
+- The daemon is now entirely blind to the terminal pane it is running in, preventing log inception.
+
+### Fix 2: Context Overload Protection
+When reading terminal buffers from other panes, they can still contain chaotic data.
+- Reduced `DefaultBufferLines` from 100 to 20 to limit noise.
+- Wrapped `FunctionResponse` output in `json.Marshal()` before appending it to the SLM history in `GemmaGenerator` and `OllamaGenerator`. This perfectly escapes newlines and raw text, preserving the JSON structure of the LLM prompt.
+
+### Fix 3: Async Race Condition (`new_window`)
+The iTerm2 API is highly asynchronous. Spawning a new tab returned a success message immediately, but the `LayoutChanged` event took 100ms+ to fire. The fast local SLM would run `ls`, not see the new window, assume failure, and retry, spawning multiple windows.
+- Fixed by adding `time.Sleep(500 * time.Millisecond)` and forcing a synchronous `b.reconcileSessions(ctx)` inside the `Act` method immediately after creating a tab/window.
+
+### Fix 4: Schema Wait Timeout
+Increased the `SchemaReady` soft-wait in the Doer from 3 seconds to 15 seconds. Cartographer can take 10-15s to map complex browser pages. Allowing it to time out at 3s forced the Doer to proceed with an empty `/browser/` tree, which confused the Navigator, especially when routed through `/focus/`.
+
+---
+
 ## 2026-02-26: Pure Go macOS Focus Router (No CGO)
 
 ### Problem
