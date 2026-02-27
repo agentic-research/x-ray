@@ -408,6 +408,15 @@ func (b *Bridge) resolveSessionID(path string) string {
 // resolveWindowID extracts the window ID from a graph node path.
 // Expected: windows/{wid} or deeper.
 func (b *Bridge) resolveWindowID(path string) string {
+	if strings.HasPrefix(path, "active_session") || strings.HasPrefix(path, "/active_session") {
+		b.mu.RLock()
+		defer b.mu.RUnlock()
+		if ts, ok := b.sessions[b.active]; ok {
+			return ts.info.WindowID
+		}
+		return ""
+	}
+
 	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	for i, p := range parts {
 		if p == "windows" && i+1 < len(parts) {
