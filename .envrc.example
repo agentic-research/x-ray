@@ -1,0 +1,35 @@
+# X-Ray Agentd Environment Variables
+
+# Core Gemini API Key (required if not using 100% local models)
+# export GOOGLE_GEMINI_API_KEY="your-api-key"
+# or
+# export GOOGLE_API_KEY="your-api-key"
+
+# ==========================================
+# Model Selection
+# ==========================================
+
+# Base Gemini Model (default: gemini-2.5-flash)
+# export GEMINI_MODEL="gemini-2.5-flash"
+
+# Gemini Live Model for Voice (default: gemini-2.5-flash-native-audio-preview-12-2025)
+# export GEMINI_LIVE_MODEL="gemini-2.5-flash-native-audio-preview-12-2025"
+
+# Cartographer (Vision) Local Override (default: llava:13b)
+# export CARTOGRAPHER_ENDPOINT="http://localhost:11434/v1"
+# export CARTOGRAPHER_MODEL="llava:13b"
+
+# Navigator (Action) Local Override (default: functiongemma:270m)
+# export NAVIGATOR_ENDPOINT="http://localhost:11434/v1"
+# export NAVIGATOR_MODEL="functiongemma:270m"
+# export NAVIGATOR_FORMAT="openai" # "gemma" or "openai"
+
+# ==========================================
+# Other Configuration
+# ==========================================
+
+# Port for the web server (default: 8080)
+# export PORT="8080"
+
+# Path to the SQLite database for schema cache (default: ~/.xray/schemas.db)
+# export XRAY_DB="/path/to/schemas.db"
