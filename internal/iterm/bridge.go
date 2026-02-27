@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -25,11 +26,12 @@ type Bridge struct {
 	client *Client
 	store  *graph.MemoryStore
 
-	mu       sync.RWMutex
-	sessions map[string]*trackedSession // sessionID → state
-	active   string                     // focused session ID
-	bufLines int32
-	prompt   *regexp.Regexp
+	mu          sync.RWMutex
+	sessions    map[string]*trackedSession // sessionID → state
+	active      string                     // focused session ID
+	selfSession string                     // the agent's own terminal session ID (blind spot)
+	bufLines    int32
+	prompt      *regexp.Regexp
 
 	debug bool
 }
@@ -61,10 +63,11 @@ func WithDebug(v bool) BridgeOption {
 // NewBridge creates a Bridge. Call Start() to connect and begin syncing.
 func NewBridge(opts ...BridgeOption) *Bridge {
 	b := &Bridge{
-		store:    graph.NewMemoryStore(),
-		sessions: make(map[string]*trackedSession),
-		bufLines: DefaultBufferLines,
-		prompt:   DefaultPromptPattern,
+		store:       graph.NewMemoryStore(),
+		sessions:    make(map[string]*trackedSession),
+		bufLines:    DefaultBufferLines,
+		prompt:      DefaultPromptPattern,
+		selfSession: normalizeSessionID(os.Getenv("ITERM_SESSION_ID")),
 	}
 	for _, o := range opts {
 		o(b)
@@ -165,6 +168,11 @@ func (b *Bridge) reconcileSessions(ctx context.Context) error {
 	// Detect new sessions.
 	currentIDs := make(map[string]bool)
 	for _, s := range sessions {
+		// Blind spot: completely ignore the agent's own terminal session.
+		if b.selfSession != "" && s.SessionID == b.selfSession {
+			continue
+		}
+
 		currentIDs[s.SessionID] = true
 		if _, exists := b.sessions[s.SessionID]; !exists {
 			b.sessions[s.SessionID] = &trackedSession{
@@ -190,7 +198,12 @@ func (b *Bridge) reconcileSessions(ctx context.Context) error {
 		}
 	}
 
-	b.active = active
+	// Never set the active session to the blind spot.
+	if active == b.selfSession {
+		b.active = ""
+	} else {
+		b.active = active
+	}
 	b.mu.Unlock()
 
 	// Fetch buffers for all sessions.
@@ -298,6 +311,9 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("new_window failed: %w", err)
 		}
+		// Force sync reconcile so the next `ls` from the agent sees the new window
+		// and doesn't get caught in a retry loop.
+		_ = b.reconcileSessions(ctx)
 		return &graph.ActionResult{
 			NodeID:  "iterm:" + newSession,
 			Action:  action,
@@ -312,6 +328,8 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("new_tab failed: %w", err)
 		}
+		// Force sync reconcile so the next `ls` from the agent sees the new tab.
+		_ = b.reconcileSessions(ctx)
 		return &graph.ActionResult{
 			NodeID:  "iterm:" + newSession,
 			Action:  action,
