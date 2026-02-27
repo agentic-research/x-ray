@@ -1,0 +1,981 @@
+package cartographer
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"image/jpeg"
+	"log"
+	"math"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+// TropicalCartographer implements api.SchemaGenerator using tropical geometry
+// instead of a vision language model. It produces deterministic, reproducible
+// zone segmentation from the DOM summary and optional screenshot pixel data.
+//
+// The approach: treat each DOM element as a point with a multi-dimensional
+// "fiber" (spatial bounds, visual RGB, structural CSS path, semantic role).
+// Compute pairwise distances in the max-plus semiring (tropical addition = max),
+// then extract the optimal tree topology via neighbor-joining — the algorithmic
+// realization of the Grassmannian Gr(2,n) ≅ metric trees isomorphism
+// (Speyer-Sturmfels 2004). Cut the tree into 3-7 zones.
+type TropicalCartographer struct {
+	MinZones int
+	MaxZones int
+
+	// MaxElements caps the number of DOM elements fed into the O(N^3)
+	// neighbor-joining algorithm. Excess elements are pre-filtered by
+	// removing those with empty text and no semantic color. Default: 500.
+	MaxElements int
+
+	// Layout thresholds (normalized 0-1). Override for sites with
+	// large hero headers or non-standard layouts.
+	HeaderMaxY float64 // elements with centerY < this are "header" (default 0.15)
+	FooterMinY float64 // elements with centerY > this are "footer" (default 0.85)
+	SidebarW   float64 // elements with centerX < this or > 1-this are "sidebar" (default 0.2)
+}
+
+// element is a parsed DOM summary line enriched with computed features.
+type element struct {
+	id        string
+	parentID  string
+	tag       string
+	text      string
+	path      string
+	color     string
+	bounds    [4]float64 // [x, y, w, h] normalized
+	hasBounds bool
+
+	// Computed
+	centerX   float64
+	centerY   float64
+	rgb       [3]float64
+	hasRGB    bool
+	pathParts []string
+}
+
+// treeNode is a node in the reconstructed metric tree.
+type treeNode struct {
+	children []*treeNode
+	elements []int   // leaf element indices in this subtree
+	dist     float64 // distance from parent
+	isLeaf   bool
+}
+
+// zone is a cluster of elements from tree cutting.
+type zone struct {
+	rootIdx  int   // index of the representative element
+	elems    []int // indices into the element slice
+	centerX  float64
+	centerY  float64
+	isList   bool
+	listIdxs []int  // primary item indices (if list zone)
+	selector string // CSS item_selector (if list zone)
+}
+
+// tropicalMount matches mache.CartographerOutput.Mounts JSON.
+type tropicalMount struct {
+	VirtualPath  string   `json:"virtual_path"`
+	MacheID      string   `json:"mache_id"`
+	Description  string   `json:"description"`
+	PrimaryItems []string `json:"primary_items"`
+	ItemSelector string   `json:"item_selector,omitempty"`
+}
+
+// GenerateSchema implements api.SchemaGenerator.
+func (tc *TropicalCartographer) GenerateSchema(
+	ctx context.Context,
+	screenshot []byte,
+	mimeType, summary string,
+) (string, error) {
+	log.Println("TropicalCartographer: generating schema from DOM topology + pixel fibers")
+
+	minZ, maxZ := tc.MinZones, tc.MaxZones
+	if minZ <= 0 {
+		minZ = 3
+	}
+	if maxZ <= 0 {
+		maxZ = 7
+	}
+	maxElems := tc.MaxElements
+	if maxElems <= 0 {
+		maxElems = 500
+	}
+
+	// Step 1: Parse DOM summary
+	elements := parseElements(summary)
+	if len(elements) == 0 {
+		return "", fmt.Errorf("no elements found in summary")
+	}
+
+	// Pre-filter: cap element count for O(N^3) NJ algorithm.
+	// Keep elements with text or semantic color; drop empty filler first.
+	if len(elements) > maxElems {
+		elements = prefilterElements(elements, maxElems)
+		log.Printf("TropicalCartographer: pre-filtered to %d elements", len(elements))
+	}
+
+	// Step 2: Sample RGB fibers from screenshot
+	if len(screenshot) > 0 {
+		sampleRGB(screenshot, elements)
+	}
+
+	// Step 3: Build tropical distance matrix
+	dist := buildDistanceMatrix(elements)
+
+	// Step 4: Extract metric tree via neighbor-joining (Gr(2,n) isomorphism)
+	tree := neighborJoining(dist, len(elements))
+
+	// Step 5: Cut tree into zones
+	zones := cutTree(tree, elements, minZ, maxZ)
+	if len(zones) == 0 {
+		return "", fmt.Errorf("no zones produced from %d elements", len(elements))
+	}
+
+	// Step 6: Build mounts
+	layout := layoutThresholds{
+		headerMaxY: tc.HeaderMaxY,
+		footerMinY: tc.FooterMinY,
+		sidebarW:   tc.SidebarW,
+	}
+	if layout.headerMaxY <= 0 {
+		layout.headerMaxY = 0.15
+	}
+	if layout.footerMinY <= 0 {
+		layout.footerMinY = 0.85
+	}
+	if layout.sidebarW <= 0 {
+		layout.sidebarW = 0.2
+	}
+	mounts := buildMounts(zones, elements, layout)
+
+	// Step 7: Marshal
+	output := struct {
+		Mounts []tropicalMount `json:"mounts"`
+	}{Mounts: mounts}
+
+	data, err := json.Marshal(output)
+	if err != nil {
+		return "", fmt.Errorf("marshal schema: %w", err)
+	}
+
+	log.Printf("TropicalCartographer: %d zones from %d elements", len(mounts), len(elements))
+	return string(data), nil
+}
+
+// ---------------------------------------------------------------------------
+// Pre-filtering for large DOMs
+// ---------------------------------------------------------------------------
+
+// prefilterElements reduces element count for the O(N^3) NJ algorithm.
+// Keeps elements with text or semantic color; drops empty filler first.
+func prefilterElements(elements []element, maxN int) []element {
+	if len(elements) <= maxN {
+		return elements
+	}
+
+	// Priority: elements with text > elements with color > the rest
+	var withText, withColor, rest []element
+	for _, el := range elements {
+		switch {
+		case el.text != "":
+			withText = append(withText, el)
+		case el.color != "":
+			withColor = append(withColor, el)
+		default:
+			rest = append(rest, el)
+		}
+	}
+
+	result := withText
+	if len(result) < maxN {
+		room := maxN - len(result)
+		if room > len(withColor) {
+			room = len(withColor)
+		}
+		result = append(result, withColor[:room]...)
+	}
+	if len(result) < maxN {
+		room := maxN - len(result)
+		if room > len(rest) {
+			room = len(rest)
+		}
+		result = append(result, rest[:room]...)
+	}
+	if len(result) > maxN {
+		result = result[:maxN]
+	}
+	return result
+}
+
+// ---------------------------------------------------------------------------
+// Parsing
+// ---------------------------------------------------------------------------
+
+func parseElements(summary string) []element {
+	var elements []element
+	for _, line := range strings.Split(summary, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "ID: ") {
+			continue
+		}
+
+		el := element{parentID: "none"}
+		for _, seg := range strings.Split(line, " | ") {
+			seg = strings.TrimSpace(seg)
+			if v, ok := strings.CutPrefix(seg, "ID: "); ok {
+				el.id = v
+			} else if v, ok := strings.CutPrefix(seg, "Parent: "); ok {
+				el.parentID = v
+			} else if v, ok := strings.CutPrefix(seg, "Tag: "); ok {
+				el.tag = v
+			} else if v, ok := strings.CutPrefix(seg, "Color: "); ok {
+				el.color = v
+			} else if v, ok := strings.CutPrefix(seg, "Bounds: "); ok {
+				if b, ok := parseBounds(v); ok {
+					el.bounds = b
+					el.hasBounds = true
+					el.centerX = b[0] + b[2]/2
+					el.centerY = b[1] + b[3]/2
+				}
+			} else if v, ok := strings.CutPrefix(seg, "Path: "); ok {
+				el.path = v
+				el.pathParts = strings.Split(v, " > ")
+			} else if v, ok := strings.CutPrefix(seg, "Text: "); ok {
+				el.text = strings.Trim(v, "\"")
+			}
+		}
+
+		if el.id != "" {
+			elements = append(elements, el)
+		}
+	}
+
+	// For old format without bounds: distribute Y positions sequentially.
+	anyBounds := false
+	for _, el := range elements {
+		if el.hasBounds {
+			anyBounds = true
+			break
+		}
+	}
+	if !anyBounds && len(elements) > 1 {
+		for i := range elements {
+			elements[i].centerX = 0.5
+			elements[i].centerY = float64(i) / float64(len(elements)-1)
+		}
+	} else if !anyBounds && len(elements) == 1 {
+		elements[0].centerX = 0.5
+		elements[0].centerY = 0.5
+	}
+
+	return elements
+}
+
+func parseBounds(s string) ([4]float64, bool) {
+	s = strings.TrimPrefix(s, "[")
+	s = strings.TrimSuffix(s, "]")
+	parts := strings.Split(s, ",")
+	if len(parts) != 4 {
+		return [4]float64{}, false
+	}
+	var b [4]float64
+	for i, p := range parts {
+		v, err := strconv.ParseFloat(strings.TrimSpace(p), 64)
+		if err != nil {
+			return [4]float64{}, false
+		}
+		b[i] = v
+	}
+	return b, true
+}
+
+// ---------------------------------------------------------------------------
+// RGB fiber sampling from JPEG screenshot
+// ---------------------------------------------------------------------------
+
+func sampleRGB(screenshot []byte, elements []element) {
+	img, err := jpeg.Decode(bytes.NewReader(screenshot))
+	if err != nil {
+		log.Printf("TropicalCartographer: JPEG decode failed: %v", err)
+		return
+	}
+
+	bounds := img.Bounds()
+	imgW := float64(bounds.Dx())
+	imgH := float64(bounds.Dy())
+
+	for i := range elements {
+		el := &elements[i]
+		if !el.hasBounds {
+			continue
+		}
+
+		// Map normalized bounds to pixel coordinates
+		px := int(el.bounds[0]*imgW) + bounds.Min.X
+		py := int(el.bounds[1]*imgH) + bounds.Min.Y
+		pw := int(el.bounds[2] * imgW)
+		ph := int(el.bounds[3] * imgH)
+		if pw <= 0 || ph <= 0 {
+			continue
+		}
+
+		// Sample center 3x3 pixel region
+		cx := px + pw/2
+		cy := py + ph/2
+		var rSum, gSum, bSum, count float64
+		for dy := -1; dy <= 1; dy++ {
+			for dx := -1; dx <= 1; dx++ {
+				sx := clampInt(cx+dx, bounds.Min.X, bounds.Max.X-1)
+				sy := clampInt(cy+dy, bounds.Min.Y, bounds.Max.Y-1)
+				r, g, b, _ := img.At(sx, sy).RGBA()
+				rSum += float64(r >> 8)
+				gSum += float64(g >> 8)
+				bSum += float64(b >> 8)
+				count++
+			}
+		}
+		el.rgb = [3]float64{rSum / count, gSum / count, bSum / count}
+		el.hasRGB = true
+	}
+}
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+// ---------------------------------------------------------------------------
+// Tropical distance computation (max-plus semiring)
+// ---------------------------------------------------------------------------
+
+func buildDistanceMatrix(elements []element) [][]float64 {
+	n := len(elements)
+	dist := make([][]float64, n)
+	for i := range dist {
+		dist[i] = make([]float64, n)
+	}
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			d := tropicalDistance(&elements[i], &elements[j])
+			dist[i][j] = d
+			dist[j][i] = d
+		}
+	}
+	return dist
+}
+
+// tropicalDistance: d(i,j) = max(d_spatial, d_visual, d_structural)
+// In the max-plus semiring, tropical addition is max. When ANY dimension
+// shows strong separation, the elements belong in different zones.
+func tropicalDistance(a, b *element) float64 {
+	ds := spatialDistance(a, b)
+	dv := visualDistance(a, b)
+	dt := structuralDistance(a, b)
+	return math.Max(ds, math.Max(dv, dt))
+}
+
+// spatialDistance: normalized Euclidean distance of bbox centers.
+func spatialDistance(a, b *element) float64 {
+	if !a.hasBounds && !b.hasBounds {
+		// Old format: use sequential Y positions assigned by parseElements.
+		dy := a.centerY - b.centerY
+		dx := a.centerX - b.centerX
+		return math.Sqrt(dx*dx+dy*dy) / math.Sqrt(2)
+	}
+	dx := a.centerX - b.centerX
+	dy := a.centerY - b.centerY
+	return math.Sqrt(dx*dx+dy*dy) / math.Sqrt(2) // normalize: max diagonal = sqrt(2)
+}
+
+// visualDistance: normalized RGB L2 distance.
+func visualDistance(a, b *element) float64 {
+	if !a.hasRGB || !b.hasRGB {
+		return 0.5 // neutral when no pixel data
+	}
+	dr := a.rgb[0] - b.rgb[0]
+	dg := a.rgb[1] - b.rgb[1]
+	db := a.rgb[2] - b.rgb[2]
+	maxDist := math.Sqrt(3 * 255 * 255) // ~441.67
+	return math.Sqrt(dr*dr+dg*dg+db*db) / maxDist
+}
+
+// structuralDistance: CSS path divergence.
+func structuralDistance(a, b *element) float64 {
+	if len(a.pathParts) == 0 && len(b.pathParts) == 0 {
+		// Old format fallback: tag-based heuristic
+		if a.tag == b.tag {
+			return 0.2
+		}
+		return 0.8
+	}
+	if len(a.pathParts) == 0 || len(b.pathParts) == 0 {
+		return 0.6
+	}
+
+	maxLen := len(a.pathParts)
+	if len(b.pathParts) > maxLen {
+		maxLen = len(b.pathParts)
+	}
+	common := 0
+	minLen := len(a.pathParts)
+	if len(b.pathParts) < minLen {
+		minLen = len(b.pathParts)
+	}
+	for i := 0; i < minLen; i++ {
+		if a.pathParts[i] == b.pathParts[i] {
+			common++
+		} else {
+			break
+		}
+	}
+	return 1.0 - float64(common)/float64(maxLen)
+}
+
+// ---------------------------------------------------------------------------
+// Neighbor-joining tree construction
+// Realizes the Gr(2,n) ≅ metric trees isomorphism (Speyer-Sturmfels 2004)
+// ---------------------------------------------------------------------------
+
+func neighborJoining(dist [][]float64, n int) *treeNode {
+	if n <= 0 {
+		return &treeNode{elements: []int{}}
+	}
+	if n == 1 {
+		return &treeNode{isLeaf: true, elements: []int{0}}
+	}
+	if n == 2 {
+		root := &treeNode{}
+		left := &treeNode{isLeaf: true, elements: []int{0}, dist: dist[0][1] / 2}
+		right := &treeNode{isLeaf: true, elements: []int{1}, dist: dist[0][1] / 2}
+		root.children = []*treeNode{left, right}
+		root.elements = []int{0, 1}
+		return root
+	}
+
+	// Active indices and nodes
+	active := make([]int, n)
+	for i := range active {
+		active[i] = i
+	}
+
+	nodes := make([]*treeNode, n)
+	for i := 0; i < n; i++ {
+		nodes[i] = &treeNode{isLeaf: true, elements: []int{i}}
+	}
+
+	// Working distance matrix
+	D := make([][]float64, n)
+	for i := range D {
+		D[i] = make([]float64, n)
+		copy(D[i], dist[i])
+	}
+
+	for len(active) > 2 {
+		m := len(active)
+
+		// Row sums
+		rowSum := make([]float64, m)
+		for i := 0; i < m; i++ {
+			for j := 0; j < m; j++ {
+				rowSum[i] += D[active[i]][active[j]]
+			}
+		}
+
+		// Find minimum Q pair
+		bestQ := math.Inf(1)
+		bestI, bestJ := 0, 1
+		for i := 0; i < m; i++ {
+			for j := i + 1; j < m; j++ {
+				q := float64(m-2)*D[active[i]][active[j]] - rowSum[i] - rowSum[j]
+				if q < bestQ {
+					bestQ = q
+					bestI, bestJ = i, j
+				}
+			}
+		}
+
+		ai, aj := active[bestI], active[bestJ]
+		dij := D[ai][aj]
+
+		// Branch lengths
+		var diU, djU float64
+		if m > 2 {
+			diU = dij/2 + (rowSum[bestI]-rowSum[bestJ])/(2*float64(m-2))
+			djU = dij - diU
+		} else {
+			diU = dij / 2
+			djU = dij / 2
+		}
+		diU = math.Max(diU, 0)
+		djU = math.Max(djU, 0)
+
+		// Create internal node
+		u := &treeNode{}
+		nodes[ai].dist = diU
+		nodes[aj].dist = djU
+		u.children = []*treeNode{nodes[ai], nodes[aj]}
+		u.elements = append(append([]int{}, nodes[ai].elements...), nodes[aj].elements...)
+
+		// Update distances: d(u,k) = (d(i,k) + d(j,k) - d(i,j)) / 2
+		for _, k := range active {
+			if k == ai || k == aj {
+				continue
+			}
+			nd := (D[ai][k] + D[aj][k] - dij) / 2
+			nd = math.Max(nd, 0)
+			D[ai][k] = nd
+			D[k][ai] = nd
+		}
+		D[ai][ai] = 0
+		nodes[ai] = u
+
+		// Remove aj from active (copy to avoid aliasing the backing array)
+		newActive := make([]int, 0, len(active)-1)
+		for k, v := range active {
+			if k != bestJ {
+				newActive = append(newActive, v)
+			}
+		}
+		active = newActive
+	}
+
+	// Join final two
+	root := &treeNode{}
+	a0, a1 := active[0], active[1]
+	d01 := D[a0][a1]
+	nodes[a0].dist = d01 / 2
+	nodes[a1].dist = d01 / 2
+	root.children = []*treeNode{nodes[a0], nodes[a1]}
+	root.elements = append(append([]int{}, nodes[a0].elements...), nodes[a1].elements...)
+	return root
+}
+
+// ---------------------------------------------------------------------------
+// Tree cutting → zones
+// ---------------------------------------------------------------------------
+
+type internalEdge struct {
+	parent *treeNode
+	child  *treeNode
+	dist   float64
+}
+
+func cutTree(root *treeNode, elements []element, minZones, maxZones int) []zone {
+	if len(elements) == 0 {
+		return nil
+	}
+	if len(elements) <= maxZones {
+		// Few enough elements to make each its own zone
+		return singleElementZones(elements)
+	}
+
+	// Collect all edges
+	var edges []internalEdge
+	var walk func(parent, n *treeNode)
+	walk = func(parent, n *treeNode) {
+		if parent != nil {
+			edges = append(edges, internalEdge{parent: parent, child: n, dist: n.dist})
+		}
+		for _, c := range n.children {
+			walk(n, c)
+		}
+	}
+	walk(nil, root)
+
+	// Sort by distance descending (longest first)
+	sort.Slice(edges, func(i, j int) bool {
+		return edges[i].dist > edges[j].dist
+	})
+
+	// Greedy cutting
+	cutSet := map[*treeNode]bool{}
+	numZones := 1
+
+	for _, e := range edges {
+		if numZones >= maxZones {
+			break
+		}
+		if len(e.child.elements) > 0 && len(e.child.elements) < len(elements) {
+			cutSet[e.child] = true
+			numZones++
+		}
+	}
+
+	// Extract zones from the cut tree
+	zones := extractZones(root, cutSet, elements)
+
+	// If we have too few zones, split the largest zone at its widest spatial gap.
+	for len(zones) < minZones && len(zones) > 0 {
+		largest := 0
+		for i, z := range zones {
+			if len(z.elems) > len(zones[largest].elems) {
+				largest = i
+			}
+		}
+		if len(zones[largest].elems) <= 2 {
+			break
+		}
+		z1, z2 := splitZoneBySpatialGap(zones[largest], elements)
+		zones = append(zones[:largest], append([]zone{z1, z2}, zones[largest+1:]...)...)
+	}
+
+	// Compute zone centers and detect list zones
+	for i := range zones {
+		computeZoneFeatures(&zones[i], elements)
+	}
+
+	return zones
+}
+
+func extractZones(root *treeNode, cutSet map[*treeNode]bool, elements []element) []zone {
+	var zones []zone
+
+	var collect func(n *treeNode) []int
+	collect = func(n *treeNode) []int {
+		if cutSet[n] {
+			// This subtree is a separate zone
+			var elems []int
+			var gatherAll func(node *treeNode)
+			gatherAll = func(node *treeNode) {
+				if node.isLeaf {
+					elems = append(elems, node.elements...)
+					return
+				}
+				for _, c := range node.children {
+					gatherAll(c)
+				}
+			}
+			gatherAll(n)
+			if len(elems) > 0 {
+				zones = append(zones, zone{elems: elems})
+			}
+			return nil
+		}
+
+		if n.isLeaf {
+			return n.elements
+		}
+
+		var remaining []int
+		for _, c := range n.children {
+			remaining = append(remaining, collect(c)...)
+		}
+		return remaining
+	}
+
+	// Root zone is everything not in a cut subtree
+	rootElems := collect(root)
+	if len(rootElems) > 0 {
+		zones = append(zones, zone{elems: rootElems})
+	}
+
+	return zones
+}
+
+// splitZoneBySpatialGap splits a zone into two by finding the largest gap
+// along whichever axis (X or Y) has greater spread, then cutting there.
+func splitZoneBySpatialGap(z zone, elements []element) (zone, zone) {
+	// Determine dominant axis by range
+	var minX, maxX, minY, maxY float64
+	minX, minY = math.Inf(1), math.Inf(1)
+	maxX, maxY = math.Inf(-1), math.Inf(-1)
+	for _, idx := range z.elems {
+		el := elements[idx]
+		if el.centerX < minX {
+			minX = el.centerX
+		}
+		if el.centerX > maxX {
+			maxX = el.centerX
+		}
+		if el.centerY < minY {
+			minY = el.centerY
+		}
+		if el.centerY > maxY {
+			maxY = el.centerY
+		}
+	}
+
+	// Sort by the dominant axis and find the largest gap
+	useY := (maxY - minY) >= (maxX - minX)
+	sorted := make([]int, len(z.elems))
+	copy(sorted, z.elems)
+	sort.Slice(sorted, func(i, j int) bool {
+		if useY {
+			return elements[sorted[i]].centerY < elements[sorted[j]].centerY
+		}
+		return elements[sorted[i]].centerX < elements[sorted[j]].centerX
+	})
+
+	bestGap := -1.0
+	bestSplit := len(sorted) / 2 // fallback to midpoint
+	for i := 0; i < len(sorted)-1; i++ {
+		var gap float64
+		if useY {
+			gap = elements[sorted[i+1]].centerY - elements[sorted[i]].centerY
+		} else {
+			gap = elements[sorted[i+1]].centerX - elements[sorted[i]].centerX
+		}
+		if gap > bestGap {
+			bestGap = gap
+			bestSplit = i + 1
+		}
+	}
+
+	return zone{elems: sorted[:bestSplit]}, zone{elems: sorted[bestSplit:]}
+}
+
+func singleElementZones(elements []element) []zone {
+	zones := make([]zone, len(elements))
+	for i := range elements {
+		zones[i] = zone{elems: []int{i}, rootIdx: i, centerX: elements[i].centerX, centerY: elements[i].centerY}
+	}
+	return zones
+}
+
+func computeZoneFeatures(z *zone, elements []element) {
+	if len(z.elems) == 0 {
+		return
+	}
+
+	// Compute center
+	var sx, sy float64
+	for _, idx := range z.elems {
+		sx += elements[idx].centerX
+		sy += elements[idx].centerY
+	}
+	z.centerX = sx / float64(len(z.elems))
+	z.centerY = sy / float64(len(z.elems))
+
+	// Find representative element (nearest to center)
+	bestDist := math.Inf(1)
+	for _, idx := range z.elems {
+		dx := elements[idx].centerX - z.centerX
+		dy := elements[idx].centerY - z.centerY
+		d := dx*dx + dy*dy
+		if d < bestDist {
+			bestDist = d
+			z.rootIdx = idx
+		}
+	}
+
+	// Detect list zones
+	z.isList, z.listIdxs, z.selector = detectListZone(z.elems, elements)
+}
+
+// detectListZone checks for repeating structural patterns.
+func detectListZone(elems []int, elements []element) (bool, []int, string) {
+	if len(elems) < 3 {
+		return false, nil, ""
+	}
+
+	// Strategy 1: group by CSS path prefix + tag
+	type pathGroup struct {
+		prefix  string
+		tag     string
+		indices []int
+	}
+	groups := map[string]*pathGroup{}
+
+	for _, idx := range elems {
+		el := elements[idx]
+		if len(el.pathParts) >= 2 {
+			parentPath := strings.Join(el.pathParts[:len(el.pathParts)-1], " > ")
+			key := parentPath + "|" + el.tag
+			if g, ok := groups[key]; ok {
+				g.indices = append(g.indices, idx)
+			} else {
+				groups[key] = &pathGroup{prefix: parentPath, tag: el.tag, indices: []int{idx}}
+			}
+		}
+	}
+
+	var best *pathGroup
+	for _, g := range groups {
+		if len(g.indices) >= 3 && (best == nil || len(g.indices) > len(best.indices)) {
+			best = g
+		}
+	}
+
+	// Strategy 2 fallback: same tag repeated
+	if best == nil {
+		tagGroups := map[string][]int{}
+		for _, idx := range elems {
+			t := elements[idx].tag
+			tagGroups[t] = append(tagGroups[t], idx)
+		}
+		for tag, indices := range tagGroups {
+			if len(indices) >= 3 && (best == nil || len(indices) > len(best.indices)) {
+				best = &pathGroup{tag: tag, indices: indices}
+			}
+		}
+	}
+
+	if best == nil {
+		return false, nil, ""
+	}
+
+	// Build CSS selector
+	selector := ""
+	if best.prefix != "" && len(best.indices) > 0 {
+		el := elements[best.indices[0]]
+		if len(el.pathParts) > 0 {
+			selector = best.prefix + " > " + el.pathParts[len(el.pathParts)-1]
+		}
+	}
+
+	// Filter to items with non-empty text
+	var filtered []int
+	for _, idx := range best.indices {
+		if elements[idx].text != "" {
+			filtered = append(filtered, idx)
+		}
+	}
+	if len(filtered) < 3 {
+		filtered = best.indices
+	}
+
+	return true, filtered, selector
+}
+
+// ---------------------------------------------------------------------------
+// Mount generation
+// ---------------------------------------------------------------------------
+
+type layoutThresholds struct {
+	headerMaxY float64
+	footerMinY float64
+	sidebarW   float64
+}
+
+func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropicalMount {
+	// Sort zones by position: top-to-bottom, then left-to-right
+	sort.Slice(zones, func(i, j int) bool {
+		if math.Abs(zones[i].centerY-zones[j].centerY) > 0.15 {
+			return zones[i].centerY < zones[j].centerY
+		}
+		return zones[i].centerX < zones[j].centerX
+	})
+
+	usedPaths := map[string]bool{}
+	mounts := make([]tropicalMount, 0, len(zones))
+
+	for i, z := range zones {
+		if len(z.elems) == 0 {
+			continue
+		}
+		rootEl := elements[z.rootIdx]
+
+		cat := inferCategory(z, lt)
+		subcat := inferSubcategory(z, elements, lt)
+		vpath := "/" + cat + "/" + subcat
+		if usedPaths[vpath] {
+			vpath = fmt.Sprintf("%s_%d", vpath, i)
+		}
+		usedPaths[vpath] = true
+
+		m := tropicalMount{
+			VirtualPath:  vpath,
+			MacheID:      rootEl.id,
+			Description:  inferDescription(z, elements, lt),
+			PrimaryItems: []string{},
+		}
+
+		if z.isList && len(z.listIdxs) > 0 {
+			for _, idx := range z.listIdxs {
+				m.PrimaryItems = append(m.PrimaryItems, elements[idx].id)
+			}
+			m.ItemSelector = z.selector
+		}
+
+		mounts = append(mounts, m)
+	}
+
+	return mounts
+}
+
+func inferCategory(z zone, lt layoutThresholds) string {
+	if z.centerY < lt.headerMaxY {
+		return "header"
+	}
+	if z.centerY > lt.footerMinY {
+		return "footer"
+	}
+	if z.centerX < lt.sidebarW || z.centerX > 1-lt.sidebarW {
+		return "sidebar"
+	}
+	return "main"
+}
+
+func inferSubcategory(z zone, elements []element, lt layoutThresholds) string {
+	tagCounts := map[string]int{}
+	colorCounts := map[string]int{}
+	hasInput := false
+
+	for _, idx := range z.elems {
+		el := elements[idx]
+		tagCounts[el.tag]++
+		if el.color != "" {
+			colorCounts[el.color]++
+		}
+		if el.tag == "input" || el.tag == "textarea" || el.tag == "select" {
+			hasInput = true
+		}
+	}
+
+	if hasInput {
+		return "search"
+	}
+	if z.centerY < lt.headerMaxY && tagCounts["a"] > len(z.elems)/2 {
+		return "nav"
+	}
+	if z.isList {
+		return "feed"
+	}
+	if colorCounts["ORANGE"] > len(z.elems)/3 {
+		return "actions"
+	}
+	if tagCounts["a"] > len(z.elems)*2/3 {
+		return "links"
+	}
+	return "content"
+}
+
+func inferDescription(z zone, elements []element, lt layoutThresholds) string {
+	cat := inferCategory(z, lt)
+	subcat := inferSubcategory(z, elements, lt)
+
+	n := len(z.elems)
+	switch {
+	case cat == "header" && subcat == "nav":
+		return fmt.Sprintf("Navigation bar with %d links", n)
+	case cat == "footer":
+		return fmt.Sprintf("Footer section with %d elements", n)
+	case subcat == "feed":
+		return fmt.Sprintf("Content feed with %d items", len(z.listIdxs))
+	case subcat == "search":
+		return fmt.Sprintf("Search/input area with %d elements", n)
+	case subcat == "actions":
+		return fmt.Sprintf("Action buttons with %d elements", n)
+	default:
+		// Use first non-empty text as hint
+		for _, idx := range z.elems {
+			if t := elements[idx].text; t != "" {
+				if len(t) > 40 {
+					t = t[:40] + "..."
+				}
+				return fmt.Sprintf("Section containing \"%s\" and %d more elements", t, n-1)
+			}
+		}
+		return fmt.Sprintf("Content section with %d elements", n)
+	}
+}

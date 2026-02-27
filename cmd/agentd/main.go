@@ -69,9 +69,12 @@ func main() {
 		liveModel = DefaultGeminiLiveModel
 	}
 
-	// Cartographer: default to Gemini, override with CARTOGRAPHER_ENDPOINT for local VLM.
+	// Cartographer: tropical (algebraic, no LLM) > local VLM > Gemini.
 	var cart api.SchemaGenerator
-	if ep := os.Getenv("CARTOGRAPHER_ENDPOINT"); ep != "" {
+	if mode := os.Getenv("CARTOGRAPHER_MODE"); mode == "tropical" {
+		cart = &cartographer.TropicalCartographer{}
+		log.Println("Cartographer: using TropicalCartographer (algebraic, no LLM)")
+	} else if ep := os.Getenv("CARTOGRAPHER_ENDPOINT"); ep != "" {
 		cartModel := os.Getenv("CARTOGRAPHER_MODEL")
 		if cartModel == "" {
 			cartModel = DefaultCartographerModel
