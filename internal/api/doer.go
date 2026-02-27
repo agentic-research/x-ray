@@ -175,15 +175,15 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 		d.sess.Navigator.SetListTabsFunc(nil)
 	}()
 
-	// Wait briefly for schema, but proceed without one.
+	// Wait for schema, but proceed without one if it takes too long.
 	// HandleIntent works with empty state for goto intents (e.g., "go to reddit.com"
 	// produces a goto action regardless of whether a page schema exists).
 	d.updateStep("waiting for page schema")
 	select {
 	case <-d.sess.GetSchemaReady():
 		// Schema is ready — full tree available.
-	case <-time.After(3 * time.Second):
-		log.Printf("Doer [tab %d]: schema not ready after 3s, proceeding without", d.tabID)
+	case <-time.After(15 * time.Second):
+		log.Printf("Doer [tab %d]: schema not ready after 15s, proceeding without", d.tabID)
 	case <-goalCtx.Done():
 		d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
 		return
@@ -495,8 +495,9 @@ func (d *Doer) finishGoal(goalID string, success bool, summary, errStr string) {
 
 // isInteractiveAction returns true for actions that don't already wait for
 // SchemaReady inside dispatchAction (i.e., everything except goto/rescan/switch_tab).
+// Also returns false for terminal window creation actions since they don't modify the DOM.
 func isInteractiveAction(action string) bool {
-	return action != "goto" && action != "rescan" && action != "switch_tab"
+	return action != "goto" && action != "rescan" && action != "switch_tab" && action != "new_window" && action != "new_tab"
 }
 
 // buildContinuation creates an enriched intent for the next step in the loop.
