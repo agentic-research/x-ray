@@ -16,6 +16,7 @@ import (
 
 	"github.com/agentic-research/mache/graph"
 	"github.com/gorilla/websocket"
+	"github.com/jamesgardner/x-ray/internal/focus"
 	"github.com/jamesgardner/x-ray/internal/mache"
 	"github.com/jamesgardner/x-ray/internal/navigator"
 	"google.golang.org/genai"
@@ -185,6 +186,17 @@ func (h *Handler) getSession(tabID int) *TabSession {
 			log.Printf("Session: mount iterm (tab %d): %v", tabID, err)
 		}
 	}
+
+	// Add the dynamic focus mount that routes to the currently active application.
+	appMapping := map[string]string{
+		"Google Chrome": "browser",
+		"iTerm2":        "iterm",
+	}
+	focusRouter := focus.NewRouter(composite, appMapping)
+	if err := composite.Mount("focus", focusRouter); err != nil {
+		log.Printf("Session: mount focus (tab %d): %v", tabID, err)
+	}
+
 	nav := navigator.NewAgent(h.NavGen, h.NavModel, composite)
 	sess := &TabSession{
 		TabID:             tabID,
