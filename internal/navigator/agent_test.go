@@ -187,7 +187,7 @@ func TestExecuteToolUnknown(t *testing.T) {
 
 func TestExecuteToolScrollNoFunc(t *testing.T) {
 	agent := newTestAgent()
-	fc := &genai.FunctionCall{Name: "scroll", Args: map[string]any{"direction": "down"}}
+	fc := &genai.FunctionCall{Name: "browser.scroll", Args: map[string]any{"direction": "down"}}
 
 	result, action := agent.ExecuteTool(context.Background(), fc)
 	if action != nil {
@@ -209,7 +209,7 @@ func TestExecuteToolScrollWithFunc(t *testing.T) {
 		return nil
 	})
 
-	fc := &genai.FunctionCall{Name: "scroll", Args: map[string]any{"direction": "down"}}
+	fc := &genai.FunctionCall{Name: "browser.scroll", Args: map[string]any{"direction": "down"}}
 	result, action := agent.ExecuteTool(context.Background(), fc)
 	if action != nil {
 		t.Fatal("scroll should not return an action")
@@ -230,7 +230,7 @@ func TestExecuteToolScrollDefaultDirection(t *testing.T) {
 		return nil
 	})
 
-	fc := &genai.FunctionCall{Name: "scroll", Args: map[string]any{}}
+	fc := &genai.FunctionCall{Name: "browser.scroll", Args: map[string]any{}}
 	agent.ExecuteTool(context.Background(), fc)
 	if gotDirection != "down" {
 		t.Errorf("expected default direction 'down', got %q", gotDirection)
@@ -288,7 +288,7 @@ func TestExecuteToolActEnter(t *testing.T) {
 func TestExecuteToolRescanRoot(t *testing.T) {
 	agent := newTestAgent()
 	// rescan("/") should behave as full-page rescan, not error on missing mache_id.
-	fc := &genai.FunctionCall{Name: "rescan", Args: map[string]any{
+	fc := &genai.FunctionCall{Name: "browser.rescan", Args: map[string]any{
 		"path": "/",
 	}}
 
@@ -296,7 +296,7 @@ func TestExecuteToolRescanRoot(t *testing.T) {
 	if action == nil {
 		t.Fatal("rescan('/') should return an ActionResult")
 	}
-	if action.Action != "rescan" {
+	if action.Action != "browser.rescan" {
 		t.Errorf("expected action rescan, got %q", action.Action)
 	}
 	if action.MacheID != "" {

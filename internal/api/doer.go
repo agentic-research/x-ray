@@ -310,7 +310,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 
 func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResult) string {
 	switch action.Action {
-	case "goto":
+	case "browser.goto":
 		// Idempotent: skip reset if already on this URL.
 		if d.sess.CurrentURL == action.Path {
 			d.updateStep(fmt.Sprintf("already on %s, waiting for schema", action.Path))
@@ -347,7 +347,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 			return "Navigation cancelled."
 		}
 
-	case "rescan":
+	case "browser.rescan":
 		if action.Path != "" {
 			// Targeted rescan: keep existing engine, zoom into zone.
 			d.sess.ResetSchema()
@@ -383,7 +383,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 			return "Rescan cancelled."
 		}
 
-	case "switch_tab":
+	case "browser.switch_tab":
 		// Switch to an existing open tab. Parse tab ID from Path.
 		var switchTabID int
 		if _, err := fmt.Sscanf(action.Path, "%d", &switchTabID); err != nil || switchTabID == 0 {
@@ -497,7 +497,7 @@ func (d *Doer) finishGoal(goalID string, success bool, summary, errStr string) {
 // SchemaReady inside dispatchAction (i.e., everything except goto/rescan/switch_tab).
 // Also returns false for terminal window creation actions since they don't modify the DOM.
 func isInteractiveAction(action string) bool {
-	return action != "goto" && action != "rescan" && action != "switch_tab" && action != "new_window" && action != "new_tab"
+	return action != "browser.goto" && action != "browser.rescan" && action != "browser.switch_tab"
 }
 
 // buildContinuation creates an enriched intent for the next step in the loop.

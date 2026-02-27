@@ -130,7 +130,7 @@ type ScrollTool struct {
 
 func (t *ScrollTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
-		Name:        "scroll",
+		Name:        "browser.scroll",
 		Description: "Scroll the page to load more content. Use when items shown are fewer than what the user needs (e.g., only 3 posts visible but user wants the 10th). After scrolling, cat the children file again to see newly loaded items.",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
@@ -164,7 +164,7 @@ type GotoTool struct{}
 
 func (t *GotoTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
-		Name:        "goto",
+		Name:        "browser.goto",
 		Description: "Navigate the browser to a new URL. Use when the user wants to visit a different website (e.g., 'go to Reddit'). After navigation, the filesystem updates to reflect the new page — run ls('/') to explore it.",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
@@ -185,7 +185,7 @@ func (t *GotoTool) Execute(_ context.Context, args map[string]any) (string, *Act
 		u = "https://" + u
 	}
 	return fmt.Sprintf("Navigating to %s", u),
-		&ActionResult{Action: "goto", Path: u}
+		&ActionResult{Action: "browser.goto", Path: u}
 }
 
 // --- rescan ---
@@ -194,7 +194,7 @@ type RescanTool struct{ fs *NavFS }
 
 func (t *RescanTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
-		Name:        "rescan",
+		Name:        "browser.rescan",
 		Description: "Rescan the page or a specific zone with a fresh screenshot. Without a path, rescans the full page. With a path, zooms into that zone for higher detail (e.g., a video player's internal controls). After rescanning, run ls('/') to see the updated structure.",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
@@ -213,9 +213,9 @@ func (t *RescanTool) Execute(_ context.Context, args map[string]any) (string, *A
 			return fmt.Sprintf("Error: %v", err), nil
 		}
 		return fmt.Sprintf("Zooming into %s for detailed rescan...", p),
-			&ActionResult{Action: "rescan", MacheID: macheID, Path: p}
+			&ActionResult{Action: "browser.rescan", MacheID: macheID, Path: p}
 	}
-	return "Rescanning page...", &ActionResult{Action: "rescan"}
+	return "Rescanning page...", &ActionResult{Action: "browser.rescan"}
 }
 
 // --- list_tabs ---
@@ -227,7 +227,7 @@ type ListTabsTool struct {
 
 func (t *ListTabsTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
-		Name:        "list_tabs",
+		Name:        "browser.list_tabs",
 		Description: "List all open browser tabs. Returns tab ID, title, and URL for each. Use this BEFORE goto() to check if the user already has the site open — switching tabs is instant while navigating loads a fresh page.",
 	}
 }
@@ -259,7 +259,7 @@ type SwitchTabTool struct{}
 
 func (t *SwitchTabTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
-		Name:        "switch_tab",
+		Name:        "browser.switch_tab",
 		Description: "Switch to an existing open browser tab by its ID (from list_tabs). After switching, the filesystem updates to reflect the new page. This is much faster than goto() when the page is already open.",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
@@ -278,5 +278,53 @@ func (t *SwitchTabTool) Execute(_ context.Context, args map[string]any) (string,
 		return "Error: tab_id is required", nil
 	}
 	return fmt.Sprintf("Switching to tab %d", tabID),
-		&ActionResult{Action: "switch_tab", Path: fmt.Sprintf("%d", tabID)}
+		&ActionResult{Action: "browser.switch_tab", Path: fmt.Sprintf("%d", tabID)}
+}
+
+// --- iterm.new_window ---
+
+type NewWindowTool struct{ fs *NavFS }
+
+func (t *NewWindowTool) Declaration() *genai.FunctionDeclaration {
+	return &genai.FunctionDeclaration{
+		Name:        "iterm.new_window",
+		Description: "Open a new iTerm2 terminal window with a fresh session.",
+	}
+}
+
+func (t *NewWindowTool) Execute(_ context.Context, _ map[string]any) (string, *ActionResult) {
+	_, err := t.fs.Act("/iterm/windows", "new_window", "")
+	if err != nil {
+		return fmt.Sprintf("Error: %v", err), nil
+	}
+	return "Opened a new terminal window.", nil
+}
+
+// --- iterm.new_tab ---
+
+type NewTabTool struct{ fs *NavFS }
+
+func (t *NewTabTool) Declaration() *genai.FunctionDeclaration {
+	return &genai.FunctionDeclaration{
+		Name:        "iterm.new_tab",
+		Description: "Open a new tab in an iTerm2 terminal window.",
+		Parameters: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"window_path": {Type: genai.TypeString, Description: "Path to the target window, e.g. '/iterm/windows/{id}'. Omit to use the first window."},
+			},
+		},
+	}
+}
+
+func (t *NewTabTool) Execute(_ context.Context, args map[string]any) (string, *ActionResult) {
+	p, _ := args["window_path"].(string)
+	if p == "" {
+		p = "/iterm/windows"
+	}
+	_, err := t.fs.Act(p, "new_tab", "")
+	if err != nil {
+		return fmt.Sprintf("Error: %v", err), nil
+	}
+	return fmt.Sprintf("Opened a new tab in %s.", p), nil
 }

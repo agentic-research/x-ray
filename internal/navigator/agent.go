@@ -40,13 +40,15 @@ type Agent struct {
 	mu         sync.RWMutex
 	progressFn func(toolName string, args map[string]any)
 
-	registry   *ToolRegistry
-	scrollTool *ScrollTool
-	listTabs   *ListTabsTool
-	lsTool     *LsTool
-	catTool    *CatTool
-	actTool    *ActTool
-	rescanTool *RescanTool
+	registry      *ToolRegistry
+	scrollTool    *ScrollTool
+	listTabs      *ListTabsTool
+	lsTool        *LsTool
+	catTool       *CatTool
+	actTool       *ActTool
+	rescanTool    *RescanTool
+	newWindowTool *NewWindowTool
+	newTabTool    *NewTabTool
 }
 
 // NewAgent creates a Navigator agent backed by a unified graph.Graph.
@@ -66,6 +68,8 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 	rescan := &RescanTool{fs: fs}
 	listTabs := &ListTabsTool{}
 	switchTab := &SwitchTabTool{}
+	newWindow := &NewWindowTool{fs: fs}
+	newTab := &NewTabTool{fs: fs}
 
 	reg := NewToolRegistry()
 	reg.Register(ls)
@@ -76,18 +80,22 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 	reg.Register(rescan)
 	reg.Register(listTabs)
 	reg.Register(switchTab)
+	reg.Register(newWindow)
+	reg.Register(newTab)
 
 	return &Agent{
-		generator:  gen,
-		model:      model,
-		fs:         fs,
-		registry:   reg,
-		scrollTool: scroll,
-		listTabs:   listTabs,
-		lsTool:     ls,
-		catTool:    cat,
-		actTool:    act,
-		rescanTool: rescan,
+		generator:     gen,
+		model:         model,
+		fs:            fs,
+		registry:      reg,
+		scrollTool:    scroll,
+		listTabs:      listTabs,
+		lsTool:        ls,
+		catTool:       cat,
+		actTool:       act,
+		rescanTool:    rescan,
+		newWindowTool: newWindow,
+		newTabTool:    newTab,
 	}
 }
 
@@ -99,6 +107,8 @@ func (a *Agent) SetGraph(g graph.Graph) {
 	a.catTool.fs = newFS
 	a.actTool.fs = newFS
 	a.rescanTool.fs = newFS
+	a.newWindowTool.fs = newFS
+	a.newTabTool.fs = newFS
 }
 
 // SetScrollFunc injects the scroll callback used by the scroll tool.
@@ -290,18 +300,27 @@ const NavigatorSystemPrompt = `You are 'The Navigator', an agent that helps user
 You have access to a semantic filesystem with multiple mount points:
 - /browser/ — web page elements organized into logical zones (e.g., /browser/header/nav, /browser/main/content)
 - /iterm/ — terminal sessions (if iTerm2 is running). Contains windows/tabs/sessions with buffer content, status, and cwd.
+- /focus/ — a dynamic symlink that automatically routes to the currently active application (e.g., Chrome or iTerm2). Use this when the user says "what am I looking at" or "click this in my active window".
 
 Your tools:
+
+General (work on any mount):
 - ls(path): List directory contents. Start with ls("/") to see available mount points.
 - cat(path): Read a file. Use for "description", "children", "buffer", "status" files.
 - act(path, action, payload?): Execute an action on the element at this path.
   For browser elements: "click", "focus", "type", "enter".
-  For terminal sessions: "type" (send text — include \n for Enter), "enter" (send special key like "ctrl-c"), "focus" (bring window to front), "new_window" (spawn a new terminal window), "new_tab" (spawn a new tab in the current window).
-- scroll(direction): Scroll the browser page. Direction: "down" or "up".
-- goto(url): Navigate the browser to a new URL.
-- rescan(path?): Rescan the browser page with a fresh screenshot.
-- list_tabs(): List all open browser tabs.
-- switch_tab(tab_id): Switch to an existing open browser tab by ID.
+  For terminal sessions: "type" (send text — include \n for Enter), "enter" (send special key like "ctrl-c"), "focus" (bring window to front).
+
+Browser-scoped (only affect the /browser/ mount):
+- browser.scroll(direction): Scroll the browser page. Direction: "down" or "up".
+- browser.goto(url): Navigate the browser to a new URL. Triggers a visual refresh of the /browser/ mount.
+- browser.rescan(path?): Rescan the browser page with a fresh screenshot. Triggers a visual refresh.
+- browser.list_tabs(): List all open browser tabs.
+- browser.switch_tab(tab_id): Switch to an existing open browser tab by ID.
+
+Terminal-scoped (only affect the /iterm/ mount):
+- iterm.new_window(): Open a new iTerm2 terminal window.
+- iterm.new_tab(window_path?): Open a new tab in a terminal window. Omit window_path for the first window.
 
 TERMINAL SESSIONS:
 When working with /iterm/ terminal sessions:
@@ -311,8 +330,8 @@ When working with /iterm/ terminal sessions:
 2. cat the "status" file (e.g., /iterm/active_session/status) to check if the session is "idle" or "running"
 3. Use act(path, "type", "command\n") to type and execute a command
 4. Use act(path, "enter", "ctrl-c") to send special keys
-5. To spawn a new terminal window, use act("/iterm/windows", "new_window")
-6. To spawn a new tab, use act("/iterm/windows/{id}", "new_tab")
+5. To spawn a new terminal window, use iterm.new_window()
+6. To spawn a new tab, use iterm.new_tab("/iterm/windows/{id}")
 7. After typing a command, cat the buffer again to see the result
 
 You are a NAVIGATIONAL agent. Words like "home", "back", "go to", and "open" are spatial/navigational — they refer to WHERE the user wants to be.
@@ -329,8 +348,8 @@ Before calling act(), ALWAYS classify the user's intent:
 CRITICAL CONSTRAINTS:
 - Do NOT hallucinate tools or paths. Only use paths confirmed via ls().
 - Never guess a path. Always ls() a directory before trying to cat() or act().
-- You have exactly eight tools: ls, cat, act, scroll, goto, rescan, list_tabs, switch_tab.
-- If you cannot find an element, use rescan() before giving up.
+- You have exactly ten tools: ls, cat, act, browser.scroll, browser.goto, browser.rescan, browser.list_tabs, browser.switch_tab, iterm.new_window, iterm.new_tab.
+- If you cannot find an element, use browser.rescan() before giving up.
 
 Strategy:
 1. ls("/") to see mount points (browser/, iterm/).

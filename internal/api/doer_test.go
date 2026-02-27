@@ -256,7 +256,7 @@ func TestDoerGotoDispatch(t *testing.T) {
 	// Step 1: goto → SchemaReady, Step 2: text answer → done.
 	mock := &mockIntentHandler{
 		responses: []mockResponse{
-			{action: &navigator.ActionResult{Action: "goto", Path: "https://example.com"}},
+			{action: &navigator.ActionResult{Action: "browser.goto", Path: "https://example.com"}},
 			{textResp: "Page loaded."},
 		},
 	}
@@ -300,7 +300,7 @@ func TestDoerGotoCancellation(t *testing.T) {
 	// causes the Doer to exit cleanly (not block forever).
 	mock := &mockIntentHandler{
 		responses: []mockResponse{
-			{action: &navigator.ActionResult{Action: "goto", Path: "https://slow-page.example.com"}},
+			{action: &navigator.ActionResult{Action: "browser.goto", Path: "https://slow-page.example.com"}},
 		},
 	}
 	_, sess, doer := newDoerTestHarness(mock)
@@ -330,7 +330,7 @@ func TestDoerSchemaWaitSoftProceed(t *testing.T) {
 	// Verify the Doer proceeds without schema after the 3s soft wait.
 	mock := &mockIntentHandler{
 		responses: []mockResponse{
-			{action: &navigator.ActionResult{Action: "goto", Path: "https://example.com"}},
+			{action: &navigator.ActionResult{Action: "browser.goto", Path: "https://example.com"}},
 			{textResp: "Page loaded."},
 		},
 	}
@@ -430,7 +430,7 @@ func TestDoerMultiStepGotoThenRead(t *testing.T) {
 	// Step 1: goto → navigate, Step 2: text answer from reading page.
 	mock := &mockIntentHandler{
 		responses: []mockResponse{
-			{action: &navigator.ActionResult{Action: "goto", Path: "https://news.ycombinator.com"}},
+			{action: &navigator.ActionResult{Action: "browser.goto", Path: "https://news.ycombinator.com"}},
 			{textResp: "The top story is about AI safety regulations."},
 		},
 	}

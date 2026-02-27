@@ -106,7 +106,7 @@ func TestBug_DoerTeleportationTab0(t *testing.T) {
 
 	mock := &mockIntentHandler{
 		responses: []mockResponse{
-			{action: &navigator.ActionResult{Action: "goto", Path: "https://example.com"}},
+			{action: &navigator.ActionResult{Action: "browser.goto", Path: "https://example.com"}},
 			{textResp: "Successfully reading the real tab 99 engine."},
 		},
 	}

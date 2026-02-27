@@ -47,8 +47,9 @@ func (o *OllamaGenerator) GenerateContent(ctx context.Context, model string, his
 	tools := o.convertTools(config)
 
 	reqBody := map[string]any{
-		"model":    model,
-		"messages": messages,
+		"model":           model,
+		"messages":        messages,
+		"response_format": map[string]string{"type": "json_object"},
 	}
 	if len(tools) > 0 {
 		reqBody["tools"] = tools
@@ -260,7 +261,7 @@ type GemmaGenerator struct {
 
 // gemmaFnCallRe matches JSON function call objects in model output.
 // Accepts both "parameters" (Gemma) and "arguments" (Qwen) keys.
-var gemmaFnCallRe = regexp.MustCompile(`\{\s*"name"\s*:\s*"(\w+)"\s*,\s*"(?:parameters|arguments)"\s*:\s*(\{[^}]*\})\s*\}`)
+var gemmaFnCallRe = regexp.MustCompile(`\{\s*"name"\s*:\s*"([\w.]+)"\s*,\s*"(?:parameters|arguments)"\s*:\s*(\{[^}]*\})\s*\}`)
 
 func (g *GemmaGenerator) GenerateContent(ctx context.Context, model string, history []*genai.Content, config *genai.GenerateContentConfig) (*genai.GenerateContentResponse, error) {
 	if model == "" {
