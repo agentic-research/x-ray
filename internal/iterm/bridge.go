@@ -227,13 +227,24 @@ func (b *Bridge) refreshBuffer(ctx context.Context, sessionID string) {
 
 	clean := StripANSI(raw)
 
-	// Detect idle vs running from prompt pattern.
-	lines := strings.Split(strings.TrimRight(clean, "\n"), "\n")
+	// Detect idle vs running via iTerm2 Shell Integration (OSC 133) or fallback to regex.
 	status := "running"
-	if len(lines) > 0 {
-		lastLine := lines[len(lines)-1]
-		if b.prompt.MatchString(lastLine) {
+	idx := strings.LastIndex(raw, "\x1b]133;")
+	if idx != -1 {
+		marker := raw[idx+6:] // skip "\x1b]133;"
+		if strings.HasPrefix(marker, "A") || strings.HasPrefix(marker, "B") || strings.HasPrefix(marker, "D") {
 			status = "idle"
+		} else if strings.HasPrefix(marker, "C") {
+			status = "running"
+		}
+	} else {
+		// Fallback to prompt regex.
+		lines := strings.Split(strings.TrimRight(clean, "\n"), "\n")
+		if len(lines) > 0 {
+			lastLine := lines[len(lines)-1]
+			if b.prompt.MatchString(lastLine) {
+				status = "idle"
+			}
 		}
 	}
 
