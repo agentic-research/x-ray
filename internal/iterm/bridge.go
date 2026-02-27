@@ -292,7 +292,7 @@ func (b *Bridge) Invalidate(id string) {
 func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 	// Resolve the session ID from the node path.
 	// Path format: windows/{wid}/tabs/{tid}/sessions/{sid}/...
-	sessionID := resolveSessionID(id)
+	sessionID := b.resolveSessionID(id)
 	if sessionID == "" {
 		return nil, fmt.Errorf("cannot resolve session from path: %s", id)
 	}
@@ -327,7 +327,13 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 
 // resolveSessionID extracts the session UUID from a graph node path.
 // Expected: windows/{wid}/tabs/{tid}/sessions/{sid} or deeper.
-func resolveSessionID(path string) string {
+func (b *Bridge) resolveSessionID(path string) string {
+	if strings.HasPrefix(path, "active_session") || strings.HasPrefix(path, "/active_session") {
+		b.mu.RLock()
+		defer b.mu.RUnlock()
+		return b.active
+	}
+
 	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	// Find "sessions" segment and take the next part.
 	for i, p := range parts {

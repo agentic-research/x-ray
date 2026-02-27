@@ -148,8 +148,9 @@ func TestResolveSessionID(t *testing.T) {
 		{"windows", ""},
 		{"", ""},
 	}
+	b := &Bridge{active: "active-123"}
 	for _, tt := range tests {
-		got := resolveSessionID(tt.path)
+		got := b.resolveSessionID(tt.path)
 		if got != tt.want {
 			t.Errorf("resolveSessionID(%q) = %q, want %q", tt.path, got, tt.want)
 		}
