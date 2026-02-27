@@ -1,5 +1,28 @@
 # Investigation Log
 
+## 2026-02-26: Cross-Domain Context Poisoning Prevention
+
+### Problem
+Generic tool names like `goto` and `rescan` caused local SLMs (Qwen via Ollama) to confuse browser-scoped tools with terminal-scoped actions. A model might try to `goto` a terminal path or `rescan` an iTerm session — "cross-domain context poisoning."
+
+### Fix: App-Scoped Tool Names
+Namespaced all tools to their domain:
+- Browser tools: `browser.goto`, `browser.rescan`, `browser.scroll`, `browser.list_tabs`, `browser.switch_tab`
+- Terminal tools: `iterm.new_window`, `iterm.new_tab` (extracted from `act()` into first-class tools)
+
+The system prompt now groups tools by scope and states that `browser.*` tools only affect `/browser/`.
+
+### Fix: JSON Guided Decoding
+Added `response_format: {"type": "json_object"}` to OllamaGenerator requests, enforcing deterministic JSON output from Qwen models. Also fixed the `gemmaFnCallRe` regex from `(\w+)` to `([\w.]+)` so it matches dotted tool names like `browser.goto`.
+
+### Key Insight
+The `new_window`/`new_tab` actions were hidden inside `act()` as generic action strings routed through `Bridge.Act()`. Making them first-class tools means the model sees them in the tool schema and doesn't need to know the magic action strings. They still call through `NavFS.Act()` internally, so `iterm/bridge.go` was untouched.
+
+### Pre-existing Issue Noted
+`TestDoerSchemaWaitSoftProceed` fails because `schemaWaitTimeout` was increased to 15s (commit `33b0690`) but the test deadline is only 10s.
+
+---
+
 ## 2026-02-26: The "Room of Mirrors" iTerm Bug and Sync Reconciles
 
 ### The Log Inception Loop
