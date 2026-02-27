@@ -288,16 +288,44 @@ func (b *Bridge) Invalidate(id string) {
 }
 
 // Act performs an action on a terminal session node.
-// Supported actions: "type" (send text), "enter" (send special key), "focus".
+// Supported actions: "type" (send text), "enter" (send special key), "focus", "new_window", "new_tab".
 func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
-	// Resolve the session ID from the node path.
+	ctx := context.Background()
+
+	// Handle window/tab creation which don't require an existing session.
+	if action == "new_window" {
+		newSession, err := b.client.CreateTab(ctx, "")
+		if err != nil {
+			return nil, fmt.Errorf("new_window failed: %w", err)
+		}
+		return &graph.ActionResult{
+			NodeID:  "iterm:" + newSession,
+			Action:  action,
+			Path:    id,
+			Payload: payload,
+		}, nil
+	}
+
+	if action == "new_tab" {
+		windowID := b.resolveWindowID(id)
+		newSession, err := b.client.CreateTab(ctx, windowID)
+		if err != nil {
+			return nil, fmt.Errorf("new_tab failed: %w", err)
+		}
+		return &graph.ActionResult{
+			NodeID:  "iterm:" + newSession,
+			Action:  action,
+			Path:    id,
+			Payload: payload,
+		}, nil
+	}
+
+	// Resolve the session ID from the node path for session-specific actions.
 	// Path format: windows/{wid}/tabs/{tid}/sessions/{sid}/...
 	sessionID := b.resolveSessionID(id)
 	if sessionID == "" {
 		return nil, fmt.Errorf("cannot resolve session from path: %s", id)
 	}
-
-	ctx := context.Background()
 
 	switch action {
 	case "type":
@@ -344,6 +372,18 @@ func (b *Bridge) resolveSessionID(path string) string {
 	// Also accept a direct mache_id like "iterm:{uuid}".
 	if strings.HasPrefix(path, "iterm:") {
 		return strings.TrimPrefix(path, "iterm:")
+	}
+	return ""
+}
+
+// resolveWindowID extracts the window ID from a graph node path.
+// Expected: windows/{wid} or deeper.
+func (b *Bridge) resolveWindowID(path string) string {
+	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	for i, p := range parts {
+		if p == "windows" && i+1 < len(parts) {
+			return parts[i+1]
+		}
 	}
 	return ""
 }

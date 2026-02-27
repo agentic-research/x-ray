@@ -389,6 +389,32 @@ func (c *Client) GetFocusedSession(ctx context.Context) (string, error) {
 	return "", nil
 }
 
+// CreateTab creates a new tab. If windowID is empty, it creates a new window.
+func (c *Client) CreateTab(ctx context.Context, windowID string) (string, error) {
+	req := &pb.CreateTabRequest{}
+	if windowID != "" {
+		req.WindowId = &windowID
+	}
+
+	resp, err := c.send(ctx, &pb.ClientOriginatedMessage{
+		Submessage: &pb.ClientOriginatedMessage_CreateTabRequest{
+			CreateTabRequest: req,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+
+	ctr := resp.GetCreateTabResponse()
+	if ctr == nil {
+		return "", fmt.Errorf("iterm2: unexpected response type")
+	}
+	if ctr.GetStatus() != pb.CreateTabResponse_OK {
+		return "", fmt.Errorf("iterm2: create tab failed: %v", ctr.GetStatus())
+	}
+	return ctr.GetSessionId(), nil
+}
+
 // normalizeSessionID extracts the UUID part from "w0t1p0:UUID" format.
 func normalizeSessionID(id string) string {
 	if idx := strings.LastIndex(id, ":"); idx != -1 {
