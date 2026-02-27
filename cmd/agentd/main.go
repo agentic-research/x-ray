@@ -25,6 +25,13 @@ import (
 	"google.golang.org/genai"
 )
 
+const (
+	DefaultGeminiModel       = "gemini-2.5-flash"
+	DefaultGeminiLiveModel   = "gemini-2.5-flash-native-audio-preview-12-2025"
+	DefaultCartographerModel = "llava:13b"
+	DefaultNavigatorModel    = "functiongemma:270m"
+)
+
 func main() {
 	voiceFlag := flag.Bool("voice", false, "Enable native voice mode (requires sox)")
 	flag.Parse()
@@ -54,12 +61,12 @@ func main() {
 
 	model := os.Getenv("GEMINI_MODEL")
 	if model == "" {
-		model = "gemini-2.5-flash"
+		model = DefaultGeminiModel
 	}
 
 	liveModel := os.Getenv("GEMINI_LIVE_MODEL")
 	if liveModel == "" {
-		liveModel = "gemini-2.5-flash-native-audio-preview-12-2025"
+		liveModel = DefaultGeminiLiveModel
 	}
 
 	// Cartographer: default to Gemini, override with CARTOGRAPHER_ENDPOINT for local VLM.
@@ -67,7 +74,7 @@ func main() {
 	if ep := os.Getenv("CARTOGRAPHER_ENDPOINT"); ep != "" {
 		cartModel := os.Getenv("CARTOGRAPHER_MODEL")
 		if cartModel == "" {
-			cartModel = "llava:13b"
+			cartModel = DefaultCartographerModel
 		}
 		cart = &cartographer.OllamaAgent{Endpoint: ep, Model: cartModel}
 		log.Printf("Cartographer: using local VLM %s at %s", cartModel, ep)
@@ -82,7 +89,7 @@ func main() {
 	if ep := os.Getenv("NAVIGATOR_ENDPOINT"); ep != "" {
 		navModel = os.Getenv("NAVIGATOR_MODEL")
 		if navModel == "" {
-			navModel = "functiongemma:270m"
+			navModel = DefaultNavigatorModel
 		}
 		format := os.Getenv("NAVIGATOR_FORMAT") // "gemma" or "openai" (default)
 		if format == "gemma" {

@@ -256,6 +256,23 @@ NAVIGATOR_FORMAT=openai \
 task bench
 ```
 
+### Configuration / Environment Variables
+
+X-Ray is highly configurable via environment variables. You can set these in your shell or use an `.envrc` file (see `.envrc.example`).
+
+| Variable | Default Value | Description |
+|----------|---------------|-------------|
+| `GOOGLE_GEMINI_API_KEY` | *(None)* | API key for Gemini models |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | The primary Gemini model for base operations |
+| `GEMINI_LIVE_MODEL` | `gemini-2.5-flash-native-audio-preview-12-2025` | The model used for Voice Mode via Live API |
+| `CARTOGRAPHER_ENDPOINT` | *(None)* | URL for a local Vision Language Model |
+| `CARTOGRAPHER_MODEL` | `llava:13b` | Local Vision Language Model to use |
+| `NAVIGATOR_ENDPOINT` | *(None)* | URL for a local Small Language Model |
+| `NAVIGATOR_MODEL` | `functiongemma:270m` | Local SLM for Navigator actions |
+| `NAVIGATOR_FORMAT` | `openai` | API format for Navigator (`gemma` or `openai`) |
+| `PORT` | `8080` | Port for the HTTP server |
+| `XRAY_DB` | `~/.xray/schemas.db` | Path to SQLite schema cache |
+
 ### 100% Air-Gapped / Local Mode
 
 The entire ACI can run completely offline on local Apple Silicon. While X-Ray uses Gemini Pro/Flash by default for the cloud swarm, every model is pluggable via environment variables:
