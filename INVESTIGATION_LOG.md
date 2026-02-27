@@ -1,5 +1,27 @@
 # Investigation Log
 
+## 2026-02-26: Pure Go macOS Focus Router (No CGO)
+
+### Problem
+The Navigator needs to know which application is currently active so it can interpret relative spatial commands like "what am I looking at" or "click that" without the user explicitly specifying `/browser/` or `/iterm/`.
+
+### False Start (The CGO Trap)
+Initial instinct was to use macOS native APIs (CoreGraphics/AppKit) via CGO to query the WindowServer for the frontmost application. This is a massive trap:
+1. Breaks cross-compilation (`GOOS=linux go build` fails)
+2. Slows down build times
+3. Introduces C memory-safety risks into a perfectly safe Go backend
+
+### Solution
+Used standard library `os/exec` to run a 3-line AppleScript (`osascript`) that queries the WindowServer. It returns the name of the frontmost app (e.g., "Google Chrome", "iTerm2") in 20-50ms with zero CGO dependencies.
+
+### Architecture: The `/focus/` Symlink
+Built a dynamic `focus.Router` that mounts at `/focus/` in the `CompositeGraph`.
+- The router takes an app-to-prefix mapping (e.g., `{"Google Chrome": "browser", "iTerm2": "iterm"}`).
+- When the Navigator accesses `/focus/some/path`, the router checks the frontmost app, looks up its prefix, prepends it (`/iterm/some/path`), and proxies the call back through the `CompositeGraph`.
+- It acts as a true transparent proxy, making the active environment context-aware without coupling the graph implementations.
+
+---
+
 ## 2026-02-26: Air-gapped Support & Universal ACI Documentation
 
 ### What was built
