@@ -139,10 +139,12 @@ func (o *OllamaGenerator) convertHistory(history []*genai.Content, config *genai
 			if part.FunctionResponse != nil {
 				fr := part.FunctionResponse
 				output, _ := fr.Response["output"].(string)
+				// JSON encode the output to safely escape newlines and raw log formatting
+				outputJSON, _ := json.Marshal(output)
 				messages = append(messages, map[string]any{
 					"role":         "tool",
 					"tool_call_id": fr.Name,
-					"content":      output,
+					"content":      string(outputJSON),
 				})
 			}
 		}
@@ -382,9 +384,12 @@ func (g *GemmaGenerator) convertHistory(history []*genai.Content, config *genai.
 			if part.FunctionResponse != nil {
 				fr := part.FunctionResponse
 				output, _ := fr.Response["output"].(string)
+				// JSON encode the output to safely escape newlines and raw log formatting
+				// so the model's context window isn't broken by massive multi-line strings.
+				outputJSON, _ := json.Marshal(output)
 				messages = append(messages, map[string]any{
 					"role":    "user",
-					"content": fmt.Sprintf("Result of %s: %s", fr.Name, output),
+					"content": fmt.Sprintf("Result of %s: %s", fr.Name, string(outputJSON)),
 				})
 			}
 		}

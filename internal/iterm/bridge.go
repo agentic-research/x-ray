@@ -13,7 +13,7 @@ import (
 )
 
 // DefaultBufferLines is how many trailing lines to fetch from each session.
-const DefaultBufferLines = 100
+const DefaultBufferLines = 20
 
 // DefaultPromptPattern matches common shell prompts to detect idle state.
 var DefaultPromptPattern = regexp.MustCompile(`(?m)^.*[$#%>❯]\s*$`)
