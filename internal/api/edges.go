@@ -23,7 +23,7 @@ type EdgeRegion struct {
 // DetectCanvasRegions runs a minimal Canny edge detection pipeline on a
 // screenshot (JPEG or PNG), finds rectangular regions, filters out those
 // overlapping existing mache bounds, and returns annotated regions + an
-// annotated JPEG with cyan boxes.
+// annotated JPEG with white boxes.
 //
 // existingBounds contains [x, y, w, h] normalized coordinates of DOM-tagged elements.
 // overlayMap, when non-nil, enables overlay-aware masking: overlay pixels are
@@ -46,49 +46,60 @@ func DetectCanvasRegions(imgData []byte, existingBounds [][4]float64, overlayMap
 		return nil, nil, fmt.Errorf("empty image: %dx%d", w, h)
 	}
 
-	// Overlay coverage gate: if DOM overlays cover >70% of the page,
-	// Canny would only find overlay borders (noise). Skip entirely.
-	if overlayMap != nil && overlayMap.CoverageRatio() > 0.70 {
-		log.Printf("Edge detection: overlay coverage %.1f%% > 70%%, skipping Canny", overlayMap.CoverageRatio()*100)
-		return nil, imgData, nil
-	}
-
-	// 2. Convert to grayscale, masking overlay pixels if available.
-	var gray []float64
+	// 2. Determine which regions to run Canny on.
+	// With overlay map: crop to non-overlay regions only (eliminates false edges).
+	// Without overlay map: run on entire image (legacy behavior).
+	var cropBoxes []image.Rectangle
 	if overlayMap != nil {
-		// Dilate mask by 2px to cover border width + JPEG DCT block blur.
-		dilated := overlayMap.Dilate(2)
-		maskedGray := dilated.MaskImage(img)
-		// Convert image.Gray to flat float64 array for the Canny pipeline.
-		gray = make([]float64, w*h)
-		for y := 0; y < h; y++ {
-			for x := 0; x < w; x++ {
-				gray[y*w+x] = float64(maskedGray.GrayAt(x, y).Y)
-			}
+		cropBoxes = overlayMap.FindUncoloredRegions(100, 100, 20)
+		if len(cropBoxes) == 0 {
+			log.Printf("Edge detection: no uncolored regions >= 100x100, skipping Canny")
+			return nil, imgData, nil
 		}
+		log.Printf("Edge detection: %d uncolored regions to scan", len(cropBoxes))
 	} else {
-		gray = toGrayscale(img)
+		cropBoxes = []image.Rectangle{image.Rect(0, 0, w, h)}
 	}
 
-	// 3. Gaussian blur (σ=2.0, kernel size 5)
-	blurred := gaussianBlur(gray, w, h)
+	// 3. Run Canny on each crop, collect boxes in full-image coordinates.
+	const padPx = 6 // padding to prevent Gaussian blur boundary artifacts
+	var allBoxes []image.Rectangle
+	for _, crop := range cropBoxes {
+		// Pad crop, clamp to image bounds.
+		padded := image.Rect(
+			clamp(crop.Min.X-padPx, 0, w),
+			clamp(crop.Min.Y-padPx, 0, h),
+			clamp(crop.Max.X+padPx, 0, w),
+			clamp(crop.Max.Y+padPx, 0, h),
+		)
+		cw, ch := padded.Dx(), padded.Dy()
+		if cw < 10 || ch < 10 {
+			continue
+		}
 
-	// 4. Sobel edge detection → gradient magnitude + direction
-	magnitude, direction := sobelEdges(blurred, w, h)
+		// Convert crop to grayscale.
+		gray := toGrayscaleCrop(img, padded)
 
-	// 5. Non-maximum suppression (thin edges to 1px)
-	thinned := nonMaxSuppression(magnitude, direction, w, h)
+		// Canny pipeline on crop.
+		blurred := gaussianBlur(gray, cw, ch)
+		magnitude, direction := sobelEdges(blurred, cw, ch)
+		thinned := nonMaxSuppression(magnitude, direction, cw, ch)
+		edges := hysteresis(thinned, cw, ch, 50.0, 150.0)
+		localBoxes := findBoundingBoxes(edges, cw, ch, 400, cw*ch/2)
 
-	// 6. Double threshold + hysteresis
-	edges := hysteresis(thinned, w, h, 50.0, 150.0)
+		// Offset local boxes back to full-image coordinates.
+		for _, lb := range localBoxes {
+			allBoxes = append(allBoxes, lb.Add(padded.Min))
+		}
+	}
 
-	// 7. Find connected components → bounding boxes
-	boxes := findBoundingBoxes(edges, w, h, 400, int(float64(w*h)/2))
+	// Global merge in case adjacent crops produce overlapping boxes.
+	allBoxes = mergeOverlappingBoxes(allBoxes)
 
-	// 8. Overlap filtering — skip regions that overlap existing mache bounds
+	// 4. Overlap filtering — skip regions that overlap existing mache bounds.
 	var regions []EdgeRegion
 	cvIdx := 0
-	for _, box := range boxes {
+	for _, box := range allBoxes {
 		nx := float64(box.Min.X) / float64(w)
 		ny := float64(box.Min.Y) / float64(h)
 		nw := float64(box.Dx()) / float64(w)
@@ -116,7 +127,7 @@ func DetectCanvasRegions(imgData []byte, existingBounds [][4]float64, overlayMap
 		return nil, imgData, nil
 	}
 
-	// 9. Annotate screenshot with cyan rectangles + labels
+	// 5. Annotate screenshot with white rectangles + labels.
 	annotated := annotateImage(img, regions)
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, annotated, &jpeg.Options{Quality: 80}); err != nil {
@@ -126,16 +137,14 @@ func DetectCanvasRegions(imgData []byte, existingBounds [][4]float64, overlayMap
 	return regions, buf.Bytes(), nil
 }
 
-// toGrayscale converts an image to a flat float64 array of luminance values.
-func toGrayscale(img image.Image) []float64 {
-	bounds := img.Bounds()
-	w, h := bounds.Dx(), bounds.Dy()
-	gray := make([]float64, w*h)
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			r, g, b, _ := img.At(bounds.Min.X+x, bounds.Min.Y+y).RGBA()
-			// ITU-R BT.601 luminance
-			gray[y*w+x] = 0.299*float64(r>>8) + 0.587*float64(g>>8) + 0.114*float64(b>>8)
+// toGrayscaleCrop converts a sub-region of an image to a flat float64 array.
+func toGrayscaleCrop(img image.Image, crop image.Rectangle) []float64 {
+	cw, ch := crop.Dx(), crop.Dy()
+	gray := make([]float64, cw*ch)
+	for y := 0; y < ch; y++ {
+		for x := 0; x < cw; x++ {
+			r, g, b, _ := img.At(crop.Min.X+x, crop.Min.Y+y).RGBA()
+			gray[y*cw+x] = 0.299*float64(r>>8) + 0.587*float64(g>>8) + 0.114*float64(b>>8)
 		}
 	}
 	return gray
@@ -432,11 +441,11 @@ func annotateImage(src image.Image, regions []EdgeRegion) *image.RGBA {
 	dst := image.NewRGBA(bounds)
 	draw.Draw(dst, bounds, src, bounds.Min, draw.Src)
 
-	cyan := color.RGBA{R: 0, G: 255, B: 255, A: 255}
+	white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
 
 	for _, r := range regions {
-		drawRect(dst, r.PixelX, r.PixelY, r.PixelX+r.PixelW, r.PixelY+r.PixelH, cyan, 2)
-		drawLabel(dst, r.PixelX, r.PixelY-12, r.ID, cyan)
+		drawRect(dst, r.PixelX, r.PixelY, r.PixelX+r.PixelW, r.PixelY+r.PixelH, white, 2)
+		drawLabel(dst, r.PixelX, r.PixelY-12, r.ID, white)
 	}
 	return dst
 }

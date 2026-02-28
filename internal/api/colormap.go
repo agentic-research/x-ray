@@ -3,6 +3,7 @@ package api
 import (
 	"image"
 	"image/color"
+	"sort"
 )
 
 // OverlayColor represents a known semantic overlay color.
@@ -13,12 +14,13 @@ type OverlayColor struct {
 }
 
 // SemanticColors — canonical palette matching content.js SEMANTIC_COLORS.
+// Uses RGB cube vertices for maximum pairwise separation (min dist = 255).
 var SemanticColors = []OverlayColor{
-	{"BLUE", 0, 0, 255, "link"},
-	{"ORANGE", 255, 165, 0, "button"},
-	{"GREEN", 0, 200, 0, "input"},
-	{"PURPLE", 160, 32, 240, "container"},
-	{"YELLOW", 255, 220, 0, "clickable"},
+	{"MAGENTA", 255, 0, 255, "link"},
+	{"LIME", 0, 255, 0, "button"},
+	{"CYAN", 0, 255, 255, "input"},
+	{"YELLOW", 255, 255, 0, "container"},
+	{"BLUE", 0, 0, 255, "clickable"},
 	{"RED", 255, 0, 0, "other"},
 }
 
@@ -32,7 +34,7 @@ type OverlayMap struct {
 // ClassifyOverlay scans a decoded image and classifies each pixel.
 // maxDistSq is the maximum squared Euclidean distance for a color match.
 // With PNG + 100% opacity borders: maxDistSq=0 works for borders.
-// With alpha-blended fills or JPEG: use maxDistSq ~3600 (distance ~60).
+// With cube-vertex colors, use maxDistSq ~900 (distance ~30).
 func ClassifyOverlay(img image.Image, maxDistSq int) *OverlayMap {
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
@@ -163,4 +165,81 @@ func (m *OverlayMap) Dilate(radius int) *OverlayMap {
 	}
 
 	return out
+}
+
+// FindUncoloredRegions returns bounding boxes of connected regions of
+// non-overlay pixels. Regions smaller than minW x minH are excluded.
+// At most maxRegions are returned (largest by area), or all if maxRegions <= 0.
+func (m *OverlayMap) FindUncoloredRegions(minW, minH, maxRegions int) []image.Rectangle {
+	w, h := m.Width, m.Height
+	visited := make([]bool, w*h)
+	var boxes []image.Rectangle
+
+	// 4-connected flood-fill (background regions are contiguous areas).
+	dx := [4]int{-1, 1, 0, 0}
+	dy := [4]int{0, 0, -1, 1}
+
+	for startY := 0; startY < h; startY++ {
+		for startX := 0; startX < w; startX++ {
+			idx := startY*w + startX
+			if visited[idx] || m.Data[idx] >= 0 {
+				continue
+			}
+
+			// Flood-fill to find connected non-overlay component.
+			minX, minY := startX, startY
+			maxX, maxY := startX, startY
+			queue := []int{idx}
+			visited[idx] = true
+
+			for len(queue) > 0 {
+				ci := queue[0]
+				queue = queue[1:]
+				cy, cx := ci/w, ci%w
+
+				if cx < minX {
+					minX = cx
+				}
+				if cx > maxX {
+					maxX = cx
+				}
+				if cy < minY {
+					minY = cy
+				}
+				if cy > maxY {
+					maxY = cy
+				}
+
+				for d := 0; d < 4; d++ {
+					nx, ny := cx+dx[d], cy+dy[d]
+					if nx < 0 || nx >= w || ny < 0 || ny >= h {
+						continue
+					}
+					ni := ny*w + nx
+					if !visited[ni] && m.Data[ni] < 0 {
+						visited[ni] = true
+						queue = append(queue, ni)
+					}
+				}
+			}
+
+			bw := maxX - minX + 1
+			bh := maxY - minY + 1
+			if bw >= minW && bh >= minH {
+				boxes = append(boxes, image.Rect(minX, minY, maxX+1, maxY+1))
+			}
+		}
+	}
+
+	// Cap to maxRegions largest by area.
+	if maxRegions > 0 && len(boxes) > maxRegions {
+		sort.Slice(boxes, func(i, j int) bool {
+			ai := boxes[i].Dx() * boxes[i].Dy()
+			aj := boxes[j].Dx() * boxes[j].Dy()
+			return ai > aj
+		})
+		boxes = boxes[:maxRegions]
+	}
+
+	return boxes
 }

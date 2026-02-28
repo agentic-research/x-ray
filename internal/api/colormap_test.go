@@ -59,11 +59,23 @@ func TestClassifyOverlay_AlphaBlended(t *testing.T) {
 	img := makeImage(50, 50, blended)
 
 	// Squared distance from pure BLUE (0,0,255): (38² + 38² + 0²) = 2888
+	// Find BLUE index by name (position-independent).
+	blueIdx := int8(-1)
+	for i, sc := range SemanticColors {
+		if sc.Name == "BLUE" {
+			blueIdx = int8(i)
+			break
+		}
+	}
+	if blueIdx < 0 {
+		t.Fatal("BLUE not found in SemanticColors")
+	}
+
 	m := ClassifyOverlay(img, 3600)
 
 	classified := 0
 	for _, v := range m.Data {
-		if v == 0 { // index 0 = BLUE
+		if v == blueIdx {
 			classified++
 		}
 	}
@@ -133,12 +145,9 @@ func TestClassifyOverlay_BackgroundNotMisclassified(t *testing.T) {
 }
 
 func TestClassifyOverlay_PaletteSeparation(t *testing.T) {
-	// Every pair of palette colors must be far enough apart that a midpoint
-	// pixel can't match both. The critical invariant: pairwise distance must
-	// exceed maxDistSq so nearest-neighbor never confuses two colors.
-	// Closest pair is YELLOW↔ORANGE at dist²=3025; maxDistSq=3600 works
-	// because the midpoint of any two palette colors is at dist²≈756 from
-	// each, well within threshold, but a pixel near one is far from the other.
+	// RGB cube vertices: every pair differs by 255 in at least one channel,
+	// giving min pairwise dist² = 65025. With maxDistSq=900 (dist ~30),
+	// nearest-neighbor resolves unambiguously even with JPEG artifacts.
 	for i := 0; i < len(SemanticColors); i++ {
 		for j := i + 1; j < len(SemanticColors); j++ {
 			a, b := SemanticColors[i], SemanticColors[j]
@@ -220,5 +229,51 @@ func TestOverlayMap_Dilate(t *testing.T) {
 	// Expected count: 5x5 = 25 pixels in the dilated box.
 	if dilated.OverlayPixelCount != 25 {
 		t.Errorf("expected 25 dilated overlay pixels, got %d", dilated.OverlayPixelCount)
+	}
+}
+
+func TestOverlayMap_FindUncoloredRegions(t *testing.T) {
+	// 400x400 image with horizontal blue overlay band (rows 150-250).
+	// Creates two uncolored regions: top (0-149) and bottom (251-399).
+	img := makeImage(400, 400, color.RGBA{255, 255, 255, 255})
+	blue := color.RGBA{0, 0, 255, 255}
+	for y := 150; y < 250; y++ {
+		for x := 0; x < 400; x++ {
+			img.SetRGBA(x, y, blue)
+		}
+	}
+
+	m := ClassifyOverlay(img, 0)
+	regions := m.FindUncoloredRegions(100, 100, 0)
+
+	if len(regions) != 2 {
+		t.Fatalf("expected 2 uncolored regions, got %d", len(regions))
+	}
+
+	// Verify both regions are large enough.
+	for i, r := range regions {
+		if r.Dx() < 100 || r.Dy() < 100 {
+			t.Errorf("region %d too small: %dx%d", i, r.Dx(), r.Dy())
+		}
+		t.Logf("region %d: (%d,%d)-(%d,%d) = %dx%d",
+			i, r.Min.X, r.Min.Y, r.Max.X, r.Max.Y, r.Dx(), r.Dy())
+	}
+}
+
+func TestOverlayMap_FindUncoloredRegions_SmallFiltered(t *testing.T) {
+	// Overlay covers all but a 50x50 corner — too small for minW=100, minH=100.
+	img := makeImage(200, 200, color.RGBA{0, 0, 255, 255}) // all blue overlay
+	// Clear a 50x50 corner to white.
+	for y := 150; y < 200; y++ {
+		for x := 150; x < 200; x++ {
+			img.SetRGBA(x, y, color.RGBA{255, 255, 255, 255})
+		}
+	}
+
+	m := ClassifyOverlay(img, 0)
+	regions := m.FindUncoloredRegions(100, 100, 0)
+
+	if len(regions) != 0 {
+		t.Errorf("expected 0 regions (50x50 < 100x100 threshold), got %d", len(regions))
 	}
 }

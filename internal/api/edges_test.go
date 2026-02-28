@@ -233,29 +233,21 @@ func makePNG(img *image.RGBA) []byte {
 	return buf.Bytes()
 }
 
-func TestDetectCanvasRegions_OverlayMasked(t *testing.T) {
-	// Verify that overlay masking changes the Canny pipeline output.
+func TestDetectCanvasRegions_CropToUncolored(t *testing.T) {
+	// Verify crop-to-uncolored: Canny runs only on non-overlay regions.
 	//
-	// With masking: overlay pixels become uniform gray(128), producing zero
-	// gradient inside the overlay area. At mask boundaries, gray meets the
-	// background — this creates boundary edges but eliminates internal ones.
-	//
-	// Without masking: overlay pixels retain their original color, and color
-	// transitions within the overlay (e.g., border→fill, fill→background)
-	// all produce Canny edges.
-	//
-	// In production, this eliminates 100+ false positives from alpha-blended
-	// overlay fills on varied page content. The coverage gate test
-	// (TestDetectCanvasRegions_CoverageGate) provides the strict assertion
-	// for the primary optimization: high-coverage pages skip Canny entirely.
+	// Left 40%: blue overlay. Right 60%: white with black rectangle.
+	// With overlayMap: Canny crops to the right uncolored region only.
+	// The 6px crop padding extends into overlay border, creating a thin
+	// boundary edge — but its center stays in the uncolored half (>0.40).
 	img := blankImage(400, 400, color.RGBA{255, 255, 255, 255})
 	blue := color.RGBA{0, 0, 255, 255}
 	black := color.RGBA{0, 0, 0, 255}
 
-	// Blue overlay rectangle
-	drawFilledRect(img, 20, 20, 180, 180, blue)
-	// Black non-overlay rectangle
-	drawFilledRect(img, 250, 250, 380, 350, black)
+	// Blue overlay covering left 40%.
+	drawFilledRect(img, 0, 0, 160, 400, blue)
+	// Black rectangle in right (uncolored) area.
+	drawFilledRect(img, 260, 260, 380, 350, black)
 
 	pngData := makePNG(img)
 
@@ -265,53 +257,44 @@ func TestDetectCanvasRegions_OverlayMasked(t *testing.T) {
 		t.Fatal("expected overlay pixels to be classified")
 	}
 
-	// Run with masking.
-	regionsMasked, bytesMasked, err := DetectCanvasRegions(pngData, nil, overlayMap, nil)
+	// Run with overlay map (crop-to-uncolored).
+	regions, _, err := DetectCanvasRegions(pngData, nil, overlayMap, nil)
 	if err != nil {
-		t.Fatalf("unexpected error (masked): %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Run without masking.
-	regionsNoMask, bytesNoMask, err := DetectCanvasRegions(pngData, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("unexpected error (no mask): %v", err)
-	}
-
-	// 1. The overlay map MUST change pipeline behavior: different grayscale
-	//    input produces different Canny edges and different annotated output.
-	if bytes.Equal(bytesMasked, bytesNoMask) {
-		t.Error("masking must produce different output than non-masking")
-	}
-
-	// 2. Masking must not produce more regions than unmasked.
-	//    (Equal is acceptable for synthetic images where mask-boundary edges
-	//    replace overlay edges 1:1; strictly fewer in production with
-	//    alpha-blended fills over varied content.)
-	if len(regionsMasked) > len(regionsNoMask) {
-		t.Errorf("masking produced MORE regions: masked=%d > unmasked=%d",
-			len(regionsMasked), len(regionsNoMask))
-	}
-
-	// 3. The black non-overlay rect should still be detected with masking.
+	// 1. The black rect in the right half must be detected.
 	foundBlackRect := false
-	for _, r := range regionsMasked {
+	for _, r := range regions {
 		if r.X > 0.5 && r.Y > 0.5 {
 			foundBlackRect = true
 		}
 	}
 	if !foundBlackRect {
-		t.Error("masking should preserve non-overlay regions (black rect not found)")
+		t.Error("black rect in uncolored region not detected")
 	}
 
-	t.Logf("unmasked: %d regions, masked: %d regions", len(regionsNoMask), len(regionsMasked))
+	// 2. No regions should have center in the overlay area (left 40%).
+	for _, r := range regions {
+		centerX := r.X + r.W/2
+		if centerX < 0.40 {
+			t.Errorf("region %s has center in overlay area (centerX=%.3f < 0.40), should be cropped out", r.ID, centerX)
+		}
+	}
+
+	t.Logf("found %d regions", len(regions))
+	for _, r := range regions {
+		t.Logf("  %s: norm=(%.3f, %.3f, %.3f, %.3f)", r.ID, r.X, r.Y, r.W, r.H)
+	}
 }
 
-func TestDetectCanvasRegions_CoverageGate(t *testing.T) {
-	// 95% overlay coverage → 0 regions, Canny skipped.
-	img := blankImage(100, 100, color.RGBA{0, 0, 255, 255}) // all blue
-	// Leave a tiny strip of white at the bottom (5%)
-	for y := 95; y < 100; y++ {
-		for x := 0; x < 100; x++ {
+func TestDetectCanvasRegions_ImplicitCoverageGate(t *testing.T) {
+	// Overlay covers all but a 50x50 corner — too small for 100x100 threshold.
+	// FindUncoloredRegions returns 0 → Canny skipped implicitly.
+	img := blankImage(400, 400, color.RGBA{0, 0, 255, 255}) // all blue
+	// Clear a 50x50 corner to white.
+	for y := 350; y < 400; y++ {
+		for x := 350; x < 400; x++ {
 			img.SetRGBA(x, y, color.RGBA{255, 255, 255, 255})
 		}
 	}
@@ -319,16 +302,12 @@ func TestDetectCanvasRegions_CoverageGate(t *testing.T) {
 	pngData := makePNG(img)
 	overlayMap := ClassifyOverlay(img, 0)
 
-	if overlayMap.CoverageRatio() < 0.70 {
-		t.Fatalf("expected coverage > 70%%, got %.1f%%", overlayMap.CoverageRatio()*100)
-	}
-
 	regions, _, err := DetectCanvasRegions(pngData, nil, overlayMap, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(regions) != 0 {
-		t.Errorf("expected 0 regions with high coverage, got %d", len(regions))
+		t.Errorf("expected 0 regions (50x50 uncolored < 100x100 threshold), got %d", len(regions))
 	}
 }
 

@@ -34,9 +34,9 @@ func TestBug_CVRegionAsZoneRoot(t *testing.T) {
 		`ID: mache-12 | Tag: div | Text: "Post Title 3" | Bounds: [0.100, 0.500, 0.600, 0.100]`,
 		`ID: mache-20 | Tag: div | Text: "Sidebar Widget" | Bounds: [0.800, 0.200, 0.200, 0.300]`,
 		// CV regions appended by edge detection (canvas-detected zones)
-		`ID: cv-0 | Color: CYAN | Bounds: [0.050, 0.150, 0.700, 0.600] | Parent: none | Tag: canvas | Text: "[CV detected]" | Path: canvas`,
-		`ID: cv-1 | Color: CYAN | Bounds: [0.800, 0.150, 0.200, 0.400] | Parent: none | Tag: canvas | Text: "[CV detected]" | Path: canvas`,
-		`ID: cv-2 | Color: CYAN | Bounds: [0.000, 0.900, 1.000, 0.100] | Parent: none | Tag: canvas | Text: "[CV detected]" | Path: canvas`,
+		`ID: cv-0 | Color: CV | Bounds: [0.050, 0.150, 0.700, 0.600] | Parent: none | Tag: canvas | Text: "[CV detected]" | Path: canvas`,
+		`ID: cv-1 | Color: CV | Bounds: [0.800, 0.150, 0.200, 0.400] | Parent: none | Tag: canvas | Text: "[CV detected]" | Path: canvas`,
+		`ID: cv-2 | Color: CV | Bounds: [0.000, 0.900, 1.000, 0.100] | Parent: none | Tag: canvas | Text: "[CV detected]" | Path: canvas`,
 	}
 	summary := strings.Join(lines, "\n") + "\n"
 
@@ -90,8 +90,8 @@ func TestBug_CVRegionOnlyZone(t *testing.T) {
 	lines := []string{
 		`ID: mache-0 | Tag: div | Text: "Header" | Bounds: [0.000, 0.000, 1.000, 0.050]`,
 		// Large spatial gap forces these into a separate zone
-		`ID: cv-0 | Color: CYAN | Bounds: [0.000, 0.500, 1.000, 0.500] | Parent: none | Tag: canvas | Text: "[CV detected]" | Path: canvas`,
-		`ID: cv-1 | Color: CYAN | Bounds: [0.100, 0.600, 0.800, 0.300] | Parent: none | Tag: canvas | Text: "[CV detected]" | Path: canvas`,
+		`ID: cv-0 | Color: CV | Bounds: [0.000, 0.500, 1.000, 0.500] | Parent: none | Tag: canvas | Text: "[CV detected]" | Path: canvas`,
+		`ID: cv-1 | Color: CV | Bounds: [0.100, 0.600, 0.800, 0.300] | Parent: none | Tag: canvas | Text: "[CV detected]" | Path: canvas`,
 	}
 	summary := strings.Join(lines, "\n") + "\n"
 

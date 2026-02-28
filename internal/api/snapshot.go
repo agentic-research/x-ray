@@ -117,7 +117,7 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 		if len(screenshotBytes) > 0 {
 			if img, _, err := image.Decode(bytes.NewReader(screenshotBytes)); err == nil {
 				decodedImg = img
-				overlayMap = ClassifyOverlay(img, 3600)
+				overlayMap = ClassifyOverlay(img, 900)
 				log.Printf("Overlay coverage: %.1f%% (tab %d)", overlayMap.CoverageRatio()*100, msg.TabID)
 			} else {
 				log.Printf("Overlay classification failed (tab %d): %v", msg.TabID, err)
@@ -147,7 +147,7 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 		if len(sess.CVRegions) > 0 {
 			for _, r := range sess.CVRegions {
 				cartSummary += fmt.Sprintf(
-					"ID: %s | Color: CYAN | Bounds: [%.3f, %.3f, %.3f, %.3f] | Parent: none | Tag: canvas | Text: \"[CV detected]\" | Path: canvas\n",
+					"ID: %s | Color: CV | Bounds: [%.3f, %.3f, %.3f, %.3f] | Parent: none | Tag: canvas | Text: \"[CV detected]\" | Path: canvas\n",
 					r.ID, r.X, r.Y, r.W, r.H,
 				)
 			}
