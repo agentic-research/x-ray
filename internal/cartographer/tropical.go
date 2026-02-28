@@ -55,6 +55,7 @@ type element struct {
 	color     string
 	bounds    [4]float64 // [x, y, w, h] normalized
 	hasBounds bool
+	source    string // "dom", "cv", or "ax" — origin of this element
 
 	// Semantic fiber data (from content.js computed styles)
 	fontSize    float64 // CSS font-size in px
@@ -299,6 +300,15 @@ func parseElements(summary string) []element {
 		}
 
 		if el.id != "" {
+			// Classify element source from ID prefix.
+			switch {
+			case strings.HasPrefix(el.id, "cv-"):
+				el.source = "cv"
+			case strings.HasPrefix(el.id, "ax-"):
+				el.source = "ax"
+			default:
+				el.source = "dom"
+			}
 			elements = append(elements, el)
 		}
 	}
@@ -1259,20 +1269,23 @@ func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropic
 		if len(z.elems) == 0 {
 			continue
 		}
-		// Pick a real DOM element as root — skip synthetic cv-* regions
-		// that edge detection appends to the cartographer summary.
+		// Pick a real DOM element as root — skip synthetic cv-* and ax-*
+		// IDs that don't exist in the browser DOM summary. cv-* comes from
+		// edge detection, ax-* from macOS Accessibility. Both are valid
+		// cartographer elements but can't be used as mache_ids in mounts
+		// (ValidateSchema checks against the DOM summary).
 		rootEl := elements[z.rootIdx]
-		if strings.HasPrefix(rootEl.id, "cv-") {
+		if rootEl.source == "cv" || rootEl.source == "ax" {
 			found := false
 			for _, idx := range z.elems {
-				if !strings.HasPrefix(elements[idx].id, "cv-") {
+				if elements[idx].source == "dom" {
 					rootEl = elements[idx]
 					found = true
 					break
 				}
 			}
 			if !found {
-				continue // all-cv zone, skip entirely
+				continue // all-synthetic zone, skip entirely
 			}
 		}
 
@@ -1293,7 +1306,7 @@ func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropic
 
 		if z.isList && len(z.listIdxs) > 0 {
 			for _, idx := range z.listIdxs {
-				if strings.HasPrefix(elements[idx].id, "cv-") {
+				if elements[idx].source != "dom" {
 					continue
 				}
 				m.PrimaryItems = append(m.PrimaryItems, elements[idx].id)

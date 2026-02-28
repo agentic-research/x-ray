@@ -1,5 +1,31 @@
 # Investigation Log
 
+## 2026-02-27: Phase 3 — macOS AXUIElement Integration
+
+### Architecture: Swift CLI over CGo
+Followed the same IPC pattern as `focus.GetFrontmostApp()` (osascript via os/exec) and `iterm.Client` (WebSocket). The Swift CLI (`cmd/axdump/main.swift`) dumps the AX tree as JSON to stdout; Go calls it via `os/exec`. Zero CGo — keeps the Go binary pure and cross-compilable.
+
+Swift's ARC handles CoreFoundation memory (`CFString`, `AXValue`) automatically. A CGo implementation would require manual `CFRelease()` calls — one missed release and the long-running daemon leaks RAM.
+
+### Element Source Classification
+Added `source` field to the `element` struct in `tropical.go` with values `"dom"`, `"cv"`, `"ax"`. Classified automatically from ID prefix in `parseElements()`. This replaced scattered `strings.HasPrefix(id, "cv-")` checks in `buildMounts()` with a clean `el.source == "dom"` guard — ax-* elements get the same treatment as cv-* (valid for distance matrix computation, excluded from mount IDs and primary items).
+
+### AX-to-Summary Translation
+`FlattenTree()` + `ToSummaryLines()` produce the exact same `ID: | Tag: | Text: | Bounds: | Path:` format that `content.js` uses for DOM elements. The TropicalCartographer processes ax-* elements identically to mache-* elements — same 5-fiber distance matrix, same neighbor-joining, same H^0 folding. An `ax-42` macOS button is mathematically indistinguishable from a `mache-42` web button.
+
+### Accessibility Permission Wall
+`axdump` exits with code 2 when Accessibility permission isn't granted. The Go wrapper's `classifyError()` translates this into a human-readable message. The terminal app (iTerm2/Terminal.app) running `axdump` needs the permission — the binary inherits from its parent process.
+
+### AXUIElement Timeout
+Set `AXUIElementSetMessagingTimeout(appElement, 3.0)` to avoid blocking indefinitely on hung apps. Some apps (VS Code, Electron) can have thousands of AX nodes — `--max-depth` cap is critical.
+
+### Next Steps
+- Wire `axdump` into the websocket pipeline (similar to how cv-* regions are appended in `handleDOMSnapshot`)
+- Test against real native apps (Finder, Calculator, System Settings) once Accessibility permission is granted
+- Consider adding ax-* elements to the `ValidateSchema` allowlist (currently they'd be flagged as "hallucinated" if used as mount roots, but the source guard in `buildMounts` prevents this)
+
+---
+
 ## 2026-02-27: FFT + Semantic Ingestion + AX Fix (Phases 0-2)
 
 ### AX Enrichment Was Silently Broken

@@ -184,3 +184,107 @@ func TestBug_DuplicateHeaderFragmentation(t *testing.T) {
 
 	t.Logf("Schema (%d header mounts): %s", headerCount, schemaJSON)
 }
+
+func TestBug_AXOnlyZone(t *testing.T) {
+	// Edge case: a zone contains ONLY ax-* elements (from macOS Accessibility).
+	// These synthetic IDs don't exist in the browser DOM summary, so the zone
+	// should be skipped entirely — same pattern as TestBug_CVRegionOnlyZone.
+
+	lines := []string{
+		`ID: mache-0 | Tag: div | Text: "Header" | Bounds: [0.000, 0.000, 1.000, 0.050]`,
+		// Large spatial gap forces these into a separate zone
+		`ID: ax-0 | Tag: axwindow | Text: "Finder" | Bounds: [0.000, 0.500, 1.000, 0.300] | Path: AXApplication > AXWindow | Parent: none`,
+		`ID: ax-1 | Tag: axbutton | Text: "Close" | Bounds: [0.010, 0.510, 0.020, 0.020] | Path: AXApplication > AXWindow > AXButton | Parent: none`,
+		`ID: ax-2 | Tag: axbutton | Text: "Minimize" | Bounds: [0.040, 0.510, 0.020, 0.020] | Path: AXApplication > AXWindow > AXButton | Parent: none`,
+	}
+	summary := strings.Join(lines, "\n") + "\n"
+
+	cart := &TropicalCartographer{}
+	schemaJSON, err := cart.GenerateSchema(context.Background(), nil, "image/jpeg", summary)
+	if err != nil {
+		t.Fatalf("GenerateSchema failed: %v", err)
+	}
+
+	var output struct {
+		Mounts []json.RawMessage `json:"mounts"`
+	}
+	if err := json.Unmarshal([]byte(schemaJSON), &output); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	for _, raw := range output.Mounts {
+		var m struct {
+			MacheID      string   `json:"mache_id"`
+			VirtualPath  string   `json:"virtual_path"`
+			PrimaryItems []string `json:"primary_items"`
+		}
+		if err := json.Unmarshal(raw, &m); err != nil {
+			t.Fatalf("unmarshal mount: %v", err)
+		}
+		if strings.HasPrefix(m.MacheID, "ax-") {
+			t.Errorf("REGRESSION: mount %s has ax-* mache_id %q — these are macOS Accessibility IDs that don't exist in the browser DOM",
+				m.VirtualPath, m.MacheID)
+		}
+		for _, item := range m.PrimaryItems {
+			if strings.HasPrefix(item, "ax-") {
+				t.Errorf("REGRESSION: mount %s has ax-* primary_item %q",
+					m.VirtualPath, item)
+			}
+		}
+	}
+
+	t.Logf("Schema (no ax-* IDs): %s", schemaJSON)
+}
+
+func TestBug_AXMixedWithDOM(t *testing.T) {
+	// When ax-* elements are mixed with mache-* elements in the same zone,
+	// the mount should use a mache-* ID as root (never ax-*), and ax-*
+	// should be excluded from primary_items.
+
+	lines := []string{
+		`ID: mache-0 | Tag: div | Text: "App Header" | Bounds: [0.000, 0.000, 1.000, 0.080]`,
+		`ID: mache-1 | Tag: a | Text: "Home" | Bounds: [0.050, 0.020, 0.100, 0.040]`,
+		`ID: mache-2 | Tag: a | Text: "Settings" | Bounds: [0.200, 0.020, 0.100, 0.040]`,
+		// AX elements spatially interleaved with DOM elements in main area
+		`ID: mache-10 | Tag: div | Text: "Content Panel" | Bounds: [0.100, 0.200, 0.600, 0.150] | Path: body > main > div`,
+		`ID: ax-0 | Tag: axgroup | Text: "Native Widget" | Bounds: [0.100, 0.400, 0.600, 0.100] | Path: AXApplication > AXWindow > AXGroup | Parent: none`,
+		`ID: mache-11 | Tag: div | Text: "Footer Panel" | Bounds: [0.100, 0.550, 0.600, 0.100] | Path: body > main > div`,
+	}
+	summary := strings.Join(lines, "\n") + "\n"
+
+	cart := &TropicalCartographer{}
+	schemaJSON, err := cart.GenerateSchema(context.Background(), nil, "image/jpeg", summary)
+	if err != nil {
+		t.Fatalf("GenerateSchema failed: %v", err)
+	}
+
+	var output struct {
+		Mounts []json.RawMessage `json:"mounts"`
+	}
+	if err := json.Unmarshal([]byte(schemaJSON), &output); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	for _, raw := range output.Mounts {
+		var m struct {
+			MacheID      string   `json:"mache_id"`
+			VirtualPath  string   `json:"virtual_path"`
+			PrimaryItems []string `json:"primary_items"`
+		}
+		if err := json.Unmarshal(raw, &m); err != nil {
+			t.Fatalf("unmarshal mount: %v", err)
+		}
+		if strings.HasPrefix(m.MacheID, "ax-") {
+			t.Errorf("REGRESSION: mount %s uses ax-* mache_id %q — should use a DOM element",
+				m.VirtualPath, m.MacheID)
+		}
+		for _, item := range m.PrimaryItems {
+			if strings.HasPrefix(item, "ax-") {
+				t.Errorf("REGRESSION: mount %s has ax-* primary_item %q",
+					m.VirtualPath, item)
+			}
+		}
+	}
+
+	t.Logf("Schema (ax mixed with DOM): %s", schemaJSON)
+}
