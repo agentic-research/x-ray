@@ -68,6 +68,13 @@ type element struct {
 	textDensity float64 // chars per normalized area [0,1]
 	hasSemantic bool    // true if semantic fields were parsed
 
+	// Stacking context fields (from content.js computed styles + LayerTree)
+	zIndex       string  // "auto" or integer string
+	opacity      float64 // 0.0 to 1.0
+	paintOrder   int     // compositing paint order from LayerTree DFS (-1 = no layer)
+	stackingRoot bool    // true if element creates a stacking context
+	hasPaint     bool    // true if paintOrder was parsed
+
 	// FFT fiber data (for cv-* regions — canvas/WebGL structure detection)
 	fft    FFTFeatures
 	hasFFT bool
@@ -302,6 +309,19 @@ func parseElements(summary string) []element {
 					el.textDensity = td
 					el.hasSemantic = true
 				}
+			} else if v, ok := strings.CutPrefix(seg, "ZIndex: "); ok {
+				el.zIndex = v
+			} else if v, ok := strings.CutPrefix(seg, "Opacity: "); ok {
+				if f, err := strconv.ParseFloat(v, 64); err == nil {
+					el.opacity = f
+				}
+			} else if v, ok := strings.CutPrefix(seg, "PaintOrder: "); ok {
+				if n, err := strconv.Atoi(v); err == nil {
+					el.paintOrder = n
+					el.hasPaint = true
+				}
+			} else if v, ok := strings.CutPrefix(seg, "StackingRoot: "); ok {
+				el.stackingRoot = v == "true"
 			}
 		}
 

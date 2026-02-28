@@ -211,6 +211,8 @@ function generateSummary() {
     const cs = getComputedStyle(node);
     const fontSize = parseFloat(cs.fontSize) || 0;
     const display = cs.display || 'block';
+    const zIndex = cs.zIndex;           // "auto" or integer string
+    const opacity = parseFloat(cs.opacity);  // 0.0 to 1.0
     // TextDensity: chars per normalized area (capped at 1.0).
     const area = rect.width * rect.height;
     const textDensity = area > 0 ? Math.min(1.0, text.length / (area / 1000)) : 0;
@@ -228,7 +230,8 @@ function generateSummary() {
       ancestor = ancestor.parentElement;
     }
     summary += `ID: ${macheId} | Color: ${color} | Bounds: ${bounds} | Parent: ${parentID} | Tag: ${tag} | Text: "${text}" | Path: ${getPath(node)}` +
-      ` | FontSize: ${fontSize.toFixed(0)} | Display: ${display} | Interactive: ${interactive} | TextDensity: ${textDensity.toFixed(2)}\n`;
+      ` | FontSize: ${fontSize.toFixed(0)} | Display: ${display} | Interactive: ${interactive} | TextDensity: ${textDensity.toFixed(2)}` +
+      ` | ZIndex: ${zIndex} | Opacity: ${opacity.toFixed(2)}\n`;
     count++;
   }
   return summary;

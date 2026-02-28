@@ -448,6 +448,13 @@ type SummaryElement struct {
 	AXName   string // from CDP accessibility tree (optional)
 	Color    string // semantic color name (e.g., "BLUE")
 	Bounds   string // normalized coordinates [x, y, w, h]
+
+	// Stacking context fields (from content.js computed styles + LayerTree)
+	ZIndex       string  // "auto" or integer string
+	Opacity      float64 // 0.0 to 1.0
+	PaintOrder   int     // compositing paint order from LayerTree DFS (-1 = no layer)
+	StackingRoot bool    // true if element creates a stacking context
+	HasPaint     bool    // true if PaintOrder was parsed
 }
 
 // parseSummary extracts structured elements from the summary text.
@@ -483,6 +490,19 @@ func parseSummary(summary string) []SummaryElement {
 				el.AXName = strings.Trim(v, "\"")
 			} else if v, ok := strings.CutPrefix(segment, "Path: "); ok {
 				el.Path = v
+			} else if v, ok := strings.CutPrefix(segment, "ZIndex: "); ok {
+				el.ZIndex = v
+			} else if v, ok := strings.CutPrefix(segment, "Opacity: "); ok {
+				if f, err := strconv.ParseFloat(v, 64); err == nil {
+					el.Opacity = f
+				}
+			} else if v, ok := strings.CutPrefix(segment, "PaintOrder: "); ok {
+				if n, err := strconv.Atoi(v); err == nil {
+					el.PaintOrder = n
+					el.HasPaint = true
+				}
+			} else if v, ok := strings.CutPrefix(segment, "StackingRoot: "); ok {
+				el.StackingRoot = v == "true"
 			} else if v, ok := strings.CutPrefix(segment, "Text: "); ok {
 				// Handle quoted text
 				if strings.HasPrefix(v, "\"") && strings.HasSuffix(v, "\"") {

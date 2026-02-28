@@ -409,7 +409,7 @@ async function captureWithCDP(tabId, targetMacheId = null) {
   } catch (e) {
     console.warn('X-Ray: debugger attach failed, falling back to viewport screenshot:', e.message);
     const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
-    return { screenshot: dataUrl.split(',')[1], axMap: new Map() };
+    return { screenshot: dataUrl.split(',')[1], axMap: new Map(), layerMap: new Map() };
   }
 
   try {
@@ -518,11 +518,101 @@ async function captureWithCDP(tabId, targetMacheId = null) {
       }
     }
 
+    // 8. LayerTree capture: derive paint order + stacking context for sheaf Overlaps edges.
+    // Not all elements get their own compositing layer, so elements without a layer
+    // get paintOrder: -1 (DOM order fallback in the sheaf).
+    const layerMap = new Map(); // macheId → { paintOrder, stackingRoot }
+    try {
+      await chrome.debugger.sendCommand({ tabId }, 'LayerTree.enable', {});
+      const layers = await new Promise((resolve) => {
+        const listener = (source, method, params) => {
+          if (source.tabId === tabId && method === 'LayerTree.layerTreeDidChange') {
+            chrome.debugger.onEvent.removeListener(listener);
+            resolve(params.layers || []);
+          }
+        };
+        chrome.debugger.onEvent.addListener(listener);
+        // Safety timeout: some pages may not trigger layerTreeDidChange.
+        setTimeout(() => { chrome.debugger.onEvent.removeListener(listener); resolve([]); }, 2000);
+      });
+
+      if (layers.length > 0) {
+        // Assign paint order via DFS of layer tree (parent→children, DOM order).
+        const childrenByParent = new Map();
+        for (const layer of layers) {
+          const pid = layer.parentLayerId ?? 'root';
+          if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
+          childrenByParent.get(pid).push(layer);
+        }
+        let paintCounter = 0;
+        const layerById = new Map();
+        for (const layer of layers) layerById.set(layer.layerId, layer);
+
+        function dfsPaintOrder(layerId) {
+          const node = layerById.get(layerId);
+          if (node) node.resolvedPaintOrder = paintCounter++;
+          for (const child of (childrenByParent.get(layerId) ?? [])) {
+            dfsPaintOrder(child.layerId);
+          }
+        }
+        for (const root of (childrenByParent.get('root') ?? [])) {
+          dfsPaintOrder(root.layerId);
+        }
+
+        // Build backendNodeId → layer lookup
+        const backendToLayer = new Map();
+        for (const layer of layers) {
+          if (layer.backendNodeId) {
+            backendToLayer.set(layer.backendNodeId, layer);
+          }
+        }
+
+        // Batch compositingReasons calls for layers with backendNodeId
+        const layersWithBackend = layers.filter(l => l.backendNodeId);
+        const reasonsResults = await Promise.all(
+          layersWithBackend.map(l =>
+            chrome.debugger.sendCommand(
+              { tabId }, 'LayerTree.compositingReasons', { layerId: l.layerId }
+            ).catch(() => ({ compositingReasons: [] }))
+          )
+        );
+        const stackingReasons = new Set([
+          'transform', 'opacity', 'position: fixed', 'position: sticky',
+          'will-change', 'filter', 'backdrop-filter', 'clip-path',
+          'contain', 'isolation', 'mix-blend-mode', 'perspective',
+        ]);
+        const reasonsByBackend = new Map();
+        for (let i = 0; i < layersWithBackend.length; i++) {
+          const reasons = reasonsResults[i].compositingReasons || [];
+          reasonsByBackend.set(layersWithBackend[i].backendNodeId, reasons);
+        }
+
+        // Join to mache-IDs via the existing macheToBackend map
+        for (const [macheId, backendId] of macheToBackend) {
+          const layer = backendToLayer.get(backendId);
+          if (layer && layer.resolvedPaintOrder != null) {
+            const reasons = reasonsByBackend.get(backendId) || [];
+            const isStackingRoot = reasons.some(r =>
+              stackingReasons.has(r.toLowerCase()) || r.toLowerCase().includes('stacking')
+            );
+            layerMap.set(macheId, {
+              paintOrder: layer.resolvedPaintOrder,
+              stackingRoot: isStackingRoot
+            });
+          }
+        }
+        console.log(`X-Ray: LayerTree — ${layers.length} layers, ${layerMap.size} joined to mache-IDs`);
+      }
+      await chrome.debugger.sendCommand({ tabId }, 'LayerTree.disable', {}).catch(() => {});
+    } catch (e) {
+      console.warn('X-Ray: LayerTree capture failed (degrading gracefully):', e.message);
+    }
+
     const scaledW = Math.round(clip.width * clip.scale);
     const scaledH = Math.round(clip.height * clip.scale);
     console.log(`X-Ray: CDP capture — ${scaledW}x${scaledH}px PNG, ${axMap.size} AX-mapped`,
       targetMacheId ? `[zoomed: ${targetMacheId}]` : '');
-    return { screenshot, axMap };
+    return { screenshot, axMap, layerMap };
   } finally {
     try {
       await chrome.debugger.detach({ tabId });
@@ -540,6 +630,22 @@ function enrichSummaryWithAX(summary, axMap) {
       let enriched = line;
       if (ax.role) enriched += ` | AXRole: ${ax.role}`;
       if (ax.name) enriched += ` | AXName: "${ax.name.substring(0, 80)}"`;
+      return enriched;
+    }
+    return line;
+  }).join('\n');
+}
+
+// Enrich summary lines with LayerTree data (paint order + stacking context).
+// Appends PaintOrder and StackingRoot to lines that have a matching mache-id.
+function enrichSummaryWithLayers(summary, layerMap) {
+  return summary.split('\n').map(line => {
+    const match = line.match(/^ID:\s*(mache-\d+)/);
+    if (match && layerMap.has(match[1])) {
+      const layer = layerMap.get(match[1]);
+      let enriched = line;
+      if (layer.paintOrder >= 0) enriched += ` | PaintOrder: ${layer.paintOrder}`;
+      if (layer.stackingRoot) enriched += ` | StackingRoot: true`;
       return enriched;
     }
     return line;
@@ -587,7 +693,7 @@ async function captureAndSend(tabId, isRescan = false, targetMacheId = null) {
   // For targeted rescan, pass mache_id so captureWithCDP crops to that element.
   const cdpData = await captureWithCDP(tabId, targetMacheId).catch(e => {
     console.warn('X-Ray: CDP capture failed, sending without screenshot:', e);
-    return { screenshot: '', axMap: new Map() };
+    return { screenshot: '', axMap: new Map(), layerMap: new Map() };
   });
 
   // Step 4: Remove overlay so the user doesn't see it.
@@ -595,10 +701,13 @@ async function captureAndSend(tabId, isRescan = false, targetMacheId = null) {
     await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' });
   } catch (_) { /* overlay cleanup is best-effort */ }
 
-  // Step 5: Enrich summary with per-element AX roles/names and send.
-  const enrichedSummary = cdpData.axMap.size > 0
+  // Step 5: Enrich summary with per-element AX roles/names, then layer data, and send.
+  let enrichedSummary = cdpData.axMap.size > 0
     ? enrichSummaryWithAX(response.summary, cdpData.axMap)
     : response.summary;
+  if (cdpData.layerMap.size > 0) {
+    enrichedSummary = enrichSummaryWithLayers(enrichedSummary, cdpData.layerMap);
+  }
 
   if (ws && ws.readyState === WebSocket.OPEN) {
     const payload = {
