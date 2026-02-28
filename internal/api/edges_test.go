@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"image/png"
 	"testing"
 )
 
@@ -45,7 +46,7 @@ func TestDetectCanvasRegionsEmpty(t *testing.T) {
 	img := blankImage(200, 200, color.RGBA{255, 255, 255, 255})
 	jpegData := makeJPEG(img)
 
-	regions, resultJPEG, err := DetectCanvasRegions(jpegData, nil)
+	regions, resultJPEG, err := DetectCanvasRegions(jpegData, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -71,7 +72,7 @@ func TestDetectCanvasRegionsFindsRects(t *testing.T) {
 
 	jpegData := makeJPEG(img)
 
-	regions, resultJPEG, err := DetectCanvasRegions(jpegData, nil)
+	regions, resultJPEG, err := DetectCanvasRegions(jpegData, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -132,7 +133,7 @@ func TestDetectCanvasRegionsFiltersOverlap(t *testing.T) {
 		{0.24, 0.24, 0.27, 0.27}, // overlaps the drawn rectangle
 	}
 
-	regions, _, err := DetectCanvasRegions(jpegData, existingBounds)
+	regions, _, err := DetectCanvasRegions(jpegData, existingBounds, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -158,7 +159,7 @@ func TestDetectCanvasRegionsMinSize(t *testing.T) {
 
 	jpegData := makeJPEG(img)
 
-	regions, _, err := DetectCanvasRegions(jpegData, nil)
+	regions, _, err := DetectCanvasRegions(jpegData, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -217,8 +218,152 @@ func TestBoxIoU(t *testing.T) {
 }
 
 func TestInvalidJPEG(t *testing.T) {
-	_, _, err := DetectCanvasRegions([]byte("not a jpeg"), nil)
+	_, _, err := DetectCanvasRegions([]byte("not a jpeg"), nil, nil, nil)
 	if err == nil {
 		t.Error("expected error for invalid JPEG data")
 	}
+}
+
+// makePNG creates a PNG-encoded image from an RGBA image.
+func makePNG(img *image.RGBA) []byte {
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		panic(err)
+	}
+	return buf.Bytes()
+}
+
+func TestDetectCanvasRegions_OverlayMasked(t *testing.T) {
+	// Verify that overlay masking changes the Canny pipeline output.
+	//
+	// With masking: overlay pixels become uniform gray(128), producing zero
+	// gradient inside the overlay area. At mask boundaries, gray meets the
+	// background — this creates boundary edges but eliminates internal ones.
+	//
+	// Without masking: overlay pixels retain their original color, and color
+	// transitions within the overlay (e.g., border→fill, fill→background)
+	// all produce Canny edges.
+	//
+	// In production, this eliminates 100+ false positives from alpha-blended
+	// overlay fills on varied page content. The coverage gate test
+	// (TestDetectCanvasRegions_CoverageGate) provides the strict assertion
+	// for the primary optimization: high-coverage pages skip Canny entirely.
+	img := blankImage(400, 400, color.RGBA{255, 255, 255, 255})
+	blue := color.RGBA{0, 0, 255, 255}
+	black := color.RGBA{0, 0, 0, 255}
+
+	// Blue overlay rectangle
+	drawFilledRect(img, 20, 20, 180, 180, blue)
+	// Black non-overlay rectangle
+	drawFilledRect(img, 250, 250, 380, 350, black)
+
+	pngData := makePNG(img)
+
+	// Classify overlay.
+	overlayMap := ClassifyOverlay(img, 0)
+	if overlayMap.OverlayPixelCount == 0 {
+		t.Fatal("expected overlay pixels to be classified")
+	}
+
+	// Run with masking.
+	regionsMasked, bytesMasked, err := DetectCanvasRegions(pngData, nil, overlayMap, nil)
+	if err != nil {
+		t.Fatalf("unexpected error (masked): %v", err)
+	}
+
+	// Run without masking.
+	regionsNoMask, bytesNoMask, err := DetectCanvasRegions(pngData, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error (no mask): %v", err)
+	}
+
+	// 1. The overlay map MUST change pipeline behavior: different grayscale
+	//    input produces different Canny edges and different annotated output.
+	if bytes.Equal(bytesMasked, bytesNoMask) {
+		t.Error("masking must produce different output than non-masking")
+	}
+
+	// 2. Masking must not produce more regions than unmasked.
+	//    (Equal is acceptable for synthetic images where mask-boundary edges
+	//    replace overlay edges 1:1; strictly fewer in production with
+	//    alpha-blended fills over varied content.)
+	if len(regionsMasked) > len(regionsNoMask) {
+		t.Errorf("masking produced MORE regions: masked=%d > unmasked=%d",
+			len(regionsMasked), len(regionsNoMask))
+	}
+
+	// 3. The black non-overlay rect should still be detected with masking.
+	foundBlackRect := false
+	for _, r := range regionsMasked {
+		if r.X > 0.5 && r.Y > 0.5 {
+			foundBlackRect = true
+		}
+	}
+	if !foundBlackRect {
+		t.Error("masking should preserve non-overlay regions (black rect not found)")
+	}
+
+	t.Logf("unmasked: %d regions, masked: %d regions", len(regionsNoMask), len(regionsMasked))
+}
+
+func TestDetectCanvasRegions_CoverageGate(t *testing.T) {
+	// 95% overlay coverage → 0 regions, Canny skipped.
+	img := blankImage(100, 100, color.RGBA{0, 0, 255, 255}) // all blue
+	// Leave a tiny strip of white at the bottom (5%)
+	for y := 95; y < 100; y++ {
+		for x := 0; x < 100; x++ {
+			img.SetRGBA(x, y, color.RGBA{255, 255, 255, 255})
+		}
+	}
+
+	pngData := makePNG(img)
+	overlayMap := ClassifyOverlay(img, 0)
+
+	if overlayMap.CoverageRatio() < 0.70 {
+		t.Fatalf("expected coverage > 70%%, got %.1f%%", overlayMap.CoverageRatio()*100)
+	}
+
+	regions, _, err := DetectCanvasRegions(pngData, nil, overlayMap, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(regions) != 0 {
+		t.Errorf("expected 0 regions with high coverage, got %d", len(regions))
+	}
+}
+
+func TestDetectCanvasRegions_NilOverlayLegacy(t *testing.T) {
+	// nil overlay map → existing behavior unchanged (same as old tests).
+	img := blankImage(400, 400, color.RGBA{255, 255, 255, 255})
+	black := color.RGBA{0, 0, 0, 255}
+	drawFilledRect(img, 50, 50, 150, 100, black)
+
+	jpegData := makeJPEG(img)
+
+	regions, _, err := DetectCanvasRegions(jpegData, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Should still detect the black rectangle.
+	if len(regions) == 0 {
+		t.Error("expected at least 1 region with nil overlay map")
+	}
+}
+
+func TestDetectCanvasRegions_PNGInput(t *testing.T) {
+	// PNG image decodes and processes correctly.
+	img := blankImage(400, 400, color.RGBA{255, 255, 255, 255})
+	black := color.RGBA{0, 0, 0, 255}
+	drawFilledRect(img, 100, 100, 250, 200, black)
+
+	pngData := makePNG(img)
+
+	regions, _, err := DetectCanvasRegions(pngData, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(regions) == 0 {
+		t.Error("expected at least 1 region from PNG input")
+	}
+	t.Logf("PNG input: found %d regions", len(regions))
 }

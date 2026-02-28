@@ -1,10 +1,13 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/png" // register PNG decoder for format-agnostic image.Decode
 	"log"
 	"time"
 
@@ -102,16 +105,34 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 			}
 		}
 
+		// Detect MIME type from magic bytes.
 		mimeType := "image/jpeg"
+		if len(screenshotBytes) > 4 && screenshotBytes[0] == 0x89 && screenshotBytes[1] == 'P' {
+			mimeType = "image/png"
+		}
+
+		// --- Overlay color readback: classify overlay pixels for masking ---
+		var overlayMap *OverlayMap
+		var decodedImg image.Image
+		if len(screenshotBytes) > 0 {
+			if img, _, err := image.Decode(bytes.NewReader(screenshotBytes)); err == nil {
+				decodedImg = img
+				overlayMap = ClassifyOverlay(img, 3600)
+				log.Printf("Overlay coverage: %.1f%% (tab %d)", overlayMap.CoverageRatio()*100, msg.TabID)
+			} else {
+				log.Printf("Overlay classification failed (tab %d): %v", msg.TabID, err)
+			}
+		}
 
 		// --- Canvas edge detection: find UI regions inside <canvas> / WebGL ---
+		// Pass decodedImg to avoid re-decoding the screenshot.
 		if len(screenshotBytes) > 0 {
 			existingBounds := parseBounds(msg.Summary)
-			cvRegions, annotatedJPEG, edgeErr := DetectCanvasRegions(screenshotBytes, existingBounds)
+			cvRegions, annotatedImg, edgeErr := DetectCanvasRegions(screenshotBytes, existingBounds, overlayMap, decodedImg)
 			if edgeErr != nil {
 				log.Printf("Edge detection failed (tab %d): %v", msg.TabID, edgeErr)
 			} else if len(cvRegions) > 0 {
-				screenshotBytes = annotatedJPEG
+				screenshotBytes = annotatedImg
 				sess.CVRegions = cvRegions
 				log.Printf("Edge detection: found %d cv regions (tab %d)", len(cvRegions), msg.TabID)
 			} else {

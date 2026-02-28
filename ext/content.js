@@ -312,12 +312,12 @@ const OVERLAY_ID = 'xray-overlay';
 // Semantic color legend for the ACI (Agent-Computer Interface).
 // Primary colors are used for high-accuracy identification by Vision models.
 const SEMANTIC_COLORS = {
-  link: { name: 'BLUE', rgb: [0, 0, 255], border: 'rgba(0, 0, 255, 0.9)' },
-  button: { name: 'ORANGE', rgb: [255, 165, 0], border: 'rgba(255, 165, 0, 0.9)' },
-  input: { name: 'GREEN', rgb: [0, 200, 0], border: 'rgba(0, 200, 0, 0.9)' },
-  container: { name: 'PURPLE', rgb: [160, 32, 240], border: 'rgba(160, 32, 240, 0.9)' },
-  clickable: { name: 'YELLOW', rgb: [255, 220, 0], border: 'rgba(255, 220, 0, 0.9)' },
-  other: { name: 'RED', rgb: [255, 0, 0], border: 'rgba(255, 0, 0, 0.9)' }
+  link: { name: 'BLUE', rgb: [0, 0, 255], border: 'rgb(0, 0, 255)' },
+  button: { name: 'ORANGE', rgb: [255, 165, 0], border: 'rgb(255, 165, 0)' },
+  input: { name: 'GREEN', rgb: [0, 200, 0], border: 'rgb(0, 200, 0)' },
+  container: { name: 'PURPLE', rgb: [160, 32, 240], border: 'rgb(160, 32, 240)' },
+  clickable: { name: 'YELLOW', rgb: [255, 220, 0], border: 'rgb(255, 220, 0)' },
+  other: { name: 'RED', rgb: [255, 0, 0], border: 'rgb(255, 0, 0)' }
 };
 
 // Area-adaptive opacity: large elements (canvas, full-page containers) fade
@@ -328,7 +328,7 @@ function areaOpacity(rect) {
   const viewportArea = window.innerWidth * window.innerHeight;
   if (viewportArea === 0) return 0.3;
   const areaRatio = (rect.width * rect.height) / viewportArea;
-  return Math.max(0.05, 0.6 - areaRatio * 0.55);
+  return Math.max(0.15, 0.6 - areaRatio * 0.45);
 }
 
 function getSemanticColor(node) {

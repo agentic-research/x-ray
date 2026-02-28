@@ -398,7 +398,6 @@ async function cdpPixelClick(tabId, scaledX, scaledY) {
 
 const CDP_MAX_HEIGHT = 16384;  // Cap for infinite-scroll pages
 const CDP_TARGET_WIDTH = 800;  // Scaled-down width for Gemini (topology, not pixels)
-const CDP_JPEG_QUALITY = 60;   // Low quality is fine for zone identification
 
 // Single CDP session: scaled full-page JPEG screenshot + AX-to-mache-id mapping.
 // Falls back to viewport-only screenshot if debugger attach fails.
@@ -409,7 +408,7 @@ async function captureWithCDP(tabId, targetMacheId = null) {
     await chrome.debugger.attach({ tabId }, '1.3');
   } catch (e) {
     console.warn('X-Ray: debugger attach failed, falling back to viewport screenshot:', e.message);
-    const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: CDP_JPEG_QUALITY });
+    const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
     return { screenshot: dataUrl.split(',')[1], axMap: new Map() };
   }
 
@@ -464,11 +463,10 @@ async function captureWithCDP(tabId, targetMacheId = null) {
       clip = { x: 0, y: 0, width: captureWidth, height: captureHeight, scale };
     }
 
-    // 4. Capture screenshot with clip
+    // 4. Capture screenshot with clip (PNG for lossless overlay color readback)
     const { data: screenshot } = await chrome.debugger.sendCommand(
       { tabId }, 'Page.captureScreenshot', {
-        format: 'jpeg',
-        quality: CDP_JPEG_QUALITY,
+        format: 'png',
         captureBeyondViewport: true,
         clip
       }
@@ -522,7 +520,7 @@ async function captureWithCDP(tabId, targetMacheId = null) {
 
     const scaledW = Math.round(clip.width * clip.scale);
     const scaledH = Math.round(clip.height * clip.scale);
-    console.log(`X-Ray: CDP capture — ${scaledW}x${scaledH}px JPEG (q${CDP_JPEG_QUALITY}), ${axMap.size} AX-mapped`,
+    console.log(`X-Ray: CDP capture — ${scaledW}x${scaledH}px PNG, ${axMap.size} AX-mapped`,
       targetMacheId ? `[zoomed: ${targetMacheId}]` : '');
     return { screenshot, axMap };
   } finally {
@@ -677,14 +675,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           await new Promise(r => setTimeout(r, 300));
 
           // Capture visible viewport (overlay is on screen).
-          const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 85 });
+          const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
 
           // Remove overlay.
           try { await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' }); } catch (_) {}
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
           chrome.downloads.download({
             url: dataUrl,
-            filename: `xray-overlay-${timestamp}.jpg`,
+            filename: `xray-overlay-${timestamp}.png`,
             saveAs: false
           });
           sendResponse({ ok: true });

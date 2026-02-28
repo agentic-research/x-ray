@@ -1,5 +1,49 @@
 # Investigation Log
 
+## 2026-02-27: Phase 7 — Overlay Color Readback (Visual Steganography Protocol)
+
+### The Problem
+Extension draws semantic color overlays (BLUE=link, ORANGE=button, GREEN=input, YELLOW=clickable, PURPLE=container, RED=other) on each page before screenshot capture. The server **ignored the pixel data** and read affordance from the `Color: BLUE` text string in the DOM summary. Meanwhile, Canny edge detection ran on this screenshot and re-detected overlay borders as cv-regions — producing 118 false positives on Reddit.
+
+### Key Insight: Overlays Are a Deterministic Protocol
+The overlay colors are a **deterministic protocol encoded into the pixel buffer** — visual steganography. Reading them back on the Go server closes the loop: pixel-level ground truth for element positions and affordance types, with zero computer vision.
+
+### Extension Changes (PNG + Opacity)
+- **PNG capture**: Switched CDP `Page.captureScreenshot` and all `captureVisibleTab` fallbacks from JPEG to PNG. Lossless compression preserves exact overlay RGB values — no DCT block blur.
+- **100% border opacity**: Changed overlay borders from `rgba(..., 0.9)` to `rgb(...)` so border pixels are exact palette values in the screenshot.
+- **15% minimum fill opacity**: Raised from 5% so even large structural containers have detectable color fill. Formula: `Math.max(0.15, 0.6 - areaRatio * 0.45)`.
+
+### Overlay Classification (`colormap.go`)
+Nearest-neighbor pixel classification with configurable squared Euclidean distance threshold. For each pixel, find closest palette color; accept if within `maxDistSq`, reject otherwise.
+
+**Palette separation**: Closest pair is YELLOW `[255,220,0]` ↔ ORANGE `[255,165,0]` at distance 55 (dist²=3025). With `maxDistSq=3600`, nearest-neighbor correctly resolves even this closest pair. Background colors (white, black, grays, typical web content) are far from all palette colors — verified by test against tan, gray, dark blue, reddit-orange, etc.
+
+### Canny Gating Strategy
+1. **Coverage gate**: if >70% of pixels are overlay → skip Canny entirely (DOM covers the page, Canny would only find noise)
+2. **Pre-mask**: Dilate overlay mask by 2px (matches border width), render to grayscale with overlay pixels set to uniform gray(128). Zeroed pixels produce zero Sobel gradients — no false edges. Masking before Gaussian blur prevents overlay energy from bleeding through the 5×5 kernel.
+3. **Format-agnostic decode**: Replaced `jpeg.Decode` with `image.Decode` (auto-detects from magic bytes). Registered `_ "image/png"` decoder. Server handles either format transparently.
+
+### MIME Detection
+Detect PNG vs JPEG from magic bytes: `screenshotBytes[0] == 0x89 && screenshotBytes[1] == 'P'` → `image/png`. Passed to Cartographer for correct Content-Type in multimodal API calls.
+
+### Test Coverage
+- 8 colormap tests: exact colors, alpha blending, coverage, no overlay, background rejection, palette separation, mask image, dilate
+- 4 edge detection tests: overlay masking reduces false positives, coverage gate skips Canny, nil overlay preserves legacy behavior, PNG input decodes correctly
+- All existing tests updated from 2-arg to 3-arg `DetectCanvasRegions` signature
+
+### Mask Boundary Edge Effect
+Initial overlay masking test asserted zero cv-regions in the overlay area. In practice, the abrupt gray(128)→white(255) transition at the mask boundary creates a new Canny edge that replaces the original overlay edge 1:1 for synthetic images. A striped-background attempt made it worse: uniform gray(128) against alternating black/white stripes creates MANY small boundary edges (49 vs 25 unmasked).
+
+The production benefit comes from alpha-blended fills over varied page content — not from solid-color synthetic images. Test was revised to three strict assertions: (1) output bytes differ (proves masking changes the pipeline), (2) masking doesn't produce MORE regions (no regression), (3) non-overlay content still detected (masking is targeted). The coverage gate test (>70% → skip Canny entirely) provides the strict assertion for the primary optimization path.
+
+### Double Decode Elimination
+Review caught that `snapshot.go` decoded the screenshot once for `ClassifyOverlay`, then `DetectCanvasRegions` decoded it again. Added `decodedImg image.Image` parameter — when non-nil, skips internal decode. Snapshot pipeline now decodes once and passes the `image.Image` to both consumers.
+
+### Tolerance Tradeoff
+`maxDistSq=3600` is correct for classifying both borders AND fills. With PNG, borders are exact (tolerance=0 works), but fills at 15-60% opacity are alpha-blended with background, requiring the higher tolerance. A two-pass approach (tight for borders, loose for fills) is a possible future refinement.
+
+---
+
 ## 2026-02-27: Phase 6 — Partial Zone Regeneration + websocket.go Decomposition
 
 ### The Problem

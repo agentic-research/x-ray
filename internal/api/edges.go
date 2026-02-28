@@ -7,6 +7,8 @@ import (
 	"image/color"
 	"image/draw"
 	"image/jpeg"
+	_ "image/png" // register PNG decoder for format-agnostic image.Decode
+	"log"
 	"math"
 )
 
@@ -18,16 +20,25 @@ type EdgeRegion struct {
 	PixelX, PixelY, PixelW, PixelH int     // absolute pixel coords for CDP click
 }
 
-// DetectCanvasRegions runs a minimal Canny edge detection pipeline on a JPEG
-// screenshot, finds rectangular regions, filters out those overlapping existing
-// mache bounds, and returns annotated regions + an annotated JPEG with cyan boxes.
+// DetectCanvasRegions runs a minimal Canny edge detection pipeline on a
+// screenshot (JPEG or PNG), finds rectangular regions, filters out those
+// overlapping existing mache bounds, and returns annotated regions + an
+// annotated JPEG with cyan boxes.
 //
 // existingBounds contains [x, y, w, h] normalized coordinates of DOM-tagged elements.
-func DetectCanvasRegions(jpegData []byte, existingBounds [][4]float64) ([]EdgeRegion, []byte, error) {
-	// 1. Decode JPEG
-	img, err := jpeg.Decode(bytes.NewReader(jpegData))
-	if err != nil {
-		return nil, nil, fmt.Errorf("decode jpeg: %w", err)
+// overlayMap, when non-nil, enables overlay-aware masking: overlay pixels are
+// neutralized before edge detection, and high-coverage pages skip Canny entirely.
+// decodedImg, when non-nil, is used directly (skips internal decode of imgData).
+func DetectCanvasRegions(imgData []byte, existingBounds [][4]float64, overlayMap *OverlayMap, decodedImg image.Image) ([]EdgeRegion, []byte, error) {
+	// 1. Decode image (format-agnostic: JPEG or PNG via magic bytes)
+	// If caller already decoded (e.g., for ClassifyOverlay), reuse it.
+	img := decodedImg
+	if img == nil {
+		var err error
+		img, _, err = image.Decode(bytes.NewReader(imgData))
+		if err != nil {
+			return nil, nil, fmt.Errorf("decode image: %w", err)
+		}
 	}
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
@@ -35,8 +46,29 @@ func DetectCanvasRegions(jpegData []byte, existingBounds [][4]float64) ([]EdgeRe
 		return nil, nil, fmt.Errorf("empty image: %dx%d", w, h)
 	}
 
-	// 2. Convert to grayscale
-	gray := toGrayscale(img)
+	// Overlay coverage gate: if DOM overlays cover >70% of the page,
+	// Canny would only find overlay borders (noise). Skip entirely.
+	if overlayMap != nil && overlayMap.CoverageRatio() > 0.70 {
+		log.Printf("Edge detection: overlay coverage %.1f%% > 70%%, skipping Canny", overlayMap.CoverageRatio()*100)
+		return nil, imgData, nil
+	}
+
+	// 2. Convert to grayscale, masking overlay pixels if available.
+	var gray []float64
+	if overlayMap != nil {
+		// Dilate mask by 2px to cover border width + JPEG DCT block blur.
+		dilated := overlayMap.Dilate(2)
+		maskedGray := dilated.MaskImage(img)
+		// Convert image.Gray to flat float64 array for the Canny pipeline.
+		gray = make([]float64, w*h)
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				gray[y*w+x] = float64(maskedGray.GrayAt(x, y).Y)
+			}
+		}
+	} else {
+		gray = toGrayscale(img)
+	}
 
 	// 3. Gaussian blur (σ=2.0, kernel size 5)
 	blurred := gaussianBlur(gray, w, h)
@@ -81,14 +113,14 @@ func DetectCanvasRegions(jpegData []byte, existingBounds [][4]float64) ([]EdgeRe
 	}
 
 	if len(regions) == 0 {
-		return nil, jpegData, nil
+		return nil, imgData, nil
 	}
 
 	// 9. Annotate screenshot with cyan rectangles + labels
 	annotated := annotateImage(img, regions)
 	var buf bytes.Buffer
 	if err := jpeg.Encode(&buf, annotated, &jpeg.Options{Quality: 80}); err != nil {
-		return regions, jpegData, nil // return regions with original image on encode failure
+		return regions, imgData, nil // return regions with original image on encode failure
 	}
 
 	return regions, buf.Bytes(), nil

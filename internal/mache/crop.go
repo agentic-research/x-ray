@@ -6,19 +6,20 @@ import (
 	"image"
 	"image/draw"
 	"image/jpeg"
+	_ "image/png" // register PNG decoder for format-agnostic image.Decode
 )
 
-// CropScreenshot extracts a sub-region from a JPEG screenshot.
+// CropScreenshot extracts a sub-region from a screenshot (JPEG or PNG).
 // The region is specified as [x, y, w, h] in normalized 0-1 coordinates.
-// Returns the cropped region re-encoded as JPEG, or (nil, nil) if jpegData is nil/empty.
-func CropScreenshot(jpegData []byte, region [4]float64) ([]byte, error) {
-	if len(jpegData) == 0 {
+// Returns the cropped region re-encoded as JPEG, or (nil, nil) if imgData is nil/empty.
+func CropScreenshot(imgData []byte, region [4]float64) ([]byte, error) {
+	if len(imgData) == 0 {
 		return nil, nil
 	}
 
-	img, err := jpeg.Decode(bytes.NewReader(jpegData))
+	img, _, err := image.Decode(bytes.NewReader(imgData))
 	if err != nil {
-		return nil, fmt.Errorf("decode jpeg: %w", err)
+		return nil, fmt.Errorf("decode image: %w", err)
 	}
 
 	bounds := img.Bounds()
