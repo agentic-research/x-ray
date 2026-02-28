@@ -1358,7 +1358,7 @@ func inferSubcategory(z zone, elements []element, lt layoutThresholds) string {
 	if z.isList {
 		return "feed"
 	}
-	if colorCounts["ORANGE"] > len(z.elems)/3 {
+	if colorCounts["ORANGE"]+colorCounts["YELLOW"] > len(z.elems)/3 {
 		return "actions"
 	}
 	if tagCounts["a"] > len(z.elems)*2/3 {

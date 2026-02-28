@@ -97,6 +97,7 @@ function buildRegistry() {
     elementRegistry.set(id, el);
     reverseRegistry.set(el, id);
     el.setAttribute('data-mache-id', id);
+    el.setAttribute('data-mache-clickable', '');
     cursorCount++;
 
     // Update ancestor counts so Phase 2 thresholds reflect these elements.
@@ -152,7 +153,10 @@ function buildRegistry() {
     if (!document.contains(node) || !isVisible(node)) {
       elementRegistry.delete(id);
       reverseRegistry.delete(node);
-      try { node.removeAttribute('data-mache-id'); } catch (_) {}
+      try {
+        node.removeAttribute('data-mache-id');
+        node.removeAttribute('data-mache-clickable');
+      } catch (_) {}
     }
   }
 }
@@ -312,6 +316,7 @@ const SEMANTIC_COLORS = {
   button: { name: 'ORANGE', rgb: [255, 165, 0], border: 'rgba(255, 165, 0, 0.9)' },
   input: { name: 'GREEN', rgb: [0, 200, 0], border: 'rgba(0, 200, 0, 0.9)' },
   container: { name: 'PURPLE', rgb: [160, 32, 240], border: 'rgba(160, 32, 240, 0.9)' },
+  clickable: { name: 'YELLOW', rgb: [255, 220, 0], border: 'rgba(255, 220, 0, 0.9)' },
   other: { name: 'RED', rgb: [255, 0, 0], border: 'rgba(255, 0, 0, 0.9)' }
 };
 
@@ -333,6 +338,7 @@ function getSemanticColor(node) {
   if (tag === 'a') return SEMANTIC_COLORS.link;
   if (tag === 'button' || role === 'button') return SEMANTIC_COLORS.button;
   if (['input', 'textarea', 'select'].includes(tag)) return SEMANTIC_COLORS.input;
+  if (node.hasAttribute('data-mache-clickable')) return SEMANTIC_COLORS.clickable;
 
   // Containers are typically tagged in Phase 2
   const containers = ['main', 'section', 'article', 'nav', 'header', 'footer', 'aside', 'form', 'ul', 'ol', 'dl', 'table', 'body', 'div'];
