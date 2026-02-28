@@ -1013,3 +1013,59 @@ func TestMergeSchemaResolveMacheID(t *testing.T) {
 		t.Errorf("expected mache-300 for new zone, got %q", id)
 	}
 }
+
+// --- ValidateSchemaBounds tests ---
+
+func TestValidateSchemaBounds_Displaced(t *testing.T) {
+	// Cached schema: mache-3 at [0.1, 0.3, 0.8, 0.5] (center ≈ 0.5, 0.55)
+	// Summary:        mache-3 at [0.8, 0.1, 0.15, 0.08] (center ≈ 0.875, 0.14)
+	// Distance ≈ 0.56 — far above 0.10 threshold.
+	cachedSchema := `{"mounts":[{
+		"virtual_path":"/main/feed",
+		"mache_id":"mache-3",
+		"description":"Feed",
+		"bounds":[0.1, 0.3, 0.8, 0.5]
+	}]}`
+	summary := "ID: mache-3 | Parent: none | Tag: a | Text: \"Sidebar\" | Bounds: [0.8, 0.1, 0.15, 0.08]\n"
+
+	stale := ValidateSchemaBounds(cachedSchema, summary, 0.10)
+	if len(stale) == 0 {
+		t.Error("expected bounds mismatch to be caught (center moved ~56%)")
+	}
+	if _, ok := stale["/main/feed"]; !ok {
+		t.Errorf("expected /main/feed in stale map, got: %v", stale)
+	}
+}
+
+func TestValidateSchemaBounds_MinorReflow(t *testing.T) {
+	// Cached: mache-3 at [0.1, 0.3, 0.8, 0.5] (center ≈ 0.5, 0.55)
+	// Summary: mache-3 at [0.1, 0.32, 0.8, 0.5] (center ≈ 0.5, 0.57)
+	// Distance ≈ 0.02 — within 0.10 threshold.
+	cachedSchema := `{"mounts":[{
+		"virtual_path":"/main/feed",
+		"mache_id":"mache-3",
+		"description":"Feed",
+		"bounds":[0.1, 0.3, 0.8, 0.5]
+	}]}`
+	summary := "ID: mache-3 | Parent: none | Tag: div | Text: \"Feed\" | Bounds: [0.1, 0.32, 0.8, 0.5]\n"
+
+	stale := ValidateSchemaBounds(cachedSchema, summary, 0.10)
+	if len(stale) != 0 {
+		t.Errorf("minor reflow (2%%) should not trigger staleness, got stale: %v", stale)
+	}
+}
+
+func TestValidateSchemaBounds_ZeroBounds(t *testing.T) {
+	// Cached mount has no bounds (older format). Should be skipped.
+	cachedSchema := `{"mounts":[{
+		"virtual_path":"/main/feed",
+		"mache_id":"mache-3",
+		"description":"Feed"
+	}]}`
+	summary := "ID: mache-3 | Parent: none | Tag: div | Text: \"Feed\" | Bounds: [0.8, 0.8, 0.1, 0.1]\n"
+
+	stale := ValidateSchemaBounds(cachedSchema, summary, 0.10)
+	if len(stale) != 0 {
+		t.Errorf("zones without stored bounds should be skipped, got stale: %v", stale)
+	}
+}

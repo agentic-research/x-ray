@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -254,5 +256,302 @@ func TestBug_GoAwaySenderGoroutineLeak(t *testing.T) {
 	senders := activeSenders.Load()
 	if senders > 1 {
 		t.Errorf("BUG NOT FIXED: %d sender goroutines are active, but only 1 should be.", senders)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// FIX 1 regression tests: TAB_ACTIVATED voice UI filtering
+// ---------------------------------------------------------------------------
+
+func TestBug_TabActivatedVoiceUIFiltered(t *testing.T) {
+	// TAB_ACTIVATED for a tab with no session (e.g., the voice UI tab)
+	// must NOT update activeVoiceTab.
+	h := newTestHandler()
+
+	// Establish a real voice tab with an existing session.
+	h.getSession(42)
+	h.mu.Lock()
+	h.activeVoiceTab = 42
+	h.mu.Unlock()
+
+	// Simulate receiving TAB_ACTIVATED for tab 999 (no session — like the voice UI tab).
+	// This inlines the fixed MsgTabActivated handler logic.
+	h.mu.Lock()
+	if _, exists := h.sessions[999]; exists {
+		h.activeVoiceTab = 999
+	}
+	h.mu.Unlock()
+
+	h.mu.Lock()
+	got := h.activeVoiceTab
+	h.mu.Unlock()
+
+	if got != 42 {
+		t.Errorf("BUG: activeVoiceTab changed to %d (voice UI tab), should remain 42", got)
+	}
+}
+
+func TestBug_TabActivatedRealTabAccepted(t *testing.T) {
+	// TAB_ACTIVATED for a tab WITH a session must be accepted.
+	h := newTestHandler()
+	h.getSession(10)
+	h.getSession(20)
+	h.mu.Lock()
+	h.activeVoiceTab = 10
+	h.mu.Unlock()
+
+	// Switch to tab 20 (has a session) — should be accepted.
+	h.mu.Lock()
+	if _, exists := h.sessions[20]; exists {
+		h.activeVoiceTab = 20
+	}
+	h.mu.Unlock()
+
+	h.mu.Lock()
+	got := h.activeVoiceTab
+	h.mu.Unlock()
+
+	if got != 20 {
+		t.Errorf("expected activeVoiceTab=20, got %d", got)
+	}
+}
+
+func TestBug_TabActivatedVoiceUIViaWebSocket(t *testing.T) {
+	// Full WS integration: send TAB_ACTIVATED for a sessionless tab over WebSocket.
+	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", h.HandleWebSocket)
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	conn := dialWS(t, s)
+	defer func() { _ = conn.Close() }()
+	time.Sleep(20 * time.Millisecond)
+
+	// Seed a real session and set it as voice tab.
+	sess42 := h.getSession(42)
+	sess42.SignalSchemaReady()
+	h.mu.Lock()
+	h.activeVoiceTab = 42
+	h.mu.Unlock()
+
+	// Send TAB_ACTIVATED for tab 999 (no session — like voice UI).
+	sendJSON(t, conn, InboundMessage{Type: MsgTabActivated, TabID: 999})
+	time.Sleep(50 * time.Millisecond)
+
+	h.mu.Lock()
+	voiceTab := h.activeVoiceTab
+	h.mu.Unlock()
+
+	if voiceTab != 42 {
+		t.Errorf("BUG: voice UI TAB_ACTIVATED changed activeVoiceTab from 42 to %d", voiceTab)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// FIX 2 regression tests: Cross-tab cache poisoning via bounds mismatch
+// ---------------------------------------------------------------------------
+
+func TestBug_CrossTabCachePoisoning(t *testing.T) {
+	// Cached schema: mache-3 at [0.1, 0.3, 0.8, 0.5] (center ≈ 0.5, 0.55).
+	// Tab B summary: mache-3 at [0.8, 0.1, 0.15, 0.08] (center ≈ 0.875, 0.14).
+	// ValidateSchemaZones passes (mache-3 exists). ValidateSchemaBounds should fail.
+	cachedSchema := `{"mounts":[{
+		"virtual_path":"/main/feed",
+		"mache_id":"mache-3",
+		"description":"Feed",
+		"bounds":[0.1, 0.3, 0.8, 0.5]
+	}]}`
+
+	tabBSummary := "ID: mache-3 | Parent: none | Tag: a | Text: \"Sidebar\" | Bounds: [0.8, 0.1, 0.15, 0.08]\n"
+
+	// ID check passes — mache-3 is in the summary.
+	staleByID := mache.ValidateSchemaZones(cachedSchema, tabBSummary)
+	if len(staleByID) != 0 {
+		t.Fatalf("test setup: ValidateSchemaZones should pass, got %v", staleByID)
+	}
+
+	// Bounds check catches the poisoning.
+	boundsStale := mache.ValidateSchemaBounds(cachedSchema, tabBSummary, 0.10)
+	if len(boundsStale) == 0 {
+		t.Error("BUG NOT FIXED: ValidateSchemaBounds should catch cross-tab poisoning " +
+			"(mache-3 center moved ~56% but bounds check passed)")
+	}
+	if _, ok := boundsStale["/main/feed"]; !ok {
+		t.Errorf("expected /main/feed in boundsStale, got: %v", boundsStale)
+	}
+}
+
+func TestBug_CrossTabCachePoisoningE2E(t *testing.T) {
+	// Full WS test: Tab A snapshots (cache miss → 1 Cartographer call).
+	// Tab B same URL but element positions shifted → cache hit rejected → 2nd Cartographer call.
+	schemaA := `{"mounts":[{
+		"virtual_path":"/main/feed",
+		"mache_id":"mache-1",
+		"description":"Feed",
+		"bounds":[0.1, 0.3, 0.8, 0.5]
+	}]}`
+
+	cart := &mockCartographer{schema: schemaA}
+	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", h.HandleWebSocket)
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	conn := dialWS(t, s)
+	defer func() { _ = conn.Close() }()
+
+	// Tab A: full scan, cache miss.
+	summaryA := "ID: mache-1 | Parent: none | Tag: div | Text: \"Feed\" | Bounds: [0.1, 0.3, 0.8, 0.5]\n"
+	sendJSON(t, conn, InboundMessage{
+		Type: MsgDOMSnapshot, TabID: 1,
+		URL: "https://example.com/feed", Summary: summaryA,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+	if cart.callCount.Load() != 1 {
+		t.Fatalf("expected 1 Cartographer call after Tab A, got %d", cart.callCount.Load())
+	}
+
+	// Tab B: same URL, same mache-ID name, but completely different position.
+	summaryB := "ID: mache-1 | Parent: none | Tag: a | Text: \"Sidebar\" | Bounds: [0.8, 0.05, 0.15, 0.05]\n"
+	// Update cartographer output for Tab B.
+	cart.schema = `{"mounts":[{
+		"virtual_path":"/main/feed",
+		"mache_id":"mache-1",
+		"description":"Feed (tab B)",
+		"bounds":[0.8, 0.05, 0.15, 0.05]
+	}]}`
+
+	sendJSON(t, conn, InboundMessage{
+		Type: MsgDOMSnapshot, TabID: 2,
+		URL: "https://example.com/feed", Summary: summaryB,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	// Cache should have been rejected for Tab B → Cartographer called a second time.
+	if got := cart.callCount.Load(); got < 2 {
+		t.Errorf("BUG NOT FIXED: expected ≥2 Cartographer calls (Tab B cache rejected), got %d", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// FIX 3 regression tests: Session reset on extension reconnect
+// ---------------------------------------------------------------------------
+
+func TestBug_ReconnectResetsSessionSchemaState(t *testing.T) {
+	// After extension reconnect, all sessions must have fresh (open) SchemaReady channels.
+	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", h.HandleWebSocket)
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	// First connection.
+	conn1 := dialWS(t, s)
+	time.Sleep(20 * time.Millisecond)
+
+	sess42 := h.getSession(42)
+	sess43 := h.getSession(43)
+	sess42.SignalSchemaReady()
+	sess43.SignalSchemaReady()
+
+	// Verify schema was signaled.
+	select {
+	case <-sess42.GetSchemaReady():
+	default:
+		t.Fatal("sess42 should be signaled before disconnect")
+	}
+
+	// Disconnect.
+	_ = conn1.Close()
+	time.Sleep(50 * time.Millisecond)
+
+	// Reconnect.
+	conn2 := dialWS(t, s)
+	defer func() { _ = conn2.Close() }()
+	time.Sleep(50 * time.Millisecond)
+
+	// After reconnect, SchemaReady channels should be fresh (open, not closed).
+	select {
+	case <-sess42.GetSchemaReady():
+		t.Error("BUG NOT FIXED: sess42 SchemaReady still closed after reconnect — stale schema")
+	default:
+		// Correct: channel is open.
+	}
+	select {
+	case <-sess43.GetSchemaReady():
+		t.Error("BUG NOT FIXED: sess43 SchemaReady still closed after reconnect — stale schema")
+	default:
+		// Correct.
+	}
+}
+
+func TestBug_ReconnectPreservesSessionsForDoer(t *testing.T) {
+	// Sessions must NOT be deleted on reconnect (Doer continuity).
+	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", h.HandleWebSocket)
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	conn1 := dialWS(t, s)
+	time.Sleep(20 * time.Millisecond)
+
+	sess := h.getSession(42)
+	doer := NewDoer(h, 42, sess)
+	sess.Doer = doer
+
+	_ = conn1.Close()
+	time.Sleep(50 * time.Millisecond)
+
+	conn2 := dialWS(t, s)
+	defer func() { _ = conn2.Close() }()
+	time.Sleep(50 * time.Millisecond)
+
+	h.mu.Lock()
+	_, exists := h.sessions[42]
+	doerAttached := sess.Doer != nil
+	h.mu.Unlock()
+
+	if !exists {
+		t.Error("session should survive reconnect (Doer may be in-flight)")
+	}
+	if !doerAttached {
+		t.Error("Doer should be preserved on the session after reconnect")
+	}
+}
+
+func TestBug_ReconnectNoSessionsNoOp(t *testing.T) {
+	// Reconnect with zero sessions should not panic.
+	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", h.HandleWebSocket)
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	conn1 := dialWS(t, s)
+	time.Sleep(20 * time.Millisecond)
+	_ = conn1.Close()
+	time.Sleep(50 * time.Millisecond)
+
+	// Reconnect with no sessions — should be a clean no-op.
+	conn2 := dialWS(t, s)
+	defer func() { _ = conn2.Close() }()
+	time.Sleep(50 * time.Millisecond)
+
+	h.mu.Lock()
+	n := len(h.sessions)
+	h.mu.Unlock()
+	if n != 0 {
+		t.Errorf("expected 0 sessions, got %d", n)
 	}
 }

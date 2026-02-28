@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"math"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -90,6 +92,68 @@ func ValidateSchemaZones(schemaJSON, summary string) map[string]string {
 	for _, m := range output.Mounts {
 		if !strings.Contains(summary, "ID: "+m.MacheID+" ") {
 			stale[m.VirtualPath] = m.MacheID
+		}
+	}
+	return stale
+}
+
+// ValidateSchemaBounds checks that each zone's cached bounds approximately
+// match the current DOM element's bounds. Returns a map of zone_path →
+// stale_mache_id for zones whose element center has moved beyond threshold
+// (normalized viewport coordinates). An empty map means all bounds match.
+//
+// Zones with zero Bounds in the cached schema are skipped (no stored bounds).
+// Elements missing from the summary are skipped (caught by ValidateSchemaZones).
+func ValidateSchemaBounds(schemaJSON, summary string, threshold float64) map[string]string {
+	var output CartographerOutput
+	if err := json.Unmarshal([]byte(schemaJSON), &output); err != nil {
+		return nil
+	}
+
+	// Build macheID → current bounds from the DOM summary.
+	currentBounds := make(map[string][4]float64)
+	for _, line := range strings.Split(summary, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "ID: ") {
+			continue
+		}
+		// Extract element ID (first space-delimited token after "ID: ").
+		rest := strings.TrimPrefix(trimmed, "ID: ")
+		id := rest
+		if idx := strings.Index(rest, " "); idx >= 0 {
+			id = rest[:idx]
+		}
+		// Extract bounds using the shared regex from filter.go.
+		m := boundsRe.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		x, _ := strconv.ParseFloat(m[1], 64)
+		y, _ := strconv.ParseFloat(m[2], 64)
+		w, _ := strconv.ParseFloat(m[3], 64)
+		h, _ := strconv.ParseFloat(m[4], 64)
+		currentBounds[id] = [4]float64{x, y, w, h}
+	}
+
+	stale := make(map[string]string)
+	for _, mount := range output.Mounts {
+		if mount.Bounds == ([4]float64{}) {
+			continue // no stored bounds — skip
+		}
+		cur, ok := currentBounds[mount.MacheID]
+		if !ok {
+			continue // not in summary — caught by ValidateSchemaZones
+		}
+		// Compare center points.
+		cachedCX := mount.Bounds[0] + mount.Bounds[2]/2
+		cachedCY := mount.Bounds[1] + mount.Bounds[3]/2
+		curCX := cur[0] + cur[2]/2
+		curCY := cur[1] + cur[3]/2
+		dx := cachedCX - curCX
+		dy := cachedCY - curCY
+		dist := math.Sqrt(dx*dx + dy*dy)
+		if dist > threshold {
+			stale[mount.VirtualPath] = mount.MacheID
 		}
 	}
 	return stale

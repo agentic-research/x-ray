@@ -52,6 +52,18 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 		if cached, ok := h.schemas.Get(key); ok {
 			staleZones := mache.ValidateSchemaZones(cached, msg.Summary)
 			if len(staleZones) == 0 {
+				// Secondary guard: catch cross-tab cache poisoning by bounds shift.
+				// Same mache-ID can map to a different element in a different tab.
+				boundsStale := mache.ValidateSchemaBounds(cached, msg.Summary, 0.10)
+				if len(boundsStale) > 0 {
+					log.Printf("Schema CACHE BOUNDS MISMATCH for %q (tab %d) — %d zones displaced: %v",
+						key, msg.TabID, len(boundsStale), boundsStale)
+				}
+				for path, id := range boundsStale {
+					staleZones[path] = id
+				}
+			}
+			if len(staleZones) == 0 {
 				schemaJSON = cached
 				fromCache = true
 				log.Printf("Schema CACHE HIT for %q (tab %d) — skipping Cartographer", key, msg.TabID)

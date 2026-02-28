@@ -786,8 +786,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 // --- Track active tab for voice daemon ---
+// Only send TAB_ACTIVATED for tabs that have a schema (i.e., real content tabs).
+// This prevents the voice UI tab (localhost:8080/voice-ui) from polluting
+// the server's activeVoiceTab, which would cause voice commands to target
+// an empty session instead of the user's actual page.
 chrome.tabs.onActivated.addListener((activeInfo) => {
-  if (ws && ws.readyState === WebSocket.OPEN) {
+  if (ws && ws.readyState === WebSocket.OPEN && schemaReadyTabs.has(activeInfo.tabId)) {
     ws.send(JSON.stringify({ type: 'TAB_ACTIVATED', tab_id: activeInfo.tabId }));
   }
 });

@@ -167,9 +167,22 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	h.conn = conn
 	queued := h.pending
 	h.pending = nil
+	// Snapshot existing sessions — content.js was re-injected on reconnect and
+	// restarted mache-ID numbering from mache-0. Any cached ID→element mapping
+	// in the Engine is now stale. Sessions are preserved (not deleted) to avoid
+	// killing in-flight voice Doers, but their schema channels are reset so the
+	// next DOM_SNAPSHOT properly re-signals schema-ready.
+	sessions := make([]*TabSession, 0, len(h.sessions))
+	for _, sess := range h.sessions {
+		sessions = append(sessions, sess)
+	}
 	h.mu.Unlock()
 
-	log.Println("WebSocket: Client connected")
+	for _, sess := range sessions {
+		sess.ResetSchema()
+	}
+
+	log.Printf("WebSocket: Client connected (reset schema state for %d sessions)", len(sessions))
 
 	// Flush any actions that were queued while the extension was disconnected.
 	for _, a := range queued {
@@ -227,9 +240,13 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			h.handleSelectorsResolved(msg)
 		case MsgTabActivated:
 			h.mu.Lock()
-			h.activeVoiceTab = msg.TabID
+			if _, exists := h.sessions[msg.TabID]; exists {
+				h.activeVoiceTab = msg.TabID
+				log.Printf("WebSocket: active voice tab set to %d", msg.TabID)
+			} else {
+				log.Printf("WebSocket: TAB_ACTIVATED for tab %d ignored (no session)", msg.TabID)
+			}
 			h.mu.Unlock()
-			log.Printf("WebSocket: active voice tab set to %d", msg.TabID)
 		case MsgTabClosed:
 			h.handleTabClosed(msg)
 		case MsgDOMMutated:
