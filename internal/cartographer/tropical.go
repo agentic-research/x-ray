@@ -63,6 +63,10 @@ type element struct {
 	textDensity float64 // chars per normalized area [0,1]
 	hasSemantic bool    // true if semantic fields were parsed
 
+	// FFT fiber data (for cv-* regions — canvas/WebGL structure detection)
+	fft    FFTFeatures
+	hasFFT bool
+
 	// Computed
 	centerX   float64
 	centerY   float64
@@ -135,6 +139,8 @@ func (tc *TropicalCartographer) GenerateSchema(
 	// Step 2: Sample RGB fibers from screenshot
 	if len(screenshot) > 0 {
 		sampleRGB(screenshot, elements)
+		// Step 2b: FFT analysis for cv-* regions (canvas/WebGL structure detection).
+		sampleFFT(screenshot, elements)
 	}
 
 	// Step 3: Build tropical distance matrix
@@ -396,6 +402,62 @@ func clampInt(v, lo, hi int) int {
 	return v
 }
 
+// sampleFFT runs FFT analysis on cv-* regions to extract repeating visual
+// patterns (grids, lists, table rows). Only processes elements with the
+// "cv-" prefix since DOM elements already have structural data.
+func sampleFFT(screenshot []byte, elements []element) {
+	// Check if any cv-* elements exist to avoid unnecessary JPEG decode.
+	hasCv := false
+	for i := range elements {
+		if strings.HasPrefix(elements[i].id, "cv-") && elements[i].hasBounds {
+			hasCv = true
+			break
+		}
+	}
+	if !hasCv {
+		return
+	}
+
+	img, err := jpeg.Decode(bytes.NewReader(screenshot))
+	if err != nil {
+		return
+	}
+
+	bounds := img.Bounds()
+	imgW := float64(bounds.Dx())
+	imgH := float64(bounds.Dy())
+
+	for i := range elements {
+		el := &elements[i]
+		if !strings.HasPrefix(el.id, "cv-") || !el.hasBounds {
+			continue
+		}
+
+		// Map normalized bounds to pixel coordinates.
+		px := int(el.bounds[0]*imgW) + bounds.Min.X
+		py := int(el.bounds[1]*imgH) + bounds.Min.Y
+		pw := int(el.bounds[2] * imgW)
+		ph := int(el.bounds[3] * imgH)
+		if pw < 8 || ph < 8 {
+			continue
+		}
+
+		// Extract grayscale subimage (ITU-R BT.601).
+		gray := make([]float64, pw*ph)
+		for y := 0; y < ph; y++ {
+			for x := 0; x < pw; x++ {
+				sx := clampInt(px+x, bounds.Min.X, bounds.Max.X-1)
+				sy := clampInt(py+y, bounds.Min.Y, bounds.Max.Y-1)
+				r, g, b, _ := img.At(sx, sy).RGBA()
+				gray[y*pw+x] = 0.299*float64(r>>8) + 0.587*float64(g>>8) + 0.114*float64(b>>8)
+			}
+		}
+
+		el.fft = AnalyzeRegion(gray, pw, ph)
+		el.hasFFT = true
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Tropical distance computation (max-plus semiring)
 // ---------------------------------------------------------------------------
@@ -416,7 +478,7 @@ func buildDistanceMatrix(elements []element) [][]float64 {
 	return dist
 }
 
-// tropicalDistance: d(i,j) = max(d_spatial, d_visual, d_structural)
+// tropicalDistance: d(i,j) = max(d_spatial, d_visual, d_structural, d_semantic, d_frequency)
 // In the max-plus semiring, tropical addition is max. When ANY dimension
 // shows strong separation, the elements belong in different zones.
 func tropicalDistance(a, b *element) float64 {
@@ -424,7 +486,8 @@ func tropicalDistance(a, b *element) float64 {
 	dv := visualDistance(a, b)
 	dt := structuralDistance(a, b)
 	dm := semanticDistance(a, b)
-	return math.Max(ds, math.Max(dv, math.Max(dt, dm)))
+	df := frequencyDistance(a, b)
+	return math.Max(ds, math.Max(dv, math.Max(dt, math.Max(dm, df))))
 }
 
 // spatialDistance: normalized Euclidean distance of bbox centers.
@@ -521,6 +584,37 @@ func semanticDistance(a, b *element) float64 {
 
 	// Inner tropical max across semantic sub-fibers.
 	return math.Max(fontDist, math.Max(displayDist, math.Max(interactiveDist, textDensityDist)))
+}
+
+// frequencyDistance: FFT-based visual structure divergence for cv-* regions.
+// Elements with similar repeating patterns (same row spacing, similar entropy)
+// are structurally similar. Returns 0 when FFT data is unavailable.
+func frequencyDistance(a, b *element) float64 {
+	if !a.hasFFT || !b.hasFFT {
+		return 0 // don't penalize when no FFT data
+	}
+
+	// Dominant vertical frequency divergence (row spacing).
+	maxFreq := math.Max(a.fft.DominantFreqY, b.fft.DominantFreqY)
+	var freqYDist float64
+	if maxFreq > 0 {
+		freqYDist = math.Abs(a.fft.DominantFreqY-b.fft.DominantFreqY) / maxFreq
+	}
+
+	// Dominant horizontal frequency divergence (column spacing).
+	maxFreqX := math.Max(a.fft.DominantFreqX, b.fft.DominantFreqX)
+	var freqXDist float64
+	if maxFreqX > 0 {
+		freqXDist = math.Abs(a.fft.DominantFreqX-b.fft.DominantFreqX) / maxFreqX
+	}
+
+	// Spectral entropy divergence.
+	entropyDist := math.Abs(a.fft.Entropy - b.fft.Entropy)
+
+	// Grid score divergence.
+	gridDist := math.Abs(a.fft.GridScore - b.fft.GridScore)
+
+	return math.Max(freqYDist, math.Max(freqXDist, math.Max(entropyDist, gridDist)))
 }
 
 // ---------------------------------------------------------------------------
