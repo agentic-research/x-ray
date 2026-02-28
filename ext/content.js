@@ -339,6 +339,14 @@ function removeOverlay() {
   if (existing) existing.remove();
 }
 
+// Redraw overlay on window resize so boxes track their elements.
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  if (!document.getElementById(OVERLAY_ID)) return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(drawOverlay, 150);
+});
+
 // Listen for messages from background.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.type) {
