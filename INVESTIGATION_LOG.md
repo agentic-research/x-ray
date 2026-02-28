@@ -1,5 +1,27 @@
 # Investigation Log
 
+## 2026-02-27: Sheaf-Based Schema Cache
+
+### The Problem (Three Bugs Converging)
+1. Schema cache was one opaque JSON blob per URL — any code change (e.g., cursor:pointer heuristic) served stale cached schemas until you manually `rm ~/.xray/schemas.db`.
+2. Magnifying glass rescan of `/main/player` overwrote the full-page cache with just the sub-zone JSON. Next cold load returned only sub-zones.
+3. `MergeSchema` appended sub-mounts without evicting the parent mount — old `/main/player` coexisted with new `/main/player/controls`.
+
+### Sheaf Theory → Cache Architecture
+Modeled the cache as a **sheaf over spatial open sets**:
+- Each zone is a section with its own bounding box (AABB from constituent elements), content fingerprint (sha256 of sorted `(tag, text[:30])` pairs), and cache entry.
+- **Restriction maps**: when magnifying glass refines a zone, `MergeSchema` evicts the parent mount (presheaf condition) and `InvalidateZone` removes the parent cache entry.
+- **Per-zone staleness**: `ValidateSchemaZones` returns `map[zonePath]reason` instead of a flat ID list. Foundation for partial regeneration (Phase 6).
+- **v1/v2 backward compat**: `Get()` checks for `meta/version=2` marker; old monolithic blobs still load. Auto-migrate on next `PutZones`.
+
+### Fingerprint Design Decision
+Critical: fingerprints hash `(tag, text[:30])` NOT `(mache_id, text)`. Mache-IDs are temporal — `idCounter` resets per page load and element order can shift. Tag+text is reload-stable: identical DOM → identical fingerprint.
+
+### Zone Bounding Box
+Added `computeZoneBounds` — min/max AABB over constituent element bounds. Stored on `Mount.Bounds [4]float64`. This defines the spatial "open set" for each sheaf section and enables future partial regeneration (restrict Cartographer to stale zones' bounding boxes).
+
+---
+
 ## 2026-02-27: Vercel agent-browser Comparison + cursor:pointer Heuristic
 
 ### Vercel agent-browser Architecture (Surprising Findings)

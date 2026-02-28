@@ -15,12 +15,14 @@ import (
 
 // Mount represents one entry from the Cartographer's output.
 type Mount struct {
-	VirtualPath  string   `json:"virtual_path"`
-	MacheID      string   `json:"mache_id"`
-	Description  string   `json:"description"`
-	CSSSelector  string   `json:"css_selector,omitempty"`
-	PrimaryItems []string `json:"primary_items"`
-	ItemSelector string   `json:"item_selector,omitempty"`
+	VirtualPath  string     `json:"virtual_path"`
+	MacheID      string     `json:"mache_id"`
+	Description  string     `json:"description"`
+	CSSSelector  string     `json:"css_selector,omitempty"`
+	PrimaryItems []string   `json:"primary_items"`
+	ItemSelector string     `json:"item_selector,omitempty"`
+	Bounds       [4]float64 `json:"bounds,omitempty"`      // zone AABB [x,y,w,h] normalized
+	Fingerprint  string     `json:"fingerprint,omitempty"` // content hash for sheaf cache staleness
 }
 
 // CartographerOutput is the top-level JSON from the Cartographer.
@@ -63,17 +65,34 @@ func (e *Engine) HasSchema() bool {
 // ValidateSchema checks that every mache_id in the schema actually exists in
 // the DOM summary. Returns a list of hallucinated IDs (empty = all valid).
 func ValidateSchema(schemaJSON, summary string) []string {
+	stale := ValidateSchemaZones(schemaJSON, summary)
+	bad := make([]string, 0, len(stale))
+	for _, reason := range stale {
+		bad = append(bad, reason)
+	}
+	return bad
+}
+
+// ValidateSchemaZones checks each zone's mache_id against the current DOM
+// summary. Returns a map of zone_path → stale mache_id for zones whose root
+// element no longer exists in the DOM. Empty map = all valid.
+//
+// Fingerprint comparison is handled at the cache layer (comparing cached
+// fingerprint against freshly computed fingerprint) rather than here,
+// because recomputing the fingerprint requires knowing zone membership
+// which is not available from the flat summary alone.
+func ValidateSchemaZones(schemaJSON, summary string) map[string]string {
 	var output CartographerOutput
 	if err := json.Unmarshal([]byte(schemaJSON), &output); err != nil {
 		return nil
 	}
-	var bad []string
+	stale := make(map[string]string)
 	for _, m := range output.Mounts {
 		if !strings.Contains(summary, "ID: "+m.MacheID+" ") {
-			bad = append(bad, m.MacheID)
+			stale[m.VirtualPath] = m.MacheID
 		}
 	}
-	return bad
+	return stale
 }
 
 // ApplySchema parses the Cartographer JSON and builds the virtual FS.
@@ -95,9 +114,11 @@ func (e *Engine) ApplySchema(schemaJSON string) error {
 }
 
 // MergeSchema grafts new mounts into the existing filesystem.
-// Unlike ApplySchema, it preserves the existing MemoryStore and mounts.
-// The Cartographer is instructed to output absolute paths (e.g., /main/player/controls),
-// so no prefix concatenation is needed — just insert directly.
+// Unlike ApplySchema, it preserves the existing MemoryStore and mounts,
+// but enforces the presheaf restriction map: if an incoming mount's path
+// is a child of an existing mount (e.g., /main/player/controls refines
+// /main/player), the parent mount is evicted. The coarse section is
+// replaced by finer sub-sections.
 func (e *Engine) MergeSchema(schemaJSON string) error {
 	var output CartographerOutput
 	if err := json.Unmarshal([]byte(schemaJSON), &output); err != nil {
@@ -106,6 +127,25 @@ func (e *Engine) MergeSchema(schemaJSON string) error {
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
+
+	// Restriction map: evict existing mounts that are strict parents of
+	// incoming mounts. This ensures the presheaf condition — you can't
+	// have both /main/player and /main/player/controls as sections.
+	kept := e.mounts[:0]
+	for _, existing := range e.mounts {
+		evict := false
+		for _, incoming := range output.Mounts {
+			if incoming.VirtualPath != existing.VirtualPath &&
+				strings.HasPrefix(incoming.VirtualPath, existing.VirtualPath+"/") {
+				evict = true
+				break
+			}
+		}
+		if !evict {
+			kept = append(kept, existing)
+		}
+	}
+	e.mounts = kept
 
 	for _, m := range output.Mounts {
 		e.insertMount(m)

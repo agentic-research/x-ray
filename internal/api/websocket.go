@@ -372,7 +372,8 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 		log.Printf("Schema CACHE BYPASS (rescan) for %q (tab %d)", key, msg.TabID)
 	} else if key != "" {
 		if cached, ok := h.schemas.Get(key); ok {
-			if bad := mache.ValidateSchema(cached, msg.Summary); len(bad) == 0 {
+			staleZones := mache.ValidateSchemaZones(cached, msg.Summary)
+			if len(staleZones) == 0 {
 				schemaJSON = cached
 				fromCache = true
 				log.Printf("Schema CACHE HIT for %q (tab %d) — skipping Cartographer", key, msg.TabID)
@@ -380,8 +381,8 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 					Type: MsgStatus, TabID: msg.TabID, Message: "Using cached schema", Stage: "cartographer",
 				})
 			} else {
-				log.Printf("Schema cache STALE for %q (tab %d) — %d invalid IDs: %v",
-					key, msg.TabID, len(bad), bad)
+				log.Printf("Schema cache STALE for %q (tab %d) — %d/%d zones stale: %v",
+					key, msg.TabID, len(staleZones), len(staleZones), staleZones)
 			}
 		} else {
 			log.Printf("Schema CACHE MISS for %q (tab %d)", key, msg.TabID)
@@ -484,10 +485,27 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 			}
 		}
 
-		// Cache the validated schema.
+		// Cache the validated schema using per-zone entries.
 		if key != "" {
-			h.schemas.Put(key, schemaJSON)
-			log.Printf("Schema cached for %q", key)
+			var output mache.CartographerOutput
+			if err := json.Unmarshal([]byte(schemaJSON), &output); err == nil {
+				if rescanPath != "" {
+					// Targeted rescan: store sub-zones, invalidate parent.
+					for _, m := range output.Mounts {
+						h.schemas.PutZone(key, m)
+					}
+					h.schemas.InvalidateZone(key, rescanPath)
+					log.Printf("Schema cached (rescan) for %q: %d sub-zones under %s", key, len(output.Mounts), rescanPath)
+				} else {
+					// Full scan: replace all zones.
+					h.schemas.PutZones(key, output.Mounts)
+					log.Printf("Schema cached for %q: %d zones", key, len(output.Mounts))
+				}
+			} else {
+				// Fallback: store as v1 monolithic blob.
+				h.schemas.Put(key, schemaJSON)
+				log.Printf("Schema cached (v1 fallback) for %q", key)
+			}
 		}
 	}
 

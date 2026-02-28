@@ -3,6 +3,8 @@ package cartographer
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"image/jpeg"
@@ -97,11 +99,13 @@ type zone struct {
 
 // tropicalMount matches mache.CartographerOutput.Mounts JSON.
 type tropicalMount struct {
-	VirtualPath  string   `json:"virtual_path"`
-	MacheID      string   `json:"mache_id"`
-	Description  string   `json:"description"`
-	PrimaryItems []string `json:"primary_items"`
-	ItemSelector string   `json:"item_selector,omitempty"`
+	VirtualPath  string     `json:"virtual_path"`
+	MacheID      string     `json:"mache_id"`
+	Description  string     `json:"description"`
+	PrimaryItems []string   `json:"primary_items"`
+	ItemSelector string     `json:"item_selector,omitempty"`
+	Bounds       [4]float64 `json:"bounds,omitempty"`      // zone AABB [x,y,w,h] normalized
+	Fingerprint  string     `json:"fingerprint,omitempty"` // content hash for cache staleness
 }
 
 // GenerateSchema implements api.SchemaGenerator.
@@ -1253,6 +1257,68 @@ type layoutThresholds struct {
 	sidebarW   float64
 }
 
+// computeZoneBounds returns the axis-aligned bounding box of all elements in
+// the zone. This defines the spatial "open set" for the sheaf section.
+func computeZoneBounds(z zone, elements []element) [4]float64 {
+	minX, minY := math.Inf(1), math.Inf(1)
+	maxX, maxY := math.Inf(-1), math.Inf(-1)
+	for _, idx := range z.elems {
+		el := elements[idx]
+		if !el.hasBounds {
+			continue
+		}
+		x0, y0 := el.bounds[0], el.bounds[1]
+		x1, y1 := x0+el.bounds[2], y0+el.bounds[3]
+		if x0 < minX {
+			minX = x0
+		}
+		if y0 < minY {
+			minY = y0
+		}
+		if x1 > maxX {
+			maxX = x1
+		}
+		if y1 > maxY {
+			maxY = y1
+		}
+	}
+	if math.IsInf(minX, 1) {
+		return [4]float64{0, 0, 1, 1}
+	}
+	return [4]float64{minX, minY, maxX - minX, maxY - minY}
+}
+
+// computeZoneFingerprint produces a content hash for cache staleness detection.
+// Uses (tag, text[:30]) pairs — NOT mache_id — because mache-IDs are temporal
+// (idCounter resets per page load and element order can shift). Tag+text is
+// reload-stable: identical DOM produces identical fingerprint.
+func computeZoneFingerprint(z zone, elements []element) string {
+	type pair struct{ tag, text string }
+	pairs := make([]pair, 0, len(z.elems))
+	for _, idx := range z.elems {
+		el := elements[idx]
+		text := el.text
+		if len(text) > 30 {
+			text = text[:30]
+		}
+		pairs = append(pairs, pair{el.tag, text})
+	}
+	sort.Slice(pairs, func(i, j int) bool {
+		if pairs[i].tag != pairs[j].tag {
+			return pairs[i].tag < pairs[j].tag
+		}
+		return pairs[i].text < pairs[j].text
+	})
+	h := sha256.New()
+	for _, p := range pairs {
+		h.Write([]byte(p.tag))
+		h.Write([]byte{0})
+		h.Write([]byte(p.text))
+		h.Write([]byte{0})
+	}
+	return hex.EncodeToString(h.Sum(nil))[:16]
+}
+
 func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropicalMount {
 	// Sort zones by position: top-to-bottom, then left-to-right
 	sort.Slice(zones, func(i, j int) bool {
@@ -1302,6 +1368,8 @@ func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropic
 			MacheID:      rootEl.id,
 			Description:  inferDescription(z, elements, lt),
 			PrimaryItems: []string{},
+			Bounds:       computeZoneBounds(z, elements),
+			Fingerprint:  computeZoneFingerprint(z, elements),
 		}
 
 		if z.isList && len(z.listIdxs) > 0 {
