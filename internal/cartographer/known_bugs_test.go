@@ -120,3 +120,67 @@ func TestBug_CVRegionOnlyZone(t *testing.T) {
 		}
 	}
 }
+
+func TestBug_DuplicateHeaderFragmentation(t *testing.T) {
+	// Bug: Reddit (and other SPAs) render duplicate DOM subtrees for
+	// mobile/desktop navigation. The tropical distance correctly separates
+	// them into distinct zones, producing /header/content, /header/content_3,
+	// /header/actions_4 etc.
+	//
+	// Fix: H^0 cohomology folding merges zones with identical fiber
+	// signatures (same text/tag distribution + spatial overlap).
+
+	// Simulate two identical nav bars (desktop + mobile) at the same Y position
+	// plus a distinct main content area.
+	lines := []string{
+		// Desktop nav (visible)
+		`ID: mache-0 | Tag: nav | Text: "Home" | Bounds: [0.000, 0.000, 0.200, 0.050]`,
+		`ID: mache-1 | Tag: a | Text: "Feed" | Bounds: [0.200, 0.000, 0.100, 0.050]`,
+		`ID: mache-2 | Tag: a | Text: "Popular" | Bounds: [0.300, 0.000, 0.100, 0.050]`,
+		`ID: mache-3 | Tag: a | Text: "Settings" | Bounds: [0.400, 0.000, 0.100, 0.050]`,
+		// Mobile nav (hidden via CSS but present in DOM, same text)
+		`ID: mache-10 | Tag: nav | Text: "Home" | Bounds: [0.000, 0.010, 0.200, 0.050]`,
+		`ID: mache-11 | Tag: a | Text: "Feed" | Bounds: [0.200, 0.010, 0.100, 0.050]`,
+		`ID: mache-12 | Tag: a | Text: "Popular" | Bounds: [0.300, 0.010, 0.100, 0.050]`,
+		`ID: mache-13 | Tag: a | Text: "Settings" | Bounds: [0.400, 0.010, 0.100, 0.050]`,
+		// Main content (clearly different)
+		`ID: mache-20 | Tag: div | Text: "Post Title Alpha" | Bounds: [0.100, 0.300, 0.600, 0.100]`,
+		`ID: mache-21 | Tag: div | Text: "Post Title Beta" | Bounds: [0.100, 0.450, 0.600, 0.100]`,
+		`ID: mache-22 | Tag: div | Text: "Post Title Gamma" | Bounds: [0.100, 0.600, 0.600, 0.100]`,
+		`ID: mache-23 | Tag: div | Text: "Post Title Delta" | Bounds: [0.100, 0.750, 0.600, 0.100]`,
+	}
+	summary := strings.Join(lines, "\n") + "\n"
+
+	cart := &TropicalCartographer{}
+	schemaJSON, err := cart.GenerateSchema(context.Background(), nil, "image/jpeg", summary)
+	if err != nil {
+		t.Fatalf("GenerateSchema failed: %v", err)
+	}
+
+	var output struct {
+		Mounts []json.RawMessage `json:"mounts"`
+	}
+	if err := json.Unmarshal([]byte(schemaJSON), &output); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	// Count header mounts — should be at most 2 (nav + content), not 4+
+	headerCount := 0
+	for _, raw := range output.Mounts {
+		var m struct {
+			VirtualPath string `json:"virtual_path"`
+		}
+		if err := json.Unmarshal(raw, &m); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if strings.HasPrefix(m.VirtualPath, "/header/") {
+			headerCount++
+		}
+	}
+
+	if headerCount > 2 {
+		t.Errorf("REGRESSION: header fragmentation — got %d header mounts, expected ≤2 (H^0 folding should merge duplicate nav bars)", headerCount)
+	}
+
+	t.Logf("Schema (%d header mounts): %s", headerCount, schemaJSON)
+}

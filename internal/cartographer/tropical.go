@@ -37,6 +37,12 @@ type TropicalCartographer struct {
 	HeaderMaxY float64 // elements with centerY < this are "header" (default 0.15)
 	FooterMinY float64 // elements with centerY > this are "footer" (default 0.85)
 	SidebarW   float64 // elements with centerX < this or > 1-this are "sidebar" (default 0.2)
+
+	// CohomologyTolerance controls H^0 zone folding. Zones with fiber
+	// similarity above this threshold are merged (identical text/tag
+	// distribution + overlapping spatial bounds). Default: 0.7.
+	// Set to 1.0 to disable folding entirely.
+	CohomologyTolerance float64
 }
 
 // element is a parsed DOM summary line enriched with computed features.
@@ -134,6 +140,19 @@ func (tc *TropicalCartographer) GenerateSchema(
 	zones := cutTree(tree, elements, minZ, maxZ)
 	if len(zones) == 0 {
 		return "", fmt.Errorf("no zones produced from %d elements", len(elements))
+	}
+
+	// Step 5b: H^0 cohomology folding — merge zones with identical fibers.
+	// Duplicate DOM subtrees (e.g. mobile + desktop nav bars) produce
+	// separate zones that have the same text/tag signature and overlap
+	// spatially. Folding them respects the sheaf consistency condition:
+	// sections that agree on overlaps (within tolerance) are identified.
+	cohTol := tc.CohomologyTolerance
+	if cohTol <= 0 {
+		cohTol = 0.7
+	}
+	if cohTol < 1.0 {
+		zones = foldCoherentZones(zones, elements, cohTol)
 	}
 
 	// Step 6: Build mounts
@@ -845,6 +864,208 @@ func detectListZone(elems []int, elements []element) (bool, []int, string) {
 	}
 
 	return true, filtered, selector
+}
+
+// ---------------------------------------------------------------------------
+// H^0 Cohomology folding
+// ---------------------------------------------------------------------------
+
+// foldCoherentZones merges zones whose fiber signatures (text content and
+// tag distribution) are similar within tolerance. This collapses duplicate
+// DOM subtrees — e.g. mobile/desktop nav bars that produce identical link
+// text but live in different parts of the tree.
+//
+// Mathematically this computes H^0 of the Čech complex: zones are open sets
+// in the cover, their text/tag distributions are local sections, and we
+// identify sections that agree on overlaps (spatial proximity) within the
+// given tolerance.
+// fiberSig is the local section data over a zone — its "fiber" in the sheaf.
+// Text content and tag distribution form the observable section; two zones
+// with similar fiberSigs agree on overlaps and can be identified in H^0.
+type fiberSig struct {
+	tagDist  map[string]float64 // normalized tag frequency
+	textSet  map[string]bool    // set of non-empty text values
+	textHash uint64             // cheap hash for fast comparison
+	nText    int
+}
+
+func foldCoherentZones(zones []zone, elements []element, tolerance float64) []zone {
+	if len(zones) <= 1 {
+		return zones
+	}
+
+	sigs := make([]fiberSig, len(zones))
+	for i, z := range zones {
+		tags := map[string]int{}
+		texts := map[string]bool{}
+		var h uint64
+		for _, idx := range z.elems {
+			el := elements[idx]
+			tags[el.tag]++
+			if el.text != "" {
+				// Use first 40 chars to avoid long-text noise.
+				key := el.text
+				if len(key) > 40 {
+					key = key[:40]
+				}
+				texts[key] = true
+				// FNV-like hash accumulation for fast equality check.
+				for _, b := range key {
+					h ^= uint64(b)
+					h *= 0x100000001b3
+				}
+			}
+		}
+		// Normalize tag distribution.
+		tagDist := map[string]float64{}
+		n := float64(len(z.elems))
+		if n > 0 {
+			for t, c := range tags {
+				tagDist[t] = float64(c) / n
+			}
+		}
+		sigs[i] = fiberSig{
+			tagDist:  tagDist,
+			textSet:  texts,
+			textHash: h,
+			nText:    len(texts),
+		}
+	}
+
+	// Union-find for merging.
+	parent := make([]int, len(zones))
+	for i := range parent {
+		parent[i] = i
+	}
+	var find func(int) int
+	find = func(x int) int {
+		if parent[x] != x {
+			parent[x] = find(parent[x])
+		}
+		return parent[x]
+	}
+	union := func(a, b int) {
+		ra, rb := find(a), find(b)
+		if ra != rb {
+			parent[rb] = ra
+		}
+	}
+
+	// Compare all zone pairs.
+	for i := 0; i < len(zones); i++ {
+		for j := i + 1; j < len(zones); j++ {
+			if find(i) == find(j) {
+				continue
+			}
+			sim := zoneFiberSimilarity(sigs[i], sigs[j], zones[i], zones[j])
+			if sim >= tolerance {
+				union(i, j)
+			}
+		}
+	}
+
+	// Collect merged zones.
+	merged := map[int]*zone{}
+	for i, z := range zones {
+		root := find(i)
+		if m, ok := merged[root]; ok {
+			m.elems = append(m.elems, z.elems...)
+		} else {
+			cp := zone{elems: make([]int, len(z.elems))}
+			copy(cp.elems, z.elems)
+			merged[root] = &cp
+		}
+	}
+
+	result := make([]zone, 0, len(merged))
+	for _, z := range merged {
+		computeZoneFeatures(z, elements)
+		result = append(result, *z)
+	}
+
+	if len(result) < len(zones) {
+		log.Printf("TropicalCartographer: H^0 folding merged %d → %d zones (tol=%.2f)",
+			len(zones), len(result), tolerance)
+	}
+
+	return result
+}
+
+// zoneFiberSimilarity computes the similarity between two zones' fiber
+// signatures. Returns a value in [0, 1] where 1 = identical fibers.
+//
+// Components:
+//   - textSim: Jaccard similarity of text content sets
+//   - tagSim: 1 - L1 distance of normalized tag distributions
+//   - spatialSim: overlap of spatial bounding boxes (zones in the same
+//     screen region are candidates for folding)
+func zoneFiberSimilarity(a, b fiberSig, za, zb zone) float64 {
+	// Fast path: if neither zone has text, compare tags only.
+	if a.nText == 0 && b.nText == 0 {
+		return tagDistSimilarity(a.tagDist, b.tagDist)
+	}
+
+	// Text Jaccard similarity.
+	var textSim float64
+	if a.nText > 0 || b.nText > 0 {
+		inter := 0
+		for t := range a.textSet {
+			if b.textSet[t] {
+				inter++
+			}
+		}
+		union := len(a.textSet) + len(b.textSet) - inter
+		if union > 0 {
+			textSim = float64(inter) / float64(union)
+		}
+	}
+
+	// Tag distribution similarity (1 - L1/2).
+	tagSim := tagDistSimilarity(a.tagDist, b.tagDist)
+
+	// Spatial proximity: do the zones occupy a similar screen region?
+	// Use distance between zone centers (normalized to [0, 1]).
+	dx := za.centerX - zb.centerX
+	dy := za.centerY - zb.centerY
+	dist := math.Sqrt(dx*dx + dy*dy)
+	spatialSim := math.Max(0, 1-dist/0.5) // 0 if centers > 0.5 apart
+
+	// Weighted combination.
+	//
+	// Key insight: duplicate DOM subtrees (mobile/desktop nav bars) get
+	// interleaved by NJ because their elements have identical text. After
+	// tree cutting, the resulting zones contain different subsets of the
+	// same links, so text Jaccard is low. But they share the same tag
+	// distribution (all <a> tags) and the same spatial band (both at Y≈0).
+	// When structure and position strongly agree, that's sufficient evidence
+	// for folding — the sections are "cohomologically equivalent" even if
+	// their text fibers differ.
+	if tagSim > 0.85 && spatialSim > 0.7 {
+		// Structurally equivalent zones in the same region: boost.
+		return 0.2*textSim + 0.3*tagSim + 0.5*spatialSim
+	}
+	if a.nText > 0 && b.nText > 0 {
+		return 0.5*textSim + 0.2*tagSim + 0.3*spatialSim
+	}
+	return 0.4*tagSim + 0.6*spatialSim
+}
+
+func tagDistSimilarity(a, b map[string]float64) float64 {
+	allTags := map[string]bool{}
+	for t := range a {
+		allTags[t] = true
+	}
+	for t := range b {
+		allTags[t] = true
+	}
+	if len(allTags) == 0 {
+		return 1.0
+	}
+	var l1 float64
+	for t := range allTags {
+		l1 += math.Abs(a[t] - b[t])
+	}
+	return math.Max(0, 1-l1/2)
 }
 
 // ---------------------------------------------------------------------------
