@@ -769,7 +769,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: false, error: 'No active tab' });
           return;
         }
-        const voiceUrl = 'http://localhost:8080/static/voice.html?tab=' + tabId;
+        const voiceUrl = 'http://localhost:8080/voice-ui?tab=' + tabId;
         chrome.tabs.create({ url: voiceUrl }, () => {
           sendResponse({ ok: true });
         });
