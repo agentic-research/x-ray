@@ -1,5 +1,28 @@
 # Investigation Log
 
+## 2026-02-27: Vercel agent-browser Comparison + cursor:pointer Heuristic
+
+### Vercel agent-browser Architecture (Surprising Findings)
+Reverse-engineered `vercel-labs/agent-browser` v0.15.1. Key surprise: **Vercel does NOT use `DOMSnapshot.captureSnapshot`** or raw CDP for DOM extraction. Their snapshot pipeline is entirely built on Playwright's `locator.ariaSnapshot()` — a high-level abstraction that returns an ARIA tree as structured text. They assign `eN` ref IDs to interactive/content nodes and resolve them back to DOM via `page.getByRole()`.
+
+Their architecture is Rust CLI → Unix socket IPC → Node.js daemon → Playwright → Chromium. No direct CDP snapshot commands.
+
+### X-Ray vs Vercel: Where We're Stronger
+- **Structural containers**: X-Ray's 3-phase registry captures layout hierarchy (nav, section, article, semantic divs). Vercel has nothing equivalent — their output is flat ARIA.
+- **Eager spatial data**: X-Ray computes normalized [0,1] bounding boxes for every element at snapshot time. Vercel fetches boxes lazily on-demand.
+- **Semantic fiber data**: X-Ray extracts fontSize, display, textDensity, interactive per element. Vercel: role + name only.
+- **AX enrichment**: X-Ray uses CDP `Accessibility.getFullAXTree` with `backendNodeId` joins. Vercel: opaque Playwright abstraction, no DOM↔AX correlation.
+
+### The One Gap: cursor:pointer Heuristic
+Vercel's `findCursorInteractiveElements()` catches styled `<div>`s that are behaviorally interactive but lack semantic HTML/ARIA. Checks: `getComputedStyle(el).cursor === 'pointer'`, `el.hasAttribute('onclick')`, positive `tabindex`. Key dedup: inherited cursor:pointer from parent is skipped (parent gets tagged instead).
+
+Reimplemented as Phase 1.5 in `buildRegistry()` — runs after Phase 1 (semantic selectors), before Phase 2 (structural containers). Capped at 50 elements to prevent pathological pages from flooding the 300-element summary cap. Updates `interactiveAncestors` map so Phase 2 thresholds reflect cursor-interactive elements.
+
+### Phase 1 Selector Expansion
+Also added `[role="link"]`, `[role="tab"]`, `[contenteditable="true"]` to Phase 1 selector — these were in the original design intent but missing from the implementation.
+
+---
+
 ## 2026-02-27: Phase 3 — macOS AXUIElement Integration
 
 ### Architecture: Swift CLI over CGo

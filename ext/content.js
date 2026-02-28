@@ -31,7 +31,10 @@ function buildRegistry() {
 
   // Phase 1: Tag interactive leaf elements + count interactive descendants per ancestor.
   const interactiveAncestors = new Map(); // node → count of interactive descendants
-  const interactiveNodes = document.querySelectorAll('a, button, input, select, textarea, [role="button"]');
+  const interactiveNodes = document.querySelectorAll(
+    'a, button, input, select, textarea, ' +
+    '[role="button"], [role="link"], [role="tab"], [contenteditable="true"]'
+  );
   interactiveNodes.forEach(node => {
     if (!reverseRegistry.has(node) && isVisible(node)) {
       const id = `mache-${idCounter++}`;
@@ -48,6 +51,61 @@ function buildRegistry() {
       parent = parent.parentElement;
     }
   });
+
+  // Phase 1.5: Tag cursor-interactive elements not captured by semantic selectors.
+  // Catches React/Vue styled <div>s with cursor:pointer, onclick, or tabindex.
+  const KNOWN_INTERACTIVE_TAGS = new Set([
+    'a', 'button', 'input', 'select', 'textarea',
+    'audio', 'video', 'details', 'summary'
+  ]);
+  const KNOWN_INTERACTIVE_ROLES = new Set([
+    'button', 'link', 'tab', 'checkbox', 'radio',
+    'switch', 'menuitem', 'option', 'combobox', 'searchbox'
+  ]);
+  let cursorCount = 0;
+  const allEls = document.querySelectorAll('*');
+  for (const el of allEls) {
+    if (cursorCount >= 50) break;
+    if (reverseRegistry.has(el)) continue;
+    if (el.id === OVERLAY_ID || el.closest('#' + OVERLAY_ID)) continue;
+    const tag = el.tagName.toLowerCase();
+    if (KNOWN_INTERACTIVE_TAGS.has(tag)) continue;
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    if (role && KNOWN_INTERACTIVE_ROLES.has(role)) continue;
+
+    const style = getComputedStyle(el);
+    const hasCursorPointer = style.cursor === 'pointer';
+    const hasOnClick = el.hasAttribute('onclick');
+    const tabIdx = el.getAttribute('tabindex');
+    const hasFocusable = tabIdx !== null && tabIdx !== '-1';
+
+    if (!hasCursorPointer && !hasOnClick && !hasFocusable) continue;
+
+    // Dedup: skip if cursor:pointer is inherited from parent (parent gets tagged instead)
+    if (hasCursorPointer && !hasOnClick && !hasFocusable) {
+      const parent = el.parentElement;
+      if (parent && getComputedStyle(parent).cursor === 'pointer') continue;
+    }
+
+    if (!isVisible(el)) continue;
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) continue;
+    const text = (el.textContent || '').trim();
+    if (!text && !el.children.length) continue;
+
+    const id = `mache-${idCounter++}`;
+    elementRegistry.set(id, el);
+    reverseRegistry.set(el, id);
+    el.setAttribute('data-mache-id', id);
+    cursorCount++;
+
+    // Update ancestor counts so Phase 2 thresholds reflect these elements.
+    let ancestor = el.parentElement;
+    while (ancestor) {
+      interactiveAncestors.set(ancestor, (interactiveAncestors.get(ancestor) || 0) + 1);
+      ancestor = ancestor.parentElement;
+    }
+  }
 
   // Phase 2: Tag structural containers with 2+ interactive descendants.
   // Uses precomputed ancestor counts — O(C) where C = containers, not O(N*M).
