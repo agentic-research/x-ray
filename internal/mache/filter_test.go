@@ -72,7 +72,7 @@ const filterTestSummary = `Interactive Elements:
 ID: mache-1 | Color: BLUE | Bounds: [0.10, 0.10, 0.20, 0.10] | Parent: none | Tag: nav | Text: "Top Nav"
 ID: mache-2 | Color: GREEN | Bounds: [0.05, 0.30, 0.40, 0.30] | Parent: none | Tag: div | Text: "Sidebar"
 ID: mache-3 | Color: RED | Bounds: [0.50, 0.30, 0.40, 0.30] | Parent: none | Tag: main | Text: "Content"
-ID: mache-4 | Color: YELLOW | Bounds: [0.10, 0.80, 0.80, 0.10] | Parent: none | Tag: footer | Text: "Footer"
+ID: mache-4 | Color: BLUE | Bounds: [0.10, 0.80, 0.80, 0.10] | Parent: none | Tag: footer | Text: "Footer"
 ID: mache-5 | Color: YELLOW | Bounds: [0.60, 0.35, 0.10, 0.10] | Parent: mache-3 | Tag: a | Text: "Link"`
 
 func TestFilterSummaryByBounds_Partial(t *testing.T) {

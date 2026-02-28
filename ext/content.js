@@ -315,8 +315,8 @@ const SEMANTIC_COLORS = {
   link: { name: 'MAGENTA', rgb: [255, 0, 255], border: 'rgb(255, 0, 255)' },
   button: { name: 'LIME', rgb: [0, 255, 0], border: 'rgb(0, 255, 0)' },
   input: { name: 'CYAN', rgb: [0, 255, 255], border: 'rgb(0, 255, 255)' },
-  container: { name: 'YELLOW', rgb: [255, 255, 0], border: 'rgb(255, 255, 0)' },
-  clickable: { name: 'BLUE', rgb: [0, 0, 255], border: 'rgb(0, 0, 255)' },
+  container: { name: 'BLUE', rgb: [0, 0, 255], border: 'rgb(0, 0, 255)' },
+  clickable: { name: 'YELLOW', rgb: [255, 255, 0], border: 'rgb(255, 255, 0)' },
   other: { name: 'RED', rgb: [255, 0, 0], border: 'rgb(255, 0, 0)' }
 };
 

@@ -19,8 +19,8 @@ var SemanticColors = []OverlayColor{
 	{"MAGENTA", 255, 0, 255, "link"},
 	{"LIME", 0, 255, 0, "button"},
 	{"CYAN", 0, 255, 255, "input"},
-	{"YELLOW", 255, 255, 0, "container"},
-	{"BLUE", 0, 0, 255, "clickable"},
+	{"YELLOW", 255, 255, 0, "clickable"},
+	{"BLUE", 0, 0, 255, "container"},
 	{"RED", 255, 0, 0, "other"},
 }
 
