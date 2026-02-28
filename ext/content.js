@@ -250,12 +250,23 @@ const OVERLAY_ID = 'xray-overlay';
 // Semantic color legend for the ACI (Agent-Computer Interface).
 // Primary colors are used for high-accuracy identification by Vision models.
 const SEMANTIC_COLORS = {
-  link: { name: 'BLUE', value: 'rgba(0, 0, 255, 0.3)', border: 'rgba(0, 0, 255, 0.9)' },
-  button: { name: 'ORANGE', value: 'rgba(255, 165, 0, 0.3)', border: 'rgba(255, 165, 0, 0.9)' },
-  input: { name: 'GREEN', value: 'rgba(0, 200, 0, 0.3)', border: 'rgba(0, 200, 0, 0.9)' },
-  container: { name: 'PURPLE', value: 'rgba(160, 32, 240, 0.3)', border: 'rgba(160, 32, 240, 0.9)' },
-  other: { name: 'RED', value: 'rgba(255, 0, 0, 0.3)', border: 'rgba(255, 0, 0, 0.9)' }
+  link: { name: 'BLUE', rgb: [0, 0, 255], border: 'rgba(0, 0, 255, 0.9)' },
+  button: { name: 'ORANGE', rgb: [255, 165, 0], border: 'rgba(255, 165, 0, 0.9)' },
+  input: { name: 'GREEN', rgb: [0, 200, 0], border: 'rgba(0, 200, 0, 0.9)' },
+  container: { name: 'PURPLE', rgb: [160, 32, 240], border: 'rgba(160, 32, 240, 0.9)' },
+  other: { name: 'RED', rgb: [255, 0, 0], border: 'rgba(255, 0, 0, 0.9)' }
 };
+
+// Area-adaptive opacity: large elements (canvas, full-page containers) fade
+// to near-transparent so they don't obscure content. Small elements stay vivid.
+//   areaRatio = (w * h) / (viewportW * viewportH)
+//   opacity   = max(0.05, 0.6 - areaRatio * 0.55)
+function areaOpacity(rect) {
+  const viewportArea = window.innerWidth * window.innerHeight;
+  if (viewportArea === 0) return 0.3;
+  const areaRatio = (rect.width * rect.height) / viewportArea;
+  return Math.max(0.05, 0.6 - areaRatio * 0.55);
+}
 
 function getSemanticColor(node) {
   const tag = node.tagName.toLowerCase();
@@ -289,8 +300,10 @@ function drawOverlay() {
     if (rect.width === 0 || rect.height === 0) continue;
 
     const color = getSemanticColor(node);
+    const alpha = areaOpacity(rect);
+    const [r, g, b] = color.rgb;
 
-    // Bounding box with translucent fill + thick border
+    // Bounding box with area-adaptive translucent fill + thick border
     const box = document.createElement('div');
     box.style.cssText =
       `position: absolute;` +
@@ -298,7 +311,7 @@ function drawOverlay() {
       `top: ${rect.top + window.scrollY}px;` +
       `width: ${rect.width}px;` +
       `height: ${rect.height}px;` +
-      `background: ${color.value};` +
+      `background: rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)});` +
       `border: 2px solid ${color.border};` +
       `pointer-events: none;` +
       `box-sizing: border-box;`;
