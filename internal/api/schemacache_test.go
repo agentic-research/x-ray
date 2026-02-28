@@ -1,10 +1,12 @@
 package api
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"testing"
 
 	"github.com/agentic-research/mache/graph"
+	"github.com/jamesgardner/x-ray/internal/mache"
 )
 
 func TestCacheKey(t *testing.T) {
@@ -135,5 +137,270 @@ func TestSchemaCacheMacheGraphIntegrity(t *testing.T) {
 	}
 	if len(dir.Children) != 2 {
 		t.Errorf("expected 2 children, got %v", dir.Children)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SchemaCache zone operations tests (Stream D — Phase 6)
+// ---------------------------------------------------------------------------
+
+func testMounts() []mache.Mount {
+	return []mache.Mount{
+		{VirtualPath: "/header/nav", MacheID: "mache-0", Description: "Top navigation", Fingerprint: "fp-0"},
+		{VirtualPath: "/main/feed", MacheID: "mache-10", Description: "News feed", Fingerprint: "fp-10"},
+		{VirtualPath: "/footer/links", MacheID: "mache-20", Description: "Footer links", Fingerprint: "fp-20"},
+	}
+}
+
+func TestPutZonesAndGetAllZones(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/page"
+
+	c.PutZones(key, testMounts())
+
+	got, ok := c.GetAllZones(key)
+	if !ok {
+		t.Fatal("expected GetAllZones to return true after PutZones")
+	}
+
+	var output mache.CartographerOutput
+	if err := json.Unmarshal([]byte(got), &output); err != nil {
+		t.Fatalf("unmarshal GetAllZones result: %v", err)
+	}
+	if len(output.Mounts) != 3 {
+		t.Fatalf("expected 3 mounts, got %d", len(output.Mounts))
+	}
+
+	// Verify mount data roundtrips correctly.
+	found := map[string]bool{}
+	for _, m := range output.Mounts {
+		found[m.VirtualPath] = true
+	}
+	for _, vp := range []string{"/header/nav", "/main/feed", "/footer/links"} {
+		if !found[vp] {
+			t.Errorf("missing mount %s in GetAllZones result", vp)
+		}
+	}
+}
+
+func TestPutZonesReplacesExisting(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/page"
+
+	// First PutZones with 3 mounts.
+	c.PutZones(key, testMounts())
+
+	// Second PutZones with different data.
+	newMounts := []mache.Mount{
+		{VirtualPath: "/main/sidebar", MacheID: "mache-99", Description: "Sidebar", Fingerprint: "fp-99"},
+	}
+	c.PutZones(key, newMounts)
+
+	got, ok := c.GetAllZones(key)
+	if !ok {
+		t.Fatal("expected GetAllZones to return true after second PutZones")
+	}
+
+	var output mache.CartographerOutput
+	if err := json.Unmarshal([]byte(got), &output); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(output.Mounts) != 1 {
+		t.Fatalf("expected 1 mount after replacement, got %d", len(output.Mounts))
+	}
+	if output.Mounts[0].VirtualPath != "/main/sidebar" {
+		t.Errorf("expected /main/sidebar, got %s", output.Mounts[0].VirtualPath)
+	}
+}
+
+func TestInvalidateZoneRemovesOne(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/page"
+
+	c.PutZones(key, testMounts())
+
+	// Invalidate one zone.
+	c.InvalidateZone(key, "/main/feed")
+
+	got, ok := c.GetAllZones(key)
+	if !ok {
+		t.Fatal("expected GetAllZones to return true after invalidating one of three zones")
+	}
+
+	var output mache.CartographerOutput
+	if err := json.Unmarshal([]byte(got), &output); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(output.Mounts) != 2 {
+		t.Fatalf("expected 2 mounts after invalidating one, got %d", len(output.Mounts))
+	}
+
+	for _, m := range output.Mounts {
+		if m.VirtualPath == "/main/feed" {
+			t.Error("/main/feed should have been invalidated")
+		}
+	}
+}
+
+func TestInvalidateZoneNonExistent(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/page"
+
+	c.PutZones(key, testMounts())
+
+	// Invalidating a non-existent zone should not panic.
+	c.InvalidateZone(key, "/nonexistent/zone")
+
+	// Original zones should be unaffected.
+	got, ok := c.GetAllZones(key)
+	if !ok {
+		t.Fatal("expected GetAllZones to return true")
+	}
+
+	var output mache.CartographerOutput
+	if err := json.Unmarshal([]byte(got), &output); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(output.Mounts) != 3 {
+		t.Fatalf("expected 3 mounts unchanged after invalidating non-existent zone, got %d", len(output.Mounts))
+	}
+}
+
+func TestPutZoneSingleAdd(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/page"
+
+	// Start with 2 zones via PutZones.
+	initial := []mache.Mount{
+		{VirtualPath: "/header/nav", MacheID: "mache-0", Description: "Nav"},
+		{VirtualPath: "/main/feed", MacheID: "mache-10", Description: "Feed"},
+	}
+	c.PutZones(key, initial)
+
+	// Add a 3rd zone via PutZone.
+	c.PutZone(key, mache.Mount{
+		VirtualPath: "/footer/links",
+		MacheID:     "mache-20",
+		Description: "Footer",
+	})
+
+	got, ok := c.GetAllZones(key)
+	if !ok {
+		t.Fatal("expected GetAllZones to return true")
+	}
+
+	var output mache.CartographerOutput
+	if err := json.Unmarshal([]byte(got), &output); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(output.Mounts) != 3 {
+		t.Fatalf("expected 3 mounts after PutZone, got %d", len(output.Mounts))
+	}
+
+	found := map[string]bool{}
+	for _, m := range output.Mounts {
+		found[m.VirtualPath] = true
+	}
+	if !found["/footer/links"] {
+		t.Error("PutZone'd /footer/links not found in GetAllZones result")
+	}
+}
+
+func TestPutZoneThenInvalidate(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/page"
+
+	// Add a single zone via PutZone.
+	c.PutZone(key, mache.Mount{
+		VirtualPath: "/main/feed",
+		MacheID:     "mache-10",
+		Description: "Feed",
+	})
+
+	// Verify it exists.
+	_, ok := c.GetAllZones(key)
+	if !ok {
+		t.Fatal("expected zone to exist after PutZone")
+	}
+
+	// Invalidate it.
+	c.InvalidateZone(key, "/main/feed")
+
+	// GetAllZones should return false (no zones left).
+	_, ok = c.GetAllZones(key)
+	if ok {
+		t.Error("expected GetAllZones to return false after invalidating only zone")
+	}
+}
+
+func TestGetReturnsV2WhenAvailable(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/page"
+
+	c.PutZones(key, testMounts())
+
+	// Get() should detect v2 format and return reconstructed JSON.
+	got, ok := c.Get(key)
+	if !ok {
+		t.Fatal("expected Get to return true when v2 zones exist")
+	}
+
+	var output mache.CartographerOutput
+	if err := json.Unmarshal([]byte(got), &output); err != nil {
+		t.Fatalf("unmarshal Get result: %v", err)
+	}
+	if len(output.Mounts) != 3 {
+		t.Fatalf("expected 3 mounts from Get() with v2 zones, got %d", len(output.Mounts))
+	}
+}
+
+func TestInvalidateURLClearsAllZones(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/page"
+
+	c.PutZones(key, testMounts())
+
+	// Verify zones exist.
+	_, ok := c.GetAllZones(key)
+	if !ok {
+		t.Fatal("expected zones to exist before InvalidateURL")
+	}
+
+	// InvalidateURL should clear all zones.
+	c.InvalidateURL(key)
+
+	_, ok = c.GetAllZones(key)
+	if ok {
+		t.Error("expected GetAllZones to return false after InvalidateURL")
+	}
+
+	// Get() should also return false.
+	_, ok = c.Get(key)
+	if ok {
+		t.Error("expected Get to return false after InvalidateURL")
+	}
+}
+
+func TestPutZonesPersistsToSQLite(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test-zones-persist.db")
+
+	// Create cache, store zones, let it persist.
+	c1 := NewSchemaCache(dbPath)
+	c1.PutZones("example.com/page", testMounts())
+
+	// Create a new cache from the same dbPath — zones should survive.
+	c2 := NewSchemaCache(dbPath)
+
+	got, ok := c2.Get("example.com/page")
+	if !ok {
+		t.Fatal("expected zones to persist across cache instances via SQLite")
+	}
+
+	var output mache.CartographerOutput
+	if err := json.Unmarshal([]byte(got), &output); err != nil {
+		t.Fatalf("unmarshal persisted zones: %v", err)
+	}
+	if len(output.Mounts) != 3 {
+		t.Fatalf("expected 3 persisted mounts, got %d", len(output.Mounts))
 	}
 }

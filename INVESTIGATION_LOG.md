@@ -1,5 +1,52 @@
 # Investigation Log
 
+## 2026-02-27: Phase 6 — Partial Zone Regeneration + websocket.go Decomposition
+
+### The Problem
+When any cached zone was stale (its mache_ids disappeared from the DOM), the system fell through to **full** Cartographer regeneration — even if only 1 of 5 zones changed. This wasted API calls and added 10-15s latency for minor page updates (e.g., a feed refresh while header/footer remain stable).
+
+### Partial Regeneration Architecture
+For each stale zone independently:
+1. **Crop screenshot** to zone's bounding box (`mache.CropScreenshot`) — Cartographer sees only the relevant region
+2. **Filter DOM summary** to elements overlapping the zone (`mache.FilterSummaryByBounds` with 0.05 margin) — eliminates irrelevant elements from the prompt
+3. **Run Cartographer** on the cropped inputs — generates schema for just that zone
+4. **MergeSchema** into the existing engine — fresh zones untouched, stale zones replaced
+
+Decision logic in `handleDOMSnapshot`:
+- **0 stale zones**: cache hit, skip Cartographer entirely
+- **Some stale, some fresh**: partial regen (N small Cartographer calls)
+- **All stale**: fall through to full regen (single large call is cheaper than N separate calls)
+- **Partial regen fails** (hallucinated IDs, engine merge error): fall through to full regen as safety net
+
+### websocket.go Decomposition (969 → 634 lines)
+Extracted from the monolith:
+- `session.go` (99 lines): `TabSession` struct, `pendingAction`, `DOMUpdate`, session methods
+- `snapshot.go` (287 lines): `handleDOMSnapshot`, `resolveAndFinalize` (shared helper for full + partial paths), `countCachedZones`
+- `partial.go` (199 lines): `RegenerateStaleZones` orchestrator, `attemptPartialRegen`, `extractStaleZoneInfos`
+
+Key extraction: `resolveAndFinalize` was pulled out as a shared helper used by both the full-scan and partial-regen code paths — resolves CSS selectors, loads children, signals schema ready, sends SCHEMA_READY message.
+
+### Summary Filtering by Bounds
+`FilterSummaryByBounds` parses each line's `Bounds: [x,y,w,h]` and checks overlap with the zone region (expanded by `margin` in all directions, clamped to [0,1]). Non-ID header lines ("Interactive Elements:") are preserved. ID lines without Bounds are excluded (can't determine spatial relevance).
+
+### Screenshot Cropping
+`CropScreenshot` decodes JPEG, computes pixel rect from normalized bounds, draws sub-image, re-encodes. Nil input returns nil (no-op). Zero-area returns error. Out-of-bounds coordinates clamped.
+
+### Test Coverage Added
+- 11 tests for `FilterSummaryByBounds` (overlap, partial, none-inside, margin, format round-trip)
+- 6 tests for `CropScreenshot` (full region, quarter, clamp, zero-area, invalid JPEG, nil)
+- 9 tests for `MergeSchema` (previously zero coverage — basic, parent eviction, prefix-safety, concurrent, preserves children)
+- 9 tests for SchemaCache zone ops (PutZones, InvalidateZone, GetAllZones, SQLite persistence)
+- 9 tests for partial regen orchestrator (single stale, all stale, error, cropped inputs, zero bounds)
+- 4 E2E WebSocket tests (partial regen single zone, all stale, cache update, cache hit after partial)
+
+Total: 48 new tests, all passing with `-race`.
+
+### Cross-Package Test Helper Gotcha
+Initially tried to export `makeTestJPEG` from `mache/crop_test.go` via a `testhelper_test.go` file — Go's `_test.go` files are package-private even within the same module. Duplicated the helper locally in `api/partial_test.go` instead.
+
+---
+
 ## 2026-02-27: Sheaf-Based Schema Cache
 
 ### The Problem (Three Bugs Converging)

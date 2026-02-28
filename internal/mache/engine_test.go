@@ -710,3 +710,306 @@ ID: mache-27 | Parent: mache-25 | Tag: a | Text: "Third Story"
 		t.Errorf("expected 3 child dirs, got %d: %v", len(cEntries), cEntries)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// MergeSchema tests (Stream C — Phase 6)
+// ---------------------------------------------------------------------------
+
+func TestMergeSchemaBasic(t *testing.T) {
+	e := NewEngine()
+	if err := e.ApplySchema(sampleSchema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+
+	// Merge a new zone under /main
+	mergeJSON := `{"mounts":[{"virtual_path":"/main/sidebar","mache_id":"mache-50","description":"Sidebar widget"}]}`
+	if err := e.MergeSchema(mergeJSON); err != nil {
+		t.Fatalf("MergeSchema failed: %v", err)
+	}
+
+	// Root should still have 3 top-level dirs: header, main, footer
+	entries, err := e.ListDir("/")
+	if err != nil {
+		t.Fatalf("ListDir / failed: %v", err)
+	}
+	if len(entries) != 3 {
+		t.Fatalf("expected 3 root entries, got %d: %v", len(entries), entries)
+	}
+
+	// /main should contain both news_feed and sidebar
+	mainEntries, err := e.ListDir("/main")
+	if err != nil {
+		t.Fatalf("ListDir /main failed: %v", err)
+	}
+	found := map[string]bool{}
+	for _, name := range mainEntries {
+		found[name] = true
+	}
+	if !found["news_feed/"] {
+		t.Error("missing news_feed/ in /main after merge")
+	}
+	if !found["sidebar/"] {
+		t.Error("missing sidebar/ in /main after merge")
+	}
+
+	// Verify the new zone is readable
+	desc, err := e.ReadFile("/main/sidebar/description")
+	if err != nil {
+		t.Fatalf("ReadFile sidebar description failed: %v", err)
+	}
+	if desc != "Sidebar widget" {
+		t.Errorf("unexpected sidebar description: %q", desc)
+	}
+}
+
+func TestMergeSchemaParentEviction(t *testing.T) {
+	// Start with /main/player as a mount
+	baseSchema := `{"mounts":[
+		{"virtual_path":"/main/player","mache_id":"mache-10","description":"Video player"}
+	]}`
+	e := NewEngine()
+	if err := e.ApplySchema(baseSchema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+
+	// Verify /main/player exists
+	id, err := e.ResolveMacheID("/main/player")
+	if err != nil {
+		t.Fatalf("ResolveMacheID /main/player failed before merge: %v", err)
+	}
+	if id != "mache-10" {
+		t.Errorf("expected mache-10 before merge, got %q", id)
+	}
+
+	// Merge a child /main/player/controls — should evict /main/player from mounts
+	mergeJSON := `{"mounts":[{"virtual_path":"/main/player/controls","mache_id":"mache-11","description":"Playback controls"}]}`
+	if err := e.MergeSchema(mergeJSON); err != nil {
+		t.Fatalf("MergeSchema failed: %v", err)
+	}
+
+	// The new child zone should be accessible
+	id, err = e.ResolveMacheID("/main/player/controls")
+	if err != nil {
+		t.Fatalf("ResolveMacheID /main/player/controls failed: %v", err)
+	}
+	if id != "mache-11" {
+		t.Errorf("expected mache-11, got %q", id)
+	}
+
+	// ToTopology should NOT include /main/player (evicted)
+	topo := e.ToTopology()
+	for _, node := range topo.Nodes {
+		if node.Name == "/main/player" {
+			t.Error("/main/player should have been evicted from mounts by child /main/player/controls")
+		}
+	}
+}
+
+func TestMergeSchemaNoEvictionForSiblings(t *testing.T) {
+	baseSchema := `{"mounts":[
+		{"virtual_path":"/main/player","mache_id":"mache-10","description":"Video player"}
+	]}`
+	e := NewEngine()
+	if err := e.ApplySchema(baseSchema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+
+	// Merge a sibling /main/search — should NOT evict /main/player
+	mergeJSON := `{"mounts":[{"virtual_path":"/main/search","mache_id":"mache-20","description":"Search bar"}]}`
+	if err := e.MergeSchema(mergeJSON); err != nil {
+		t.Fatalf("MergeSchema failed: %v", err)
+	}
+
+	// Both should still exist in topology
+	topo := e.ToTopology()
+	found := map[string]bool{}
+	for _, node := range topo.Nodes {
+		found[node.Name] = true
+	}
+	if !found["/main/player"] {
+		t.Error("/main/player should NOT be evicted by sibling /main/search")
+	}
+	if !found["/main/search"] {
+		t.Error("/main/search should exist after merge")
+	}
+}
+
+func TestMergeSchemaNoEvictionForPrefixNames(t *testing.T) {
+	baseSchema := `{"mounts":[
+		{"virtual_path":"/main/player","mache_id":"mache-10","description":"Video player"}
+	]}`
+	e := NewEngine()
+	if err := e.ApplySchema(baseSchema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+
+	// Merge /main/player2 — NOT a child of /main/player (prefix-safe: requires "/" separator)
+	mergeJSON := `{"mounts":[{"virtual_path":"/main/player2","mache_id":"mache-20","description":"Second player"}]}`
+	if err := e.MergeSchema(mergeJSON); err != nil {
+		t.Fatalf("MergeSchema failed: %v", err)
+	}
+
+	// /main/player should still exist
+	topo := e.ToTopology()
+	found := map[string]bool{}
+	for _, node := range topo.Nodes {
+		found[node.Name] = true
+	}
+	if !found["/main/player"] {
+		t.Error("/main/player should NOT be evicted by /main/player2 (prefix-safe)")
+	}
+	if !found["/main/player2"] {
+		t.Error("/main/player2 should exist after merge")
+	}
+}
+
+func TestMergeSchemaPreservesChildren(t *testing.T) {
+	e := NewEngine()
+	if err := e.ApplySchema(sampleSchema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+
+	// Load children for existing zones
+	e.LoadChildren(sampleSummary, nil)
+
+	// Verify news_feed has children before merge
+	content, err := e.ReadFile("/main/news_feed/children")
+	if err != nil {
+		t.Fatalf("ReadFile children before merge failed: %v", err)
+	}
+	if !strings.Contains(content, `[1] "First Story Title"`) {
+		t.Errorf("missing children content before merge: %q", content)
+	}
+
+	// Merge a new unrelated zone
+	mergeJSON := `{"mounts":[{"virtual_path":"/sidebar/trending","mache_id":"mache-99","description":"Trending topics"}]}`
+	if err := e.MergeSchema(mergeJSON); err != nil {
+		t.Fatalf("MergeSchema failed: %v", err)
+	}
+
+	// Old zone's children should still be readable
+	content, err = e.ReadFile("/main/news_feed/children")
+	if err != nil {
+		t.Fatalf("ReadFile children after merge failed: %v", err)
+	}
+	if !strings.Contains(content, `[1] "First Story Title"`) {
+		t.Errorf("children lost after merge: %q", content)
+	}
+}
+
+func TestMergeSchemaOverwritesExisting(t *testing.T) {
+	e := NewEngine()
+	baseSchema := `{"mounts":[
+		{"virtual_path":"/main/feed","mache_id":"mache-10","description":"Old feed"}
+	]}`
+	if err := e.ApplySchema(baseSchema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+
+	// Merge at the same path with new data — both mounts exist (append behavior)
+	mergeJSON := `{"mounts":[{"virtual_path":"/main/feed","mache_id":"mache-11","description":"New feed"}]}`
+	if err := e.MergeSchema(mergeJSON); err != nil {
+		t.Fatalf("MergeSchema failed: %v", err)
+	}
+
+	// The description file should reflect the latest mount (graph AddNode overwrites)
+	desc, err := e.ReadFile("/main/feed/description")
+	if err != nil {
+		t.Fatalf("ReadFile description failed: %v", err)
+	}
+	if desc != "New feed" {
+		t.Errorf("expected 'New feed' after overwrite merge, got %q", desc)
+	}
+}
+
+func TestMergeSchemaEmpty(t *testing.T) {
+	e := NewEngine()
+	if err := e.ApplySchema(sampleSchema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+
+	// Merge empty mounts — should be a no-op
+	if err := e.MergeSchema(`{"mounts":[]}`); err != nil {
+		t.Fatalf("MergeSchema empty failed: %v", err)
+	}
+
+	// All original mounts should still exist
+	topo := e.ToTopology()
+	if len(topo.Nodes) != 3 {
+		t.Errorf("expected 3 nodes after empty merge, got %d", len(topo.Nodes))
+	}
+
+	entries, err := e.ListDir("/")
+	if err != nil {
+		t.Fatalf("ListDir / failed: %v", err)
+	}
+	if len(entries) != 3 {
+		t.Errorf("expected 3 root entries after empty merge, got %d: %v", len(entries), entries)
+	}
+}
+
+func TestMergeSchemaConcurrent(t *testing.T) {
+	e := NewEngine()
+	if err := e.ApplySchema(sampleSchema); err != nil {
+		t.Fatal(err)
+	}
+
+	mergeJSON := `{"mounts":[{"virtual_path":"/sidebar/widget","mache_id":"mache-77","description":"Widget"}]}`
+
+	done := make(chan struct{})
+	// Concurrent merges
+	for i := 0; i < 5; i++ {
+		go func() {
+			defer func() { done <- struct{}{} }()
+			for j := 0; j < 50; j++ {
+				_ = e.MergeSchema(mergeJSON)
+			}
+		}()
+	}
+	// Concurrent reads
+	for i := 0; i < 5; i++ {
+		go func() {
+			defer func() { done <- struct{}{} }()
+			for j := 0; j < 100; j++ {
+				_, _ = e.ListDir("/")
+				_, _ = e.ReadFile("/main/news_feed/description")
+				_, _ = e.ResolveMacheID("/header/global_nav")
+				_ = e.ToTopology()
+			}
+		}()
+	}
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+}
+
+func TestMergeSchemaResolveMacheID(t *testing.T) {
+	e := NewEngine()
+	if err := e.ApplySchema(sampleSchema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+
+	// Merge a new zone
+	mergeJSON := `{"mounts":[{"virtual_path":"/aside/ads","mache_id":"mache-300","description":"Ad banner"}]}`
+	if err := e.MergeSchema(mergeJSON); err != nil {
+		t.Fatalf("MergeSchema failed: %v", err)
+	}
+
+	// Resolve old zone
+	id, err := e.ResolveMacheID("/header/global_nav")
+	if err != nil {
+		t.Fatalf("ResolveMacheID old zone failed: %v", err)
+	}
+	if id != "mache-0" {
+		t.Errorf("expected mache-0 for old zone, got %q", id)
+	}
+
+	// Resolve new zone
+	id, err = e.ResolveMacheID("/aside/ads")
+	if err != nil {
+		t.Fatalf("ResolveMacheID new zone failed: %v", err)
+	}
+	if id != "mache-300" {
+		t.Errorf("expected mache-300 for new zone, got %q", id)
+	}
+}

@@ -419,3 +419,314 @@ func TestResetSchemaAllowsReSignal(t *testing.T) {
 		t.Fatal("should be closed after re-signal")
 	}
 }
+
+// --- Partial Regen E2E Tests ---
+
+// TestWSPartialRegenSingleStaleZone verifies that when one of three cached zones
+// becomes stale, only that zone is regenerated (partial regen), not a full regen.
+func TestWSPartialRegenSingleStaleZone(t *testing.T) {
+	// Schema with 3 zones. Cartographer returns this for the initial full scan.
+	fullSchema := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-1","description":"header","bounds":[0,0,1,0.1]},
+		{"virtual_path":"/main/feed","mache_id":"mache-2","description":"feed","bounds":[0,0.1,1,0.7]},
+		{"virtual_path":"/footer","mache_id":"mache-3","description":"footer","bounds":[0,0.8,1,0.2]}
+	]}`
+
+	// For partial regen, Cartographer returns just the stale zone.
+	partialSchema := `{"mounts":[{"virtual_path":"/main/feed","mache_id":"mache-99","description":"refreshed feed","bounds":[0,0.1,1,0.7]}]}`
+
+	cart := &mockCartographer{schema: fullSchema}
+	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", h.HandleWebSocket)
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	conn := dialWS(t, s)
+	defer func() { _ = conn.Close() }()
+
+	// Summary with all 3 mache_ids present.
+	summaryAll := "Interactive Elements:\n" +
+		"ID: mache-1 | Parent: none | Tag: nav | Text: \"Header\"\n" +
+		"ID: mache-2 | Parent: none | Tag: div | Text: \"Feed\"\n" +
+		"ID: mache-3 | Parent: none | Tag: footer | Text: \"Footer\"\n"
+
+	// First snapshot: full scan, cache miss.
+	sendJSON(t, conn, InboundMessage{
+		Type:    MsgDOMSnapshot,
+		TabID:   1,
+		URL:     "https://example.com/page",
+		Summary: summaryAll,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+	if cart.callCount.Load() != 1 {
+		t.Fatalf("expected 1 Cartographer call after first snapshot, got %d", cart.callCount.Load())
+	}
+
+	// Second snapshot: mache-2 is gone (stale), mache-1 and mache-3 still present.
+	// This should trigger partial regen for /main/feed only.
+	cart.schema = partialSchema
+	summaryStale := "Interactive Elements:\n" +
+		"ID: mache-1 | Parent: none | Tag: nav | Text: \"Header\"\n" +
+		"ID: mache-99 | Parent: none | Tag: div | Text: \"New Feed\"\n" +
+		"ID: mache-3 | Parent: none | Tag: footer | Text: \"Footer\"\n"
+
+	sendJSON(t, conn, InboundMessage{
+		Type:    MsgDOMSnapshot,
+		TabID:   1,
+		URL:     "https://example.com/page",
+		Summary: summaryStale,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	// Cartographer should have been called exactly 2 times total:
+	// 1 for full scan + 1 for partial regen of the stale zone.
+	if got := cart.callCount.Load(); got != 2 {
+		t.Errorf("expected 2 Cartographer calls (1 full + 1 partial), got %d", got)
+	}
+}
+
+// TestWSPartialRegenAllStale verifies that when ALL zones are stale,
+// the system falls through to a full regeneration (single Cartographer call).
+func TestWSPartialRegenAllStale(t *testing.T) {
+	fullSchema := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-1","description":"header"},
+		{"virtual_path":"/main","mache_id":"mache-2","description":"main"}
+	]}`
+
+	cart := &mockCartographer{schema: fullSchema}
+	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", h.HandleWebSocket)
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	conn := dialWS(t, s)
+	defer func() { _ = conn.Close() }()
+
+	summaryAll := "Interactive Elements:\n" +
+		"ID: mache-1 | Parent: none | Tag: nav | Text: \"Header\"\n" +
+		"ID: mache-2 | Parent: none | Tag: div | Text: \"Main\"\n"
+
+	// First snapshot: full scan.
+	sendJSON(t, conn, InboundMessage{
+		Type:    MsgDOMSnapshot,
+		TabID:   1,
+		URL:     "https://example.com/all-stale",
+		Summary: summaryAll,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	// Second snapshot: ALL mache_ids are gone → should be full regen, not N partial calls.
+	newSchema := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-10","description":"new header"},
+		{"virtual_path":"/main","mache_id":"mache-20","description":"new main"}
+	]}`
+	cart.schema = newSchema
+	summaryNew := "Interactive Elements:\n" +
+		"ID: mache-10 | Parent: none | Tag: nav | Text: \"New Header\"\n" +
+		"ID: mache-20 | Parent: none | Tag: div | Text: \"New Main\"\n"
+
+	sendJSON(t, conn, InboundMessage{
+		Type:    MsgDOMSnapshot,
+		TabID:   1,
+		URL:     "https://example.com/all-stale",
+		Summary: summaryNew,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	// Should be exactly 2 Cartographer calls: 1 initial + 1 full regen.
+	// NOT 3 (1 initial + 2 partial per zone).
+	if got := cart.callCount.Load(); got != 2 {
+		t.Errorf("expected 2 Cartographer calls (all-stale → full regen), got %d", got)
+	}
+}
+
+// TestWSPartialRegenCacheUpdated verifies that after partial regen,
+// new zones are stored in the cache and old stale zones are invalidated.
+func TestWSPartialRegenCacheUpdated(t *testing.T) {
+	fullSchema := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-1","description":"header","bounds":[0,0,1,0.1]},
+		{"virtual_path":"/main/feed","mache_id":"mache-2","description":"feed","bounds":[0,0.1,1,0.7]},
+		{"virtual_path":"/footer","mache_id":"mache-3","description":"footer","bounds":[0,0.8,1,0.2]}
+	]}`
+	partialSchema := `{"mounts":[{"virtual_path":"/main/feed","mache_id":"mache-99","description":"refreshed","bounds":[0,0.1,1,0.7]}]}`
+
+	cart := &mockCartographer{schema: fullSchema}
+	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", h.HandleWebSocket)
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	conn := dialWS(t, s)
+	defer func() { _ = conn.Close() }()
+
+	key := "example.com/cached"
+
+	summaryAll := "Interactive Elements:\n" +
+		"ID: mache-1 | Parent: none | Tag: nav | Text: \"Header\"\n" +
+		"ID: mache-2 | Parent: none | Tag: div | Text: \"Feed\"\n" +
+		"ID: mache-3 | Parent: none | Tag: footer | Text: \"Footer\"\n"
+
+	// First snapshot: full scan.
+	sendJSON(t, conn, InboundMessage{
+		Type:    MsgDOMSnapshot,
+		TabID:   1,
+		URL:     "https://example.com/cached",
+		Summary: summaryAll,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	// Verify cache has 3 zones.
+	cachedJSON, ok := h.schemas.GetAllZones(key)
+	if !ok {
+		t.Fatal("expected cached zones after first snapshot")
+	}
+	var output struct{ Mounts []json.RawMessage }
+	_ = json.Unmarshal([]byte(cachedJSON), &output)
+	if len(output.Mounts) != 3 {
+		t.Fatalf("expected 3 cached zones, got %d", len(output.Mounts))
+	}
+
+	// Partial regen: mache-2 gone.
+	cart.schema = partialSchema
+	summaryStale := "Interactive Elements:\n" +
+		"ID: mache-1 | Parent: none | Tag: nav | Text: \"Header\"\n" +
+		"ID: mache-99 | Parent: none | Tag: div | Text: \"New Feed\"\n" +
+		"ID: mache-3 | Parent: none | Tag: footer | Text: \"Footer\"\n"
+
+	sendJSON(t, conn, InboundMessage{
+		Type:    MsgDOMSnapshot,
+		TabID:   1,
+		URL:     "https://example.com/cached",
+		Summary: summaryStale,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	// After partial regen, cache should still have 3 zones total,
+	// but /main/feed should now have mache-99 instead of mache-2.
+	cachedJSON, ok = h.schemas.GetAllZones(key)
+	if !ok {
+		t.Fatal("expected cached zones after partial regen")
+	}
+	if !json.Valid([]byte(cachedJSON)) {
+		t.Fatalf("invalid JSON from cache: %s", cachedJSON)
+	}
+	// Verify the new mache_id appears in the cached schema.
+	if !contains(cachedJSON, "mache-99") {
+		t.Errorf("cached schema should contain mache-99 after partial regen: %s", cachedJSON)
+	}
+}
+
+// TestWSPartialRegenThenCacheHit verifies that after a partial regen updates
+// the cache, a subsequent identical snapshot gets a cache hit (0 new Cartographer calls).
+func TestWSPartialRegenThenCacheHit(t *testing.T) {
+	fullSchema := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-1","description":"header","bounds":[0,0,1,0.1]},
+		{"virtual_path":"/main/feed","mache_id":"mache-2","description":"feed","bounds":[0,0.1,1,0.8]}
+	]}`
+	partialSchema := `{"mounts":[{"virtual_path":"/main/feed","mache_id":"mache-99","description":"refreshed","bounds":[0,0.1,1,0.8]}]}`
+
+	cart := &mockCartographer{schema: fullSchema}
+	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", h.HandleWebSocket)
+	s := httptest.NewServer(mux)
+	defer s.Close()
+
+	conn := dialWS(t, s)
+	defer func() { _ = conn.Close() }()
+
+	summaryAll := "Interactive Elements:\n" +
+		"ID: mache-1 | Parent: none | Tag: nav | Text: \"Header\"\n" +
+		"ID: mache-2 | Parent: none | Tag: div | Text: \"Feed\"\n"
+
+	// 1) Full scan.
+	sendJSON(t, conn, InboundMessage{
+		Type: MsgDOMSnapshot, TabID: 1,
+		URL: "https://example.com/cachehit", Summary: summaryAll,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	// 2) Partial regen: mache-2 gone.
+	cart.schema = partialSchema
+	summaryAfterPartial := "Interactive Elements:\n" +
+		"ID: mache-1 | Parent: none | Tag: nav | Text: \"Header\"\n" +
+		"ID: mache-99 | Parent: none | Tag: div | Text: \"New Feed\"\n"
+
+	sendJSON(t, conn, InboundMessage{
+		Type: MsgDOMSnapshot, TabID: 1,
+		URL: "https://example.com/cachehit", Summary: summaryAfterPartial,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	callsAfterPartial := cart.callCount.Load()
+
+	// 3) Same snapshot again (mache-1 and mache-99 both present) → cache hit.
+	sendJSON(t, conn, InboundMessage{
+		Type: MsgDOMSnapshot, TabID: 1,
+		URL: "https://example.com/cachehit", Summary: summaryAfterPartial,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	// No new Cartographer calls on the third snapshot (cache hit).
+	if got := cart.callCount.Load(); got != callsAfterPartial {
+		t.Errorf("expected 0 new Cartographer calls on cache hit, got %d new (total %d, before %d)",
+			got-callsAfterPartial, got, callsAfterPartial)
+	}
+}
+
+// contains checks if substr exists in s (helper for assertions).
+func contains(s, substr string) bool {
+	return len(s) > 0 && len(substr) > 0 && json.Valid([]byte(s)) && containsStr(s, substr)
+}
+
+func containsStr(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
