@@ -24,6 +24,15 @@
       "js": ["content.js"]
     }
   ],
+  "commands": {
+    "toggle-overlay": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+O",
+        "mac": "Command+Shift+O"
+      },
+      "description": "Toggle Set-of-Mark overlay"
+    }
+  },
   "host_permissions": [
     "<all_urls>"
   ]

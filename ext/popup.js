@@ -1,4 +1,5 @@
 const snapshotBtn = document.getElementById('snapshot-btn');
+const overlayBtn = document.getElementById('overlay-btn');
 const exportBtn = document.getElementById('export-btn');
 const intentInput = document.getElementById('intent-input');
 const intentBtn = document.getElementById('intent-btn');
@@ -86,6 +87,21 @@ snapshotBtn.addEventListener('click', () => {
     }
     snapshotBtn.textContent = 'Snapshot';
     snapshotBtn.disabled = false;
+  });
+});
+
+overlayBtn.addEventListener('click', () => {
+  overlayBtn.disabled = true;
+  chrome.runtime.sendMessage({ type: 'TOGGLE_OVERLAY' }, (resp) => {
+    if (chrome.runtime.lastError || !resp?.ok) {
+      statusEl.textContent = resp?.error || 'Overlay toggle failed';
+      statusEl.className = 'error';
+    } else {
+      overlayBtn.textContent = resp.visible ? 'Hide' : 'Overlay';
+      statusEl.textContent = resp.visible ? 'Overlay visible' : 'Overlay hidden';
+      statusEl.className = 'connected';
+    }
+    overlayBtn.disabled = false;
   });
 });
 

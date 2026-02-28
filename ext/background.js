@@ -11,6 +11,7 @@ const pendingSnapshots = new Set();
 const pendingIntents = new Map(); // tabId → intent string (queued before schema ready)
 const lastKnownUrls = new Map(); // tabId → URL (for detecting manual navigation)
 const gotoInFlight = new Set();  // tabIds currently navigated by GOTO_URL (skip auto-snapshot)
+const overlayVisible = new Map(); // tabId → boolean (overlay toggle state)
 
 // Load configured WebSocket URL, then connect.
 chrome.storage.local.get({ wsUrl: DEFAULT_WS_URL }, (items) => {
@@ -623,6 +624,37 @@ async function captureAndSend(tabId, isRescan = false, targetMacheId = null) {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
+    case 'TOGGLE_OVERLAY':
+      chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+        if (!tabs[0]) {
+          sendResponse({ ok: false, error: 'No active tab' });
+          return;
+        }
+        const tabId = tabs[0].id;
+        try {
+          if (overlayVisible.get(tabId)) {
+            await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' });
+            overlayVisible.set(tabId, false);
+            sendResponse({ ok: true, visible: false });
+          } else {
+            // Ensure registry is built before drawing.
+            try {
+              await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
+            } catch (_) {
+              await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+              await new Promise(r => setTimeout(r, 200));
+              await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
+            }
+            await chrome.tabs.sendMessage(tabId, { type: 'DRAW_OVERLAY' });
+            overlayVisible.set(tabId, true);
+            sendResponse({ ok: true, visible: true });
+          }
+        } catch (e) {
+          sendResponse({ ok: false, error: e.message });
+        }
+      });
+      return true;
+
     case 'EXPORT_OVERLAY':
       chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
         if (!tabs[0]) {
@@ -748,6 +780,34 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
   }
 });
 
+// --- Keyboard shortcut: toggle overlay ---
+chrome.commands.onCommand.addListener((command) => {
+  if (command === 'toggle-overlay') {
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+      if (!tabs[0]) return;
+      const tabId = tabs[0].id;
+      try {
+        if (overlayVisible.get(tabId)) {
+          await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' });
+          overlayVisible.set(tabId, false);
+        } else {
+          try {
+            await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
+          } catch (_) {
+            await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+            await new Promise(r => setTimeout(r, 200));
+            await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
+          }
+          await chrome.tabs.sendMessage(tabId, { type: 'DRAW_OVERLAY' });
+          overlayVisible.set(tabId, true);
+        }
+      } catch (e) {
+        console.error('X-Ray: toggle-overlay failed:', e);
+      }
+    });
+  }
+});
+
 // --- Auto-snapshot on manual page navigation ---
 // Persistent listener: when the user navigates manually (typing URL, clicking a link),
 // detect the URL change and auto-snapshot if no schema exists for the new page.
@@ -772,10 +832,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     schemaReadyTabs.delete(tabId); // Invalidate stale schema for new URL.
     return;
   }
-  // Invalidate stale schema (URL changed, old schema is for the previous page).
+  // Invalidate stale schema and overlay (URL changed, old schema is for the previous page).
   if (schemaReadyTabs.has(tabId)) {
     schemaReadyTabs.delete(tabId);
   }
+  overlayVisible.delete(tabId);
 
   // Not connected to server — no point snapshotting.
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -796,6 +857,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   pendingSnapshots.delete(tabId);
   pendingIntents.delete(tabId);
   gotoInFlight.delete(tabId);
+  overlayVisible.delete(tabId);
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'TAB_CLOSED', tab_id: tabId }));
   }
