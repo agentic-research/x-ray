@@ -1,7 +1,8 @@
 // content.js - Injected into pages to handle ID tagging and execution
 //
-// Uses an in-memory registry instead of DOM mutation (data-mache-id attributes)
-// to avoid triggering React/Vue re-renders on SPA sites like Reddit.
+// Uses an in-memory registry for fast element lookup. Also writes data-mache-id
+// attributes to the DOM so that background.js CDP calls (AX enrichment,
+// magnifying glass crop) can find tagged elements via querySelectorAll.
 
 let idCounter = 0;
 const elementRegistry = new Map();   // "mache-42" -> Element
@@ -36,6 +37,7 @@ function buildRegistry() {
       const id = `mache-${idCounter++}`;
       elementRegistry.set(id, node);
       reverseRegistry.set(node, id);
+      node.setAttribute('data-mache-id', id);
     }
     // Only count visible nodes for Phase 2 ancestor thresholds.
     if (!isVisible(node)) return;
@@ -58,7 +60,33 @@ function buildRegistry() {
       const id = `mache-${idCounter++}`;
       elementRegistry.set(id, node);
       reverseRegistry.set(node, id);
+      node.setAttribute('data-mache-id', id);
     }
+  });
+
+  // Phase 3: Tag <body> and semantic <div> wrappers.
+  // body is always included (provides the root structural context).
+  // divs are included only if they have semantic significance: explicit role,
+  // id/class containing layout keywords, or 3+ interactive descendants.
+  const SEMANTIC_KEYWORDS = /content|main|sidebar|footer|header|wrapper|container|layout|page|app/i;
+  const bodyAndDivs = document.querySelectorAll('body, div');
+  bodyAndDivs.forEach(node => {
+    if (reverseRegistry.has(node)) return;
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'body') {
+      // Always include body.
+    } else {
+      // div: check for semantic significance.
+      const hasRole = node.hasAttribute('role');
+      const hasSemantic = SEMANTIC_KEYWORDS.test(node.id || '') || SEMANTIC_KEYWORDS.test(node.className || '');
+      const hasChildren = (interactiveAncestors.get(node) || 0) >= 3;
+      if (!hasRole && !hasSemantic && !hasChildren) return;
+    }
+    if (!isVisible(node)) return;
+    const id = `mache-${idCounter++}`;
+    elementRegistry.set(id, node);
+    reverseRegistry.set(node, id);
+    node.setAttribute('data-mache-id', id);
   });
 
   // Prune stale entries: removed from DOM, or now hidden (e.g., collapsed modal).
@@ -66,6 +94,7 @@ function buildRegistry() {
     if (!document.contains(node) || !isVisible(node)) {
       elementRegistry.delete(id);
       reverseRegistry.delete(node);
+      try { node.removeAttribute('data-mache-id'); } catch (_) {}
     }
   }
 }
@@ -225,7 +254,7 @@ function getSemanticColor(node) {
   if (['input', 'textarea', 'select'].includes(tag)) return SEMANTIC_COLORS.input;
 
   // Containers are typically tagged in Phase 2
-  const containers = ['main', 'section', 'article', 'nav', 'header', 'footer', 'aside', 'form', 'ul', 'ol', 'dl', 'table'];
+  const containers = ['main', 'section', 'article', 'nav', 'header', 'footer', 'aside', 'form', 'ul', 'ol', 'dl', 'table', 'body', 'div'];
   if (containers.includes(tag) || (role && ['navigation', 'main', 'list', 'group', 'region'].includes(role))) {
     return SEMANTIC_COLORS.container;
   }
@@ -322,6 +351,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 mid = `mache-${idCounter++}`;
                 elementRegistry.set(mid, n);
                 reverseRegistry.set(n, mid);
+                n.setAttribute('data-mache-id', mid);
               }
               ids.push(mid);
             });
@@ -338,10 +368,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     case 'RESET_REGISTRY':
+      // Remove DOM attributes before clearing maps.
+      for (const [, node] of elementRegistry) {
+        try { node.removeAttribute('data-mache-id'); } catch (_) {}
+      }
       idCounter = 0;
       elementRegistry.clear();
       reverseRegistry.clear();
-      console.log('X-Ray: Registry reset (idCounter=0, maps cleared)');
+      console.log('X-Ray: Registry reset (idCounter=0, maps cleared, DOM attrs removed)');
       sendResponse({ success: true });
       return true;
 
@@ -410,7 +444,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Initial registration on load (no DOM mutation)
+// Initial registration on load (writes data-mache-id attrs but MutationObserver
+// below only watches childList, so attribute writes don't trigger DOM_MUTATED).
 buildRegistry();
 
 // MutationObserver: detect in-page DOM changes (e.g., dropdown opens, SPA update)
