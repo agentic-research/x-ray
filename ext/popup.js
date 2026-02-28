@@ -121,9 +121,23 @@ exportBtn.addEventListener('click', () => {
   });
 });
 
+function openVoiceUI() {
+  chrome.runtime.sendMessage({ type: 'OPEN_VOICE' }, (resp) => {
+    if (chrome.runtime.lastError || !resp?.ok) {
+      statusEl.textContent = resp?.error || 'Failed to open voice';
+      statusEl.className = 'error';
+    } else {
+      window.close();
+    }
+  });
+}
+
 function sendIntent() {
   const intent = intentInput.value.trim();
-  if (!intent) return;
+  if (!intent) {
+    openVoiceUI();
+    return;
+  }
   intentBtn.disabled = true;
   intentInput.disabled = true;
   statusEl.textContent = 'Sending...';

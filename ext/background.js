@@ -762,6 +762,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       });
       return true;
 
+    case 'OPEN_VOICE':
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs[0]?.id;
+        if (!tabId) {
+          sendResponse({ ok: false, error: 'No active tab' });
+          return;
+        }
+        const voiceUrl = 'http://localhost:8080/static/voice.html?tab=' + tabId;
+        chrome.tabs.create({ url: voiceUrl }, () => {
+          sendResponse({ ok: true });
+        });
+      });
+      return true;
+
     case 'DOM_MUTATED':
       // Forward content script MutationObserver signal to the server.
       if (ws && ws.readyState === WebSocket.OPEN && sender.tab?.id) {

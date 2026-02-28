@@ -28,6 +28,19 @@ The 6px padding extends the crop into the overlay border zone. At the exact over
 
 ---
 
+## 2026-02-27: Voice Enter Key Wiring
+
+### Problem
+Pressing Enter on an empty popup text field did nothing (`if (!intent) return;` early exit). The voice UI at `static/voice.html` existed but had no trigger from the popup.
+
+### Solution
+- `popup.js`: Empty Enter now calls `openVoiceUI()` which sends `OPEN_VOICE` message to background, then closes the popup.
+- `background.js`: New `OPEN_VOICE` handler queries the active tab and opens `voice.html?tab=<tabId>` in a new Chrome tab.
+- `popup.html`: Placeholder updated to hint the voice shortcut.
+- No server changes — `voice.go` already reads `?tab=` param and `voice.html` auto-connects on load.
+
+---
+
 ## 2026-02-27: Phase 7 — Overlay Color Readback (Visual Steganography Protocol)
 
 ### The Problem
