@@ -594,6 +594,14 @@ func frequencyDistance(a, b *element) float64 {
 		return 0 // don't penalize when no FFT data
 	}
 
+	// If neither region has meaningful structure (no frequencies, no grid),
+	// they're both unstructured — treat as equivalent to keep them together.
+	aEmpty := a.fft.DominantFreqX == 0 && a.fft.DominantFreqY == 0 && a.fft.GridScore == 0
+	bEmpty := b.fft.DominantFreqX == 0 && b.fft.DominantFreqY == 0 && b.fft.GridScore == 0
+	if aEmpty && bEmpty {
+		return 0
+	}
+
 	// Dominant vertical frequency divergence (row spacing).
 	maxFreq := math.Max(a.fft.DominantFreqY, b.fft.DominantFreqY)
 	var freqYDist float64
