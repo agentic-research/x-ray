@@ -76,6 +76,14 @@ func (h *Handler) SetTermBridge(bridge graph.Graph) {
 	h.termBridge = bridge
 }
 
+// lookupSession returns the TabSession for the given tab, or nil if none exists.
+// Use this for message handlers that should silently discard messages for unknown tabs.
+func (h *Handler) lookupSession(tabID int) *TabSession {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.sessions[tabID]
+}
+
 // getSession returns the TabSession for the given tab, creating one if needed.
 func (h *Handler) getSession(tabID int) *TabSession {
 	h.mu.Lock()
@@ -125,10 +133,14 @@ func (h *Handler) getSession(tabID int) *TabSession {
 
 // getVoiceSession returns the TabSession for the active voice tab.
 // Used by StartVoiceLoop to resolve tool calls against the right tab.
+// Returns nil if no voice tab is set (tab 0 means no active tab).
 func (h *Handler) getVoiceSession() *TabSession {
 	h.mu.Lock()
 	tabID := h.activeVoiceTab
 	h.mu.Unlock()
+	if tabID == 0 {
+		return nil
+	}
 	return h.getSession(tabID)
 }
 
@@ -346,15 +358,25 @@ func (h *Handler) handleTabClosed(msg InboundMessage) {
 		delete(h.sessions, msg.TabID)
 	}
 	if h.activeVoiceTab == msg.TabID {
+		// Find a fallback tab instead of defaulting to 0.
 		h.activeVoiceTab = 0
+		for tabID := range h.sessions {
+			if tabID != 0 {
+				h.activeVoiceTab = tabID
+				break
+			}
+		}
 	}
 	h.mu.Unlock()
-	log.Printf("WebSocket: tab %d closed, session pruned", msg.TabID)
+	log.Printf("WebSocket: tab %d closed, session pruned (voiceTab now %d)", msg.TabID, h.activeVoiceTab)
 }
 
 // handleDOMMutated signals the Doer that an in-page DOM mutation was detected.
 func (h *Handler) handleDOMMutated(msg InboundMessage) {
-	sess := h.getSession(msg.TabID)
+	sess := h.lookupSession(msg.TabID)
+	if sess == nil {
+		return
+	}
 	select {
 	case sess.DOMMutatedCh <- struct{}{}:
 	default: // non-blocking, don't pile up
@@ -365,7 +387,10 @@ func (h *Handler) handleDOMMutated(msg InboundMessage) {
 // It signals the waiting scrollPage goroutine via the session's DOMUpdateCh.
 func (h *Handler) handleDOMUpdate(msg InboundMessage) {
 	saveLog("summary-scroll", fmt.Sprintf("tab-%d", msg.TabID), msg.Summary)
-	sess := h.getSession(msg.TabID)
+	sess := h.lookupSession(msg.TabID)
+	if sess == nil {
+		return
+	}
 	update := DOMUpdate{
 		Summary:       msg.Summary,
 		ResolvedItems: msg.ResolvedItems,
@@ -382,7 +407,10 @@ func (h *Handler) handleDOMUpdate(msg InboundMessage) {
 // handleSelectorsResolved receives CSS selector results from the browser.
 // Signals the waiting handleDOMSnapshot goroutine via SelectorsResolved channel.
 func (h *Handler) handleSelectorsResolved(msg InboundMessage) {
-	sess := h.getSession(msg.TabID)
+	sess := h.lookupSession(msg.TabID)
+	if sess == nil {
+		return
+	}
 	resolved := msg.ResolvedItems
 	if resolved == nil {
 		resolved = make(map[string][]string)

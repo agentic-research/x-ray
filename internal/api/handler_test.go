@@ -389,10 +389,10 @@ func TestTabZeroPromotionIdempotent(t *testing.T) {
 func TestGetVoiceSessionResolvesCorrectTab(t *testing.T) {
 	h := newTestHandler()
 
-	// Before promotion: voice session is tab 0.
+	// Before promotion: voice session is nil (tab 0 = no active tab).
 	sess0 := h.getVoiceSession()
-	if sess0.TabID != 0 {
-		t.Errorf("expected voice session tab 0, got %d", sess0.TabID)
+	if sess0 != nil {
+		t.Errorf("expected nil voice session for tab 0, got tab %d", sess0.TabID)
 	}
 
 	// After promotion: voice session is the real tab.
@@ -401,13 +401,11 @@ func TestGetVoiceSessionResolvesCorrectTab(t *testing.T) {
 	h.mu.Unlock()
 
 	sess42 := h.getVoiceSession()
+	if sess42 == nil {
+		t.Fatal("expected non-nil voice session for tab 42")
+	}
 	if sess42.TabID != 42 {
 		t.Errorf("expected voice session tab 42, got %d", sess42.TabID)
-	}
-
-	// Both sessions should be distinct objects.
-	if sess0 == sess42 {
-		t.Error("tab 0 and tab 42 sessions should be distinct")
 	}
 }
 

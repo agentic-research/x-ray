@@ -58,6 +58,9 @@ func talkerToolDefinitions() []*genai.Tool {
 
 // executeTalkerTool dispatches a Talker tool call. All tools return instantly.
 func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
+	if doer == nil {
+		return "No active browser tab."
+	}
 	switch fc.Name {
 	case "check_status":
 		status, goalText, step, result := doer.State().Snapshot()
@@ -494,9 +497,16 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 		}
 
 		// resolveDoer returns the Doer for the currently active voice tab.
+		// Returns nil if no voice tab is active (tab 0 = no browser tab open).
 		resolveDoer := func() *Doer {
 			tabID := h.getVoiceTabID()
+			if tabID == 0 {
+				return nil
+			}
 			sess := h.getVoiceSession()
+			if sess == nil {
+				return nil
+			}
 			doer := h.getOrCreateDoer(tabID, sess)
 			doer.SetResultNotifyFn(resultNotifyFn)
 			return doer

@@ -260,6 +260,102 @@ func TestBug_GoAwaySenderGoroutineLeak(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// FIX 4 regression tests: lookupSession prevents phantom sessions (BUG 6)
+// ---------------------------------------------------------------------------
+
+func TestBug_DOMMutatedNoPhantomSession(t *testing.T) {
+	// Sending DOM_MUTATED for a tab with no session must NOT create a phantom session.
+	h := newTestHandler()
+
+	h.handleDOMMutated(InboundMessage{Type: MsgDOMMutated, TabID: 77})
+
+	h.mu.Lock()
+	n := len(h.sessions)
+	h.mu.Unlock()
+	if n != 0 {
+		t.Errorf("BUG NOT FIXED: DOM_MUTATED created %d phantom session(s), expected 0", n)
+	}
+}
+
+func TestBug_DOMUpdateNoPhantomSession(t *testing.T) {
+	// Sending DOM_UPDATE for a tab with no session must NOT create a phantom session.
+	h := newTestHandler()
+
+	h.handleDOMUpdate(InboundMessage{Type: MsgDOMUpdate, TabID: 88, Summary: "test"})
+
+	h.mu.Lock()
+	n := len(h.sessions)
+	h.mu.Unlock()
+	if n != 0 {
+		t.Errorf("BUG NOT FIXED: DOM_UPDATE created %d phantom session(s), expected 0", n)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// FIX 5 regression tests: Tab close fallback + voice guards (BUG 8)
+// ---------------------------------------------------------------------------
+
+func TestBug_TabCloseFallbackToOtherSession(t *testing.T) {
+	// Closing the active voice tab should fall back to another existing session.
+	h := newTestHandler()
+	h.getSession(42)
+	h.getSession(99)
+	h.mu.Lock()
+	h.activeVoiceTab = 42
+	h.mu.Unlock()
+
+	h.handleTabClosed(InboundMessage{Type: MsgTabClosed, TabID: 42})
+
+	h.mu.Lock()
+	voiceTab := h.activeVoiceTab
+	h.mu.Unlock()
+
+	if voiceTab == 0 {
+		t.Error("BUG NOT FIXED: activeVoiceTab fell to 0 instead of falling back to tab 99")
+	}
+	if voiceTab != 99 {
+		t.Errorf("expected activeVoiceTab=99 (fallback), got %d", voiceTab)
+	}
+}
+
+func TestBug_TabCloseNoFallback(t *testing.T) {
+	// Closing the only session should set activeVoiceTab to 0 (no fallback available).
+	h := newTestHandler()
+	h.getSession(42)
+	h.mu.Lock()
+	h.activeVoiceTab = 42
+	h.mu.Unlock()
+
+	h.handleTabClosed(InboundMessage{Type: MsgTabClosed, TabID: 42})
+
+	h.mu.Lock()
+	voiceTab := h.activeVoiceTab
+	h.mu.Unlock()
+
+	if voiceTab != 0 {
+		t.Errorf("expected activeVoiceTab=0 (no fallback), got %d", voiceTab)
+	}
+}
+
+func TestBug_ResolveDoerTabZeroReturnsNil(t *testing.T) {
+	// With activeVoiceTab=0, getVoiceSession() must return nil (not create a phantom).
+	h := newTestHandler()
+
+	sess := h.getVoiceSession()
+	if sess != nil {
+		t.Errorf("BUG NOT FIXED: getVoiceSession() returned non-nil session (tab %d) for tab 0", sess.TabID)
+	}
+
+	// Verify no phantom session was created for tab 0.
+	h.mu.Lock()
+	n := len(h.sessions)
+	h.mu.Unlock()
+	if n != 0 {
+		t.Errorf("BUG NOT FIXED: getVoiceSession() created %d phantom session(s)", n)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // FIX 1 regression tests: TAB_ACTIVATED voice UI filtering
 // ---------------------------------------------------------------------------
 
