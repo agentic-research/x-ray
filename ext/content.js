@@ -144,6 +144,17 @@ function generateSummary() {
 
     const color = getSemanticColor(node).name;
 
+    // Semantic fiber data: computed styles for tropical distance enrichment.
+    // No layout thrashing — all reads are batched (no DOM writes in this loop).
+    const cs = getComputedStyle(node);
+    const fontSize = parseFloat(cs.fontSize) || 0;
+    const display = cs.display || 'block';
+    // TextDensity: chars per normalized area (capped at 1.0).
+    const area = rect.width * rect.height;
+    const textDensity = area > 0 ? Math.min(1.0, text.length / (area / 1000)) : 0;
+    // Interactive: focusable or explicitly interactive.
+    const interactive = node.tabIndex >= 0 || ['a', 'button', 'input', 'select', 'textarea'].includes(tag);
+
     // Find nearest tagged parent via registry
     let parentID = 'none';
     let ancestor = node.parentElement;
@@ -154,7 +165,8 @@ function generateSummary() {
       }
       ancestor = ancestor.parentElement;
     }
-    summary += `ID: ${macheId} | Color: ${color} | Bounds: ${bounds} | Parent: ${parentID} | Tag: ${tag} | Text: "${text}" | Path: ${getPath(node)}\n`;
+    summary += `ID: ${macheId} | Color: ${color} | Bounds: ${bounds} | Parent: ${parentID} | Tag: ${tag} | Text: "${text}" | Path: ${getPath(node)}` +
+      ` | FontSize: ${fontSize.toFixed(0)} | Display: ${display} | Interactive: ${interactive} | TextDensity: ${textDensity.toFixed(2)}\n`;
     count++;
   }
   return summary;

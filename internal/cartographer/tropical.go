@@ -56,6 +56,13 @@ type element struct {
 	bounds    [4]float64 // [x, y, w, h] normalized
 	hasBounds bool
 
+	// Semantic fiber data (from content.js computed styles)
+	fontSize    float64 // CSS font-size in px
+	display     string  // CSS display value
+	interactive bool    // element is focusable/clickable
+	textDensity float64 // chars per normalized area [0,1]
+	hasSemantic bool    // true if semantic fields were parsed
+
 	// Computed
 	centerX   float64
 	centerY   float64
@@ -266,6 +273,22 @@ func parseElements(summary string) []element {
 				el.pathParts = strings.Split(v, " > ")
 			} else if v, ok := strings.CutPrefix(seg, "Text: "); ok {
 				el.text = strings.Trim(v, "\"")
+			} else if v, ok := strings.CutPrefix(seg, "FontSize: "); ok {
+				if fs, err := strconv.ParseFloat(v, 64); err == nil {
+					el.fontSize = fs
+					el.hasSemantic = true
+				}
+			} else if v, ok := strings.CutPrefix(seg, "Display: "); ok {
+				el.display = v
+				el.hasSemantic = true
+			} else if v, ok := strings.CutPrefix(seg, "Interactive: "); ok {
+				el.interactive = v == "true"
+				el.hasSemantic = true
+			} else if v, ok := strings.CutPrefix(seg, "TextDensity: "); ok {
+				if td, err := strconv.ParseFloat(v, 64); err == nil {
+					el.textDensity = td
+					el.hasSemantic = true
+				}
 			}
 		}
 
@@ -400,7 +423,8 @@ func tropicalDistance(a, b *element) float64 {
 	ds := spatialDistance(a, b)
 	dv := visualDistance(a, b)
 	dt := structuralDistance(a, b)
-	return math.Max(ds, math.Max(dv, dt))
+	dm := semanticDistance(a, b)
+	return math.Max(ds, math.Max(dv, math.Max(dt, dm)))
 }
 
 // spatialDistance: normalized Euclidean distance of bbox centers.
@@ -458,6 +482,45 @@ func structuralDistance(a, b *element) float64 {
 		}
 	}
 	return 1.0 - float64(common)/float64(maxLen)
+}
+
+// semanticDistance: fiber distance from computed styles.
+// Measures divergence in font size, display type, interactivity, and text density.
+// Returns 0.5 (neutral) when semantic data is unavailable.
+func semanticDistance(a, b *element) float64 {
+	if !a.hasSemantic || !b.hasSemantic {
+		return 0 // don't penalize when data unavailable
+	}
+
+	// Font size ratio: |log(fs_a/fs_b)| / log(maxRatio), capped at 1.0.
+	// Elements with very different font sizes (heading vs body) are far apart.
+	var fontDist float64
+	if a.fontSize > 0 && b.fontSize > 0 {
+		ratio := a.fontSize / b.fontSize
+		if ratio < 1 {
+			ratio = 1 / ratio
+		}
+		// log(4) ≈ 1.39 — a 4x size difference maps to 1.0
+		fontDist = math.Min(1.0, math.Log(ratio)/math.Log(4))
+	}
+
+	// Display compatibility: same → 0, different → 0.5.
+	var displayDist float64
+	if a.display != b.display {
+		displayDist = 0.5
+	}
+
+	// Interactivity divergence: both interactive or both not → 0, mixed → 0.4.
+	var interactiveDist float64
+	if a.interactive != b.interactive {
+		interactiveDist = 0.4
+	}
+
+	// Text density difference (already [0,1]).
+	textDensityDist := math.Abs(a.textDensity - b.textDensity)
+
+	// Inner tropical max across semantic sub-fibers.
+	return math.Max(fontDist, math.Max(displayDist, math.Max(interactiveDist, textDensityDist)))
 }
 
 // ---------------------------------------------------------------------------
