@@ -7,7 +7,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"image/jpeg"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"log"
 	"math"
 	"sort"
@@ -357,13 +359,13 @@ func parseBounds(s string) ([4]float64, bool) {
 }
 
 // ---------------------------------------------------------------------------
-// RGB fiber sampling from JPEG screenshot
+// RGB fiber sampling from screenshot (JPEG or PNG)
 // ---------------------------------------------------------------------------
 
 func sampleRGB(screenshot []byte, elements []element) {
-	img, err := jpeg.Decode(bytes.NewReader(screenshot))
+	img, _, err := image.Decode(bytes.NewReader(screenshot))
 	if err != nil {
-		log.Printf("TropicalCartographer: JPEG decode failed: %v", err)
+		log.Printf("TropicalCartographer: image decode failed: %v", err)
 		return
 	}
 
@@ -432,7 +434,7 @@ func sampleFFT(screenshot []byte, elements []element) {
 		return
 	}
 
-	img, err := jpeg.Decode(bytes.NewReader(screenshot))
+	img, _, err := image.Decode(bytes.NewReader(screenshot))
 	if err != nil {
 		return
 	}
