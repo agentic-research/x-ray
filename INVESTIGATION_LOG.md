@@ -1,5 +1,37 @@
 # Investigation Log
 
+## 2026-02-27: FFT + Semantic Ingestion + AX Fix (Phases 0-2)
+
+### AX Enrichment Was Silently Broken
+`content.js` deliberately used an in-memory registry (no DOM mutation) to "avoid triggering React/Vue re-renders." But `background.js:enrichSummaryWithAX()` depends on `DOM.querySelectorAll([data-mache-id])` to join CDP AX nodes to mache IDs. Since the attributes were never written, `axMap` was always empty — AX enrichment has been a no-op since inception.
+
+**Key insight**: React doesn't listen for external DOM attribute mutations — the concern was unfounded. And our own MutationObserver only watches `childList` (not `attributes`), so writing `data-mache-id` doesn't trigger `DOM_MUTATED`. The magnifying glass crop in `captureWithCDP` (line 437) also relies on these attrs.
+
+### Body/div Not Captured
+`content.js` Phase 2 containers query only covers semantic HTML5 elements (`main, section, article, nav...`). `<body>`, `<div>`, and `<span>` were entirely excluded unless they had a role attribute. Added Phase 3: always include `<body>`, include `<div>` only when semantically significant (role attr, semantic id/class keywords, or 3+ interactive descendants). The keyword heuristic prevents flooding the 300-element cap.
+
+### Tropical Distance Now Has 5 Fibers
+```
+d(i,j) = max(d_spatial, d_visual, d_structural, d_semantic, d_frequency)
+```
+
+- **d_semantic**: Font size ratio (log-scaled), display type compatibility, interactivity divergence, text density. Returns 0 when unavailable (backward compat with old summary format).
+- **d_frequency**: FFT-based — dominant freq divergence, spectral entropy, grid score. Only computed for cv-* regions. Returns 0 when both regions are unstructured (no frequencies, no grid) to avoid splitting equivalent opaque blobs.
+
+### FFT: Hann Window Creates Artifacts at Bin 1
+A uniform image under Hann windowing produces energy at frequency bin 1 (single cycle = the window shape itself). Fixed by starting peak search at bin 2 — a single cycle across the entire image isn't a meaningful repeating UI pattern anyway.
+
+### Performance
+- FFT on 300×400 region: ~10.8ms (M3 Max). Only runs on cv-* regions (0-3 per page), so 0-30ms added to the pipeline. Well within the 50ms total budget.
+- Semantic distance adds negligible overhead (simple arithmetic on already-parsed fields).
+
+### Next Steps
+- Phase 3 (macOS AXUIElement): Plan calls for a Swift CLI (`cmd/axdump`) instead of CGo — keeps Go core pure. Needs Accessibility permissions.
+- Build tag consideration: TropicalCartographer depends on the closed-source x-ray repo. May need `//go:build` tags to isolate it for open-source builds.
+- Live test the semantic ingestion + AX enrichment fix on real sites.
+
+---
+
 ## 2026-02-26: Cross-Domain Context Poisoning Prevention
 
 ### Problem
