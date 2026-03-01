@@ -428,7 +428,7 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Planner: starting task: %s", truncate(req.Intent, 100))
-	result := h.planner.RunTask(ctx, req.Intent, req.TabID)
+	result := h.planner.RunTask(ctx, req.Intent, tabID)
 	log.Printf("Planner: task finished: status=%s turns=%d summary=%s",
 		result.Status, result.Turns, truncate(result.Summary, 100))
 

@@ -36,7 +36,8 @@ type TabInfo struct {
 type Agent struct {
 	generator  ContentGenerator
 	model      string
-	fs         *NavFS // unified filesystem over CompositeGraph
+	fs         *NavFS              // unified filesystem over CompositeGraph
+	hotswap    *graph.HotSwapGraph // thread-safe graph swap (all reads go through this)
 	mu         sync.RWMutex
 	progressFn func(toolName string, args map[string]any)
 
@@ -58,7 +59,11 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 		model = "gemini-2.5-flash"
 	}
 
-	fs := NewNavFS(g)
+	// Wrap the graph in HotSwapGraph so all reads are RLock-protected
+	// and graph replacement is an atomic Swap. NavFS is created once
+	// and never replaced — it delegates through the HotSwapGraph.
+	hs := graph.NewHotSwapGraph(g)
+	fs := NewNavFS(hs)
 
 	ls := &LsTool{fs: fs}
 	cat := &CatTool{fs: fs}
@@ -87,6 +92,7 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 		generator:     gen,
 		model:         model,
 		fs:            fs,
+		hotswap:       hs,
 		registry:      reg,
 		scrollTool:    scroll,
 		listTabs:      listTabs,
@@ -99,16 +105,11 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 	}
 }
 
-// SetGraph swaps the underlying graph (e.g., after remounting browser engine).
+// SetGraph atomically swaps the underlying graph (e.g., after remounting
+// browser engine). In-flight reads on the old graph complete safely;
+// subsequent reads see the new graph. Thread-safe via HotSwapGraph.
 func (a *Agent) SetGraph(g graph.Graph) {
-	newFS := NewNavFS(g)
-	a.fs = newFS
-	a.lsTool.fs = newFS
-	a.catTool.fs = newFS
-	a.actTool.fs = newFS
-	a.rescanTool.fs = newFS
-	a.newWindowTool.fs = newFS
-	a.newTabTool.fs = newFS
+	a.hotswap.Swap(g)
 }
 
 // SetScrollFunc injects the scroll callback used by the scroll tool.

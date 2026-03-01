@@ -624,7 +624,7 @@ func (h *Handler) SendActionToExtension(tabID int, macheID, action, payload stri
 	// For cv-N IDs, look up pixel center from edge-detected regions for CDP click.
 	if strings.HasPrefix(macheID, "cv-") {
 		sess := h.getSession(tabID)
-		for _, r := range sess.CVRegions {
+		for _, r := range sess.GetCVRegions() {
 			if r.ID == macheID {
 				msg.PixelX = r.PixelX + r.PixelW/2
 				msg.PixelY = r.PixelY + r.PixelH/2

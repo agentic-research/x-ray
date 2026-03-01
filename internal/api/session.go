@@ -97,3 +97,33 @@ func (s *TabSession) SetCurrentURL(url string) {
 	defer s.schemaMu.Unlock()
 	s.CurrentURL = url
 }
+
+// GetCVRegions returns the canvas edge-detection regions under the lock.
+func (s *TabSession) GetCVRegions() []EdgeRegion {
+	s.schemaMu.Lock()
+	defer s.schemaMu.Unlock()
+	return s.CVRegions
+}
+
+// SetCVRegions updates the canvas edge-detection regions under the lock.
+func (s *TabSession) SetCVRegions(regions []EdgeRegion) {
+	s.schemaMu.Lock()
+	defer s.schemaMu.Unlock()
+	s.CVRegions = regions
+}
+
+// ConsumeRescanPath atomically reads and clears RescanPath.
+func (s *TabSession) ConsumeRescanPath() string {
+	s.schemaMu.Lock()
+	defer s.schemaMu.Unlock()
+	p := s.RescanPath
+	s.RescanPath = ""
+	return p
+}
+
+// SetRescanPath sets the targeted rescan path.
+func (s *TabSession) SetRescanPath(path string) {
+	s.schemaMu.Lock()
+	defer s.schemaMu.Unlock()
+	s.RescanPath = path
+}

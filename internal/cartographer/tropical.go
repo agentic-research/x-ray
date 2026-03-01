@@ -179,7 +179,11 @@ func (tc *TropicalCartographer) GenerateSchema(
 		cohTol = 0.7
 	}
 	if cohTol < 1.0 {
-		zones = foldCoherentZones(zones, elements, cohTol)
+		folded := foldCoherentZones(zones, elements, cohTol)
+		if len(folded) >= minZ {
+			zones = folded
+		}
+		// If folding would drop below minZones, keep the pre-fold zones.
 	}
 
 	// Step 6: Build mounts

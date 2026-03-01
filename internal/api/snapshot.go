@@ -98,8 +98,7 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 	// Check if this is a targeted rescan (magnifying glass mode).
 	rescanPath := ""
 	if msg.IsRescan {
-		rescanPath = sess.RescanPath
-		sess.RescanPath = "" // consume
+		rescanPath = sess.ConsumeRescanPath()
 	}
 
 	if !fromCache {
@@ -138,6 +137,7 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 
 		// --- Canvas edge detection: find UI regions inside <canvas> / WebGL ---
 		// Pass decodedImg to avoid re-decoding the screenshot.
+		var localCVRegions []EdgeRegion
 		if len(screenshotBytes) > 0 {
 			existingBounds := parseBounds(msg.Summary)
 			cvRegions, annotatedImg, edgeErr := DetectCanvasRegions(screenshotBytes, existingBounds, overlayMap, decodedImg)
@@ -145,19 +145,18 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 				log.Printf("Edge detection failed (tab %d): %v", msg.TabID, edgeErr)
 			} else if len(cvRegions) > 0 {
 				screenshotBytes = annotatedImg
-				sess.CVRegions = cvRegions
+				localCVRegions = cvRegions
 				log.Printf("Edge detection: found %d cv regions (tab %d)", len(cvRegions), msg.TabID)
-			} else {
-				sess.CVRegions = nil
 			}
+			sess.SetCVRegions(localCVRegions)
 		}
 
 		// For targeted rescan, hint the Cartographer to output absolute sub-zone paths.
 		cartSummary := msg.Summary
 
 		// Append cv-N entries so the Cartographer sees canvas-detected regions.
-		if len(sess.CVRegions) > 0 {
-			for _, r := range sess.CVRegions {
+		if len(localCVRegions) > 0 {
+			for _, r := range localCVRegions {
 				cartSummary += fmt.Sprintf(
 					"ID: %s | Color: CV | Bounds: [%.3f, %.3f, %.3f, %.3f] | Parent: none | Tag: canvas | Text: \"[CV detected]\" | Path: canvas\n",
 					r.ID, r.X, r.Y, r.W, r.H,

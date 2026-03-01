@@ -236,6 +236,52 @@ func TestBug_AXOnlyZone(t *testing.T) {
 	t.Logf("Schema (no ax-* IDs): %s", schemaJSON)
 }
 
+func TestBug_H0FoldingViolatesMinZones(t *testing.T) {
+	// Bug: foldCoherentZones runs AFTER cutTree's minZones enforcement.
+	// If duplicate zones (e.g., mobile+desktop nav) get folded together,
+	// the final zone count can drop below minZones (default 3).
+	//
+	// Fix: guard in GenerateSchema — if folding would drop below minZones,
+	// keep the pre-fold zones.
+
+	// Create elements that produce 3-4 zones with duplicate fiber signatures.
+	// Without the guard, folding merges duplicates below minZones.
+	lines := []string{
+		// Nav bar A (top-left)
+		`ID: mache-0 | Tag: nav | Text: "Home" | Bounds: [0.000, 0.000, 0.200, 0.050]`,
+		`ID: mache-1 | Tag: a | Text: "Feed" | Bounds: [0.200, 0.000, 0.100, 0.050]`,
+		// Nav bar B (duplicate, slightly offset — will have same fiber signature)
+		`ID: mache-10 | Tag: nav | Text: "Home" | Bounds: [0.000, 0.050, 0.200, 0.050]`,
+		`ID: mache-11 | Tag: a | Text: "Feed" | Bounds: [0.200, 0.050, 0.100, 0.050]`,
+		// Main content (distinct)
+		`ID: mache-20 | Tag: div | Text: "Article Title" | Bounds: [0.100, 0.300, 0.600, 0.100]`,
+		`ID: mache-21 | Tag: p | Text: "Article body text here" | Bounds: [0.100, 0.450, 0.600, 0.100]`,
+		`ID: mache-22 | Tag: p | Text: "More article text" | Bounds: [0.100, 0.600, 0.600, 0.100]`,
+	}
+	summary := strings.Join(lines, "\n") + "\n"
+
+	cart := &TropicalCartographer{}
+	schemaJSON, err := cart.GenerateSchema(context.Background(), nil, "image/jpeg", summary)
+	if err != nil {
+		t.Fatalf("GenerateSchema failed: %v", err)
+	}
+
+	var output struct {
+		Mounts []json.RawMessage `json:"mounts"`
+	}
+	if err := json.Unmarshal([]byte(schemaJSON), &output); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	// minZones default is 3 — we must never produce fewer.
+	if len(output.Mounts) < 3 {
+		t.Errorf("BUG NOT FIXED: H^0 folding dropped zone count to %d (below minZones=3). Schema: %s",
+			len(output.Mounts), schemaJSON)
+	}
+
+	t.Logf("Schema (%d zones): %s", len(output.Mounts), schemaJSON)
+}
+
 func TestBug_AXMixedWithDOM(t *testing.T) {
 	// When ax-* elements are mixed with mache-* elements in the same zone,
 	// the mount should use a mache-* ID as root (never ax-*), and ax-*

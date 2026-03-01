@@ -312,7 +312,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 	switch action.Action {
 	case "browser.goto":
 		// Idempotent: skip reset if already on this URL.
-		if d.sess.CurrentURL == action.Path {
+		if d.sess.GetCurrentURL() == action.Path {
 			d.updateStep(fmt.Sprintf("already on %s, waiting for schema", action.Path))
 			select {
 			case <-d.sess.GetSchemaReady():
@@ -323,7 +323,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 				return "Navigation cancelled."
 			}
 		}
-		d.sess.CurrentURL = action.Path
+		d.sess.SetCurrentURL(action.Path)
 		d.sess.ResetSchema()
 		newEngine := mache.NewEngine()
 		d.sess.SwapEngine(newEngine)
@@ -351,7 +351,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		if action.Path != "" {
 			// Targeted rescan: keep existing engine, zoom into zone.
 			d.sess.ResetSchema()
-			d.sess.RescanPath = action.Path
+			d.sess.SetRescanPath(action.Path)
 			d.handler.sendRescan(d.tabID, action.MacheID)
 			d.updateStep(fmt.Sprintf("zooming into %s", action.Path))
 			log.Printf("Doer [tab %d]: targeted rescan %q (mache_id %s)", d.tabID, action.Path, action.MacheID)

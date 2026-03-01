@@ -3,7 +3,7 @@ module github.com/agentic-research/x-ray
 go 1.25.0
 
 require (
-	github.com/agentic-research/mache v0.5.1
+	github.com/agentic-research/mache v0.5.2
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/tmc/it2 v0.0.0-20251116041255-d10afde85159
