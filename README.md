@@ -7,12 +7,12 @@
 
 X-Ray is a pluggable, voice-driven agent OS that unifies browsers and terminals under a single semantic virtual filesystem. A **CompositeGraph** — like Linux's `fstab` — mounts domain-specific plugins at named paths. The **Navigator** LLM only ever uses three tools (`ls`, `cat`, `act`), and Mache routes those commands to the right backend:
 
-- **`/browser/`** — driven by a Chrome CDP plugin. A **Cartographer** (Gemini Vision or a local VLM) projects the DOM into the filesystem.
+- **`/browser/`** — driven by a Chrome CDP plugin. A **Cartographer** projects the DOM into the filesystem. The default is the **TropicalCartographer** — a pure-math approach using tropical geometry (no LLM call, deterministic, sub-second). Cloud (Gemini Vision) and local (Ollama VLM) cartographers are also available as fallbacks.
 - **`/iterm/`** — driven by a zero-latency Unix Domain Socket bridge. Terminal sessions are already structured text — no vision model needed.
 
 For pixel-rendered content like `<canvas>` and WebGL, a pure-Go **Canny edge detection** pipeline detects UI regions invisible to DOM parsing. Voice mode uses **Gemini Live** with a Talker/Doer swarm split for hands-free, real-time cross-domain control — tell the agent to spin up a server in `/iterm/`, then switch to `/browser/` to test the UI.
 
-The entire ACI can run 100% air-gapped on local Apple Silicon: swap Gemini for a local VLM (Cartographer) and a local SLM (Navigator) via environment variables.
+The entire ACI can run 100% air-gapped on local Apple Silicon: the TropicalCartographer needs no API key, and the Navigator can use a local SLM via Ollama.
 
 Powered by [`agentic-research/mache`](https://github.com/agentic-research/mache) -- an agent-computer interface that projects structured data into virtual filesystems.
 
@@ -92,8 +92,9 @@ open http://localhost:8080/voice-ui
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GEMINI_API_KEY` | *(required)* | Gemini API key |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Model for Cartographer and cloud Navigator |
+| `GEMINI_API_KEY` | *(required for cloud)* | Gemini API key (not needed with `CARTOGRAPHER_MODE=tropical` + local Navigator) |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Model for cloud Cartographer and cloud Navigator |
+| `CARTOGRAPHER_MODE` | *(unset)* | Set to `tropical` for algebraic cartographer (no LLM, deterministic, sub-second) |
 | `GEMINI_LIVE_MODEL` | `gemini-2.5-flash-native-audio-preview-12-2025` | Model for Gemini Live voice sessions |
 | `NAVIGATOR_ENDPOINT` | *(unset -- uses Gemini)* | OpenAI-compatible endpoint for local Navigator (e.g., `http://localhost:11434/v1`) |
 | `NAVIGATOR_MODEL` | `functiongemma:270m` | Model name when using a local Navigator endpoint |
@@ -115,7 +116,11 @@ An LLM already knows what a "Checkout" button *means* (semantics), but when you 
 
 ### The Fix: Two-Stage Agent Architecture
 
-**Stage 1 -- The Cartographer (Vision + Structure):** When a user visits a page, the Chrome extension builds an in-memory registry of interactive elements (zero DOM mutation -- SPA-safe), draws a Set-of-Mark overlay with colored bounding boxes and ID labels, captures a scaled screenshot, and generates a flattened text summary enriched with DOM breadcrumb paths. This payload goes to Gemini, which outputs a strict JSON schema projecting visual zones onto registered DOM elements. For list zones, it identifies primary items and a CSS `item_selector` that the browser evaluates natively after scrolling -- discovering fresh content without another LLM call.
+**Stage 1 -- The Cartographer (Topology + Structure):** When a user visits a page, the Chrome extension builds an in-memory registry of interactive elements (zero DOM mutation -- SPA-safe), draws a Set-of-Mark overlay with colored bounding boxes and ID labels, captures a scaled screenshot, and generates a flattened text summary enriched with DOM breadcrumb paths.
+
+The default **TropicalCartographer** (`CARTOGRAPHER_MODE=tropical`) segments the page using tropical geometry — no LLM call. It treats each DOM element as a point with a multi-dimensional fiber (spatial bounds, RGB pixel samples, CSS path structure, semantic role), computes pairwise distances in the max-plus semiring, extracts the optimal metric tree via neighbor-joining (the Grassmannian Gr(2,n) isomorphism), cuts it into 3-7 zones, and folds duplicate zones via H⁰ cohomology. The result is deterministic, sub-second, and requires no API key.
+
+Alternatively, the Gemini Vision or a local VLM (Ollama) cartographer can be used for LLM-based zone mapping. For list zones, the Cartographer identifies primary items and a CSS `item_selector` that the browser evaluates natively after scrolling -- discovering fresh content without another LLM call.
 
 **Stage 2 -- The Navigator (Voice + Action):** That JSON schema feeds into the Mache Engine, which mounts a virtual filesystem tailored to the page. The agent runs `ls /` and sees a clean structure like `/header/global_nav/`, `/main/trending_repositories/`, `/footer/legal/`. Children are addressed by ordinal number (`_c/1`, `_c/2`, ...). When the user says "Click the first trending repository," the Navigator traverses the filesystem and executes the action. Because Gemini handles the heavy multimodal reasoning in Stage 1, the execution loop is simple enough for a local 7B SLM to drive the browser flawlessly.
 
@@ -195,7 +200,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system diagram, da
 
 ### Key Design Decisions
 
-- **Zero Hallucinated IDs**: The Cartographer is constrained to select from the in-memory element registry. Structured JSON output with a strict schema prevents the model from inventing non-existent DOM pointers.
+- **Hallucination Repair**: When an LLM Cartographer invents a non-existent DOM ID (e.g., extrapolating `mache-385` from a sequential pattern), `RepairSchema` swaps the hallucinated anchor for the first valid child element. The TropicalCartographer avoids this entirely — its zone IDs come from deterministic DOM parsing, not LLM generation.
 - **Set-of-Mark Visual Grounding**: Colored bounding boxes with ID labels are drawn over every registered element before screenshot capture, giving the Cartographer spatial anchors that tie visual zones to element IDs.
 - **Ordinal Children Paths**: Child entries use ordinal numbers (`_c/1`, `_c/2`) instead of raw mache IDs, so the Navigator never confuses "click the 6th post" with `mache-6`.
 - **CSS Selector Unions**: Primary items from the Cartographer's visual pass are unioned with browser-resolved CSS selector results (deduplicated, stale IDs filtered). Neither source alone is reliable -- together they handle both SPA edge cases and infinite scroll.
@@ -217,7 +222,7 @@ x-ray/
 ├── internal/
 │   ├── api/             # WebSocket handler, voice handler, message types, edge detection
 │   ├── audio/           # sox-based mic/speaker for voice daemon
-│   ├── cartographer/    # Stage 1: Gemini Vision or local VLM → semantic schema
+│   ├── cartographer/    # Stage 1: TropicalCartographer (algebraic) or Gemini/VLM → semantic schema
 │   ├── iterm/           # iTerm2 bridge: Unix Domain Socket → graph.Graph
 │   ├── mache/           # Virtual filesystem engine (browser graph backend)
 │   └── navigator/       # Stage 2: Gemini Tool-Use → browser/terminal actions
@@ -262,10 +267,11 @@ X-Ray is highly configurable via environment variables. You can set these in you
 
 | Variable | Default Value | Description |
 |----------|---------------|-------------|
-| `GOOGLE_GEMINI_API_KEY` | *(None)* | API key for Gemini models |
+| `GOOGLE_GEMINI_API_KEY` | *(None)* | API key for Gemini models (not needed with `CARTOGRAPHER_MODE=tropical`) |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | The primary Gemini model for base operations |
 | `GEMINI_LIVE_MODEL` | `gemini-2.5-flash-native-audio-preview-12-2025` | The model used for Voice Mode via Live API |
-| `CARTOGRAPHER_ENDPOINT` | *(None)* | URL for a local Vision Language Model |
+| `CARTOGRAPHER_MODE` | *(None)* | Set to `tropical` for algebraic cartographer (no LLM, deterministic, sub-second) |
+| `CARTOGRAPHER_ENDPOINT` | *(None)* | URL for a local Vision Language Model (ignored when `CARTOGRAPHER_MODE=tropical`) |
 | `CARTOGRAPHER_MODEL` | `llava:13b` | Local Vision Language Model to use |
 | `NAVIGATOR_ENDPOINT` | *(None)* | URL for a local Small Language Model |
 | `NAVIGATOR_MODEL` | `functiongemma:270m` | Local SLM for Navigator actions |
@@ -275,10 +281,13 @@ X-Ray is highly configurable via environment variables. You can set these in you
 
 ### 100% Air-Gapped / Local Mode
 
-The entire ACI can run completely offline on local Apple Silicon. While X-Ray uses Gemini Pro/Flash by default for the cloud swarm, every model is pluggable via environment variables:
+The entire ACI can run completely offline on local Apple Silicon. The TropicalCartographer is pure math (no API key), and the Navigator can use a local SLM via Ollama:
 
 ```bash
-# Fully local — no cloud API calls (defaults: llava:13b + qwen2.5-coder:7b)
+# Tropical cartographer + local Navigator (recommended — no cloud API for page mapping)
+task demo-tropical
+
+# Fully local — local VLM cartographer + local SLM navigator (no cloud API at all)
 task demo-local
 
 # Or override models:
@@ -293,6 +302,7 @@ The `/iterm/` terminal bridge is always local (Unix Domain Socket) — no model 
 |---------|-------------|
 | `task run` | Build, codesign, and run agentd |
 | `task demo` | Build and run the voice daemon (Talker/Doer swarm) |
+| `task demo-tropical` | Voice daemon with TropicalCartographer (algebraic, no VLM) |
 | `task demo-local` | Fully air-gapped: local VLM + local SLM, no cloud API |
 | `task build` | Build and codesign the binary |
 | `task test` | Run all tests (`go test -race -v ./...`) |

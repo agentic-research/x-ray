@@ -50,7 +50,7 @@ graph TB
         TALKER[Talker — voice.go<br/>Gemini Live, always responsive<br/>3 tools: check_status, issue_command, cancel_task]
         DOER[Doer — doer.go<br/>Background goroutine<br/>Runs Navigator tool loops]
         EDGE[Edge Detection — edges.go<br/>Canny pipeline: Sobel + NMS + hysteresis<br/>Detects canvas/WebGL UI regions]
-        CART[Cartographer<br/>Stage 1]
+        CART[Cartographer<br/>Stage 1<br/>Tropical ∣ Gemini ∣ Ollama]
         NAV[Navigator — agent.go<br/>Stage 2, 8 tools]
         ENG[Mache Engine<br/>Virtual Filesystem]
         SESS[Per-Tab Sessions<br/>map tab_id → TabSession]
@@ -78,7 +78,7 @@ graph TB
 
     BG <-->|"ws://host/ws<br/>DOM_SNAPSHOT, EXECUTE_ACTION,<br/>RESCAN, GOTO_URL, TAB_ACTIVATED,<br/>LIST_TABS, SWITCH_TAB"| WS
     OFF <-->|"ws://host/voice?tab=N<br/>PCM audio + JSON"| TALKER
-    CART -->|"Screenshot + Summary<br/>→ Semantic JSON"| GEMINI
+    CART -.->|"Screenshot + Summary<br/>(LLM mode only)"| GEMINI
     NAV -->|"ContentGenerator interface"| GEMINI
     NAV -.->|"NAVIGATOR_ENDPOINT set"| OLLAMA
     TALKER <-->|"Audio stream + Talker tools"| LIVE
@@ -242,9 +242,13 @@ sequenceDiagram
         WS->>WS: Filter by IoU overlap with mache bounds, assign cv-N IDs
         WS->>WS: Draw cyan boxes on screenshot, append cv-N to summary
         WS->>Cart: GenerateSchema(annotated screenshot, enriched summary)
-        Cart->>Cart: Gemini Vision (structured output, T=0.1)
+        alt TropicalCartographer (CARTOGRAPHER_MODE=tropical)
+            Cart->>Cart: Tropical geometry: parse elements → RGB/FFT fibers → distance matrix → neighbor-joining → zone cut → H⁰ folding
+        else Gemini / Ollama
+            Cart->>Cart: LLM Vision (structured output, T=0.1)
+        end
         Cart-->>WS: JSON {mounts: [{virtual_path, mache_id, description, primary_items, item_selector}]}
-        WS->>WS: ValidateSchema — retry on hallucinated IDs
+        WS->>WS: ValidateSchema — RepairSchema (swap hallucinated anchors) or retry
         WS->>Cache: Put(domain+path, schema JSON)
     end
 
@@ -612,12 +616,27 @@ Seven files, no build step, no dependencies.
 
 ### Cartographer (`internal/cartographer/`)
 
-Stage 1. Screenshot + DOM summary → semantic JSON schema.
+Stage 1. DOM summary (+ optional screenshot) → semantic JSON schema.
 
-- Gemini Vision with structured output (`ResponseSchema`)
+Three implementations behind the `SchemaGenerator` interface, selected at startup via env vars (`CARTOGRAPHER_MODE` > `CARTOGRAPHER_ENDPOINT` > Gemini cloud):
+
+**TropicalCartographer** (`tropical.go`) — the default when `CARTOGRAPHER_MODE=tropical`. Pure algebraic zone segmentation with no LLM call:
+1. Parse DOM summary into elements with spatial bounds, RGB pixel fibers (sampled from screenshot), CSS path structure, and semantic role
+2. Build pairwise tropical distance matrix (max-plus semiring)
+3. Extract optimal metric tree via neighbor-joining (Grassmannian Gr(2,n) ≅ metric trees, Speyer-Sturmfels 2004)
+4. Cut tree into 3-7 zones, fold duplicates via H⁰ cohomology (zones with identical text/tag signatures within tolerance are merged)
+5. Assign virtual paths by layout position (header/footer/sidebar/main heuristics)
+
+Deterministic, sub-second, no API key required. FFT analysis for `cv-*` regions (canvas/WebGL structure detection). Pre-filters large DOMs to 500 elements for the O(N³) NJ algorithm.
+
+**Agent** (`agent.go`) — Gemini Vision with structured output (`ResponseSchema`). Sends screenshot + DOM summary. Temperature 0.1.
+
+**OllamaAgent** (`ollama.go`) — local VLM via OpenAI-compatible API. Same multimodal input as Agent.
+
+Common across all implementations:
 - 3-7 zones, primary items for list zones, CSS `item_selector` for dynamic resolution
-- Each summary line includes DOM breadcrumb paths; Cartographer uses these to synthesize structural CSS selectors per zone
-- Temperature 0.1, validation + retry on hallucination
+- Each summary line includes DOM breadcrumb paths; LLM cartographers use these to synthesize structural CSS selectors per zone
+- `ValidateSchema` checks all `mache_id`s exist in the DOM; `RepairSchema` swaps hallucinated anchors for valid child elements before falling back to regeneration
 
 ### Navigator (`internal/navigator/`)
 
@@ -649,6 +668,7 @@ In-memory virtual filesystem from Cartographer output, backed by a mache `Memory
 - `ZoneSelectors()` -- returns `map[macheID]cssSelector` for scroll-time evaluation
 - `ListDir()` / `ReadFile()` / `ResolveMacheID()` -- Navigator's tool implementations
 - `ValidateSchema()` -- checks all mache_ids in schema exist in DOM summary. Used for cache validation and hallucination detection.
+- `RepairSchema()` -- fixes hallucinated zone anchors by swapping to the first valid `primary_item`. Avoids wasting a full Cartographer regeneration call on deterministic re-hallucination.
 - `parseSummary()` handles Color, Bounds, Path, AXRole, AXName fields
 
 ## Google Cloud Services
