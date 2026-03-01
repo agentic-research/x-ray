@@ -1,5 +1,44 @@
 # Investigation Log
 
+## 2026-02-28: Navigator Fine-Tuning — JSON → CLI Format Pivot
+
+### Context
+Fine-tuning FunctionGemma 270M (`google/functiongemma-270m-it`) as a local Navigator model for the mache VFS. Two-stage pipeline: SFT (teach format) → DPO (refine preferences). 800 training examples on M3 Max (MPS backend).
+
+### Problem: JSON Overhead on 270M Model
+Original training targets were full JSON tool calls:
+`{"name": "act", "parameters": {"action": "click", "path": "/browser/main/feed/_c/3"}}`
+
+For a 270M parameter model, ~80% of generation tokens went to syntax (`{`, `"`, `:`, `}`) rather than the actual decision (which path, which action). Model achieved 98.3% token accuracy on SFT but showed path construction errors and intent classification mistakes at inference — attention budget wasted on bracket balancing.
+
+### Key Discovery: MPS float16 Inference Bug
+Training in float16 on MPS works fine. But float16 *inference* on MPS causes complete logit collapse — model outputs nothing but pad tokens (ID 0). This affects even the base FunctionGemma model (not a fine-tuning issue). **Fix: always use float32 for inference on MPS.**
+
+### Solution: CLI Format
+The Navigator tools ARE filesystem commands (`ls`, `cat`, `act`). Dropped JSON, switched to space-delimited CLI syntax:
+- `act click /browser/main/feed/_c/3`
+- `ls /`
+- `act type /iterm/windows/0/tabs/1 "git status"`
+- `browser.goto https://github.com`
+
+**Measured savings:**
+- System prompt: 8,177 → 438 chars (95% reduction)
+- Response chars: 146,273 → 59,173 across dataset (60% reduction)
+- Every token now goes to the actual navigational decision
+
+### Files
+- `experiments/cli-ft/compress_dataset.py` — converts JSON dataset to CLI format
+- `experiments/cli-ft/finetune_dpo.py` — two-stage SFT+DPO pipeline
+- `experiments/cli-ft/test_inference.py` — inference test harness
+- `experiments/cli-ft/dpo_dataset_cli.jsonl` — CLI-format training data (800 examples)
+
+### Next Steps
+- Retrain with CLI-format dataset (SFT ~27min, DPO ~30min)
+- Update Go parser in `internal/navigator/model.go` — swap `gemmaFnCallRe` regex for `strings.Fields()` parser
+- Evaluate whether 270M is sufficient or if larger model needed for path construction quality
+
+---
+
 ## 2026-02-27: Phase 7b — Palette Redesign + Crop-to-Uncolored
 
 ### Problem: Tight Palette Separation
