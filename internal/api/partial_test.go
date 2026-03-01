@@ -276,6 +276,60 @@ func TestExtractStaleZoneInfos(t *testing.T) {
 	}
 }
 
+func TestRegenerateStaleZones_HallucinatedAnchorRepaired(t *testing.T) {
+	// Cartographer returns a hallucinated anchor (mache-385) but valid primary_items.
+	// The caller (attemptPartialRegen) validates and repairs AFTER RegenerateStaleZones,
+	// so this test verifies the raw flow produces the hallucinated output that the
+	// repair logic in attemptPartialRegen would then fix.
+	cart := &capturingCartographer{
+		schema: `{"mounts":[{
+			"virtual_path":"/main/comments",
+			"mache_id":"mache-385",
+			"description":"Comment tree",
+			"primary_items":["mache-51","mache-56"]
+		}]}`,
+	}
+	summary := `Interactive Elements:
+ID: mache-10 | Parent: none | Tag: div | Text: "Page"
+ID: mache-51 | Parent: mache-10 | Tag: div | Text: "First comment"
+ID: mache-56 | Parent: mache-10 | Tag: div | Text: "Second comment"
+`
+	stale := []StaleZoneInfo{
+		{ZonePath: "/main/comments", Bounds: [4]float64{0.0, 0.3, 1.0, 0.6}},
+	}
+
+	result, err := RegenerateStaleZones(context.Background(), cart, stale, nil, summary)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// ValidateSchema should catch the hallucinated anchor.
+	bad := mache.ValidateSchema(result.MergeSchemaJSON, summary)
+	if len(bad) == 0 {
+		t.Fatal("expected hallucinated ID to be detected")
+	}
+
+	// RepairSchema should fix it by swapping to first valid child.
+	repaired, count := mache.RepairSchema(result.MergeSchemaJSON, summary)
+	if count != 1 {
+		t.Fatalf("expected 1 repair, got %d", count)
+	}
+
+	var output mache.CartographerOutput
+	if err := json.Unmarshal([]byte(repaired), &output); err != nil {
+		t.Fatalf("failed to parse repaired JSON: %v", err)
+	}
+	if output.Mounts[0].MacheID != "mache-51" {
+		t.Errorf("expected anchor swapped to mache-51, got %q", output.Mounts[0].MacheID)
+	}
+
+	// After repair, validation should pass.
+	bad2 := mache.ValidateSchema(repaired, summary)
+	if len(bad2) != 0 {
+		t.Errorf("repaired schema should validate clean, got bad: %v", bad2)
+	}
+}
+
 func TestExtractStaleZoneInfos_InvalidJSON(t *testing.T) {
 	infos := extractStaleZoneInfos("not json", map[string]string{"/foo": "mache-1"})
 	if len(infos) != 1 {

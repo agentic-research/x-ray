@@ -125,10 +125,22 @@ func (h *Handler) attemptPartialRegen(
 		return false
 	}
 
-	// Validate: every mache_id in the regenerated schema must exist in the DOM summary.
+	// Validate and repair: if zone anchors are hallucinated but children are valid,
+	// swap the anchor instead of falling through to expensive full regen.
 	if bad := mache.ValidateSchema(result.MergeSchemaJSON, msg.Summary); len(bad) > 0 {
-		log.Printf("Partial regen: hallucinated IDs: %v — falling through to full regen", bad)
-		return false
+		repaired, count := mache.RepairSchema(result.MergeSchemaJSON, msg.Summary)
+		if count > 0 {
+			log.Printf("Partial regen: repaired %d hallucinated zone anchors: %v", count, bad)
+			result.MergeSchemaJSON = repaired
+			// Re-parse updated mounts for cache storage.
+			var fixedOutput mache.CartographerOutput
+			if err := json.Unmarshal([]byte(repaired), &fixedOutput); err == nil {
+				result.UpdatedMounts = fixedOutput.Mounts
+			}
+		} else {
+			log.Printf("Partial regen: hallucinated IDs (unrepairable): %v — falling through to full regen", bad)
+			return false
+		}
 	}
 
 	// MergeSchema with regenerated sub-zones.
