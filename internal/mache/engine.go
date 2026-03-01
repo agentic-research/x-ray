@@ -97,6 +97,39 @@ func ValidateSchemaZones(schemaJSON, summary string) map[string]string {
 	return stale
 }
 
+// RepairSchema fixes hallucinated zone anchor IDs. If a zone's mache_id
+// doesn't exist in the DOM but its primary_items do, the anchor is replaced
+// with the first valid primary_item. Returns the repaired JSON and count
+// of repairs made.
+func RepairSchema(schemaJSON, summary string) (string, int) {
+	var output CartographerOutput
+	if err := json.Unmarshal([]byte(schemaJSON), &output); err != nil {
+		return schemaJSON, 0
+	}
+	repaired := 0
+	for i, m := range output.Mounts {
+		if strings.Contains(summary, "ID: "+m.MacheID+" ") {
+			continue // anchor is valid
+		}
+		// Anchor is hallucinated — find first valid primary_item.
+		for _, pid := range m.PrimaryItems {
+			if strings.Contains(summary, "ID: "+pid+" ") {
+				output.Mounts[i].MacheID = pid
+				repaired++
+				break
+			}
+		}
+	}
+	if repaired == 0 {
+		return schemaJSON, 0
+	}
+	fixed, err := json.Marshal(output)
+	if err != nil {
+		return schemaJSON, 0
+	}
+	return string(fixed), repaired
+}
+
 // ValidateSchemaBounds checks that each zone's cached bounds approximately
 // match the current DOM element's bounds. Returns a map of zone_path →
 // stale_mache_id for zones whose element center has moved beyond threshold

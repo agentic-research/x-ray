@@ -189,23 +189,31 @@ func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
 
 		log.Printf("Cartographer generated schema (tab %d) in %s: %s", msg.TabID, time.Since(cartStart), schemaJSON)
 
-		// Validate: every mache_id must exist in the DOM summary.
+		// Validate and repair: if zone anchors are hallucinated but children are valid,
+		// swap the anchor instead of regenerating (avoids the integer-extrapolation trap).
 		if bad := mache.ValidateSchema(schemaJSON, msg.Summary); len(bad) > 0 {
-			log.Printf("Cartographer hallucinated IDs: %v — regenerating", bad)
-			h.sendMessage(conn, OutboundMessage{
-				Type: MsgStatus, TabID: msg.TabID, Message: "Schema had invalid IDs, retrying...", Stage: "cartographer",
-			})
-			schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, cartSummary)
-			if err != nil {
-				log.Printf("Cartographer retry failed: %v", err)
+			repaired, count := mache.RepairSchema(schemaJSON, msg.Summary)
+			if count > 0 {
+				log.Printf("Cartographer: repaired %d hallucinated zone anchors: %v", count, bad)
+				schemaJSON = repaired
+			} else {
+				// No repairable zones — fall back to regeneration.
+				log.Printf("Cartographer hallucinated IDs (unrepairable): %v — regenerating", bad)
 				h.sendMessage(conn, OutboundMessage{
-					Type: MsgStatus, TabID: msg.TabID, Message: "Schema retry failed: " + err.Error(), Stage: "error",
+					Type: MsgStatus, TabID: msg.TabID, Message: "Schema had invalid IDs, retrying...", Stage: "cartographer",
 				})
-				return
-			}
-			log.Printf("Cartographer retry schema: %s", schemaJSON)
-			if bad2 := mache.ValidateSchema(schemaJSON, msg.Summary); len(bad2) > 0 {
-				log.Printf("Cartographer still hallucinating after retry: %v", bad2)
+				schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, cartSummary)
+				if err != nil {
+					log.Printf("Cartographer retry failed: %v", err)
+					h.sendMessage(conn, OutboundMessage{
+						Type: MsgStatus, TabID: msg.TabID, Message: "Schema retry failed: " + err.Error(), Stage: "error",
+					})
+					return
+				}
+				log.Printf("Cartographer retry schema: %s", schemaJSON)
+				if bad2 := mache.ValidateSchema(schemaJSON, msg.Summary); len(bad2) > 0 {
+					log.Printf("Cartographer still hallucinating after retry: %v", bad2)
+				}
 			}
 		}
 

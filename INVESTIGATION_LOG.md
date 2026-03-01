@@ -1,5 +1,28 @@
 # Investigation Log
 
+## 2026-02-28: Auto-Repair Hallucinated Zone Anchors
+
+### Context
+The Tropical Cartographer discovers UI zones via math (edge detection, bounding boxes, H⁰ folding), then the LLM assigns names and mache IDs. When a zone's container element wasn't tagged by content.js (e.g., `<shreddit-comment-tree>`), the LLM invents a fake ID by extrapolating the sequential numbering (e.g., `mache-385` when max DOM ID is `mache-297`).
+
+### Problem
+The zone's `primary_items` were all valid — only the parent anchor was hallucinated. The old code regenerated the schema once, got the same hallucination (deterministic trap), logged a warning, and proceeded with the broken ID. This wasted a full Cartographer call (~2-5s) and still left the zone with a broken root node.
+
+### Solution: Repair-First Strategy
+Added `RepairSchema()` to `internal/mache/engine.go`. If a zone's `mache_id` is hallucinated but it has valid `primary_items`, the anchor is swapped to the first valid child. The zone structure is preserved, navigation works, and no schema regeneration is wasted.
+
+Updated `internal/api/snapshot.go` to call `RepairSchema` before falling back to regeneration. Only truly unrepairable zones (hallucinated anchor AND no valid primary items) trigger the expensive retry.
+
+### Key Insight
+The integer-extrapolation hallucination is deterministic — regenerating produces the same fake ID. Repair sidesteps this entirely by using data the LLM already got right (the child IDs).
+
+### Files
+- `internal/mache/engine.go` — `RepairSchema()` function
+- `internal/api/snapshot.go` — repair-first hallucination handler
+- `internal/mache/engine_test.go` — 4 test cases covering swap, no-op, unrepairable, and mixed scenarios
+
+---
+
 ## 2026-02-28: Navigator Fine-Tuning — JSON → CLI Format Pivot
 
 ### Context

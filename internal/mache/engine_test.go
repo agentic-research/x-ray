@@ -1,6 +1,7 @@
 package mache
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -1015,6 +1016,107 @@ func TestMergeSchemaResolveMacheID(t *testing.T) {
 }
 
 // --- ValidateSchemaBounds tests ---
+
+// --- RepairSchema tests ---
+
+func TestRepairSchema_SwapsHallucinatedAnchor(t *testing.T) {
+	// Schema with a hallucinated zone anchor (mache-385 doesn't exist in DOM)
+	// but valid primary_items (mache-51, mache-56 exist).
+	schema := `{"mounts":[{
+		"virtual_path":"/main/comments",
+		"mache_id":"mache-385",
+		"description":"Comment tree",
+		"primary_items":["mache-51","mache-56"]
+	}]}`
+	summary := `Interactive Elements:
+ID: mache-10 | Parent: none | Tag: div | Text: "Page"
+ID: mache-51 | Parent: mache-10 | Tag: div | Text: "First comment"
+ID: mache-56 | Parent: mache-10 | Tag: div | Text: "Second comment"
+`
+	repaired, count := RepairSchema(schema, summary)
+	if count != 1 {
+		t.Fatalf("expected 1 repair, got %d", count)
+	}
+
+	// Parse repaired JSON and verify anchor was swapped to first valid child.
+	var output CartographerOutput
+	if err := json.Unmarshal([]byte(repaired), &output); err != nil {
+		t.Fatalf("failed to parse repaired JSON: %v", err)
+	}
+	if len(output.Mounts) != 1 {
+		t.Fatalf("expected 1 mount, got %d", len(output.Mounts))
+	}
+	if output.Mounts[0].MacheID != "mache-51" {
+		t.Errorf("expected anchor swapped to mache-51, got %q", output.Mounts[0].MacheID)
+	}
+}
+
+func TestRepairSchema_NoRepairNeeded(t *testing.T) {
+	// All anchors are valid — no repair.
+	schema := `{"mounts":[{
+		"virtual_path":"/main/feed",
+		"mache_id":"mache-10",
+		"description":"Feed",
+		"primary_items":["mache-11","mache-12"]
+	}]}`
+	summary := "ID: mache-10 | Parent: none | Tag: div | Text: \"Feed\"\nID: mache-11 | Parent: mache-10 | Tag: a | Text: \"Story\"\n"
+
+	repaired, count := RepairSchema(schema, summary)
+	if count != 0 {
+		t.Fatalf("expected 0 repairs, got %d", count)
+	}
+	if repaired != schema {
+		t.Error("expected original JSON returned when no repairs needed")
+	}
+}
+
+func TestRepairSchema_NoPrimaryItems(t *testing.T) {
+	// Hallucinated anchor but no primary_items — unrepairable.
+	schema := `{"mounts":[{
+		"virtual_path":"/main/feed",
+		"mache_id":"mache-999",
+		"description":"Feed"
+	}]}`
+	summary := "ID: mache-10 | Parent: none | Tag: div | Text: \"Feed\"\n"
+
+	repaired, count := RepairSchema(schema, summary)
+	if count != 0 {
+		t.Fatalf("expected 0 repairs (no primary_items), got %d", count)
+	}
+	if repaired != schema {
+		t.Error("expected original JSON returned when unrepairable")
+	}
+}
+
+func TestRepairSchema_MultipleZones(t *testing.T) {
+	// Two zones: one hallucinated (repairable), one valid.
+	schema := `{"mounts":[
+		{"virtual_path":"/header/nav","mache_id":"mache-0","description":"Nav"},
+		{"virtual_path":"/main/comments","mache_id":"mache-500","description":"Comments","primary_items":["mache-20","mache-25"]}
+	]}`
+	summary := `Interactive Elements:
+ID: mache-0 | Parent: none | Tag: nav | Text: "Nav"
+ID: mache-20 | Parent: none | Tag: div | Text: "Comment 1"
+ID: mache-25 | Parent: mache-20 | Tag: div | Text: "Comment 2"
+`
+	repaired, count := RepairSchema(schema, summary)
+	if count != 1 {
+		t.Fatalf("expected 1 repair, got %d", count)
+	}
+
+	var output CartographerOutput
+	if err := json.Unmarshal([]byte(repaired), &output); err != nil {
+		t.Fatalf("failed to parse repaired JSON: %v", err)
+	}
+	// First zone untouched
+	if output.Mounts[0].MacheID != "mache-0" {
+		t.Errorf("valid zone should be untouched, got %q", output.Mounts[0].MacheID)
+	}
+	// Second zone repaired
+	if output.Mounts[1].MacheID != "mache-20" {
+		t.Errorf("expected anchor swapped to mache-20, got %q", output.Mounts[1].MacheID)
+	}
+}
 
 func TestValidateSchemaBounds_Displaced(t *testing.T) {
 	// Cached schema: mache-3 at [0.1, 0.3, 0.8, 0.5] (center ≈ 0.5, 0.55)
