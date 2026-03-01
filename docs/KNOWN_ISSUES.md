@@ -46,6 +46,16 @@ The following bugs were previously tracked but have been fixed and verified with
 *   **Doer Teleportation (Tab 0 Rebind):** Doer starting on Tab 0 (disconnected extension) correctly rebinds to the real tab when the extension wakes up mid-goal. (`TestBug_DoerTeleportationTab0`)
 *   **TAB_ACTIVATED Voice UI Filtering:** Voice UI tabs no longer pollute `activeVoiceTab`. Extension-side filtering via `schemaReadyTabs` prevents false activations. (`TestBug_TabActivatedVoiceUIFiltered`, `TestBug_TabActivatedVoiceUIViaWebSocket`)
 
+### Data Races & Algorithmic Bugs (2026-03-01 adversarial review)
+
+*   **C1: Agent.SetGraph() data race:** Navigator graph access now goes through mache `HotSwapGraph` (v0.5.2). `SetGraph()` → `hotswap.Swap()`. All tool calls get per-call RLock automatically. (`ab5472c`)
+*   **C2: CVRegions unsynchronized read/write:** Added `GetCVRegions()`/`SetCVRegions()` on `TabSession` under `schemaMu`. (`ab5472c`)
+*   **C3: RescanPath unsynchronized read/write:** Added `ConsumeRescanPath()`/`SetRescanPath()` on `TabSession` under `schemaMu`. (`ab5472c`)
+*   **C4: CurrentURL unprotected in Doer:** Doer now uses `GetCurrentURL()`/`SetCurrentURL()` accessors. (`ab5472c`)
+*   **C5: Planner passes wrong tabID:** Changed `req.TabID` to resolved `tabID`. (`ab5472c`)
+*   **H7: H⁰ folding violates minZones:** Post-folding guard keeps pre-fold zones if folded count < minZ. (`TestBug_H0FoldingViolatesMinZones`, `ab5472c`)
+*   **S1: Prefilter drops structural containers:** Added structural container priority tier (nav, main, section, etc.) with reserved budget. (`TestPrefilterElements_StructuralContainersSurvive`, `c5b00ec`)
+
 ### Cartographer (`internal/cartographer/known_bugs_test.go`)
 
 *   **cv-* Region as Zone Root:** Edge-detected canvas regions (`cv-*`) are synthetic IDs that don't exist in the browser DOM. `buildMounts` now skips `cv-*` and `ax-*` when selecting zone root elements. (`TestBug_CVRegionAsZoneRoot`, `TestBug_CVRegionOnlyZone`)
