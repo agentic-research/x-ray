@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -264,6 +265,115 @@ func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer 
 	}
 }
 
+// resolveTab figures out which Chrome tab to use for a task.
+//
+// Strategy:
+//  1. If startURL is provided, ask the extension for all open tabs.
+//     If an existing tab matches the same host, navigate it to startURL.
+//     Otherwise, create a new tab.
+//  2. If no startURL, use the active voice tab (or the requested tabID).
+//  3. Returns the real Chrome tab ID (never 0 in the happy path).
+func (h *Handler) resolveTab(ctx context.Context, requestedTabID int, startURL string) int {
+	// No start URL — use whatever tab is already active.
+	if startURL == "" {
+		h.mu.Lock()
+		active := h.activeVoiceTab
+		h.mu.Unlock()
+		if active != 0 {
+			return active
+		}
+		return requestedTabID
+	}
+
+	// Parse the target host for matching.
+	targetHost := ""
+	if u, err := url.Parse(startURL); err == nil {
+		targetHost = u.Host
+	}
+
+	// Ask extension for current tab inventory.
+	tabs := h.listTabsSync(ctx, 5*time.Second)
+
+	// Look for an existing tab on the same host.
+	if targetHost != "" {
+		for _, tab := range tabs {
+			if u, err := url.Parse(tab.URL); err == nil && u.Host == targetHost {
+				log.Printf("Planner: reusing tab %d (%s) for %s", tab.ID, tab.URL, startURL)
+				if tab.URL != startURL {
+					// Same host, different path — navigate it.
+					h.sendGoto(tab.ID, startURL)
+					sess := h.getSession(tab.ID)
+					sess.ResetSchema()
+				}
+				return tab.ID
+			}
+		}
+	}
+
+	// No matching tab — create a new one and wait for its ID.
+	log.Printf("Planner: no existing tab for %s, creating new tab", startURL)
+	h.sendCreateTab(startURL)
+
+	// Wait for TAB_ACTIVATED to give us the real tab ID.
+	deadline := time.After(15 * time.Second)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			h.mu.Lock()
+			candidate := h.activeVoiceTab
+			h.mu.Unlock()
+			if candidate != 0 && candidate != requestedTabID {
+				log.Printf("Planner: new tab created with ID %d", candidate)
+				return candidate
+			}
+		case <-deadline:
+			// Fallback: check if activeVoiceTab was set.
+			h.mu.Lock()
+			active := h.activeVoiceTab
+			h.mu.Unlock()
+			if active != 0 {
+				return active
+			}
+			log.Printf("Planner: timed out waiting for new tab ID, using %d", requestedTabID)
+			return requestedTabID
+		case <-ctx.Done():
+			return 0
+		}
+	}
+}
+
+// listTabsSync asks the extension for all open tabs and blocks until the response.
+func (h *Handler) listTabsSync(ctx context.Context, timeout time.Duration) []TabInfo {
+	// Use a temporary session to receive the response. We use tab 0 since
+	// handleTabsListed delivers to the voice session.
+	h.mu.Lock()
+	voiceTab := h.activeVoiceTab
+	h.mu.Unlock()
+
+	sess := h.getSession(voiceTab)
+
+	// Drain stale response.
+	select {
+	case <-sess.TabsListedCh:
+	default:
+	}
+
+	h.sendListTabs()
+
+	select {
+	case tabs := <-sess.TabsListedCh:
+		log.Printf("Planner: got tab inventory: %d tabs", len(tabs))
+		return tabs
+	case <-time.After(timeout):
+		log.Printf("Planner: LIST_TABS timed out")
+		return nil
+	case <-ctx.Done():
+		return nil
+	}
+}
+
 // HandleAgentTask is the HTTP handler for POST /agent/task.
 // It navigates to the start URL (if provided), runs the Planner loop, and returns the result.
 func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
@@ -293,19 +403,24 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	sess := h.getSession(req.TabID)
+	tabID := req.TabID
 
-	// Navigate to start URL if provided.
-	if req.StartURL != "" {
-		log.Printf("Planner: navigating to start URL: %s", req.StartURL)
-		sess.ResetSchema()
-		h.sendCreateTab(req.StartURL)
+	// Resolve a real tab: use existing inventory or create a new one.
+	tabID = h.resolveTab(ctx, tabID, req.StartURL)
+	if tabID == 0 && ctx.Err() != nil {
+		writeJSON(w, PlannerResult{Status: "cancelled", Summary: "Request cancelled."})
+		return
+	}
 
+	sess := h.getSession(tabID)
+
+	// Wait for schema to be ready before running the Planner.
+	if !sess.GetEngine().HasSchema() {
 		select {
 		case <-sess.GetSchemaReady():
-			log.Printf("Planner: start URL loaded")
+			log.Printf("Planner: schema ready (tab %d)", tabID)
 		case <-time.After(30 * time.Second):
-			log.Printf("Planner: start URL load timed out, proceeding anyway")
+			log.Printf("Planner: schema timeout (tab %d), proceeding anyway", tabID)
 		case <-ctx.Done():
 			writeJSON(w, PlannerResult{Status: "cancelled", Summary: "Request cancelled."})
 			return
