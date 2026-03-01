@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -52,14 +53,41 @@ func talkerToolDefinitions() []*genai.Tool {
 				Description: "Cancel the current background navigation task. Use when the user says stop, cancel, or nevermind.",
 				Parameters:  &genai.Schema{Type: genai.TypeObject},
 			},
+			{
+				Name:        "open_url",
+				Description: "Open a URL in a NEW browser tab. Use when no tab is active or user says 'open [website]'.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"url": {Type: genai.TypeString, Description: "URL to open (e.g. 'https://crunchyroll.com'). Add https:// if omitted."},
+					},
+					Required: []string{"url"},
+				},
+			},
 		},
 	}}
 }
 
+// executeOpenURL opens a new browser tab via the extension. App-scoped (no doer needed).
+func (h *Handler) executeOpenURL(fc *genai.FunctionCall) string {
+	url, _ := fc.Args["url"].(string)
+	if url == "" {
+		return "Error: url is required."
+	}
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "https://" + url
+	}
+	h.sendCreateTab(url)
+	return fmt.Sprintf("Opening %s in a new tab. The page will load in a few seconds.", url)
+}
+
 // executeTalkerTool dispatches a Talker tool call. All tools return instantly.
 func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
+	if fc.Name == "open_url" {
+		return h.executeOpenURL(fc)
+	}
 	if doer == nil {
-		return "No active browser tab."
+		return "No active browser tab. Use open_url to open a website first."
 	}
 	switch fc.Name {
 	case "check_status":
@@ -113,6 +141,7 @@ YOUR TOOLS:
   Leave read_only=false (or omit) when the user wants an ACTION (e.g., "click...", "play...", "open...", "search for...", "type...", "go to...").
 - check_status(): Check what the navigator is currently doing. Returns goal, current step, and result if finished.
 - cancel_task(): Cancel the current background task.
+- open_url(url): Open a URL in a NEW browser tab. Use when no tab exists or user explicitly says "open [website]".
 
 BEHAVIOR:
 1. When the user asks you to do something OR asks a question about their environment (browser or terminal), use issue_command() IMMEDIATELY. Do NOT add conversational filler like "Let me check" or "Working on it" — just execute the tool silently. Always set read_only appropriately.
@@ -122,6 +151,7 @@ BEHAVIOR:
 5. If the user says "stop" or "cancel", use cancel_task() and confirm: "Cancelled."
 6. You can answer general knowledge questions directly using Google Search — no need to issue_command for those.
 7. Keep ALL responses to ONE short sentence. Never narrate your tool usage.
+8. If you get "No active browser tab", use open_url() to open a website first, then issue_command() after it loads.
 
 Your navigator can read the full environment structure (including terminals at /iterm/), so ALWAYS delegate environment questions to it — never say "I can't see the terminal."`
 
@@ -173,24 +203,20 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = conn.Close() }()
 
 	ctx := r.Context()
-	sess := h.getSession(tabID)
 	log.Printf("Voice: browser connected (tab %d)", tabID)
 
 	// Mutex protects writes to the browser WS.
 	var wsMu sync.Mutex
 
-	// Create/get the Doer for this tab.
-	doer := h.getOrCreateDoer(tabID, sess)
-
-	doer.SetActionNotifyFn(func(macheID, action, payload string) {
+	// actionNotifyFn forwards Doer actions to the browser voice WS.
+	actionNotifyFn := func(macheID, action, payload string) {
 		sendVoiceJSON(conn, &wsMu, voiceMessage{
 			Type:    MsgExecuteAction,
 			MacheID: macheID,
 			Action:  action,
 			Payload: payload,
 		})
-	})
-	defer doer.SetActionNotifyFn(nil)
+	}
 
 	// Session resumption: reconnect-on-GoAway outer loop.
 	// The browser WS stays open; only the Gemini Live session reconnects.
@@ -215,7 +241,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 		var sessionMu sync.Mutex
 
 		// Wire Doer result callback to this session.
-		doer.SetResultNotifyFn(func(summary string) {
+		resultNotifyFn := func(summary string) {
 			sessionMu.Lock()
 			defer sessionMu.Unlock()
 			if err := session.SendClientContent(genai.LiveClientContentInput{
@@ -229,7 +255,25 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			}); err != nil {
 				log.Printf("Voice: result notify SendClientContent error: %v", err)
 			}
-		})
+		}
+
+		// resolveDoer dynamically resolves the Doer for the active voice tab.
+		// Returns nil if no voice tab is active (open_url can still work).
+		resolveDoer := func() *Doer {
+			tid := h.getVoiceTabID()
+			if tid == 0 {
+				// Fall back to the original tab ID from the query param.
+				tid = tabID
+			}
+			if tid == 0 {
+				return nil
+			}
+			sess := h.getSession(tid)
+			doer := h.getOrCreateDoer(tid, sess)
+			doer.SetResultNotifyFn(resultNotifyFn)
+			doer.SetActionNotifyFn(actionNotifyFn)
+			return doer
+		}
 
 		// --- goroutine 1: browser → Gemini (audio chunks) ---
 		// Each reconnect starts a new sender goroutine tied to this session.
@@ -373,8 +417,8 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				var responses []*genai.FunctionResponse
 				for _, fc := range tc.FunctionCalls {
 					switch fc.Name {
-					case "check_status", "issue_command", "cancel_task":
-						result := h.executeTalkerTool(fc, doer)
+					case "check_status", "issue_command", "cancel_task", "open_url":
+						result := h.executeTalkerTool(fc, resolveDoer())
 						log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
 						responses = append(responses, &genai.FunctionResponse{
 							ID:       fc.ID,
@@ -428,7 +472,9 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 
 		sessionCancel() // kill the sender goroutine (Bug #8 fix)
 		_ = session.Close()
-		doer.SetResultNotifyFn(nil)
+		if d := resolveDoer(); d != nil {
+			d.SetResultNotifyFn(nil)
+		}
 		if !shouldReconnect {
 			break
 		}
@@ -637,7 +683,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				var responses []*genai.FunctionResponse
 				for _, fc := range tc.FunctionCalls {
 					switch fc.Name {
-					case "check_status", "issue_command", "cancel_task":
+					case "check_status", "issue_command", "cancel_task", "open_url":
 						result := h.executeTalkerTool(fc, resolveDoer())
 						log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
 						responses = append(responses, &genai.FunctionResponse{

@@ -20,6 +20,7 @@ const (
 	MsgListTabs          = "LIST_TABS"
 	MsgTabsListed        = "TABS_LISTED"
 	MsgSwitchTab         = "SWITCH_TAB"
+	MsgCreateTab         = "CREATE_TAB"
 	MsgTabClosed         = "TAB_CLOSED"
 	MsgDOMMutated        = "DOM_MUTATED"
 	MsgPing              = "PING"

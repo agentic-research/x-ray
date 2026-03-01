@@ -413,7 +413,11 @@ func TestBug_TabActivatedRealTabAccepted(t *testing.T) {
 }
 
 func TestBug_TabActivatedVoiceUIViaWebSocket(t *testing.T) {
-	// Full WS integration: send TAB_ACTIVATED for a sessionless tab over WebSocket.
+	// TAB_ACTIVATED now unconditionally sets activeVoiceTab (session guard removed).
+	// The extension's chrome.tabs.onActivated listener filters by schemaReadyTabs,
+	// preventing voice UI from polluting activeVoiceTab in practice.
+	// CREATE_TAB intentionally sends TAB_ACTIVATED before a session exists so that
+	// open_url can bootstrap a new tab.
 	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
@@ -431,7 +435,7 @@ func TestBug_TabActivatedVoiceUIViaWebSocket(t *testing.T) {
 	h.activeVoiceTab = 42
 	h.mu.Unlock()
 
-	// Send TAB_ACTIVATED for tab 999 (no session — like voice UI).
+	// Send TAB_ACTIVATED for tab 999 (simulating CREATE_TAB bootstrap).
 	sendJSON(t, conn, InboundMessage{Type: MsgTabActivated, TabID: 999})
 	time.Sleep(50 * time.Millisecond)
 
@@ -439,8 +443,8 @@ func TestBug_TabActivatedVoiceUIViaWebSocket(t *testing.T) {
 	voiceTab := h.activeVoiceTab
 	h.mu.Unlock()
 
-	if voiceTab != 42 {
-		t.Errorf("BUG: voice UI TAB_ACTIVATED changed activeVoiceTab from 42 to %d", voiceTab)
+	if voiceTab != 999 {
+		t.Errorf("TAB_ACTIVATED should unconditionally set activeVoiceTab, got %d want 999", voiceTab)
 	}
 }
 

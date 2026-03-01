@@ -222,6 +222,33 @@ function connectWebSocket() {
         break;
       }
 
+      case 'CREATE_TAB': {
+        const url = msg.url;
+        if (!url) break;
+        chrome.tabs.create({ url, active: true }, (tab) => {
+          if (!tab) return;
+          if (tab.windowId) chrome.windows.update(tab.windowId, { focused: true });
+          // Notify server immediately (before schema ready) so activeVoiceTab is set.
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'TAB_ACTIVATED', tab_id: tab.id }));
+          }
+          // Wait for page load, then snapshot.
+          const listener = (tabId, changeInfo) => {
+            if (tabId === tab.id && changeInfo.status === 'complete') {
+              chrome.tabs.onUpdated.removeListener(listener);
+              lastKnownUrls.set(tab.id, url); // Sync tracked URL
+              waitForLayoutStable(tab.id).then(() => {
+                pendingSnapshots.add(tab.id);
+                captureAndSend(tab.id);
+              });
+            }
+          };
+          chrome.tabs.onUpdated.addListener(listener);
+          setTimeout(() => chrome.tabs.onUpdated.removeListener(listener), 30000);
+        });
+        break;
+      }
+
       case 'SWITCH_TAB': {
         const targetTab = msg.tab_id;
         if (!targetTab) break;

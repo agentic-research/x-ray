@@ -252,13 +252,9 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			h.handleSelectorsResolved(msg)
 		case MsgTabActivated:
 			h.mu.Lock()
-			if _, exists := h.sessions[msg.TabID]; exists {
-				h.activeVoiceTab = msg.TabID
-				log.Printf("WebSocket: active voice tab set to %d", msg.TabID)
-			} else {
-				log.Printf("WebSocket: TAB_ACTIVATED for tab %d ignored (no session)", msg.TabID)
-			}
+			h.activeVoiceTab = msg.TabID
 			h.mu.Unlock()
+			log.Printf("WebSocket: active voice tab set to %d", msg.TabID)
 		case MsgTabClosed:
 			h.handleTabClosed(msg)
 		case MsgDOMMutated:
@@ -527,6 +523,22 @@ func (h *Handler) sendSwitchTab(tabID int) {
 		return
 	}
 	h.sendMessage(conn, OutboundMessage{Type: MsgSwitchTab, TabID: tabID})
+}
+
+// sendCreateTab tells the extension to open a new Chrome tab with the given URL.
+// Used by voice mode's open_url tool when no browser tab is active.
+func (h *Handler) sendCreateTab(url string) {
+	h.mu.Lock()
+	conn := h.conn
+	h.mu.Unlock()
+	if conn == nil {
+		log.Printf("Voice: no extension connected, cannot create tab for: %s", url)
+		if h.openBrowserFn != nil {
+			h.openBrowserFn(url)
+		}
+		return
+	}
+	h.sendMessage(conn, OutboundMessage{Type: MsgCreateTab, URL: url})
 }
 
 // scrollVoice scrolls the page via the extension WebSocket. Used by voice mode
