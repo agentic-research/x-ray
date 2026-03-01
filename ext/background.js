@@ -224,9 +224,18 @@ function connectWebSocket() {
 
       case 'CREATE_TAB': {
         const url = msg.url;
+        console.log('X-Ray: CREATE_TAB received, url:', url);
         if (!url) break;
         chrome.tabs.create({ url, active: true }, (tab) => {
-          if (!tab) return;
+          if (chrome.runtime.lastError) {
+            console.error('X-Ray: CREATE_TAB failed:', chrome.runtime.lastError);
+            return;
+          }
+          if (!tab) {
+            console.error('X-Ray: CREATE_TAB returned null tab');
+            return;
+          }
+          console.log('X-Ray: Created tab', tab.id, 'for', url);
           if (tab.windowId) chrome.windows.update(tab.windowId, { focused: true });
           // Notify server immediately (before schema ready) so activeVoiceTab is set.
           if (ws && ws.readyState === WebSocket.OPEN) {

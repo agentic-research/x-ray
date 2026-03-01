@@ -221,6 +221,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	// Session resumption: reconnect-on-GoAway outer loop.
 	// The browser WS stays open; only the Gemini Live session reconnects.
 	var resumeHandle string
+	var inputBuf, outputBuf strings.Builder
 	for {
 		config := buildLiveConfig()
 		applyResumeHandle(config, resumeHandle)
@@ -386,15 +387,16 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 
-				// Transcriptions.
+				// Transcriptions: accumulate chunks, forward each to browser
+				// for real-time display, but only log complete utterances.
 				if sc.InputTranscription != nil && sc.InputTranscription.Text != "" {
-					log.Printf("Voice [tab %d] User: %s", tabID, sc.InputTranscription.Text)
+					inputBuf.WriteString(sc.InputTranscription.Text)
 					sendVoiceJSON(conn, &wsMu, voiceMessage{
 						Type: "input_transcription", Text: sc.InputTranscription.Text,
 					})
 				}
 				if sc.OutputTranscription != nil && sc.OutputTranscription.Text != "" {
-					log.Printf("Voice [tab %d] Talker: %s", tabID, sc.OutputTranscription.Text)
+					outputBuf.WriteString(sc.OutputTranscription.Text)
 					sendVoiceJSON(conn, &wsMu, voiceMessage{
 						Type: "output_transcription", Text: sc.OutputTranscription.Text,
 					})
@@ -408,6 +410,17 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				}
 				if sc.TurnComplete {
 					sendVoiceJSON(conn, &wsMu, voiceMessage{Type: "turn_complete"})
+				}
+				// Flush buffered transcriptions on turn boundary.
+				if sc.TurnComplete || sc.Interrupted {
+					if inputBuf.Len() > 0 {
+						log.Printf("Voice [tab %d] User: %s", tabID, strings.TrimSpace(inputBuf.String()))
+						inputBuf.Reset()
+					}
+					if outputBuf.Len() > 0 {
+						log.Printf("Voice [tab %d] Talker: %s", tabID, strings.TrimSpace(outputBuf.String()))
+						outputBuf.Reset()
+					}
 				}
 				continue
 			}
@@ -508,6 +521,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 
 	// Session resumption: reconnect-on-GoAway outer loop.
 	var resumeHandle string
+	var inputBuf, outputBuf strings.Builder
 	for {
 		config := buildLiveConfig()
 		applyResumeHandle(config, resumeHandle)
@@ -669,10 +683,21 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				}
 
 				if sc.InputTranscription != nil && sc.InputTranscription.Text != "" {
-					log.Printf("Voice User: %s", sc.InputTranscription.Text)
+					inputBuf.WriteString(sc.InputTranscription.Text)
 				}
 				if sc.OutputTranscription != nil && sc.OutputTranscription.Text != "" {
-					log.Printf("Voice Talker: %s", sc.OutputTranscription.Text)
+					outputBuf.WriteString(sc.OutputTranscription.Text)
+				}
+				// Flush buffered transcriptions on turn boundary.
+				if sc.TurnComplete || sc.Interrupted {
+					if inputBuf.Len() > 0 {
+						log.Printf("Voice User: %s", strings.TrimSpace(inputBuf.String()))
+						inputBuf.Reset()
+					}
+					if outputBuf.Len() > 0 {
+						log.Printf("Voice Talker: %s", strings.TrimSpace(outputBuf.String()))
+						outputBuf.Reset()
+					}
 				}
 
 				continue

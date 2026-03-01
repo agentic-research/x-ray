@@ -1402,6 +1402,24 @@ func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropic
 				m.PrimaryItems = append(m.PrimaryItems, elements[idx].id)
 			}
 			m.ItemSelector = z.selector
+		} else {
+			// Non-list zones: expose DOM elements as primary items so
+			// LoadChildren creates _c/ directories for clicking.
+			// Include elements with text OR interactive elements (icon-only
+			// buttons like search/hamburger that have no text but are clickable).
+			for _, idx := range z.elems {
+				el := elements[idx]
+				if el.source != "dom" {
+					continue
+				}
+				if el.id == rootEl.id {
+					continue // skip zone root itself
+				}
+				if el.text == "" && !el.interactive {
+					continue // skip non-text, non-interactive elements
+				}
+				m.PrimaryItems = append(m.PrimaryItems, el.id)
+			}
 		}
 
 		mounts = append(mounts, m)
