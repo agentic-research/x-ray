@@ -1015,6 +1015,76 @@ func TestMergeSchemaResolveMacheID(t *testing.T) {
 	}
 }
 
+// --- ValidateSchema / ValidateSchemaZones tests ---
+
+func TestValidateSchema_AllValid(t *testing.T) {
+	bad := ValidateSchema(sampleSchema, sampleSummary)
+	if len(bad) != 0 {
+		t.Errorf("expected all valid, got bad IDs: %v", bad)
+	}
+}
+
+func TestValidateSchema_Hallucinated(t *testing.T) {
+	// mache-385 doesn't exist in sampleSummary (max is mache-200).
+	schema := `{"mounts":[
+		{"virtual_path":"/header/nav","mache_id":"mache-0","description":"Nav"},
+		{"virtual_path":"/main/comments","mache_id":"mache-385","description":"Comments"}
+	]}`
+	bad := ValidateSchema(schema, sampleSummary)
+	if len(bad) != 1 {
+		t.Fatalf("expected 1 hallucinated ID, got %d: %v", len(bad), bad)
+	}
+	if bad[0] != "mache-385" {
+		t.Errorf("expected mache-385 in bad list, got %q", bad[0])
+	}
+}
+
+func TestValidateSchema_InvalidJSON(t *testing.T) {
+	bad := ValidateSchema("not json", sampleSummary)
+	if len(bad) != 0 {
+		t.Errorf("invalid JSON should return empty, got: %v", bad)
+	}
+}
+
+func TestValidateSchemaZones_AllValid(t *testing.T) {
+	stale := ValidateSchemaZones(sampleSchema, sampleSummary)
+	if len(stale) != 0 {
+		t.Errorf("expected all valid, got stale: %v", stale)
+	}
+}
+
+func TestValidateSchemaZones_ReturnsPaths(t *testing.T) {
+	schema := `{"mounts":[
+		{"virtual_path":"/header/nav","mache_id":"mache-0","description":"Nav"},
+		{"virtual_path":"/main/comments","mache_id":"mache-999","description":"Comments"}
+	]}`
+	stale := ValidateSchemaZones(schema, sampleSummary)
+	if len(stale) != 1 {
+		t.Fatalf("expected 1 stale zone, got %d: %v", len(stale), stale)
+	}
+	if stale["/main/comments"] != "mache-999" {
+		t.Errorf("expected /main/comments → mache-999, got: %v", stale)
+	}
+}
+
+func TestValidateSchemaZones_InvalidJSON(t *testing.T) {
+	stale := ValidateSchemaZones("{bad", sampleSummary)
+	if stale != nil {
+		t.Errorf("invalid JSON should return nil, got: %v", stale)
+	}
+}
+
+func TestValidateSchemaZones_AllHallucinated(t *testing.T) {
+	schema := `{"mounts":[
+		{"virtual_path":"/a","mache_id":"mache-500","description":"A"},
+		{"virtual_path":"/b","mache_id":"mache-600","description":"B"}
+	]}`
+	stale := ValidateSchemaZones(schema, sampleSummary)
+	if len(stale) != 2 {
+		t.Fatalf("expected 2 stale zones, got %d: %v", len(stale), stale)
+	}
+}
+
 // --- ValidateSchemaBounds tests ---
 
 // --- RepairSchema tests ---
