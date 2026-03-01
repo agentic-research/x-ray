@@ -413,6 +413,61 @@ func TestPrefilterElements(t *testing.T) {
 	}
 }
 
+func TestPrefilterElements_StructuralContainersSurvive(t *testing.T) {
+	// Bug: structural containers (nav, main, section, etc.) have no text
+	// and no color, so they landed in the lowest-priority "rest" bucket
+	// and were the first to be dropped. This destroys zone hierarchy.
+	//
+	// Fix: structural tags get a reserved budget and are filled first.
+
+	var elements []element
+
+	// 5 structural containers (no text, no color)
+	for i, tag := range []string{"nav", "main", "section", "footer", "header"} {
+		elements = append(elements, element{
+			id:  fmt.Sprintf("struct-%d", i),
+			tag: tag,
+		})
+	}
+
+	// 500 text elements — enough to fill the entire budget alone
+	for i := 0; i < 500; i++ {
+		elements = append(elements, element{
+			id:   fmt.Sprintf("text-%d", i),
+			tag:  "div",
+			text: fmt.Sprintf("item %d", i),
+		})
+	}
+
+	filtered := prefilterElements(elements, 100)
+	if len(filtered) != 100 {
+		t.Fatalf("expected 100 elements, got %d", len(filtered))
+	}
+
+	// Every structural container must survive
+	structIDs := map[string]bool{}
+	for _, el := range filtered {
+		if structuralTags[el.tag] {
+			structIDs[el.id] = true
+		}
+	}
+	if len(structIDs) != 5 {
+		t.Errorf("BUG NOT FIXED: only %d/5 structural containers survived prefilter (got: %v)",
+			len(structIDs), structIDs)
+	}
+
+	// Remaining 95 slots should be text elements
+	textCount := 0
+	for _, el := range filtered {
+		if el.text != "" {
+			textCount++
+		}
+	}
+	if textCount != 95 {
+		t.Errorf("expected 95 text elements, got %d", textCount)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Integration: GenerateSchema against testdata
 // ---------------------------------------------------------------------------

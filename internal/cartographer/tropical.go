@@ -221,17 +221,28 @@ func (tc *TropicalCartographer) GenerateSchema(
 // Pre-filtering for large DOMs
 // ---------------------------------------------------------------------------
 
+// structuralTags are HTML container elements that define page topology.
+// These must survive prefiltering even when they lack text or color,
+// because the NJ tree needs them to produce meaningful zone hierarchy.
+var structuralTags = map[string]bool{
+	"body": true, "main": true, "nav": true, "header": true,
+	"footer": true, "section": true, "article": true, "aside": true,
+	"form": true,
+}
+
 // prefilterElements reduces element count for the O(N^3) NJ algorithm.
-// Keeps elements with text or semantic color; drops empty filler first.
+// Priority: structural containers > text > color > rest.
+// Structural containers get a reserved budget so they are never dropped.
 func prefilterElements(elements []element, maxN int) []element {
 	if len(elements) <= maxN {
 		return elements
 	}
 
-	// Priority: elements with text > elements with color > the rest
-	var withText, withColor, rest []element
+	var structural, withText, withColor, rest []element
 	for _, el := range elements {
 		switch {
+		case structuralTags[el.tag]:
+			structural = append(structural, el)
 		case el.text != "":
 			withText = append(withText, el)
 		case el.color != "":
@@ -241,24 +252,27 @@ func prefilterElements(elements []element, maxN int) []element {
 		}
 	}
 
-	result := withText
-	if len(result) < maxN {
-		room := maxN - len(result)
-		if room > len(withColor) {
-			room = len(withColor)
+	// Structural containers always go first (capped at 30 to leave room).
+	structCap := 30
+	if len(structural) < structCap {
+		structCap = len(structural)
+	}
+	result := structural[:structCap]
+
+	// Fill remaining budget with text > color > rest.
+	remaining := maxN - len(result)
+	for _, bucket := range [][]element{withText, withColor, rest} {
+		if remaining <= 0 {
+			break
 		}
-		result = append(result, withColor[:room]...)
-	}
-	if len(result) < maxN {
-		room := maxN - len(result)
-		if room > len(rest) {
-			room = len(rest)
+		take := len(bucket)
+		if take > remaining {
+			take = remaining
 		}
-		result = append(result, rest[:room]...)
+		result = append(result, bucket[:take]...)
+		remaining -= take
 	}
-	if len(result) > maxN {
-		result = result[:maxN]
-	}
+
 	return result
 }
 
