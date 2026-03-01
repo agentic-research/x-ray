@@ -1,77 +1,80 @@
-# Mache X-Ray: Navigating the Web with Semantic Filesystems
+# X-Ray: Real-Time Voice Browsing with Zero-Cost Page Understanding
 
-The standard approach to building web agents is to feed them raw HTML. But HTML is a delivery mechanism for browsers, not a semantic map for reasoning agents. When I started the Gemini Live Agent Challenge, I had a simple premise: LLMs shouldn't have to read it.
+*Created for the Gemini Live Agent Challenge #GeminiLiveAgentChallenge*
 
-I'd already built Mache — a system that projects structured data (code ASTs, JSON, SQLite databases) into virtual filesystems for agent-computer interaction. For a coding agent, navigating `cd /functions/getAuth` is fundamentally better than parsing a 10,000-line syntax tree.
+You can talk to your browser. Say "click the third story" and it clicks it. Say "go to the settings page" and it navigates. Say "what am I looking at?" and it tells you. Real-time, hands-free, voice-first web browsing — powered by Gemini Live.
 
-But when I tried to point Mache at the web (the DOM), I hit a wall.
+But the interesting part isn't the voice. It's how the system *sees* the page.
 
-### The Problem with the DOM
+### The Problem: Web Agents Are Blind (or Expensive)
 
-Raw HTML ASTs are deeply nested and full of semantic noise. A simple "Checkout" button might live at `/html/body/div[4]/main/section/div[2]/span/button`. Giving a voice-driven Gemini agent a `cd` and `ls` tool and asking it to find that path is like asking someone to find a book in a library by reading the structural blueprints of the building.
+Every web agent today faces the same bottleneck: understanding what's on the screen. The standard approaches are:
 
-Worse, websites change constantly. A simple layout update breaks brittle XPaths. A static schema can't map "The Web" into Mache.
+- **Feed raw HTML to an LLM.** Slow, expensive, and the model hallucinates element references it can't actually click.
+- **Use a Vision Language Model** to look at a screenshot. Better, but $0.003-0.01 per page, 1-3 seconds of latency, and non-deterministic — the same page gets different results every time.
 
-### The Breakthrough: Dynamic Semantic Projection
+For a real-time voice agent, neither works. You can't wait 3 seconds for the model to figure out the page layout every time you scroll. And you can't afford $0.01 per page view in a system that might rescan dozens of times per session.
 
-I needed a bridge between the physical reality of the DOM and the conceptual intent of the user. I needed a **Cartographer**.
+### The Solution: Page Understanding Without a Model
 
-I designed a Two-Stage Agent Architecture:
+X-Ray understands web pages using signal processing and graph algorithms instead of a vision model. Zero API calls. ~50ms. Deterministic.
 
-1. **Stage 1: The Cartographer (Vision + Structure)**
-   When a user visits a page, a browser extension injects a tiny `data-mache-id` into every interactive element. It then takes a screenshot and generates a flattened text summary of those tagged elements.
+Here's how it works:
 
-   The *screenshot* and the *summary* go to a Gemini model with one question: "What are the 5 main semantic zones of this page?"
+1. **A Chrome extension tags every interactive element** with a stable ID (`data-mache-id`), takes a screenshot, and sends both to a Go backend.
 
-   Because Gemini is natively multimodal, it uses its vision to instantly understand the layout (e.g., "Ah, the top bar is navigation, the left side is filters"). It then outputs a strict JSON schema that maps these visual zones to the tagged IDs.
+2. **The backend samples the actual pixels** at each element's center (RGB color) and runs FFT analysis on canvas/WebGL regions to detect repeating visual patterns (grids, lists, table rows).
 
-2. **Stage 2: The Navigator (Voice + Action)**
-   That generated JSON schema feeds into Mache. Mache instantly projects a virtual filesystem tailored to that exact page.
+3. **Five different "fibers" of information** are attached to each element: where it is on the page (spatial), what color it is (visual), where it sits in the DOM tree (structural), what kind of element it is (semantic), and what visual patterns surround it (frequency).
 
-   Now, the voice-driven Gemini Live agent doesn't see `div[4]/span/button`. It just runs `ls /` and sees:
-   - `/header/global_nav/`
-   - `/main/trending_repositories/`
-   - `/footer/legal/`
+4. **A phylogenetic clustering algorithm** (neighbor-joining, borrowed from computational biology) groups these elements into 3-7 semantic zones — "header," "main content," "sidebar," "footer" — based on which elements are most similar across all five dimensions.
 
-   When the user says "Click the first trending repository", the Navigator easily finds the target in the clean filesystem and executes the action.
+5. **The zones become a virtual filesystem.** Instead of raw HTML, the voice agent sees:
+   ```
+   /header/global_nav/
+   /main/story_list/
+   /sidebar/trending/
+   /footer/legal/
+   ```
 
-### The Hard Part: "Click the Third Story"
-
-Getting an LLM to navigate to a zone is the easy part. The hard part is ordinal counting inside zones. When a user says "click the 3rd story," the agent needs to know which elements are stories and which are metadata — domain labels, upvote buttons, timestamps.
-
-The first attempt used a heuristic: elements with empty text (upvote arrows, bullet icons) served as group delimiters. This worked for Hacker News, but it was fragile. Different sites have different patterns.
-
-I solved this by pushing the problem back to the Cartographer. Since it already sees the screenshot and the DOM summary, I added a single instruction: *for list zones, identify the primary clickable element in each repeating item.* Instead of writing brittle heuristics to guess where one item ends and another begins, I just let the vision model use its eyes.
-
-The Cartographer returns an array of `primary_items` — the mache_ids of the story titles, product cards, or search result links — and the engine uses those as group boundaries. The result: the `children` file for a zone shows clean, numbered groups:
-
-```
---- Item 1 ---
-  mache-42 | a | "Show HN: I built a database in Go"
-  mache-43 | a | "(github.com)"
-  mache-44 | span | "142 points"
-
---- Item 2 ---
-  mache-47 | a | "Why We Switched to Postgres"
-  mache-48 | a | "(blog.example.com)"
-  mache-49 | span | "89 points"
-```
-
-When the voice agent counts "the 3rd story," it counts item groups — not individual links. This works across any site with repeating content, because the vision model understands what a "story" or "product" looks like, not just what the HTML structure happens to be.
+The voice agent doesn't parse HTML. It runs `ls` and `cat` on a clean filesystem. When you say "click the third story," it navigates to `/main/story_list/_c/3/` and executes the click.
 
 ### The 48-Hour Gate
 
-To prove this wasn't just a toy demo, I built a 48-hour gate test. The criteria were strict:
-- Test against 5 real, complex pages (Amazon, GitHub, Reddit, HackerNews, Wikipedia).
-- Sub-10 second latency for generating the semantic map.
-- **Zero hallucinated IDs.** The LLM could not invent pointers.
+The first commit in this repo — [5329b00](https://github.com/agentic-research/x-ray/commit/5329b00) — landed on February 22, 2026 at 4:06 PM. It was a 9,336-line, 38-file drop with validated test fixtures for five sites (Hacker News, GitHub, Wikipedia, Lobsters, eBay). By the next evening, 44 commits later, the system had a working Chrome extension, WebSocket pipeline, Gemini Live voice integration, per-tab sessions, accessibility tree enrichment, scroll handling, and a Terraform deploy config.
 
-By restricting the LLM payload to just a flat summary of IDs and letting it rely entirely on its visual understanding for the layout, processing time dropped from over 3 minutes down to under 10 seconds. More importantly: zero hallucinations.
+The original Cartographer was a Gemini VLM call — it worked, but at $0.003-0.01 per page with 1-3 seconds of latency. Five days later, the TropicalCartographer replaced it entirely: same accuracy, ~50ms, zero API cost, deterministic. The rest of the time has been hardening concurrency, fixing real bugs found by running it on live sites, and building the sheaf-based cache that makes revisits free.
 
-### Voice: The Final Mile
+### Why This Matters for Voice
 
-X-Ray supports full voice interaction via the Gemini Live API. Audio streams from the browser through the Go backend to Gemini Live, tool calls execute locally against the Mache filesystem, and Gemini's spoken response streams back for playback.
+The Gemini Live API gives you real-time bidirectional audio — you talk, it responds, continuously. But a voice agent that takes 3 seconds to understand each page creates awkward silences that break the conversational flow.
 
-The entire pipeline — from "click the 3rd story" to the browser actually clicking it — takes under 10 seconds. The semantic filesystem is what makes this tractable: instead of the voice agent reasoning over raw DOM, it's navigating a handful of well-labeled directories.
+X-Ray uses a **Talker/Doer architecture**:
 
-This isn't a web scraper. It's a system that lets an AI *see* a website the way a human does, organize what it sees into a semantic map, and interact with it using the precise, deterministic tooling of a filesystem.
+- **The Talker** (Gemini Live) is always listening and always responsive. It has three instant tools: check what the Doer is working on, issue a new command, or cancel a running task. These execute in microseconds — no I/O, no waiting.
+
+- **The Doer** runs multi-step navigation tasks in the background. It reads the filesystem, plans a path, executes clicks and scrolls, waits for the page to settle, and reports back.
+
+The result: you can interrupt, redirect, or ask questions mid-task without breaking the agent's flow. "Go to Amazon and find headphones" starts executing immediately. Mid-search, you can say "actually, make those wireless" and the Doer adjusts.
+
+### The Cache: Pages Don't Change That Much
+
+Most of a web page stays the same when you scroll or click a tab. The header doesn't move. The sidebar doesn't reorganize. Only the main content area changes.
+
+X-Ray caches zone segmentations per-URL with content fingerprints for each zone. When you revisit a page or scroll within one, only the zones that actually changed get regenerated. The rest load from cache instantly. On a warm cache hit, page understanding is effectively free.
+
+### Canvas and WebGL: Seeing Beyond the DOM
+
+Standard web agents are completely blind to `<canvas>` elements — Google Maps, Figma, data visualizations, video players. There's no DOM inside a canvas. It's just pixels.
+
+X-Ray runs Canny edge detection on the screenshot to find rectangular UI regions inside canvas elements, then applies FFT analysis to characterize their visual structure. These detected regions participate in the same clustering algorithm as regular DOM elements, so the voice agent can interact with canvas-based UIs that are invisible to every other web agent.
+
+### What's Next
+
+The same approach — pixel sampling, FFT, phylogenetic clustering — works on any rectangular region of pixels. The browser is just the first target. A desktop agent that understands native application windows, remote desktop sessions, or game UIs is the same pipeline pointed at a different screenshot source.
+
+X-Ray is open source at [github.com/agentic-research/x-ray](https://github.com/agentic-research/x-ray).
+
+---
+
+*X-Ray uses the Gemini Live API for real-time voice interaction, the Gemini GenAI Go SDK for the Navigator agent, and Google Cloud Run for deployment.*
