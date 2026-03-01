@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+"""WebArena evaluation bridge for X-Ray.
+
+Reads x-ray's results.jsonl and produces:
+  1. Basic self-reported scores (from x-ray's own success tracking)
+  2. WebArena-Verified official scores (via the webarena-verified CLI)
+
+The bridge converts x-ray's output format into the per-task directory
+structure that webarena-verified eval-tasks expects.
+
+Usage:
+    uv run scripts/webarena_eval.py results/webarena_latest/
+    uv run scripts/webarena_eval.py results/webarena_latest/ --verified
+"""
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def load_results(results_dir: Path) -> list[dict]:
+    """Load results from a JSONL file."""
+    jsonl = results_dir / "results.jsonl"
+    if not jsonl.exists():
+        print(f"Error: {jsonl} not found", file=sys.stderr)
+        sys.exit(1)
+
+    results = []
+    with open(jsonl) as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                results.append(json.loads(line))
+    return results
+
+
+def basic_score(results: list[dict]) -> dict:
+    """Compute basic pass/fail statistics from x-ray's own success field."""
+    total = len(results)
+    succeeded = sum(1 for r in results if r.get("success", False))
+    failed = sum(1 for r in results if r.get("status") == "failed")
+    timeouts = sum(1 for r in results if r.get("status") == "timeout")
+    errors = sum(1 for r in results if r.get("status") == "error")
+
+    return {
+        "total": total,
+        "succeeded": succeeded,
+        "failed": failed,
+        "timeouts": timeouts,
+        "errors": errors,
+        "score_pct": (succeeded / total * 100) if total > 0 else 0,
+    }
+
+
+def prepare_eval_dir(results: list[dict], eval_dir: Path) -> None:
+    """Convert x-ray results into webarena-verified's expected directory structure.
+
+    webarena-verified eval-tasks expects:
+      output_dir/
+        <task_id>/
+          agent_response.json   — {task_type, status, retrieved_data}
+          network.har           — (optional) HTTP archive
+    """
+    for r in results:
+        task_dir = eval_dir / str(r["task_id"])
+        task_dir.mkdir(parents=True, exist_ok=True)
+
+        # Map x-ray result to webarena-verified agent_response format.
+        agent_response = {
+            "task_type": "RETRIEVE",  # Default; actual type comes from task metadata
+            "status": "completed" if r.get("status") in ("done", "failed") else "error",
+            "retrieved_data": r.get("summary", ""),
+            "final_url": r.get("url_final", ""),
+        }
+
+        with open(task_dir / "agent_response.json", "w") as f:
+            json.dump(agent_response, f, indent=2)
+
+
+def verified_score(results: list[dict], results_dir: Path) -> dict | None:
+    """Score using webarena-verified eval-tasks CLI."""
+    eval_dir = results_dir / "wa_eval"
+    prepare_eval_dir(results, eval_dir)
+
+    config_path = Path("docker/webarena-config.json")
+    task_ids = ",".join(str(r["task_id"]) for r in results)
+
+    cmd = [
+        "uvx", "webarena-verified", "eval-tasks",
+        "--output-dir", str(eval_dir),
+        "--task-ids", task_ids,
+    ]
+    if config_path.exists():
+        cmd.extend(["--config", str(config_path)])
+
+    print(f"Running: {' '.join(cmd)}")
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        print(result.stdout)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr)
+
+        # Parse eval_result.json if produced.
+        eval_result_path = eval_dir / "eval_result.json"
+        if eval_result_path.exists():
+            with open(eval_result_path) as f:
+                return json.load(f)
+
+        return {"raw_output": result.stdout}
+    except FileNotFoundError:
+        print("webarena-verified not found. Install with: pip install webarena-verified", file=sys.stderr)
+        return None
+    except subprocess.TimeoutExpired:
+        print("webarena-verified eval timed out", file=sys.stderr)
+        return None
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <results_dir> [--verified]", file=sys.stderr)
+        sys.exit(1)
+
+    results_dir = Path(sys.argv[1])
+    use_verified = "--verified" in sys.argv
+
+    results = load_results(results_dir)
+    print(f"Loaded {len(results)} results from {results_dir}")
+    print()
+
+    # Basic scoring (x-ray's own success tracking).
+    basic = basic_score(results)
+    print("=== X-Ray Self-Reported Score ===")
+    print(f"  Total:     {basic['total']}")
+    print(f"  Succeeded: {basic['succeeded']}")
+    print(f"  Failed:    {basic['failed']}")
+    print(f"  Timeouts:  {basic['timeouts']}")
+    print(f"  Errors:    {basic['errors']}")
+    print(f"  Score:     {basic['score_pct']:.1f}%")
+    print()
+
+    # Per-task breakdown.
+    print("=== Per-Task Breakdown ===")
+    print(f"{'TaskID':<8} {'Status':<10} {'Time(ms)':<10} {'Intent'}")
+    print("-" * 70)
+    for r in results:
+        intent = r.get("intent", "")
+        if len(intent) > 40:
+            intent = intent[:37] + "..."
+        print(
+            f"{r['task_id']:<8} {r['status']:<10} {r.get('elapsed_ms', 0):<10} {intent}"
+        )
+    print()
+
+    # WebArena-Verified official scoring.
+    if use_verified:
+        print("=== WebArena-Verified Official Score ===")
+        v = verified_score(results, results_dir)
+        if v:
+            print(json.dumps(v, indent=2))
+        print()
+
+    # Write machine-readable scores.
+    scores_path = results_dir / "scores.json"
+    scores: dict = {"basic": basic}
+    if use_verified:
+        v = verified_score(results, results_dir)
+        if v:
+            scores["verified"] = v
+    with open(scores_path, "w") as f:
+        json.dump(scores, f, indent=2)
+    print(f"Scores written to {scores_path}")
+
+
+if __name__ == "__main__":
+    main()

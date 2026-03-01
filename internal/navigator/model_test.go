@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jamesgardner/x-ray/internal/mache"
+	"github.com/agentic-research/x-ray/internal/mache"
 	"google.golang.org/genai"
 )
 

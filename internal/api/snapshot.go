@@ -11,8 +11,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/gorilla/websocket"
-	"github.com/jamesgardner/x-ray/internal/mache"
 )
 
 func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {

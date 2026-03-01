@@ -109,7 +109,7 @@ Voice makes this hands-free: *"Spin up the dev server in my terminal, then check
 
 ### The Two-Stage Architecture
 
-**Stage 1: The Cartographer (Gemini Vision)**
+**Stage 1: The Cartographer (Topology + Structure)**
 
 When a page loads, the Chrome extension:
 - Builds an in-memory registry of interactive elements (no DOM mutation — SPA-safe)
@@ -118,7 +118,9 @@ When a page loads, the Chrome extension:
 - Captures the browser's full accessibility tree and enriches each element with `AXRole` and `AXName`
 - Sends the screenshot + structured element summary to the backend
 
-Gemini 2.5 Flash receives both the visual screenshot and the text summary. It outputs a strict JSON schema mapping visual zones to DOM elements, including:
+The default **TropicalCartographer** (`CARTOGRAPHER_MODE=tropical`) segments the page using tropical geometry — no LLM call. It treats each DOM element as a point with a multi-dimensional fiber (spatial bounds, RGB pixel samples, CSS path structure, semantic role), computes pairwise distances in the max-plus semiring, extracts the optimal metric tree via neighbor-joining, cuts it into 3-7 zones, and folds duplicate zones via H⁰ cohomology. The result is deterministic, sub-second, and requires no API key.
+
+Alternatively, the Gemini Vision or a local VLM (Ollama) cartographer can be used as a fallback for LLM-based zone mapping. They receive both the visual screenshot and the text summary to output a strict JSON schema mapping visual zones to DOM elements, including:
 - **Primary items**: the specific clickable elements in each list zone (post titles, not metadata links)
 - **CSS `item_selector`**: a structural query for discovering new content after scroll
 

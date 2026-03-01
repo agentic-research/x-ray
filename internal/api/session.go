@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/agentic-research/mache/graph"
-	"github.com/jamesgardner/x-ray/internal/mache"
+	"github.com/agentic-research/x-ray/internal/mache"
 )
 
 // pendingAction is an action queued for dispatch when the extension reconnects.

@@ -1,6 +1,6 @@
 package api
 
-import "github.com/jamesgardner/x-ray/internal/navigator"
+import "github.com/agentic-research/x-ray/internal/navigator"
 
 // Message type constants for WebSocket communication.
 const (

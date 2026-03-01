@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/agentic-research/mache/graph"
-	"github.com/jamesgardner/x-ray/internal/navigator"
+	"github.com/agentic-research/x-ray/internal/navigator"
 	"google.golang.org/genai"
 )
 

@@ -10,7 +10,7 @@ import (
 	"image/jpeg"
 	"testing"
 
-	"github.com/jamesgardner/x-ray/internal/mache"
+	"github.com/agentic-research/x-ray/internal/mache"
 )
 
 // makeTestJPEG creates a solid red JPEG image of the given dimensions.

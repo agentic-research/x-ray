@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/agentic-research/mache/graph"
+	"github.com/agentic-research/x-ray/internal/focus"
+	"github.com/agentic-research/x-ray/internal/mache"
+	"github.com/agentic-research/x-ray/internal/navigator"
 	"github.com/gorilla/websocket"
-	"github.com/jamesgardner/x-ray/internal/focus"
-	"github.com/jamesgardner/x-ray/internal/mache"
-	"github.com/jamesgardner/x-ray/internal/navigator"
 	"google.golang.org/genai"
 )
 

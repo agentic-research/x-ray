@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jamesgardner/x-ray/internal/cartographer"
+	"github.com/agentic-research/x-ray/internal/cartographer"
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )

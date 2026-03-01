@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jamesgardner/x-ray/internal/mache"
-	"github.com/jamesgardner/x-ray/internal/navigator"
+	"github.com/agentic-research/x-ray/internal/mache"
+	"github.com/agentic-research/x-ray/internal/navigator"
 )
 
 // DoerStatus represents the current state of background work.

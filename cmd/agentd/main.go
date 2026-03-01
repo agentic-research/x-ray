@@ -16,11 +16,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jamesgardner/x-ray/internal/api"
-	"github.com/jamesgardner/x-ray/internal/audio"
-	"github.com/jamesgardner/x-ray/internal/cartographer"
-	"github.com/jamesgardner/x-ray/internal/iterm"
-	"github.com/jamesgardner/x-ray/internal/navigator"
+	"github.com/agentic-research/x-ray/internal/api"
+	"github.com/agentic-research/x-ray/internal/audio"
+	"github.com/agentic-research/x-ray/internal/cartographer"
+	"github.com/agentic-research/x-ray/internal/iterm"
+	"github.com/agentic-research/x-ray/internal/navigator"
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )

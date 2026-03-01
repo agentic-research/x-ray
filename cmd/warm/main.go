@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jamesgardner/x-ray/internal/api"
-	"github.com/jamesgardner/x-ray/internal/mache"
+	"github.com/agentic-research/x-ray/internal/api"
+	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )

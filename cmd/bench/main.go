@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jamesgardner/x-ray/internal/cartographer"
-	"github.com/jamesgardner/x-ray/internal/mache"
-	"github.com/jamesgardner/x-ray/internal/navigator"
+	"github.com/agentic-research/x-ray/internal/cartographer"
+	"github.com/agentic-research/x-ray/internal/mache"
+	"github.com/agentic-research/x-ray/internal/navigator"
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )

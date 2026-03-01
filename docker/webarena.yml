@@ -1,0 +1,59 @@
+# WebArena Docker Compose — 5 sites for evaluation.
+# Reference: https://github.com/web-arena-x/webarena/tree/main/environment_docker
+#
+# PREREQUISITE: WebArena images are distributed as tarballs, not registry images.
+# Run the setup script first to download and load them:
+#
+#   bash scripts/webarena_setup.sh
+#
+# Then:
+#   docker compose -f docker/webarena.yml up -d
+#   docker compose -f docker/webarena.yml down
+#
+# Sites:
+#   Shopping       → http://localhost:7770
+#   Shopping Admin → http://localhost:7780
+#   Forum (Reddit) → http://localhost:9999
+#   GitLab         → http://localhost:8023
+#   Wikipedia      → http://localhost:8888
+
+services:
+  shopping:
+    image: shopping_final_0712
+    container_name: shopping
+    ports:
+      - "7770:80"
+    restart: unless-stopped
+
+  shopping_admin:
+    image: shopping_admin_final_0719
+    container_name: shopping_admin
+    ports:
+      - "7780:80"
+    restart: unless-stopped
+
+  forum:
+    image: postmill-populated-exposed-withimg
+    container_name: forum
+    ports:
+      - "9999:80"
+    restart: unless-stopped
+
+  gitlab:
+    image: gitlab-populated-final-port8023
+    container_name: gitlab
+    ports:
+      - "8023:8023"
+    shm_size: 256m
+    command: /opt/gitlab/embedded/bin/runsvdir-start
+    restart: unless-stopped
+
+  wikipedia:
+    image: ghcr.io/kiwix/kiwix-serve:3.3.0
+    container_name: wikipedia
+    ports:
+      - "8888:80"
+    volumes:
+      - ./webarena-data:/data
+    command: wikipedia_en_all_maxi_2022-05.zim
+    restart: unless-stopped

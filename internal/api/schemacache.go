@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/agentic-research/mache/graph"
-	"github.com/jamesgardner/x-ray/internal/mache"
+	"github.com/agentic-research/x-ray/internal/mache"
 )
 
 // SchemaCache stores schema JSON in a mache MemoryStore graph, persisted

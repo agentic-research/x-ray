@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/gorilla/websocket"
-	"github.com/jamesgardner/x-ray/internal/mache"
 )
 
 // StaleZoneInfo describes a cached zone that needs regeneration.
