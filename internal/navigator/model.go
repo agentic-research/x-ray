@@ -256,7 +256,8 @@ type openAIFunctionCall struct {
 // CLIMode=true: space-delimited CLI commands (e.g. "act click /browser/btn").
 //
 // When Grammar is set, it's sent as the "grammar" field in the request body
-// for GBNF-constrained decoding (llama.cpp / Ollama native API).
+// for GBNF-constrained decoding. Requires llama.cpp server (supports grammar
+// on /v1/chat/completions). Ollama does NOT expose grammar — use llama-server.
 type GemmaGenerator struct {
 	Endpoint   string // e.g. http://localhost:11434/v1
 	Model      string // e.g. gemma3:270m
@@ -275,6 +276,24 @@ var cliCommands = map[string]bool{
 	"browser.scroll": true, "browser.goto": true, "browser.rescan": true,
 	"browser.list_tabs": true, "browser.switch_tab": true,
 	"iterm.new_window": true, "iterm.new_tab": true,
+}
+
+// actionGlyphs maps action glyphs to canonical action names.
+// The fine-tuned model emits these single-token Unicode symbols instead of
+// English verbs to avoid embedding confusion (cos(click,focus)=0.41 in base model).
+var glyphToAction = map[string]string{
+	"►": "click",
+	"⊙": "focus",
+	"✎": "type",
+	"⏎": "enter",
+}
+
+// actionToGlyph is the reverse mapping for output formatting.
+var actionToGlyph = map[string]string{
+	"click": "►",
+	"focus": "⊙",
+	"type":  "✎",
+	"enter": "⏎",
 }
 
 func (g *GemmaGenerator) GenerateContent(ctx context.Context, model string, history []*genai.Content, config *genai.GenerateContentConfig) (*genai.GenerateContentResponse, error) {
@@ -442,7 +461,7 @@ func buildCLIToolPrompt(tools []*genai.Tool) string {
 				sb.WriteString("  cat <path>\n")
 			case "act":
 				sb.WriteString("  act <action> <path> [\"payload\"]\n")
-				sb.WriteString("    actions: click, focus, type, enter\n")
+				sb.WriteString("    actions: ► (click), ⊙ (focus), ✎ (type), ⏎ (enter)\n")
 			case "browser.scroll":
 				sb.WriteString("  browser.scroll <down|up>\n")
 			case "browser.goto":
@@ -619,7 +638,7 @@ func ParseCLICommand(s string) *genai.FunctionCall {
 }
 
 // parseActCLI parses the arguments of an act command.
-// Formats: "click /path" or "type /path \"payload\""
+// Formats: "► /path" or "✎ /path \"payload\"" (glyphs) or "click /path" (plain).
 func parseActCLI(rest string) *genai.FunctionCall {
 	if rest == "" {
 		return nil
@@ -631,6 +650,10 @@ func parseActCLI(rest string) *genai.FunctionCall {
 		return nil
 	}
 	action := parts[0]
+	// Translate glyph to canonical action name if present.
+	if canonical, ok := glyphToAction[action]; ok {
+		action = canonical
+	}
 	remaining := parts[1]
 
 	// Check for quoted payload: /path "payload"
@@ -664,6 +687,10 @@ func FunctionCallToCLI(fc *genai.FunctionCall) string {
 		return "cat " + getString("path")
 	case "act":
 		action := getString("action")
+		// Emit glyph for CLI-mode history formatting.
+		if glyph, ok := actionToGlyph[action]; ok {
+			action = glyph
+		}
 		path := getString("path")
 		if payload := getString("payload"); payload != "" {
 			return fmt.Sprintf("act %s %s \"%s\"", action, path, payload)

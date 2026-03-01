@@ -47,7 +47,7 @@ func BuildGBNF(paths []string, excludeAct bool) string {
 	sb.WriteString("new-tab-cmd ::= \"iterm.new_tab\" (\" \" valid-path)?\n\n")
 
 	// Leaf rules.
-	sb.WriteString("action ::= \"click\" | \"focus\" | \"type\" | \"enter\"\n")
+	sb.WriteString("action ::= \"►\" | \"⊙\" | \"✎\" | \"⏎\"\n")
 	sb.WriteString("payload ::= \" \\\"\" [^\"\\n]* \"\\\"\"\n")
 	sb.WriteString("url ::= [a-zA-Z] [^ \\n]*\n")
 	sb.WriteString("digits ::= [0-9]+\n\n")

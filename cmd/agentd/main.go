@@ -69,6 +69,11 @@ func main() {
 		liveModel = DefaultGeminiLiveModel
 	}
 
+	plannerModel := os.Getenv("PLANNER_MODEL")
+	if plannerModel == "" {
+		plannerModel = model
+	}
+
 	// Cartographer: tropical (algebraic, no LLM) > local VLM > Gemini.
 	var cart api.SchemaGenerator
 	if mode := os.Getenv("CARTOGRAPHER_MODE"); mode == "tropical" {
@@ -133,7 +138,7 @@ func main() {
 	}
 
 	// Per-tab Engine + Navigator are created on demand inside Handler.
-	handler := api.NewHandler(cart, navGen, liveClient, navModel, liveModel, dbPath)
+	handler := api.NewHandler(cart, navGen, client, liveClient, navModel, liveModel, plannerModel, dbPath)
 	handler.SetOpenBrowserFunc(func(url string) {
 		_ = exec.Command("open", "-a", "Google Chrome", url).Start()
 		// Bring Chrome to foreground — "open -a" doesn't always focus the window.
@@ -151,6 +156,9 @@ func main() {
 
 	http.HandleFunc("/ws", handler.HandleWebSocket)
 	http.HandleFunc("/navigate", handler.HandleNavigateHTTP)
+	http.HandleFunc("/doer", handler.HandleDoerHTTP)
+	http.HandleFunc("/status", handler.HandleStatus)
+	http.HandleFunc("/agent/task", handler.HandleAgentTask)
 	http.HandleFunc("/voice", handler.HandleVoice)
 	http.HandleFunc("/voice-ui", serveVoiceUI)
 

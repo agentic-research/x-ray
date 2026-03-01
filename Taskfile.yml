@@ -155,6 +155,36 @@ tasks:
       - echo "Running gate test on eBay (Ecommerce)..."
       - go run ./cmd/gate testdata/ecommerce/page.html testdata/ecommerce/page.png
 
+  webarena-setup:
+    desc: Download WebArena Docker images (~30GB, run once)
+    cmds:
+      - bash scripts/webarena_setup.sh
+
+  webarena-up:
+    desc: Start WebArena Docker environment (6 sites via webarena-verified)
+    cmds:
+      - bash scripts/webarena_setup.sh
+
+  webarena-down:
+    desc: Stop all WebArena Docker containers
+    cmds:
+      - uvx webarena-verified env stop-all
+
+  webarena:
+    desc: Run WebArena evaluation (requires agentd + Chrome + Docker sites)
+    deps: [check-fuse-t]
+    cmds:
+      - go run ./cmd/webarena
+
+  webarena-hard:
+    desc: Run WebArena-Verified hard subset (258 tasks) + score
+    deps: [check-fuse-t]
+    env:
+      WEBARENA_SUBSET: hard
+    cmds:
+      - go run ./cmd/webarena
+      - uv run scripts/webarena_eval.py results/webarena_latest/
+
   test:
     desc: Run all tests
     deps: [check-fuse-t]

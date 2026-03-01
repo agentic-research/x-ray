@@ -68,7 +68,7 @@ func TestWSDOMSnapshotCreatesSession(t *testing.T) {
 	cart := &mockCartographer{
 		schema: `{"mounts":[{"virtual_path":"/main/zone","mache_id":"mache-1","description":"test zone"}]}`,
 	}
-	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+	h := NewHandler(cart, nil, nil, nil, "test", "test-live", "", "")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
@@ -118,7 +118,7 @@ func TestWSSchemaReadyFlow(t *testing.T) {
 	cart := &mockCartographer{
 		schema: `{"mounts":[{"virtual_path":"/nav","mache_id":"mache-5","description":"nav bar"}]}`,
 	}
-	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+	h := NewHandler(cart, nil, nil, nil, "test", "test-live", "", "")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
@@ -163,7 +163,7 @@ func TestWSSchemaReadyFlow(t *testing.T) {
 }
 
 func TestWSExecuteActionRouting(t *testing.T) {
-	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	h := NewHandler(&stubCartographer{}, nil, nil, nil, "test", "test-live", "", "")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
@@ -195,7 +195,7 @@ func TestWSExecuteActionRouting(t *testing.T) {
 }
 
 func TestWSReconnectFlushesQueue(t *testing.T) {
-	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	h := NewHandler(&stubCartographer{}, nil, nil, nil, "test", "test-live", "", "")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
@@ -238,7 +238,7 @@ func TestWSMultipleTabIsolation(t *testing.T) {
 
 	cart := &mockCartographer{}
 
-	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+	h := NewHandler(cart, nil, nil, nil, "test", "test-live", "", "")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
@@ -303,7 +303,7 @@ func TestWSMultipleTabIsolation(t *testing.T) {
 func TestWSSchemaCacheHit(t *testing.T) {
 	schema := `{"mounts":[{"virtual_path":"/main/stories","mache_id":"mache-1","description":"stories"}]}`
 	cart := &mockCartographer{schema: schema}
-	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+	h := NewHandler(cart, nil, nil, nil, "test", "test-live", "", "")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
@@ -436,7 +436,7 @@ func TestWSPartialRegenSingleStaleZone(t *testing.T) {
 	partialSchema := `{"mounts":[{"virtual_path":"/main/feed","mache_id":"mache-99","description":"refreshed feed","bounds":[0,0.1,1,0.7]}]}`
 
 	cart := &mockCartographer{schema: fullSchema}
-	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+	h := NewHandler(cart, nil, nil, nil, "test", "test-live", "", "")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
@@ -504,7 +504,7 @@ func TestWSPartialRegenAllStale(t *testing.T) {
 	]}`
 
 	cart := &mockCartographer{schema: fullSchema}
-	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+	h := NewHandler(cart, nil, nil, nil, "test", "test-live", "", "")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
@@ -571,7 +571,7 @@ func TestWSPartialRegenCacheUpdated(t *testing.T) {
 	partialSchema := `{"mounts":[{"virtual_path":"/main/feed","mache_id":"mache-99","description":"refreshed","bounds":[0,0.1,1,0.7]}]}`
 
 	cart := &mockCartographer{schema: fullSchema}
-	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+	h := NewHandler(cart, nil, nil, nil, "test", "test-live", "", "")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
@@ -656,7 +656,7 @@ func TestWSPartialRegenThenCacheHit(t *testing.T) {
 	partialSchema := `{"mounts":[{"virtual_path":"/main/feed","mache_id":"mache-99","description":"refreshed","bounds":[0,0.1,1,0.8]}]}`
 
 	cart := &mockCartographer{schema: fullSchema}
-	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+	h := NewHandler(cart, nil, nil, nil, "test", "test-live", "", "")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)

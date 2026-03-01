@@ -22,6 +22,12 @@ func TestParseCLICommand(t *testing.T) {
 		{"ls /", "ls", map[string]any{"path": "/"}},
 		{"ls /browser/header", "ls", map[string]any{"path": "/browser/header"}},
 		{"cat /browser/main/description", "cat", map[string]any{"path": "/browser/main/description"}},
+		// Glyph format (fine-tuned model output)
+		{"act ► /browser/main/feed/_c/3", "act", map[string]any{"action": "click", "path": "/browser/main/feed/_c/3"}},
+		{"act ⊙ /aws/rds/prod-db-4/", "act", map[string]any{"action": "focus", "path": "/aws/rds/prod-db-4/"}},
+		{`act ✎ /iterm/sessions/1 "git status"`, "act", map[string]any{"action": "type", "path": "/iterm/sessions/1", "payload": "git status"}},
+		{"act ⏎ /iterm/sessions/1", "act", map[string]any{"action": "enter", "path": "/iterm/sessions/1"}},
+		// Plain text format (backward compat)
 		{"act click /browser/main/feed/_c/3", "act", map[string]any{"action": "click", "path": "/browser/main/feed/_c/3"}},
 		{"act focus /aws/rds/prod-db-4/", "act", map[string]any{"action": "focus", "path": "/aws/rds/prod-db-4/"}},
 		{`act type /iterm/sessions/1 "git status"`, "act", map[string]any{"action": "type", "path": "/iterm/sessions/1", "payload": "git status"}},
@@ -102,11 +108,11 @@ func TestFunctionCallToCLI(t *testing.T) {
 		},
 		{
 			&genai.FunctionCall{Name: "act", Args: map[string]any{"action": "click", "path": "/browser/main/_c/1"}},
-			"act click /browser/main/_c/1",
+			"act ► /browser/main/_c/1",
 		},
 		{
 			&genai.FunctionCall{Name: "act", Args: map[string]any{"action": "type", "path": "/iterm/s/1", "payload": "make run"}},
-			`act type /iterm/s/1 "make run"`,
+			`act ✎ /iterm/s/1 "make run"`,
 		},
 		{
 			&genai.FunctionCall{Name: "browser.scroll", Args: map[string]any{"direction": "down"}},
@@ -146,7 +152,7 @@ func TestCLIRoundTrip(t *testing.T) {
 		"ls /",
 		"ls /browser/header",
 		"cat /browser/main/description",
-		"act click /browser/main/_c/1",
+		"act ► /browser/main/_c/1",
 		"browser.scroll down",
 		"browser.goto https://github.com",
 		"browser.list_tabs",
@@ -175,7 +181,7 @@ func TestGemmaGeneratorCLIModeParsesCommand(t *testing.T) {
 			"choices": []map[string]any{{
 				"message": map[string]any{
 					"role":    "assistant",
-					"content": "act click /browser/main/feed/_c/3",
+					"content": "act ► /browser/main/feed/_c/3",
 				},
 			}},
 		}
@@ -314,7 +320,7 @@ func TestGemmaGeneratorCLIModeHistoryFormat(t *testing.T) {
 		_ = json.NewDecoder(r.Body).Decode(&gotRequest)
 		resp := map[string]any{
 			"choices": []map[string]any{{
-				"message": map[string]any{"role": "assistant", "content": "act click /main/_c/1"},
+				"message": map[string]any{"role": "assistant", "content": "act ► /main/_c/1"},
 			}},
 		}
 		w.Header().Set("Content-Type", "application/json")

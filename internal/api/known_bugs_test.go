@@ -418,7 +418,7 @@ func TestBug_TabActivatedVoiceUIViaWebSocket(t *testing.T) {
 	// preventing voice UI from polluting activeVoiceTab in practice.
 	// CREATE_TAB intentionally sends TAB_ACTIVATED before a session exists so that
 	// open_url can bootstrap a new tab.
-	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	h := NewHandler(&stubCartographer{}, nil, nil, nil, "test", "test-live", "", "")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
 	s := httptest.NewServer(mux)
@@ -493,7 +493,7 @@ func TestBug_CrossTabCachePoisoningE2E(t *testing.T) {
 	}]}`
 
 	cart := &mockCartographer{schema: schemaA}
-	h := NewHandler(cart, nil, nil, "test", "test-live", "")
+	h := NewHandler(cart, nil, nil, nil, "test", "test-live", "", "")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
 	s := httptest.NewServer(mux)
@@ -549,7 +549,7 @@ func TestBug_CrossTabCachePoisoningE2E(t *testing.T) {
 
 func TestBug_ReconnectResetsSessionSchemaState(t *testing.T) {
 	// After extension reconnect, all sessions must have fresh (open) SchemaReady channels.
-	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	h := NewHandler(&stubCartographer{}, nil, nil, nil, "test", "test-live", "", "")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
 	s := httptest.NewServer(mux)
@@ -597,7 +597,7 @@ func TestBug_ReconnectResetsSessionSchemaState(t *testing.T) {
 
 func TestBug_ReconnectPreservesSessionsForDoer(t *testing.T) {
 	// Sessions must NOT be deleted on reconnect (Doer continuity).
-	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	h := NewHandler(&stubCartographer{}, nil, nil, nil, "test", "test-live", "", "")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
 	s := httptest.NewServer(mux)
@@ -632,7 +632,7 @@ func TestBug_ReconnectPreservesSessionsForDoer(t *testing.T) {
 
 func TestBug_ReconnectNoSessionsNoOp(t *testing.T) {
 	// Reconnect with zero sessions should not panic.
-	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	h := NewHandler(&stubCartographer{}, nil, nil, nil, "test", "test-live", "", "")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.HandleWebSocket)
 	s := httptest.NewServer(mux)

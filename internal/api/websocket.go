@@ -34,11 +34,13 @@ var upgrader = websocket.Upgrader{
 
 // Handler holds the dependencies for the WebSocket handler.
 type Handler struct {
-	Cartographer SchemaGenerator
-	NavGen       navigator.ContentGenerator // for creating per-tab Navigators
-	LiveClient   *genai.Client              // Live API client (voice mode)
-	NavModel     string                     // model name for creating per-tab Navigators
-	LiveModel    string                     // model name for voice sessions
+	Cartographer  SchemaGenerator
+	NavGen        navigator.ContentGenerator // for creating per-tab Navigators
+	LiveClient    *genai.Client              // Live API client (voice mode)
+	PlannerClient *genai.Client              // regular (non-Live) Gemini client for Planner
+	NavModel      string                     // model name for creating per-tab Navigators
+	LiveModel     string                     // model name for voice sessions
+	PlannerModel  string                     // model name for Planner (e.g., "gemini-2.5-flash")
 
 	mu             sync.Mutex
 	conn           *websocket.Conn
@@ -48,18 +50,25 @@ type Handler struct {
 	activeVoiceTab int              // tab ID for native voice mode (set by TAB_ACTIVATED)
 	openBrowserFn  func(url string) // fallback when no WS connection; nil = no-op (tests)
 	termBridge     graph.Graph      // global iTerm2 bridge (nil if iTerm not available)
+	planner        *Planner         // Planner for /agent/task (non-voice Talker)
 }
 
-func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, liveClient *genai.Client, navModel, liveModel, dbPath string) *Handler {
-	return &Handler{
-		Cartographer: cart,
-		NavGen:       navGen,
-		LiveClient:   liveClient,
-		NavModel:     navModel,
-		LiveModel:    liveModel,
-		sessions:     make(map[int]*TabSession),
-		schemas:      NewSchemaCache(dbPath),
+func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client, liveClient *genai.Client, navModel, liveModel, plannerModel, dbPath string) *Handler {
+	h := &Handler{
+		Cartographer:  cart,
+		NavGen:        navGen,
+		PlannerClient: client,
+		LiveClient:    liveClient,
+		NavModel:      navModel,
+		LiveModel:     liveModel,
+		PlannerModel:  plannerModel,
+		sessions:      make(map[int]*TabSession),
+		schemas:       NewSchemaCache(dbPath),
 	}
+	if client != nil && plannerModel != "" {
+		h.planner = &Planner{handler: h, client: client, model: plannerModel}
+	}
+	return h
 }
 
 // SetOpenBrowserFunc injects the logic for opening a browser when no extension is connected.
@@ -628,6 +637,73 @@ func (h *Handler) SendActionToExtension(tabID int, macheID, action, payload stri
 	h.sendMessage(conn, msg)
 }
 
+// HandleStatus provides a GET /status?tab_id=N endpoint for polling Doer state.
+// Returns JSON: {status, goal, step, summary, url}
+func (h *Handler) HandleStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET only", http.StatusMethodNotAllowed)
+		return
+	}
+
+	tabIDStr := r.URL.Query().Get("tab_id")
+	tabID := 0
+	if tabIDStr != "" {
+		var err error
+		tabID, err = strconv.Atoi(tabIDStr)
+		if err != nil {
+			http.Error(w, "invalid tab_id", http.StatusBadRequest)
+			return
+		}
+	}
+
+	sess := h.lookupSession(tabID)
+
+	resp := map[string]any{
+		"status": "no_session",
+		"goal":   "",
+		"step":   "",
+		"url":    "",
+	}
+
+	if sess != nil {
+		resp["url"] = sess.GetCurrentURL()
+
+		if sess.Doer != nil {
+			status, goal, step, result := sess.Doer.State().Snapshot()
+			switch status {
+			case DoerIdle:
+				resp["status"] = "idle"
+			case DoerExecuting:
+				resp["status"] = "executing"
+			case DoerDone:
+				resp["status"] = "done"
+			case DoerFailed:
+				resp["status"] = "failed"
+			}
+			resp["goal"] = goal
+			resp["step"] = step
+			if result != nil {
+				resp["summary"] = result.Summary
+				resp["success"] = result.Success
+				if result.Error != "" {
+					resp["error"] = result.Error
+				}
+			}
+		} else {
+			// Session exists but no Doer — check if schema is ready.
+			select {
+			case <-sess.GetSchemaReady():
+				resp["status"] = "ready"
+			default:
+				resp["status"] = "loading"
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
 // HandleNavigateHTTP provides a POST /navigate endpoint for curl/UI testing.
 func (h *Handler) HandleNavigateHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -674,6 +750,46 @@ func (h *Handler) HandleNavigateHTTP(w http.ResponseWriter, r *http.Request) {
 	}); err != nil {
 		log.Printf("Failed to encode navigate response: %v", err)
 	}
+}
+
+// HandleDoerHTTP provides a POST /doer endpoint for multi-step goal execution.
+// Unlike /navigate (single-turn), this submits a goal to the Doer which runs
+// a multi-step loop (up to 5 steps with page-change detection).
+// Poll GET /status?tab_id=N for progress and completion.
+func (h *Handler) HandleDoerHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Intent   string `json:"intent"`
+		TabID    int    `json:"tab_id"`
+		GoalID   string `json:"goal_id"`
+		ReadOnly bool   `json:"read_only"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.GoalID == "" {
+		req.GoalID = fmt.Sprintf("wa-%d", time.Now().UnixMilli())
+	}
+
+	sess := h.getSession(req.TabID)
+	doer := h.getOrCreateDoer(req.TabID, sess)
+	doer.Submit(DoerGoal{
+		ID:       req.GoalID,
+		Text:     req.Intent,
+		ReadOnly: req.ReadOnly,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"accepted": true,
+		"goal_id":  req.GoalID,
+		"tab_id":   req.TabID,
+	})
 }
 
 // parseBounds extracts normalized [x, y, w, h] bounds from the DOM summary text.

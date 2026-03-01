@@ -191,7 +191,7 @@ func TestApplyResumeHandleEmpty(t *testing.T) {
 }
 
 func TestSessionFreshHasNoSchema(t *testing.T) {
-	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	h := NewHandler(&stubCartographer{}, nil, nil, nil, "test", "test-live", "", "")
 	sess := h.getSession(99)
 
 	if sess.Engine.HasSchema() {
@@ -200,7 +200,7 @@ func TestSessionFreshHasNoSchema(t *testing.T) {
 }
 
 func TestSessionApplySchemaWorks(t *testing.T) {
-	h := NewHandler(&stubCartographer{}, nil, nil, "test", "test-live", "")
+	h := NewHandler(&stubCartographer{}, nil, nil, nil, "test", "test-live", "", "")
 	sess := h.getSession(99)
 
 	schema := `{"mounts":[{"virtual_path":"/main","mache_id":"mache-1","description":"main"}]}`
