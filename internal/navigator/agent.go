@@ -178,6 +178,14 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 		}
 	}
 
+	// Set GBNF grammar for constrained decoding (GemmaGenerator only).
+	// In readOnly mode, the model needs free text output, so skip grammar.
+	if gemma, ok := a.generator.(*GemmaGenerator); ok && gemma.CLIMode && !readOnly {
+		paths := EnumeratePaths(a.fs)
+		gemma.Grammar = BuildGBNF(paths, readOnly)
+		log.Printf("Navigator: GBNF grammar set with %d paths", len(paths))
+	}
+
 	for i := range maxToolIterations {
 		log.Printf("Navigator: tool-use iteration %d/%d", i+1, maxToolIterations)
 

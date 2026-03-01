@@ -32,9 +32,29 @@ The Navigator tools ARE filesystem commands (`ls`, `cat`, `act`). Dropped JSON, 
 - `experiments/cli-ft/test_inference.py` — inference test harness
 - `experiments/cli-ft/dpo_dataset_cli.jsonl` — CLI-format training data (800 examples)
 
+### GBNF Constrained Decoding (implemented)
+Even with CLI format, a 270M model can hallucinate paths (`act click /browser/nonexistent_button`). Solution: dynamically generate a GBNF grammar from the live mache filesystem state and pass it to the inference server (llama.cpp / Ollama). The grammar constrains the model to only emit paths that physically exist in the VFS.
+
+**Architecture:**
+1. `EnumeratePaths(fs)` walks the mache VFS recursively (max depth 8)
+2. `BuildGBNF(paths, excludeAct)` generates grammar with paths as alternatives in `valid-path` rule
+3. Grammar sent as `"grammar"` field in request body before each GenerateContent call
+4. `ParseCLICommand()` auto-detects CLI format; falls back to JSON regex for backward compat
+5. `CLIMode` flag on GemmaGenerator controls prompt format, history format, and grammar activation
+6. Grammar skipped in readOnly mode (model needs free text for info responses)
+
+**Key design decision:** grammar only applied in non-readOnly (action) mode. ReadOnly queries need free text output which can't be easily constrained. Action mode is where path hallucination matters.
+
+### Files (Go)
+- `internal/navigator/grammar.go` — `BuildGBNF()`, `EnumeratePaths()`
+- `internal/navigator/model.go` — `ParseCLICommand()`, `FunctionCallToCLI()`, CLIMode support
+- `internal/navigator/cli_test.go` — 16 tests (CLI parsing, round-trips, grammar, integration)
+- `internal/navigator/agent.go` — grammar wiring in HandleIntent loop
+- `cmd/agentd/main.go` — `NAVIGATOR_CLI=1` env var
+
 ### Next Steps
 - Retrain with CLI-format dataset (SFT ~27min, DPO ~30min)
-- Update Go parser in `internal/navigator/model.go` — swap `gemmaFnCallRe` regex for `strings.Fields()` parser
+- Verify GBNF grammar works with Ollama's native API (OpenAI-compat endpoint may ignore `grammar` field; may need `/api/chat` endpoint)
 - Evaluate whether 270M is sufficient or if larger model needed for path construction quality
 
 ---

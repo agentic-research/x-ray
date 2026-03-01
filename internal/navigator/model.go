@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"google.golang.org/genai"
@@ -245,23 +246,36 @@ type openAIFunctionCall struct {
 	Arguments string `json:"arguments"`
 }
 
-// GemmaGenerator talks to a locally-served Gemma model using Gemma's native
-// function calling format. Tool definitions are embedded in the system prompt
-// and function calls are parsed from the response text as JSON objects:
+// ---------------------------------------------------------------------------
+// GemmaGenerator — local Gemma model with CLI or JSON function calling
+// ---------------------------------------------------------------------------
+
+// GemmaGenerator talks to a locally-served Gemma model. Supports two modes:
 //
-//	{"name": "ls", "parameters": {"path": "/"}}
+// CLIMode=false (default): JSON function calls parsed via regex.
+// CLIMode=true: space-delimited CLI commands (e.g. "act click /browser/btn").
 //
-// This avoids Ollama's broken tool_calls support for Gemma and uses the format
-// documented at https://ai.google.dev/gemma/docs/capabilities/function-calling
+// When Grammar is set, it's sent as the "grammar" field in the request body
+// for GBNF-constrained decoding (llama.cpp / Ollama native API).
 type GemmaGenerator struct {
 	Endpoint   string // e.g. http://localhost:11434/v1
 	Model      string // e.g. gemma3:270m
 	HTTPClient *http.Client
+	CLIMode    bool   // use CLI command format instead of JSON
+	Grammar    string // GBNF grammar for constrained decoding (optional, set per-call)
 }
 
 // gemmaFnCallRe matches JSON function call objects in model output.
 // Accepts both "parameters" (Gemma) and "arguments" (Qwen) keys.
 var gemmaFnCallRe = regexp.MustCompile(`\{\s*"name"\s*:\s*"([\w.]+)"\s*,\s*"(?:parameters|arguments)"\s*:\s*(\{[^}]*\})\s*\}`)
+
+// cliCommands is the set of valid CLI command prefixes.
+var cliCommands = map[string]bool{
+	"ls": true, "cat": true, "act": true,
+	"browser.scroll": true, "browser.goto": true, "browser.rescan": true,
+	"browser.list_tabs": true, "browser.switch_tab": true,
+	"iterm.new_window": true, "iterm.new_tab": true,
+}
 
 func (g *GemmaGenerator) GenerateContent(ctx context.Context, model string, history []*genai.Content, config *genai.GenerateContentConfig) (*genai.GenerateContentResponse, error) {
 	if model == "" {
@@ -276,6 +290,9 @@ func (g *GemmaGenerator) GenerateContent(ctx context.Context, model string, hist
 	}
 	if config != nil && config.Temperature != nil {
 		reqBody["temperature"] = *config.Temperature
+	}
+	if g.Grammar != "" {
+		reqBody["grammar"] = g.Grammar
 	}
 
 	body, err := json.Marshal(reqBody)
@@ -326,28 +343,13 @@ func (g *GemmaGenerator) convertHistory(history []*genai.Content, config *genai.
 		}
 	}
 
-	// Embed tool definitions in the system prompt (Gemma's native approach).
+	// Embed tool definitions in the system prompt.
 	if config != nil && len(config.Tools) > 0 {
-		var toolDefs []string
-		for _, tool := range config.Tools {
-			for _, fd := range tool.FunctionDeclarations {
-				params := convertSchema(fd.Parameters)
-				def, _ := json.Marshal(map[string]any{
-					"name":        fd.Name,
-					"description": fd.Description,
-					"parameters":  params,
-				})
-				toolDefs = append(toolDefs, string(def))
-			}
+		if g.CLIMode {
+			sysParts = append(sysParts, buildCLIToolPrompt(config.Tools))
+		} else {
+			sysParts = append(sysParts, buildJSONToolPrompt(config.Tools))
 		}
-		sysParts = append(sysParts, fmt.Sprintf(
-			"You have access to the following tools:\n%s\n\n"+
-				"When you want to call a tool, respond with ONLY a JSON object in this exact format:\n"+
-				`{"name": "tool_name", "parameters": {"param": "value"}}`+"\n\n"+
-				"Do not wrap it in markdown. Do not add explanation before or after the JSON. "+
-				"If you want to speak to the user (not call a tool), respond with plain text only.",
-			strings.Join(toolDefs, "\n"),
-		))
 	}
 
 	if len(sysParts) > 0 {
@@ -357,7 +359,7 @@ func (g *GemmaGenerator) convertHistory(history []*genai.Content, config *genai.
 		})
 	}
 
-	// Convert history: function calls become assistant JSON, function responses become user results.
+	// Convert history entries.
 	for _, content := range history {
 		role := content.Role
 		if role == "model" {
@@ -373,20 +375,24 @@ func (g *GemmaGenerator) convertHistory(history []*genai.Content, config *genai.
 			}
 			if part.FunctionCall != nil {
 				fc := part.FunctionCall
-				callJSON, _ := json.Marshal(map[string]any{
-					"name":       fc.Name,
-					"parameters": fc.Args,
-				})
+				var callStr string
+				if g.CLIMode {
+					callStr = FunctionCallToCLI(fc)
+				} else {
+					callJSON, _ := json.Marshal(map[string]any{
+						"name":       fc.Name,
+						"parameters": fc.Args,
+					})
+					callStr = string(callJSON)
+				}
 				messages = append(messages, map[string]any{
 					"role":    "assistant",
-					"content": string(callJSON),
+					"content": callStr,
 				})
 			}
 			if part.FunctionResponse != nil {
 				fr := part.FunctionResponse
 				output, _ := fr.Response["output"].(string)
-				// JSON encode the output to safely escape newlines and raw log formatting
-				// so the model's context window isn't broken by massive multi-line strings.
 				outputJSON, _ := json.Marshal(output)
 				messages = append(messages, map[string]any{
 					"role":    "user",
@@ -397,6 +403,65 @@ func (g *GemmaGenerator) convertHistory(history []*genai.Content, config *genai.
 	}
 
 	return messages
+}
+
+// buildJSONToolPrompt formats tool definitions as JSON (original Gemma format).
+func buildJSONToolPrompt(tools []*genai.Tool) string {
+	var toolDefs []string
+	for _, tool := range tools {
+		for _, fd := range tool.FunctionDeclarations {
+			params := convertSchema(fd.Parameters)
+			def, _ := json.Marshal(map[string]any{
+				"name":        fd.Name,
+				"description": fd.Description,
+				"parameters":  params,
+			})
+			toolDefs = append(toolDefs, string(def))
+		}
+	}
+	return fmt.Sprintf(
+		"You have access to the following tools:\n%s\n\n"+
+			"When you want to call a tool, respond with ONLY a JSON object in this exact format:\n"+
+			`{"name": "tool_name", "parameters": {"param": "value"}}`+"\n\n"+
+			"Do not wrap it in markdown. Do not add explanation before or after the JSON. "+
+			"If you want to speak to the user (not call a tool), respond with plain text only.",
+		strings.Join(toolDefs, "\n"),
+	)
+}
+
+// buildCLIToolPrompt formats tool definitions as CLI help text.
+func buildCLIToolPrompt(tools []*genai.Tool) string {
+	var sb strings.Builder
+	sb.WriteString("Commands:\n")
+	for _, tool := range tools {
+		for _, fd := range tool.FunctionDeclarations {
+			switch fd.Name {
+			case "ls":
+				sb.WriteString("  ls <path>\n")
+			case "cat":
+				sb.WriteString("  cat <path>\n")
+			case "act":
+				sb.WriteString("  act <action> <path> [\"payload\"]\n")
+				sb.WriteString("    actions: click, focus, type, enter\n")
+			case "browser.scroll":
+				sb.WriteString("  browser.scroll <down|up>\n")
+			case "browser.goto":
+				sb.WriteString("  browser.goto <url>\n")
+			case "browser.rescan":
+				sb.WriteString("  browser.rescan [path]\n")
+			case "browser.list_tabs":
+				sb.WriteString("  browser.list_tabs\n")
+			case "browser.switch_tab":
+				sb.WriteString("  browser.switch_tab <id>\n")
+			case "iterm.new_window":
+				sb.WriteString("  iterm.new_window\n")
+			case "iterm.new_tab":
+				sb.WriteString("  iterm.new_tab [window_path]\n")
+			}
+		}
+	}
+	sb.WriteString("\nRespond with a single command, or plain text to answer questions.")
+	return sb.String()
 }
 
 // parseResponse extracts function calls from Gemma's text output or returns as plain text.
@@ -412,30 +477,24 @@ func (g *GemmaGenerator) parseResponse(body []byte) (*genai.GenerateContentRespo
 	msg := oaiResp.Choices[0].Message
 	content := ""
 	if msg.Content != nil {
-		content = *msg.Content
+		content = strings.TrimSpace(*msg.Content)
 	}
 
-	// Try to extract a JSON function call from the text.
+	// Try CLI parse first (works in both modes — auto-detect).
+	if fc := ParseCLICommand(content); fc != nil {
+		log.Printf("GemmaGenerator: parsed CLI command %s(%v)", fc.Name, fc.Args)
+		return functionCallResponse(fc), nil
+	}
+
+	// Fall back to JSON regex (original Gemma format).
 	if match := gemmaFnCallRe.FindStringSubmatch(content); len(match) == 3 {
 		name := match[1]
 		var args map[string]any
 		if err := json.Unmarshal([]byte(match[2]), &args); err != nil {
 			args = map[string]any{}
 		}
-		log.Printf("GemmaGenerator: parsed function call %s(%v)", name, args)
-		return &genai.GenerateContentResponse{
-			Candidates: []*genai.Candidate{{
-				Content: &genai.Content{
-					Role: "model",
-					Parts: []*genai.Part{{
-						FunctionCall: &genai.FunctionCall{
-							Name: name,
-							Args: args,
-						},
-					}},
-				},
-			}},
-		}, nil
+		log.Printf("GemmaGenerator: parsed JSON function call %s(%v)", name, args)
+		return functionCallResponse(&genai.FunctionCall{Name: name, Args: args}), nil
 	}
 
 	// No function call found — treat as plain text response.
@@ -447,6 +506,197 @@ func (g *GemmaGenerator) parseResponse(body []byte) (*genai.GenerateContentRespo
 			},
 		}},
 	}, nil
+}
+
+func functionCallResponse(fc *genai.FunctionCall) *genai.GenerateContentResponse {
+	return &genai.GenerateContentResponse{
+		Candidates: []*genai.Candidate{{
+			Content: &genai.Content{
+				Role:  "model",
+				Parts: []*genai.Part{{FunctionCall: fc}},
+			},
+		}},
+	}
+}
+
+// ---------------------------------------------------------------------------
+// CLI ↔ FunctionCall conversion
+// ---------------------------------------------------------------------------
+
+// ParseCLICommand parses a CLI command string into a FunctionCall.
+// Returns nil if the string is not a recognized command.
+//
+// Formats:
+//
+//	ls /path
+//	cat /path
+//	act click /path
+//	act type /path "payload text"
+//	browser.scroll down
+//	browser.goto https://example.com
+//	browser.rescan /path
+//	browser.list_tabs
+//	browser.switch_tab 3
+//	iterm.new_window
+//	iterm.new_tab /iterm/windows/0
+func ParseCLICommand(s string) *genai.FunctionCall {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+
+	// No-arg commands.
+	if s == "browser.list_tabs" {
+		return &genai.FunctionCall{Name: "browser.list_tabs", Args: map[string]any{}}
+	}
+	if s == "iterm.new_window" {
+		return &genai.FunctionCall{Name: "iterm.new_window", Args: map[string]any{}}
+	}
+
+	// Split command name from arguments.
+	parts := strings.SplitN(s, " ", 2)
+	cmd := parts[0]
+	if !cliCommands[cmd] {
+		return nil
+	}
+
+	rest := ""
+	if len(parts) == 2 {
+		rest = parts[1]
+	}
+
+	switch cmd {
+	case "ls":
+		if rest == "" {
+			return nil
+		}
+		return &genai.FunctionCall{Name: "ls", Args: map[string]any{"path": rest}}
+
+	case "cat":
+		if rest == "" {
+			return nil
+		}
+		return &genai.FunctionCall{Name: "cat", Args: map[string]any{"path": rest}}
+
+	case "act":
+		return parseActCLI(rest)
+
+	case "browser.scroll":
+		if rest == "" {
+			rest = "down"
+		}
+		return &genai.FunctionCall{Name: "browser.scroll", Args: map[string]any{"direction": rest}}
+
+	case "browser.goto":
+		if rest == "" {
+			return nil
+		}
+		return &genai.FunctionCall{Name: "browser.goto", Args: map[string]any{"url": rest}}
+
+	case "browser.rescan":
+		args := map[string]any{}
+		if rest != "" {
+			args["path"] = rest
+		}
+		return &genai.FunctionCall{Name: "browser.rescan", Args: args}
+
+	case "browser.switch_tab":
+		id, err := strconv.Atoi(strings.TrimSpace(rest))
+		if err != nil {
+			return nil
+		}
+		return &genai.FunctionCall{Name: "browser.switch_tab", Args: map[string]any{"tab_id": float64(id)}}
+
+	case "iterm.new_tab":
+		args := map[string]any{}
+		if rest != "" {
+			args["window_path"] = rest
+		}
+		return &genai.FunctionCall{Name: "iterm.new_tab", Args: args}
+	}
+
+	return nil
+}
+
+// parseActCLI parses the arguments of an act command.
+// Formats: "click /path" or "type /path \"payload\""
+func parseActCLI(rest string) *genai.FunctionCall {
+	if rest == "" {
+		return nil
+	}
+
+	// Split: action path [payload]
+	parts := strings.SplitN(rest, " ", 2)
+	if len(parts) < 2 {
+		return nil
+	}
+	action := parts[0]
+	remaining := parts[1]
+
+	// Check for quoted payload: /path "payload"
+	if idx := strings.Index(remaining, " \""); idx != -1 {
+		path := remaining[:idx]
+		payload := remaining[idx+2:]                // skip ' "'
+		payload = strings.TrimSuffix(payload, "\"") // strip trailing quote
+		return &genai.FunctionCall{
+			Name: "act",
+			Args: map[string]any{"action": action, "path": path, "payload": payload},
+		}
+	}
+
+	return &genai.FunctionCall{
+		Name: "act",
+		Args: map[string]any{"action": action, "path": remaining},
+	}
+}
+
+// FunctionCallToCLI converts a FunctionCall to CLI command string.
+func FunctionCallToCLI(fc *genai.FunctionCall) string {
+	getString := func(key string) string {
+		v, _ := fc.Args[key].(string)
+		return v
+	}
+
+	switch fc.Name {
+	case "ls":
+		return "ls " + getString("path")
+	case "cat":
+		return "cat " + getString("path")
+	case "act":
+		action := getString("action")
+		path := getString("path")
+		if payload := getString("payload"); payload != "" {
+			return fmt.Sprintf("act %s %s \"%s\"", action, path, payload)
+		}
+		return fmt.Sprintf("act %s %s", action, path)
+	case "browser.scroll":
+		return "browser.scroll " + getString("direction")
+	case "browser.goto":
+		return "browser.goto " + getString("url")
+	case "browser.rescan":
+		if p := getString("path"); p != "" {
+			return "browser.rescan " + p
+		}
+		return "browser.rescan"
+	case "browser.list_tabs":
+		return "browser.list_tabs"
+	case "browser.switch_tab":
+		if id, ok := fc.Args["tab_id"].(float64); ok {
+			return fmt.Sprintf("browser.switch_tab %d", int(id))
+		}
+		return "browser.switch_tab 0"
+	case "iterm.new_window":
+		return "iterm.new_window"
+	case "iterm.new_tab":
+		if p := getString("window_path"); p != "" {
+			return "iterm.new_tab " + p
+		}
+		return "iterm.new_tab"
+	default:
+		// Fallback to JSON for unknown tools.
+		data, _ := json.Marshal(map[string]any{"name": fc.Name, "parameters": fc.Args})
+		return string(data)
+	}
 }
 
 // parseResponse maps an OpenAI chat completion response → *genai.GenerateContentResponse.

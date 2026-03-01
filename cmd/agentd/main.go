@@ -96,8 +96,13 @@ func main() {
 		}
 		format := os.Getenv("NAVIGATOR_FORMAT") // "gemma" or "openai" (default)
 		if format == "gemma" {
-			navGen = &navigator.GemmaGenerator{Endpoint: ep, Model: navModel}
-			log.Printf("Navigator: using Gemma model %s at %s (native function calling)", navModel, ep)
+			cliMode := os.Getenv("NAVIGATOR_CLI") == "1"
+			navGen = &navigator.GemmaGenerator{Endpoint: ep, Model: navModel, CLIMode: cliMode}
+			if cliMode {
+				log.Printf("Navigator: using Gemma model %s at %s (CLI mode + GBNF grammar)", navModel, ep)
+			} else {
+				log.Printf("Navigator: using Gemma model %s at %s (native function calling)", navModel, ep)
+			}
 		} else {
 			navGen = &navigator.OllamaGenerator{Endpoint: ep, Model: navModel}
 			log.Printf("Navigator: using local model %s at %s (OpenAI format)", navModel, ep)
