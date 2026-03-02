@@ -655,3 +655,68 @@ func TestBug_ReconnectNoSessionsNoOp(t *testing.T) {
 		t.Errorf("expected 0 sessions, got %d", n)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Bug: captureMu blocks context cancellation
+//
+// sync.Mutex.Lock() does not respect context.Context. If Tab A holds the
+// mutex for 29 seconds, a second goroutine calling Lock() will block for
+// the entire duration — even if its parentCtx is cancelled.
+//
+// Fix: Replace captureMu (sync.Mutex) with captureSem (chan struct{}, 1)
+// and use select to respect context cancellation.
+// ---------------------------------------------------------------------------
+
+func TestBug_CaptureSemRespectsContextCancellation(t *testing.T) {
+	h := newTestHandler()
+	sess := h.getSession(1)
+
+	// Goroutine A: acquire the semaphore (simulating a long capture).
+	sess.captureSem <- struct{}{}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	exited := make(chan struct{})
+
+	// Goroutine B: try to acquire the semaphore — should respect ctx.
+	go func() {
+		defer close(exited)
+		select {
+		case sess.captureSem <- struct{}{}:
+			<-sess.captureSem // release if we somehow got it
+		case <-ctx.Done():
+			return // correctly exited via context
+		}
+	}()
+
+	// Give goroutine B time to block.
+	time.Sleep(20 * time.Millisecond)
+
+	// Cancel the context — goroutine B should exit promptly.
+	cancel()
+
+	select {
+	case <-exited:
+		// Correct: goroutine B exited via context cancellation.
+	case <-time.After(200 * time.Millisecond):
+		t.Error("BUG: goroutine blocked on captureSem ignoring context cancellation")
+		<-sess.captureSem // cleanup
+	}
+}
+
+func TestBug_CaptureSemAllowsSequentialCaptures(t *testing.T) {
+	// Verify the semaphore still works for normal sequential access.
+	h := newTestHandler()
+	sess := h.getSession(1)
+
+	ctx := context.Background()
+
+	// Acquire and release 3 times.
+	for i := 0; i < 3; i++ {
+		select {
+		case sess.captureSem <- struct{}{}:
+		case <-ctx.Done():
+			t.Fatalf("iteration %d: context cancelled unexpectedly", i)
+		}
+		<-sess.captureSem // release
+	}
+}

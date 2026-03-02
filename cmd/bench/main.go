@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +16,11 @@ import (
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )
+
+// schemaGenerator matches the GenerateSchema method on all cartographer backends.
+type schemaGenerator interface {
+	GenerateSchema(ctx context.Context, screenshot []byte, mimeType, summary string) (string, error)
+}
 
 type benchCase struct {
 	Site          string `json:"site"`
@@ -41,30 +47,49 @@ func main() {
 	}
 
 	ctx := context.Background()
-	client, err := genai.NewClient(ctx, nil)
-	if err != nil {
-		log.Fatalf("Failed to initialize Gemini client: %v", err)
-	}
 
 	model := os.Getenv("GEMINI_MODEL")
 	if model == "" {
 		model = "gemini-2.5-flash"
 	}
 
-	cart := cartographer.NewAgent(client, model)
+	cartMode := os.Getenv("CARTOGRAPHER_MODE")
+	if cartMode == "" {
+		cartMode = "gemini"
+	}
+
+	cart, needsGemini := buildCartographer(model)
+
+	// Only create Gemini client if the cartographer or navigator needs it.
+	var client *genai.Client
+	navEndpoint := os.Getenv("NAVIGATOR_ENDPOINT")
+	if needsGemini || navEndpoint == "" {
+		var err error
+		client, err = genai.NewClient(ctx, nil)
+		if err != nil {
+			log.Fatalf("Failed to initialize Gemini client: %v", err)
+		}
+	}
+
+	// Gemini cartographer needs the client, which is only available now.
+	if needsGemini {
+		cart = cartographer.NewAgent(client, model)
+	}
+
 	navGen, navModel := buildNavGenerator(client, model)
 
 	schemaCache := map[string]string{} // site → schemaJSON
 	var results []benchResult
 
 	fmt.Println("=== X-Ray Navigation Benchmark ===")
+	fmt.Printf("Cartographer: %s\n", cartMode)
 	fmt.Println()
 	fmt.Printf("%-13s %-26s %-9s %-13s %-8s %s\n",
 		"Site", "Intent", "Result", "MacheID", "Time", "Iters")
 	fmt.Println(strings.Repeat("\u2500", 78))
 
 	for _, tc := range cases {
-		schema, err := getOrGenerateSchema(ctx, cart, tc.Site, schemaCache)
+		schema, err := getOrGenerateSchema(ctx, cart, tc.Site, schemaCache, cartMode == "gemini")
 		if err != nil {
 			r := benchResult{tc: tc, err: err}
 			results = append(results, r)
@@ -142,7 +167,30 @@ func buildNavGenerator(client *genai.Client, defaultModel string) (navigator.Con
 	return &navigator.GeminiGenerator{Client: client}, defaultModel
 }
 
-func getOrGenerateSchema(ctx context.Context, cart *cartographer.Agent, site string, cache map[string]string) (string, error) {
+func buildCartographer(defaultModel string) (schemaGenerator, bool) {
+	mode := os.Getenv("CARTOGRAPHER_MODE")
+	switch strings.ToLower(mode) {
+	case "cairn":
+		gear := 5
+		if g, err := strconv.Atoi(os.Getenv("CAIRN_GEAR")); err == nil {
+			gear = g
+		}
+		scale := 10.0
+		if s, err := strconv.ParseFloat(os.Getenv("CAIRN_SCALE"), 64); err == nil {
+			scale = s
+		}
+		log.Printf("Cartographer: cairn (gear=%d, scale=%.1f)", gear, scale)
+		return &cartographer.CairnCartographer{Gear: gear, Scale: scale}, false
+	case "tropical":
+		log.Printf("Cartographer: tropical")
+		return &cartographer.TropicalCartographer{}, false
+	default:
+		log.Printf("Cartographer: gemini (%s)", defaultModel)
+		return nil, true // placeholder — filled after client init
+	}
+}
+
+func getOrGenerateSchema(ctx context.Context, cart schemaGenerator, site string, cache map[string]string, validateIDs bool) (string, error) {
 	if s, ok := cache[site]; ok {
 		return s, nil
 	}
@@ -159,9 +207,11 @@ func getOrGenerateSchema(ctx context.Context, cart *cartographer.Agent, site str
 		return "", fmt.Errorf("GenerateSchema: %w", err)
 	}
 
-	// Validate no hallucinated IDs
-	if bad := mache.ValidateSchema(schema, summary); len(bad) > 0 {
-		return "", fmt.Errorf("hallucinated IDs in schema: %v", bad)
+	// Validate no hallucinated IDs (only relevant for VLM-based cartographers).
+	if validateIDs {
+		if bad := mache.ValidateSchema(schema, summary); len(bad) > 0 {
+			return "", fmt.Errorf("hallucinated IDs in schema: %v", bad)
+		}
 	}
 
 	cache[site] = schema

@@ -140,6 +140,7 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		SummaryCh:         make(chan SummaryResponse, 1),
 		OverlayDrawnCh:    make(chan struct{}, 1),
 		OverlayRemovedCh:  make(chan struct{}, 1),
+		captureSem:        make(chan struct{}, 1),
 	}
 	h.sessions[tabID] = sess
 	log.Printf("Session: created new session for tab %d", tabID)

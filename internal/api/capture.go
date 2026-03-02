@@ -26,8 +26,14 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 	// Serialize captures per tab. If a second PAGE_READY arrives while we're mid-capture,
 	// it blocks here until the first finishes. This prevents channel cross-talk where
 	// goroutine B steals goroutine A's SUMMARY_RESPONSE from the shared SummaryCh.
-	sess.captureMu.Lock()
-	defer sess.captureMu.Unlock()
+	// Using a channel semaphore instead of sync.Mutex so we can respect context cancellation:
+	// if the parent context is cancelled while waiting in line, we exit cleanly.
+	select {
+	case sess.captureSem <- struct{}{}:
+		defer func() { <-sess.captureSem }()
+	case <-parentCtx.Done():
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(parentCtx, captureGoTimeout)
 	defer cancel()

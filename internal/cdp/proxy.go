@@ -21,6 +21,12 @@ type cdpResponse struct {
 	Error  string
 }
 
+// EventMsg carries a CDP event to a per-tab subscriber.
+type EventMsg struct {
+	Method string
+	Params json.RawMessage
+}
+
 // Proxy mediates CDP commands through the Chrome extension WebSocket.
 type Proxy struct {
 	sender  Sender
@@ -29,8 +35,9 @@ type Proxy struct {
 	attachM sync.Map // int -> chan error (tabID -> attach result)
 	detachM sync.Map // int -> chan struct{}
 
-	eventMu sync.RWMutex
-	eventFn EventHandler
+	eventMu   sync.RWMutex
+	eventFn   EventHandler
+	eventSubs sync.Map // int (tabID) -> chan EventMsg
 }
 
 // New creates a CDP proxy with the given sender.
@@ -161,8 +168,33 @@ func (p *Proxy) HandleError(id int64, errMsg string) {
 	}
 }
 
+// SubscribeEvents returns a channel that receives CDP events for the given tabID.
+// The caller must call UnsubscribeEvents when done to avoid leaking the channel.
+func (p *Proxy) SubscribeEvents(tabID int) <-chan EventMsg {
+	ch := make(chan EventMsg, 8)
+	p.eventSubs.Store(tabID, ch)
+	return ch
+}
+
+// UnsubscribeEvents removes the event subscription for the given tabID and closes its channel.
+func (p *Proxy) UnsubscribeEvents(tabID int) {
+	if v, ok := p.eventSubs.LoadAndDelete(tabID); ok {
+		close(v.(chan EventMsg))
+	}
+}
+
 // HandleEvent is called when CDP_EVENT arrives.
 func (p *Proxy) HandleEvent(tabID int, method string, params json.RawMessage) {
+	// Route to per-tab subscriber (used by CaptureLayerTree).
+	if v, ok := p.eventSubs.Load(tabID); ok {
+		select {
+		case v.(chan EventMsg) <- EventMsg{Method: method, Params: params}:
+		default:
+			// Channel full — subscriber too slow; drop event.
+		}
+	}
+
+	// Also call legacy global handler for backwards compat.
 	p.eventMu.RLock()
 	fn := p.eventFn
 	p.eventMu.RUnlock()

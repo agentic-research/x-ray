@@ -144,6 +144,23 @@ tasks:
     cmds:
       - go run ./cmd/bench
 
+  bench-cairn:
+    desc: Run bench with cairn cartographer + local Ollama navigator (no cloud API)
+    env:
+      CARTOGRAPHER_MODE: cairn
+      NAVIGATOR_ENDPOINT: http://localhost:11434/v1
+      NAVIGATOR_MODEL: '{{.NAVIGATOR_MODEL | default "qwen2.5-coder:7b"}}'
+      NAVIGATOR_FORMAT: openai
+    cmds:
+      - go run ./cmd/bench
+
+  bench-tropical:
+    desc: Run bench with tropical cartographer (no VLM, still needs Gemini for nav)
+    env:
+      CARTOGRAPHER_MODE: tropical
+    cmds:
+      - go run ./cmd/bench
+
   gate:
     desc: Run the 48-hour gate test on the mock dummy page
     cmds:

@@ -243,8 +243,14 @@ func MacheBackendMap(ctx context.Context, p *Proxy, tabID, rootNodeID int) (map[
 	var wg sync.WaitGroup
 
 	for _, nid := range qaResp.NodeIDs {
+		// Short-circuit: if context is cancelled, stop spawning goroutines.
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+			wg.Wait()
+			return result, ctx.Err()
+		}
 		wg.Add(1)
-		sem <- struct{}{}
 		go func(nodeID int) {
 			defer wg.Done()
 			defer func() { <-sem }()
@@ -332,28 +338,27 @@ type layer struct {
 func CaptureLayerTree(ctx context.Context, p *Proxy, tabID int, macheToBackend map[string]int) map[string]LayerInfo {
 	result := make(map[string]LayerInfo)
 
-	// Register event waiter before enabling LayerTree.
-	layersCh := make(chan []layer, 1)
-	var once sync.Once
+	// Subscribe to events for this tab before enabling LayerTree.
+	// Per-tab subscription avoids the global SetEventHandler race where
+	// concurrent CaptureLayerTree calls on different tabs clobber each
+	// other's handlers via save-and-restore.
+	eventCh := p.SubscribeEvents(tabID)
+	defer p.UnsubscribeEvents(tabID)
 
-	prevHandler := getEventHandler(p)
-	p.SetEventHandler(func(tid int, method string, params json.RawMessage) {
-		if tid == tabID && method == "LayerTree.layerTreeDidChange" {
-			once.Do(func() {
+	layersCh := make(chan []layer, 1)
+	go func() {
+		for ev := range eventCh {
+			if ev.Method == "LayerTree.layerTreeDidChange" {
 				var resp layerTreeResp
-				if err := json.Unmarshal(params, &resp); err == nil {
+				if err := json.Unmarshal(ev.Params, &resp); err == nil {
 					layersCh <- resp.Layers
 				} else {
 					layersCh <- nil
 				}
-			})
+				return
+			}
 		}
-		// Chain to previous handler.
-		if prevHandler != nil {
-			prevHandler(tid, method, params)
-		}
-	})
-	defer p.SetEventHandler(prevHandler)
+	}()
 
 	// Enable LayerTree.
 	if _, err := p.Send(ctx, tabID, "LayerTree.enable", nil); err != nil {
@@ -495,13 +500,6 @@ func CaptureLayerTree(ctx context.Context, p *Proxy, tabID int, macheToBackend m
 // layerTreeTimeout is the duration to wait for LayerTree.layerTreeDidChange.
 // Overridable in tests.
 var layerTreeTimeout = 2 * time.Second
-
-// getEventHandler reads the current event handler from a Proxy.
-func getEventHandler(p *Proxy) EventHandler {
-	p.eventMu.RLock()
-	defer p.eventMu.RUnlock()
-	return p.eventFn
-}
 
 // PixelClick dispatches a click at screenshot-relative coordinates.
 // Unscales from screenshot pixels back to CSS pixels using the same formula as JS.
