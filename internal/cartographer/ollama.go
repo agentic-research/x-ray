@@ -59,6 +59,12 @@ func (o *OllamaAgent) GenerateSchema(ctx context.Context, screenshot []byte, mim
 		},
 		"temperature": 0.1,
 		"stream":      false,
+		// Ollama extensions: keep model resident and use full GPU offload.
+		"keep_alive": -1,
+		"options": map[string]any{
+			"num_gpu": 99,
+			"num_ctx": 8192,
+		},
 	}
 
 	body, err := json.Marshal(reqBody)

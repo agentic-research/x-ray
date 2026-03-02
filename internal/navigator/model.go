@@ -51,6 +51,12 @@ func (o *OllamaGenerator) GenerateContent(ctx context.Context, model string, his
 		"model":           model,
 		"messages":        messages,
 		"response_format": map[string]string{"type": "json_object"},
+		// Ollama extensions: keep model resident and use full GPU offload.
+		"keep_alive": -1,
+		"options": map[string]any{
+			"num_gpu": 99,
+			"num_ctx": 8192,
+		},
 	}
 	if len(tools) > 0 {
 		reqBody["tools"] = tools
@@ -306,6 +312,12 @@ func (g *GemmaGenerator) GenerateContent(ctx context.Context, model string, hist
 	reqBody := map[string]any{
 		"model":    model,
 		"messages": messages,
+		// Ollama extensions: keep model resident and use full GPU offload.
+		"keep_alive": -1,
+		"options": map[string]any{
+			"num_gpu": 99,
+			"num_ctx": 8192,
+		},
 	}
 	if config != nil && config.Temperature != nil {
 		reqBody["temperature"] = *config.Temperature
