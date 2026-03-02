@@ -123,6 +123,11 @@ func main() {
 
 	// Per-tab Engine + Navigator are created on demand inside Handler.
 	handler := api.NewHandler(cart, navGen, client, liveClient, navModel, cfg.Gemini.LiveModel, plannerModel, cfg.Database.Path)
+	if cfg.CDP.GoCapture {
+		handler.SetCDPGoEnabled(true)
+		log.Println("CDP: Go-driven capture enabled (XRAY_CDP_GO=1)")
+	}
+
 	handler.SetOpenBrowserFunc(func(url string) {
 		_ = exec.Command("open", "-a", "Google Chrome", url).Start()
 		// Bring Chrome to foreground — "open -a" doesn't always focus the window.

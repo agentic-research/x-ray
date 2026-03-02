@@ -53,6 +53,7 @@ type Handler struct {
 	termBridge     graph.Graph      // global iTerm2 bridge (nil if iTerm not available)
 	planner        *Planner         // Planner for /agent/task (non-voice Talker)
 	cdpProxy       *cdp.Proxy       // CDP proxy for Dumb Pipe architecture
+	cdpGoEnabled   bool             // XRAY_CDP_GO=1: Go-driven capture pipeline
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client, liveClient *genai.Client, navModel, liveModel, plannerModel, dbPath string) *Handler {
@@ -86,6 +87,13 @@ func (h *Handler) SetTermBridge(bridge graph.Graph) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.termBridge = bridge
+}
+
+// SetCDPGoEnabled enables or disables the Go-driven CDP capture pipeline.
+func (h *Handler) SetCDPGoEnabled(enabled bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.cdpGoEnabled = enabled
 }
 
 // lookupSession returns the TabSession for the given tab, or nil if none exists.
@@ -137,6 +145,9 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		DOMMutatedCh:      make(chan struct{}, 1),
 		SelectorsResolved: make(chan map[string][]string, 1),
 		TabsListedCh:      make(chan []TabInfo, 1),
+		SummaryCh:         make(chan SummaryResponse, 1),
+		OverlayDrawnCh:    make(chan struct{}, 1),
+		OverlayRemovedCh:  make(chan struct{}, 1),
 	}
 	h.sessions[tabID] = sess
 	log.Printf("Session: created new session for tab %d", tabID)
@@ -209,6 +220,15 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("WebSocket: Client connected (reset schema state for %d sessions)", len(sessions))
 
+	// Notify extension if Go-driven capture is enabled.
+	h.mu.Lock()
+	goCapture := h.cdpGoEnabled
+	h.mu.Unlock()
+	if goCapture {
+		h.sendMessage(conn, OutboundMessage{Type: MsgCDPGoEnabled})
+		log.Println("WebSocket: sent CDP_GO_ENABLED to extension")
+	}
+
 	// Flush any actions that were queued while the extension was disconnected.
 	for _, a := range queued {
 		log.Printf("WebSocket: flushing queued action: %s on %s (tab %d)", a.Action, a.MacheID, a.TabID)
@@ -278,6 +298,18 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Voice [ext tab %d]: %s", msg.TabID, msg.Message)
 		case MsgPing:
 			// Client-side keep-alive heartbeat — no action needed.
+
+		// Go-driven capture orchestration messages.
+		case MsgPageReady:
+			go h.captureGo(context.Background(), msg.TabID, msg.IsRescan, msg.TargetMacheID)
+		case MsgSummaryResponse:
+			h.handleSummaryResponse(msg)
+		case MsgOverlayDrawn:
+			h.handleOverlayDrawn(msg)
+		case MsgOverlayRemoved:
+			h.handleOverlayRemoved(msg)
+		case MsgHumanOverlayDrawn:
+			// Ack only — no action needed.
 
 		// CDP proxy messages (Dumb Pipe architecture).
 		case MsgCDPAttached:
@@ -662,6 +694,33 @@ func (h *Handler) SendActionToExtension(tabID int, macheID, action, payload stri
 				msg.PixelX = r.PixelX + r.PixelW/2
 				msg.PixelY = r.PixelY + r.PixelH/2
 				log.Printf("CV click: %s → pixel (%d, %d) (tab %d)", macheID, msg.PixelX, msg.PixelY, tabID)
+
+				// When Go capture is enabled, dispatch the click directly via CDP proxy
+				// instead of routing through the extension's JS cdpPixelClick.
+				h.mu.Lock()
+				goCapture := h.cdpGoEnabled
+				h.mu.Unlock()
+				if goCapture {
+					go func() {
+						ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+						defer cancel()
+						if err := h.cdpProxy.Attach(ctx, tabID); err != nil {
+							log.Printf("CV click (Go): attach failed: %v", err)
+							return
+						}
+						defer func() {
+							dCtx, dCancel := context.WithTimeout(context.Background(), 5*time.Second)
+							defer dCancel()
+							_ = h.cdpProxy.Detach(dCtx, tabID)
+						}()
+						if err := cdp.PixelClick(ctx, h.cdpProxy, tabID, float64(msg.PixelX), float64(msg.PixelY)); err != nil {
+							log.Printf("CV click (Go): PixelClick failed: %v", err)
+						} else {
+							log.Printf("CV click (Go): dispatched click at (%d, %d) for %s (tab %d)", msg.PixelX, msg.PixelY, macheID, tabID)
+						}
+					}()
+					return
+				}
 				break
 			}
 		}
@@ -823,6 +882,43 @@ func (h *Handler) HandleDoerHTTP(w http.ResponseWriter, r *http.Request) {
 		"goal_id":  req.GoalID,
 		"tab_id":   req.TabID,
 	})
+}
+
+// handleSummaryResponse delivers the content-script summary to the waiting captureGo.
+func (h *Handler) handleSummaryResponse(msg InboundMessage) {
+	sess := h.lookupSession(msg.TabID)
+	if sess == nil {
+		return
+	}
+	select {
+	case sess.SummaryCh <- SummaryResponse{Summary: msg.Summary, URL: msg.URL}:
+	default:
+		log.Printf("WebSocket: SUMMARY_RESPONSE for tab %d but no listener, discarding", msg.TabID)
+	}
+}
+
+// handleOverlayDrawn signals that the machine overlay is visible.
+func (h *Handler) handleOverlayDrawn(msg InboundMessage) {
+	sess := h.lookupSession(msg.TabID)
+	if sess == nil {
+		return
+	}
+	select {
+	case sess.OverlayDrawnCh <- struct{}{}:
+	default:
+	}
+}
+
+// handleOverlayRemoved signals that the machine overlay has been removed.
+func (h *Handler) handleOverlayRemoved(msg InboundMessage) {
+	sess := h.lookupSession(msg.TabID)
+	if sess == nil {
+		return
+	}
+	select {
+	case sess.OverlayRemovedCh <- struct{}{}:
+	default:
+	}
 }
 
 // parseBounds extracts normalized [x, y, w, h] bounds from the DOM summary text.

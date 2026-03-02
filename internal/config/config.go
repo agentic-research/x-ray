@@ -16,6 +16,12 @@ type Config struct {
 	Cartographer CartographerConfig `yaml:"cartographer"`
 	Navigator    NavigatorConfig    `yaml:"navigator"`
 	Database     DatabaseConfig     `yaml:"database"`
+	CDP          CDPConfig          `yaml:"cdp"`
+}
+
+// CDPConfig holds CDP pipeline settings.
+type CDPConfig struct {
+	GoCapture bool `yaml:"go_capture"` // XRAY_CDP_GO=1 enables Go-driven capture
 }
 
 // GeminiConfig holds Gemini API settings.
@@ -158,6 +164,9 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv("XRAY_DB"); v != "" {
 		cfg.Database.Path = expandHome(v)
+	}
+	if v := os.Getenv("XRAY_CDP_GO"); v == "1" {
+		cfg.CDP.GoCapture = true
 	}
 }
 

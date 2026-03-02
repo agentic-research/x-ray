@@ -29,6 +29,18 @@ const (
 	MsgDOMMutated        = "DOM_MUTATED"
 	MsgPing              = "PING"
 
+	// Go-driven capture orchestration (XRAY_CDP_GO=1).
+	MsgPageReady         = "PAGE_READY"             // ext → server: tab ready for Go capture
+	MsgRequestSummary    = "REQUEST_SUMMARY"        // server → ext: build registry + return summary
+	MsgSummaryResponse   = "SUMMARY_RESPONSE"       // ext → server: summary + url
+	MsgDrawOverlayCmd    = "DRAW_OVERLAY_CMD"       // server → ext: draw machine overlay
+	MsgOverlayDrawn      = "OVERLAY_DRAWN"          // ext → server: overlay drawn ack
+	MsgRemoveOverlayCmd  = "REMOVE_OVERLAY_CMD"     // server → ext: remove machine overlay
+	MsgOverlayRemoved    = "OVERLAY_REMOVED"        // ext → server: overlay removed ack
+	MsgDrawHumanOverlay  = "DRAW_HUMAN_OVERLAY_CMD" // server → ext: draw human-friendly overlay
+	MsgHumanOverlayDrawn = "HUMAN_OVERLAY_DRAWN"    // ext → server: human overlay drawn ack
+	MsgCDPGoEnabled      = "CDP_GO_ENABLED"         // server → ext: Go capture mode active
+
 	// CDP proxy message types (Dumb Pipe architecture).
 	MsgCDPAttach       = "CDP_ATTACH"
 	MsgCDPAttached     = "CDP_ATTACHED"
@@ -52,10 +64,11 @@ type InboundMessage struct {
 	Summary       string              `json:"summary,omitempty"`
 	Screenshot    string              `json:"screenshot,omitempty"` // base64-encoded JPEG (scaled)
 	Intent        string              `json:"intent,omitempty"`
-	ResolvedItems map[string][]string `json:"resolved_items,omitempty"` // zone mache-id → resolved child mache-ids
-	Message       string              `json:"message,omitempty"`        // VOICE_LOG text
-	IsRescan      bool                `json:"is_rescan,omitempty"`      // bypass schema cache on rescan
-	Tabs          []TabInfo           `json:"tabs,omitempty"`           // TABS_LISTED response
+	ResolvedItems map[string][]string `json:"resolved_items,omitempty"`  // zone mache-id → resolved child mache-ids
+	Message       string              `json:"message,omitempty"`         // VOICE_LOG text
+	IsRescan      bool                `json:"is_rescan,omitempty"`       // bypass schema cache on rescan
+	TargetMacheID string              `json:"target_mache_id,omitempty"` // PAGE_READY: magnifying glass target
+	Tabs          []TabInfo           `json:"tabs,omitempty"`            // TABS_LISTED response
 
 	// CDP proxy fields (Dumb Pipe architecture).
 	CDPRequestID int64           `json:"cdp_id,omitempty"`

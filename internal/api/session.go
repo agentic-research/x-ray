@@ -21,6 +21,12 @@ type DOMUpdate struct {
 	ResolvedItems map[string][]string
 }
 
+// SummaryResponse carries the content-script summary for Go-driven capture.
+type SummaryResponse struct {
+	Summary string
+	URL     string
+}
+
 // TabSession holds per-tab state: its own Engine and Navigator.
 type TabSession struct {
 	TabID             int
@@ -37,6 +43,11 @@ type TabSession struct {
 	doerCancel        context.CancelFunc       // cancels the Doer's Run goroutine (not just the current goal)
 	TabsListedCh      chan []TabInfo           // receives tab list from LIST_TABS round-trip
 	CVRegions         []EdgeRegion             // canvas regions detected via edge analysis, used for CDP pixel-click
+
+	// Go-driven capture channels (XRAY_CDP_GO orchestration).
+	SummaryCh        chan SummaryResponse // receives SUMMARY_RESPONSE from extension
+	OverlayDrawnCh   chan struct{}        // receives OVERLAY_DRAWN ack
+	OverlayRemovedCh chan struct{}        // receives OVERLAY_REMOVED ack
 
 	schemaMu     sync.Mutex // protects SchemaReady close + schemaGen
 	schemaClosed bool
