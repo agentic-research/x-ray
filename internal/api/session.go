@@ -44,7 +44,7 @@ type TabSession struct {
 	TabsListedCh      chan []TabInfo           // receives tab list from LIST_TABS round-trip
 	CVRegions         []EdgeRegion             // canvas regions detected via edge analysis, used for CDP pixel-click
 
-	// Go-driven capture channels (XRAY_CDP_GO orchestration).
+	// Go-driven capture channels.
 	SummaryCh        chan SummaryResponse // receives SUMMARY_RESPONSE from extension
 	OverlayDrawnCh   chan struct{}        // receives OVERLAY_DRAWN ack
 	OverlayRemovedCh chan struct{}        // receives OVERLAY_REMOVED ack

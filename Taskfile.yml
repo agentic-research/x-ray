@@ -119,6 +119,14 @@ tasks:
     cmds:
       - ./{{.BINARY_NAME}} --voice
 
+  demo-cairn:
+    desc: Build and run voice demo with cairn cartographer (Leech lattice, no VLM)
+    deps: [build]
+    env:
+      CARTOGRAPHER_MODE: cairn
+    cmds:
+      - ./{{.BINARY_NAME}} --voice
+
   demo-local:
     desc: Build and run fully air-gapped (local VLM + local SLM, no cloud API)
     deps: [build]

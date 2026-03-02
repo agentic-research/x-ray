@@ -564,10 +564,13 @@ let _lastZones = null;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
+    // Rebuild registry first — React SPAs may replace DOM nodes on resize,
+    // leaving elementRegistry with stale detached refs.
+    buildRegistry();
     if (document.getElementById(OVERLAY_ID)) drawOverlay();
     if (document.getElementById(HUMAN_OVERLAY_ID)) drawHumanOverlay();
     if (document.getElementById(ZONE_OVERLAY_ID) && _lastZones) drawZoneOverlay(_lastZones);
-  }, 150);
+  }, 200);
 });
 
 // Listen for messages from background.js

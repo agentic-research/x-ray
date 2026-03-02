@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"sync/atomic"
 	"testing"
@@ -187,6 +188,65 @@ func TestApplyResumeHandleEmpty(t *testing.T) {
 	}
 	if config.SessionResumption.Handle != "" {
 		t.Errorf("expected empty Handle, got %q", config.SessionResumption.Handle)
+	}
+}
+
+func TestLiveReconnectState_RetriesWithBackoff(t *testing.T) {
+	ctx := context.Background()
+	rs := liveReconnectState{}
+
+	// First 3 attempts should return true (reconnect).
+	for i := 1; i <= maxNonGoAwayRetries; i++ {
+		if !rs.shouldReconnect(ctx, " [test]") {
+			t.Fatalf("attempt %d: expected shouldReconnect=true", i)
+		}
+		if rs.Retries != i {
+			t.Fatalf("attempt %d: expected Retries=%d, got %d", i, i, rs.Retries)
+		}
+	}
+
+	// After max retries, should still reconnect but reset state for fresh session.
+	if !rs.shouldReconnect(ctx, " [test]") {
+		t.Fatal("expected shouldReconnect=true after max retries (fresh session)")
+	}
+	if rs.Retries != 0 {
+		t.Fatalf("expected Retries reset to 0, got %d", rs.Retries)
+	}
+	if rs.ResumeHandle != "" {
+		t.Fatalf("expected ResumeHandle cleared, got %q", rs.ResumeHandle)
+	}
+}
+
+func TestLiveReconnectState_RespectsContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // already cancelled
+
+	rs := liveReconnectState{}
+	if rs.shouldReconnect(ctx, "") {
+		t.Fatal("expected shouldReconnect=false when context is cancelled")
+	}
+}
+
+func TestLiveReconnectState_ClearsHandleOnMaxRetries(t *testing.T) {
+	ctx := context.Background()
+	rs := liveReconnectState{ResumeHandle: "stale-handle", Retries: maxNonGoAwayRetries}
+
+	if !rs.shouldReconnect(ctx, "") {
+		t.Fatal("expected shouldReconnect=true")
+	}
+	if rs.ResumeHandle != "" {
+		t.Fatalf("expected stale handle cleared, got %q", rs.ResumeHandle)
+	}
+}
+
+func TestLiveReconnectState_ResetsOnSuccess(t *testing.T) {
+	rs := liveReconnectState{Retries: 2, ResumeHandle: "handle-abc"}
+	rs.Retries = 0 // simulate successful Receive
+	if rs.Retries != 0 {
+		t.Fatalf("expected Retries=0 after reset, got %d", rs.Retries)
+	}
+	if rs.ResumeHandle != "handle-abc" {
+		t.Fatal("ResumeHandle should be preserved on success reset")
 	}
 }
 

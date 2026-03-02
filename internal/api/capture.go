@@ -12,7 +12,7 @@ import (
 // Orchestration timeouts for Go-driven capture.
 const (
 	summaryTimeout   = 10 * time.Second
-	overlayTimeout   = 5 * time.Second
+	overlayTimeout   = 10 * time.Second
 	captureGoTimeout = 30 * time.Second
 )
 
@@ -183,80 +183,6 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 		IsRescan:   isRescan,
 	}
 	h.handleDOMSnapshot(conn, syntheticMsg)
-}
-
-// verifyCapture runs the Go CDP capture pipeline in the background alongside the JS path
-// and logs differences. The JS output is still used for the actual pipeline; this is diagnostic only.
-func (h *Handler) verifyCapture(tabID int, jsMsg InboundMessage) {
-	ctx, cancel := context.WithTimeout(context.Background(), captureGoTimeout)
-	defer cancel()
-
-	sess := h.getSession(tabID)
-
-	// Wait briefly for the overlay to be removed by JS before we attach CDP.
-	time.Sleep(500 * time.Millisecond)
-
-	if err := h.cdpProxy.Attach(ctx, tabID); err != nil {
-		log.Printf("Verify: CDP attach failed (tab %d): %v", tabID, err)
-		return
-	}
-	defer func() {
-		dCtx, dCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer dCancel()
-		_ = h.cdpProxy.Detach(dCtx, tabID)
-	}()
-
-	// Run the same CDP steps as captureGo but only compare, don't feed into pipeline.
-	pageWidth, pageHeight, err := cdp.LayoutMetrics(ctx, h.cdpProxy, tabID)
-	if err != nil {
-		log.Printf("Verify: LayoutMetrics failed (tab %d): %v", tabID, err)
-		return
-	}
-
-	rootNodeID, err := cdp.DocumentRoot(ctx, h.cdpProxy, tabID)
-	if err != nil {
-		log.Printf("Verify: DocumentRoot failed (tab %d): %v", tabID, err)
-		return
-	}
-
-	clip := cdp.BuildClip(pageWidth, pageHeight, nil)
-	goScreenshot, err := cdp.CaptureScreenshot(ctx, h.cdpProxy, tabID, clip)
-	if err != nil {
-		log.Printf("Verify: CaptureScreenshot failed (tab %d): %v", tabID, err)
-		goScreenshot = ""
-	}
-
-	axNodes, axErr := cdp.FullAXTree(ctx, h.cdpProxy, tabID)
-	macheToBackend, _ := cdp.MacheBackendMap(ctx, h.cdpProxy, tabID, rootNodeID)
-
-	var goAXCount int
-	if axErr == nil && macheToBackend != nil {
-		axMap := cdp.JoinAXToMache(axNodes, macheToBackend)
-		goAXCount = len(axMap)
-	}
-
-	var goLayerCount int
-	if macheToBackend != nil {
-		layerMap := cdp.CaptureLayerTree(ctx, h.cdpProxy, tabID, macheToBackend)
-		goLayerCount = len(layerMap)
-		_ = sess // keep linter happy
-	}
-
-	// Compare dimensions (screenshot length as proxy for image size).
-	jsLen := len(jsMsg.Screenshot)
-	goLen := len(goScreenshot)
-
-	log.Printf("Verify (tab %d): JS screenshot=%d chars, Go screenshot=%d chars (delta=%d)",
-		tabID, jsLen, goLen, goLen-jsLen)
-	log.Printf("Verify (tab %d): Go AX mappings=%d, Go layers=%d",
-		tabID, goAXCount, goLayerCount)
-
-	if jsLen > 0 && goLen > 0 {
-		ratio := float64(goLen) / float64(jsLen)
-		if ratio < 0.8 || ratio > 1.2 {
-			log.Printf("Verify WARNING (tab %d): screenshot size mismatch >20%% (ratio=%.2f)", tabID, ratio)
-		}
-	}
 }
 
 // sendOverlayCleanup removes the machine overlay and draws the human-friendly overlay.

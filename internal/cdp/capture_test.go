@@ -382,10 +382,8 @@ func TestMacheBackendMap_Success(t *testing.T) {
 	}
 	p.HandleResult(msg["cdp_id"].(int64), json.RawMessage(`{"nodeIds":[100,200]}`))
 
-	// Two describeNode calls. Wait for both and respond.
-	waitForMsgN(t, ms, 3) // querySelectorAll + at least first describeNode
-	// Respond to all pending describeNode messages.
-	time.Sleep(50 * time.Millisecond) // let both goroutines send
+	// Two describeNode calls (one per nodeID). Wait for all 3 messages.
+	waitForMsgN(t, ms, 3) // querySelectorAll + 2 describeNode
 	msgs := ms.allMsgs()
 	for _, m := range msgs[1:] { // skip querySelectorAll
 		if m["cdp_method"] == "DOM.describeNode" {
@@ -538,8 +536,8 @@ func TestCaptureLayerTree_Success(t *testing.T) {
 		]
 	}`))
 
-	// compositingReasons calls — wait for them and respond.
-	time.Sleep(100 * time.Millisecond)
+	// compositingReasons calls — 2 layers with backendNodeId → 2 calls (msgs 2-3).
+	waitForMsgN(t, ms, 3) // enable + 2 compositingReasons
 	msgs := ms.allMsgs()
 	for _, m := range msgs {
 		if m["cdp_method"] == "LayerTree.compositingReasons" {
@@ -547,8 +545,8 @@ func TestCaptureLayerTree_Success(t *testing.T) {
 		}
 	}
 
-	// LayerTree.disable
-	time.Sleep(50 * time.Millisecond)
+	// LayerTree.disable fires in defer after wg.Wait (msg 4).
+	waitForMsgN(t, ms, 4)
 	msgs = ms.allMsgs()
 	for _, m := range msgs {
 		if m["cdp_method"] == "LayerTree.disable" {

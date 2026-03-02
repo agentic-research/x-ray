@@ -14,7 +14,6 @@ const gotoInFlight = new Set();  // tabIds currently navigated by GOTO_URL (skip
 const overlayVisible = new Map(); // tabId → boolean (overlay toggle state)
 let agentdLaunching = false;
 const humanOverlayVisible = new Map(); // tabId → boolean (human overlay toggle state)
-let serverCDPGo = false; // Set by CDP_GO_ENABLED from server (XRAY_CDP_GO=1)
 
 // --- Side panel port registry ---
 const sidePanelPorts = new Set();
@@ -69,11 +68,17 @@ function connectWebSocket() {
       clearInterval(reconnectTimer);
       reconnectTimer = null;
     }
-    // Tell server which tab is currently active (voice daemon needs this).
+    // Tell server which tab is currently active (voice daemon needs this),
+    // then trigger an initial capture so the schema is ready immediately.
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0] && ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'TAB_ACTIVATED', tab_id: tabs[0].id }));
         console.log('X-Ray: Sent initial TAB_ACTIVATED for tab', tabs[0].id);
+        // Kick off initial capture for the already-loaded tab (skip chrome:// and other non-http pages).
+        const url = tabs[0].url || '';
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          captureAndSend(tabs[0].id);
+        }
       }
     });
     // Notify side panels of WS connection status.
@@ -108,18 +113,7 @@ function connectWebSocket() {
       case 'EXECUTE_ACTION': {
         const targetTab = msg.tab_id || null;
 
-        // CV pixel-click: use CDP Input.dispatchMouseEvent for canvas-detected regions.
-        if (msg.pixel_x != null && msg.pixel_y != null && msg.pixel_x > 0 && msg.pixel_y > 0) {
-          const tabForClick = targetTab || (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id;
-          if (tabForClick) {
-            cdpPixelClick(tabForClick, msg.pixel_x, msg.pixel_y).then(() => {
-              console.log('X-Ray: CV pixel click dispatched at', msg.pixel_x, msg.pixel_y, 'on tab', tabForClick);
-            }).catch(e => {
-              console.error('X-Ray: CV pixel click failed:', e.message);
-            });
-          }
-          break;
-        }
+        // CV pixel-click is handled by Go via CDP proxy (never reaches here).
 
         const actionMsg = {
           type: 'EXECUTE_ACTION',
@@ -399,12 +393,7 @@ function connectWebSocket() {
           `[${msg.stage}] ${msg.message}`);
         break;
 
-      // --- Go-driven capture orchestration (XRAY_CDP_GO=1) ---
-
-      case 'CDP_GO_ENABLED':
-        serverCDPGo = true;
-        console.log('X-Ray: Go-driven CDP capture enabled by server');
-        break;
+      // --- Go-driven capture orchestration ---
 
       case 'REQUEST_SUMMARY': {
         const tabId = msg.tab_id;
@@ -413,7 +402,9 @@ function connectWebSocket() {
           response = await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
         } catch (e) {
           console.log('X-Ray: Content script not ready for REQUEST_SUMMARY, injecting into tab', tabId);
+          // Wait for the tab to finish loading before injecting content script.
           try {
+            await waitForTabComplete(tabId, 8000);
             await chrome.scripting.executeScript({
               target: { tabId },
               files: ['content.js']
@@ -421,7 +412,7 @@ function connectWebSocket() {
             await new Promise(r => setTimeout(r, 200));
             response = await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
           } catch (retryErr) {
-            console.error('X-Ray: Content script inject/retry failed for REQUEST_SUMMARY', retryErr);
+            console.error('X-Ray: Content script inject failed for tab', tabId, retryErr.message);
             break;
           }
         }
@@ -537,6 +528,36 @@ function connectWebSocket() {
   }
 }
 
+// --- Tab loading: wait for tab to reach "complete" status before injecting scripts ---
+function waitForTabComplete(tabId, timeoutMs = 8000) {
+  return new Promise((resolve, reject) => {
+    // Check if already complete.
+    chrome.tabs.get(tabId, (tab) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      if (tab.status === 'complete') {
+        resolve();
+        return;
+      }
+      // Wait for onUpdated to fire with status 'complete'.
+      const timer = setTimeout(() => {
+        chrome.tabs.onUpdated.removeListener(listener);
+        reject(new Error(`Tab ${tabId} did not reach complete within ${timeoutMs}ms`));
+      }, timeoutMs);
+      function listener(updatedTabId, changeInfo) {
+        if (updatedTabId === tabId && changeInfo.status === 'complete') {
+          clearTimeout(timer);
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      }
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+  });
+}
+
 // --- Layout stabilization: wait for DOM to stop mutating before snapshot ---
 // Injects a MutationObserver into the page and resolves after 500ms of quiet
 // (no DOM changes). Safety cap prevents indefinite waiting on busy pages.
@@ -567,393 +588,14 @@ async function waitForLayoutStable(tabId, timeoutMs = 3000) {
   }
 }
 
-// --- CDP pixel-click: dispatches mouse events at viewport-relative coordinates ---
-
-// cdpPixelClick attaches the debugger briefly to dispatch a click at (x, y).
-// The coordinates are from the scaled screenshot (800px width target), so we
-// map them back to the actual viewport dimensions before dispatching.
-async function cdpPixelClick(tabId, scaledX, scaledY) {
-  // Get actual viewport dimensions to map from screenshot coordinates.
-  await chrome.debugger.attach({ tabId }, '1.3');
-  try {
-    const { cssContentSize } = await chrome.debugger.sendCommand(
-      { tabId }, 'Page.getLayoutMetrics', {}
-    );
-    const actualWidth = cssContentSize.width;
-    const scale = Math.min(1, CDP_TARGET_WIDTH / actualWidth);
-    // Map screenshot pixel coords back to actual viewport coords.
-    const viewportX = scaledX / scale;
-    const viewportY = scaledY / scale;
-
-    await chrome.debugger.sendCommand({ tabId }, 'Input.dispatchMouseEvent', {
-      type: 'mousePressed',
-      x: viewportX,
-      y: viewportY,
-      button: 'left',
-      clickCount: 1
-    });
-    await chrome.debugger.sendCommand({ tabId }, 'Input.dispatchMouseEvent', {
-      type: 'mouseReleased',
-      x: viewportX,
-      y: viewportY,
-      button: 'left',
-      clickCount: 1
-    });
-  } finally {
-    try {
-      await chrome.debugger.detach({ tabId });
-    } catch (_) { /* already detached */ }
-  }
-}
-
-// --- CDP capture: scaled screenshot + AX enrichment ---
-
-const CDP_MAX_HEIGHT = 16384;  // Cap for infinite-scroll pages
-const CDP_TARGET_WIDTH = 800;  // Scaled-down width for Gemini (topology, not pixels)
-
-// Single CDP session: scaled full-page JPEG screenshot + AX-to-mache-id mapping.
-// Falls back to viewport-only screenshot if debugger attach fails.
-// When targetMacheId is provided, crops the screenshot to that element's bounding box
-// (magnifying glass mode for targeted rescan).
-async function captureWithCDP(tabId, targetMacheId = null) {
-  try {
-    await chrome.debugger.attach({ tabId }, '1.3');
-  } catch (e) {
-    console.warn('X-Ray: debugger attach failed, falling back to viewport screenshot:', e.message);
-    const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
-    return { screenshot: dataUrl.split(',')[1], axMap: new Map(), layerMap: new Map() };
-  }
-
-  try {
-    // 0. (Removed) Freeze page JS logic was here, but it breaks SPAs like GitHub traffic graphs.
-
-    // 1. Get page dimensions
-    const { cssContentSize } = await chrome.debugger.sendCommand(
-      { tabId }, 'Page.getLayoutMetrics', {}
-    );
-    const captureWidth = cssContentSize.width;
-    const captureHeight = Math.min(cssContentSize.height, CDP_MAX_HEIGHT);
-
-    // 2. Get DOM document root (needed for both crop and mache-id resolution)
-    const { root } = await chrome.debugger.sendCommand(
-      { tabId }, 'DOM.getDocument', { depth: 0 }
-    );
-
-    // 3. Build screenshot clip — crop to target element if magnifying glass mode
-    let clip;
-    if (targetMacheId) {
-      try {
-        const { nodeId } = await chrome.debugger.sendCommand(
-          { tabId }, 'DOM.querySelector',
-          { nodeId: root.nodeId, selector: `[data-mache-id="${targetMacheId}"]` }
-        );
-        if (nodeId) {
-          const { model } = await chrome.debugger.sendCommand(
-            { tabId }, 'DOM.getBoxModel', { nodeId }
-          );
-          // model.border = [x1,y1, x2,y1, x2,y2, x1,y2] (quad points)
-          const bx = model.border[0], by = model.border[1];
-          const bw = model.border[2] - model.border[0];
-          const bh = model.border[5] - model.border[1];
-          const pad = 50;
-          const cx = Math.max(0, bx - pad);
-          const cy = Math.max(0, by - pad);
-          const cw = Math.min(captureWidth - cx, bw + 2 * pad);
-          const ch = Math.min(captureHeight - cy, bh + 2 * pad);
-          clip = {
-            x: cx, y: cy, width: cw, height: ch,
-            scale: Math.min(1, CDP_TARGET_WIDTH / cw)
-          };
-          console.log(`X-Ray: Magnifying glass — cropping to ${Math.round(cw)}x${Math.round(ch)}px at (${Math.round(cx)},${Math.round(cy)})`);
-        }
-      } catch (e) {
-        console.warn('X-Ray: Failed to get bounding box for', targetMacheId, '— falling back to full page:', e.message);
-      }
-    }
-    if (!clip) {
-      const scale = Math.min(1, CDP_TARGET_WIDTH / captureWidth);
-      clip = { x: 0, y: 0, width: captureWidth, height: captureHeight, scale };
-    }
-
-    // 4. Capture screenshot with clip (PNG for lossless overlay color readback)
-    const { data: screenshot } = await chrome.debugger.sendCommand(
-      { tabId }, 'Page.captureScreenshot', {
-        format: 'png',
-        captureBeyondViewport: true,
-        clip
-      }
-    );
-
-    // 5. Get full AX tree (needed for per-element role/name enrichment)
-    const { nodes: axNodes } = await chrome.debugger.sendCommand(
-      { tabId }, 'Accessibility.getFullAXTree', {}
-    );
-
-    // 6. Find all tagged elements and batch resolve macheId → backendNodeId
-    const { nodeIds } = await chrome.debugger.sendCommand(
-      { tabId }, 'DOM.querySelectorAll',
-      { nodeId: root.nodeId, selector: '[data-mache-id]' }
-    );
-
-    const descriptions = await Promise.all(
-      nodeIds.map(nid =>
-        chrome.debugger.sendCommand({ tabId }, 'DOM.describeNode', { nodeId: nid })
-      )
-    );
-    const macheToBackend = new Map();
-    for (const { node } of descriptions) {
-      const attrs = node.attributes || [];
-      for (let i = 0; i < attrs.length; i += 2) {
-        if (attrs[i] === 'data-mache-id') {
-          macheToBackend.set(attrs[i + 1], node.backendNodeId);
-          break;
-        }
-      }
-    }
-
-    // 7. Build backendNodeId → AX node lookup, then join
-    const backendToAX = new Map();
-    for (const ax of axNodes) {
-      if (ax.backendDOMNodeId) backendToAX.set(ax.backendDOMNodeId, ax);
-    }
-    const axMap = new Map();
-    for (const [macheId, backendId] of macheToBackend) {
-      const ax = backendToAX.get(backendId);
-      if (ax) {
-        axMap.set(macheId, {
-          role: ax.role?.value || '',
-          name: ax.name?.value || '',
-          properties: (ax.properties || [])
-            .filter(p => ['disabled', 'expanded', 'checked', 'selected'].includes(p.name))
-            .map(p => `${p.name}=${p.value?.value}`)
-        });
-      }
-    }
-
-    // 8. LayerTree capture: derive paint order + stacking context for sheaf Overlaps edges.
-    // Not all elements get their own compositing layer, so elements without a layer
-    // get paintOrder: -1 (DOM order fallback in the sheaf).
-    const layerMap = new Map(); // macheId → { paintOrder, stackingRoot }
-    try {
-      await chrome.debugger.sendCommand({ tabId }, 'LayerTree.enable', {});
-      const layers = await new Promise((resolve) => {
-        const listener = (source, method, params) => {
-          if (source.tabId === tabId && method === 'LayerTree.layerTreeDidChange') {
-            chrome.debugger.onEvent.removeListener(listener);
-            resolve(params.layers || []);
-          }
-        };
-        chrome.debugger.onEvent.addListener(listener);
-        // Safety timeout: some pages may not trigger layerTreeDidChange.
-        setTimeout(() => { chrome.debugger.onEvent.removeListener(listener); resolve([]); }, 2000);
-      });
-
-      if (layers.length > 0) {
-        // Assign paint order via DFS of layer tree (parent→children, DOM order).
-        const childrenByParent = new Map();
-        for (const layer of layers) {
-          const pid = layer.parentLayerId ?? 'root';
-          if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
-          childrenByParent.get(pid).push(layer);
-        }
-        let paintCounter = 0;
-        const layerById = new Map();
-        for (const layer of layers) layerById.set(layer.layerId, layer);
-
-        function dfsPaintOrder(layerId) {
-          const node = layerById.get(layerId);
-          if (node) node.resolvedPaintOrder = paintCounter++;
-          for (const child of (childrenByParent.get(layerId) ?? [])) {
-            dfsPaintOrder(child.layerId);
-          }
-        }
-        for (const root of (childrenByParent.get('root') ?? [])) {
-          dfsPaintOrder(root.layerId);
-        }
-
-        // Build backendNodeId → layer lookup
-        const backendToLayer = new Map();
-        for (const layer of layers) {
-          if (layer.backendNodeId) {
-            backendToLayer.set(layer.backendNodeId, layer);
-          }
-        }
-
-        // Batch compositingReasons calls for layers with backendNodeId
-        const layersWithBackend = layers.filter(l => l.backendNodeId);
-        const reasonsResults = await Promise.all(
-          layersWithBackend.map(l =>
-            chrome.debugger.sendCommand(
-              { tabId }, 'LayerTree.compositingReasons', { layerId: l.layerId }
-            ).catch(() => ({ compositingReasons: [] }))
-          )
-        );
-        const stackingReasons = new Set([
-          'transform', 'opacity', 'position: fixed', 'position: sticky',
-          'will-change', 'filter', 'backdrop-filter', 'clip-path',
-          'contain', 'isolation', 'mix-blend-mode', 'perspective',
-        ]);
-        const reasonsByBackend = new Map();
-        for (let i = 0; i < layersWithBackend.length; i++) {
-          const reasons = reasonsResults[i].compositingReasons || [];
-          reasonsByBackend.set(layersWithBackend[i].backendNodeId, reasons);
-        }
-
-        // Join to mache-IDs via the existing macheToBackend map
-        for (const [macheId, backendId] of macheToBackend) {
-          const layer = backendToLayer.get(backendId);
-          if (layer && layer.resolvedPaintOrder != null) {
-            const reasons = reasonsByBackend.get(backendId) || [];
-            const isStackingRoot = reasons.some(r =>
-              stackingReasons.has(r.toLowerCase()) || r.toLowerCase().includes('stacking')
-            );
-            layerMap.set(macheId, {
-              paintOrder: layer.resolvedPaintOrder,
-              stackingRoot: isStackingRoot
-            });
-          }
-        }
-        console.log(`X-Ray: LayerTree — ${layers.length} layers, ${layerMap.size} joined to mache-IDs`);
-      }
-      await chrome.debugger.sendCommand({ tabId }, 'LayerTree.disable', {}).catch(() => {});
-    } catch (e) {
-      console.warn('X-Ray: LayerTree capture failed (degrading gracefully):', e.message);
-    }
-
-    const scaledW = Math.round(clip.width * clip.scale);
-    const scaledH = Math.round(clip.height * clip.scale);
-    console.log(`X-Ray: CDP capture — ${scaledW}x${scaledH}px PNG, ${axMap.size} AX-mapped`,
-      targetMacheId ? `[zoomed: ${targetMacheId}]` : '');
-    return { screenshot, axMap, layerMap };
-  } finally {
-    try {
-      await chrome.debugger.detach({ tabId });
-    } catch (_) { /* already detached */ }
-  }
-}
-
-// Enrich summary lines with AX data from the CDP mapping.
-// Appends AXRole and AXName to lines that have a matching mache-id.
-function enrichSummaryWithAX(summary, axMap) {
-  return summary.split('\n').map(line => {
-    const match = line.match(/^ID:\s*(mache-\d+)/);
-    if (match && axMap.has(match[1])) {
-      const ax = axMap.get(match[1]);
-      let enriched = line;
-      if (ax.role) enriched += ` | AXRole: ${ax.role}`;
-      if (ax.name) enriched += ` | AXName: "${ax.name.substring(0, 80)}"`;
-      return enriched;
-    }
-    return line;
-  }).join('\n');
-}
-
-// Enrich summary lines with LayerTree data (paint order + stacking context).
-// Appends PaintOrder and StackingRoot to lines that have a matching mache-id.
-function enrichSummaryWithLayers(summary, layerMap) {
-  return summary.split('\n').map(line => {
-    const match = line.match(/^ID:\s*(mache-\d+)/);
-    if (match && layerMap.has(match[1])) {
-      const layer = layerMap.get(match[1]);
-      let enriched = line;
-      if (layer.paintOrder >= 0) enriched += ` | PaintOrder: ${layer.paintOrder}`;
-      if (layer.stackingRoot) enriched += ` | StackingRoot: true`;
-      return enriched;
-    }
-    return line;
-  }).join('\n');
-}
-
-// Capture snapshot from the given tab and send to server with tab_id.
-// When serverCDPGo is true, delegates to the Go server via PAGE_READY message.
-// Otherwise runs the full JS capture pipeline locally.
+// Capture snapshot from the given tab: delegates to Go server via PAGE_READY.
+// Go orchestrates the full pipeline (summary, overlay, CDP screenshot, AX, layers).
 async function captureAndSend(tabId, isRescan = false, targetMacheId = null) {
-  if (serverCDPGo && ws && ws.readyState === WebSocket.OPEN) {
-    const payload = { type: 'PAGE_READY', tab_id: tabId };
-    if (isRescan) payload.is_rescan = true;
-    if (targetMacheId) payload.target_mache_id = targetMacheId;
-    ws.send(JSON.stringify(payload));
-    console.log('X-Ray: Delegated capture to Go server (PAGE_READY) for tab', tabId,
-      isRescan ? '(rescan)' : '', targetMacheId ? `(zoom: ${targetMacheId})` : '');
-    return;
-  }
-
-  // Step 1: Get summary from content script (builds registry).
-  // If the content script isn't loaded (extension reloaded while tab was open), inject it first.
-  let response;
-  try {
-    response = await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
-  } catch (e) {
-    console.log('X-Ray: Content script not ready, injecting into tab', tabId);
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: ['content.js']
-      });
-      // Brief delay for script to initialize, then retry.
-      await new Promise(r => setTimeout(r, 200));
-      response = await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
-    } catch (retryErr) {
-      console.error('X-Ray: Content script inject/retry failed', retryErr);
-      pendingSnapshots.delete(tabId);
-      return;
-    }
-  }
-  if (!response || !response.summary) {
-    console.error('X-Ray: No summary from content script');
-    pendingSnapshots.delete(tabId);
-    return;
-  }
-
-  // Step 2: Draw Set-of-Mark overlay (bounding boxes + ID labels).
-  try {
-    await chrome.tabs.sendMessage(tabId, { type: 'DRAW_OVERLAY' });
-  } catch (e) {
-    console.warn('X-Ray: Draw overlay failed, continuing without:', e.message);
-  }
-
-  // Step 3: CDP screenshot (overlay is visible in capture) + AX enrichment.
-  // For targeted rescan, pass mache_id so captureWithCDP crops to that element.
-  const cdpData = await captureWithCDP(tabId, targetMacheId).catch(e => {
-    console.warn('X-Ray: CDP capture failed, sending without screenshot:', e);
-    return { screenshot: '', axMap: new Map(), layerMap: new Map() };
-  });
-
-  // Step 4: Remove machine overlay so the user doesn't see it.
-  try {
-    await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' });
-  } catch (_) { /* overlay cleanup is best-effort */ }
-
-  // Step 4b: Show human-friendly overlay (muted colors, thinner borders).
-  try {
-    await chrome.tabs.sendMessage(tabId, { type: 'DRAW_HUMAN_OVERLAY' });
-    humanOverlayVisible.set(tabId, true);
-  } catch (_) {}
-
-  // Step 5: Enrich summary with per-element AX roles/names, then layer data, and send.
-  let enrichedSummary = cdpData.axMap.size > 0
-    ? enrichSummaryWithAX(response.summary, cdpData.axMap)
-    : response.summary;
-  if (cdpData.layerMap.size > 0) {
-    enrichedSummary = enrichSummaryWithLayers(enrichedSummary, cdpData.layerMap);
-  }
-
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    const payload = {
-      type: 'DOM_SNAPSHOT',
-      tab_id: tabId,
-      url: response.url,
-      summary: enrichedSummary,
-      screenshot: cdpData.screenshot
-    };
-    if (isRescan) payload.is_rescan = true;
-    ws.send(JSON.stringify(payload));
-    console.log('X-Ray: Sent DOM_SNAPSHOT for tab', tabId,
-      isRescan ? '(RESCAN — cache bypass)' : '',
-      cdpData.axMap.size > 0 ? `(${cdpData.axMap.size} AX-enriched)` : '(no AX)');
-  } else {
-    console.error('X-Ray: WebSocket not connected');
-  }
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  const payload = { type: 'PAGE_READY', tab_id: tabId };
+  if (isRescan) payload.is_rescan = true;
+  if (targetMacheId) payload.target_mache_id = targetMacheId;
+  ws.send(JSON.stringify(payload));
 }
 
 // --- Message handlers from popup ---

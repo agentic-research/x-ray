@@ -285,15 +285,31 @@ const maxTreeDepth = 3
 
 func (a *Agent) walkTree(sb *strings.Builder, fullPath, name, indent string, depth int) {
 	isDir := strings.HasSuffix(name, "/")
-	fmt.Fprintf(sb, "%s%s\n", indent, name)
-	if !isDir || depth >= maxTreeDepth {
+	if !isDir {
+		// Skip printing the description filename — its content is inlined on the parent dir line.
+		if name == "description" {
+			return
+		}
+		fmt.Fprintf(sb, "%s%s\n", indent, name)
+		return
+	}
+	if depth >= maxTreeDepth {
+		fmt.Fprintf(sb, "%s%s\n", indent, name)
 		return
 	}
 	// Don't recurse into _c/ — it can have dozens of entries.
 	if name == "_c/" {
+		fmt.Fprintf(sb, "%s%s\n", indent, name)
 		return
 	}
+	// Inline description content next to zone directory name so the model
+	// knows what each zone contains without needing to cat every description.
 	dirPath := strings.TrimSuffix(fullPath, "/")
+	if desc, err := a.fs.ReadFile(dirPath + "/description"); err == nil && desc != "" {
+		fmt.Fprintf(sb, "%s%s — %s\n", indent, name, strings.TrimSpace(desc))
+	} else {
+		fmt.Fprintf(sb, "%s%s\n", indent, name)
+	}
 	entries, err := a.fs.ListDir(dirPath)
 	if err != nil {
 		return

@@ -28,6 +28,41 @@ type browserFrame struct {
 // errors before giving up. Resets on successful Receive or GoAway.
 const maxNonGoAwayRetries = 3
 
+// liveReconnectState tracks retry state for Gemini Live session reconnection.
+type liveReconnectState struct {
+	ResumeHandle string
+	Retries      int
+}
+
+// shouldReconnect decides whether to reconnect after a Receive error and waits
+// with backoff if so. Returns true if the caller should reconnect, false if it
+// should give up. Handles both resume-handle and fresh-session reconnection.
+// Known Gemini Live issue: 1011 during tool execution drops the session.
+func (s *liveReconnectState) shouldReconnect(ctx context.Context, label string) bool {
+	if s.Retries < maxNonGoAwayRetries {
+		s.Retries++
+		if s.ResumeHandle != "" {
+			log.Printf("Voice%s: reconnecting with resume handle (attempt %d/%d)...",
+				label, s.Retries, maxNonGoAwayRetries)
+		} else {
+			log.Printf("Voice%s: reconnecting with fresh session (attempt %d/%d)...",
+				label, s.Retries, maxNonGoAwayRetries)
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(time.Duration(s.Retries) * time.Second):
+		}
+		return true
+	}
+	// Max retries exceeded — reset and try a completely fresh session.
+	log.Printf("Voice%s: max retries (%d) exceeded, creating fresh session",
+		label, maxNonGoAwayRetries)
+	s.ResumeHandle = ""
+	s.Retries = 0
+	return true
+}
+
 // liveConnector abstracts Live.Connect for testability.
 type liveConnector func(ctx context.Context, model string, config *genai.LiveConnectConfig) (*genai.Session, error)
 
@@ -277,12 +312,11 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 
 	// Session resumption: reconnect-on-GoAway outer loop.
 	// The browser WS stays open; only the Gemini Live session reconnects.
-	var resumeHandle string
-	var nonGoAwayRetries int
+	var rs liveReconnectState
 	var inputBuf, outputBuf strings.Builder
 	for {
 		config := buildLiveConfig()
-		applyResumeHandle(config, resumeHandle)
+		applyResumeHandle(config, rs.ResumeHandle)
 
 		session, err := connectWithBackoff(ctx, h.LiveClient.Live.Connect, h.LiveModel, config)
 		if err != nil {
@@ -290,7 +324,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			sendVoiceJSON(conn, nil, voiceMessage{Type: "error", Text: "Live API connect failed: " + err.Error()})
 			return
 		}
-		if resumeHandle != "" {
+		if rs.ResumeHandle != "" {
 			log.Printf("Voice: reconnected with resume handle (tab %d)", tabID)
 		} else {
 			log.Printf("Voice: Gemini Live session established (tab %d)", tabID)
@@ -418,20 +452,10 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			msg, err := session.Receive()
 			if err != nil {
 				log.Printf("Voice: Receive error: %v", err)
-				// Transient error with a resume handle: try reconnecting.
-				if resumeHandle != "" && nonGoAwayRetries < maxNonGoAwayRetries {
-					nonGoAwayRetries++
-					log.Printf("Voice [tab %d]: transient error with resume handle, reconnecting (attempt %d/%d)...",
-						tabID, nonGoAwayRetries, maxNonGoAwayRetries)
-					shouldReconnect = true
-					select {
-					case <-ctx.Done():
-					case <-time.After(time.Duration(nonGoAwayRetries) * time.Second):
-					}
-				}
+				shouldReconnect = rs.shouldReconnect(ctx, fmt.Sprintf(" [tab %d]", tabID))
 				break
 			}
-			nonGoAwayRetries = 0 // reset on successful receive
+			rs.Retries = 0 // reset on successful receive
 
 			if msg.SetupComplete != nil {
 				log.Println("Voice: Live session setup complete")
@@ -541,14 +565,14 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 
 			// Session resumption: store handle for reconnect.
 			if msg.SessionResumptionUpdate != nil && msg.SessionResumptionUpdate.Resumable {
-				resumeHandle = msg.SessionResumptionUpdate.NewHandle
+				rs.ResumeHandle = msg.SessionResumptionUpdate.NewHandle
 			}
 
 			// GoAway: server is about to disconnect, reconnect with resume handle.
 			if msg.GoAway != nil {
 				log.Printf("Voice [tab %d]: GoAway received (time left: %s), reconnecting...", tabID, msg.GoAway.TimeLeft)
 				shouldReconnect = true
-				nonGoAwayRetries = 0 // GoAway is expected, reset transient counter
+				rs.Retries = 0 // GoAway is expected, reset transient counter
 				break
 			}
 		}
@@ -591,18 +615,17 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 	var interrupted atomic.Bool
 
 	// Session resumption: reconnect-on-GoAway outer loop.
-	var resumeHandle string
-	var nonGoAwayRetries int
+	var rs liveReconnectState
 	var inputBuf, outputBuf strings.Builder
 	for {
 		config := buildLiveConfig()
-		applyResumeHandle(config, resumeHandle)
+		applyResumeHandle(config, rs.ResumeHandle)
 
 		session, err := connectWithBackoff(ctx, h.LiveClient.Live.Connect, h.LiveModel, config)
 		if err != nil {
 			return fmt.Errorf("voice: Live API connect: %w", err)
 		}
-		if resumeHandle != "" {
+		if rs.ResumeHandle != "" {
 			log.Printf("Voice: reconnected with resume handle (native mode)")
 		} else {
 			log.Println("Voice: Gemini Live session established (native mode)")
@@ -718,24 +741,16 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 					return ctx.Err()
 				}
 				log.Printf("Voice: Receive error: %v", err)
-				// Transient error with a resume handle: try reconnecting.
-				if resumeHandle != "" && nonGoAwayRetries < maxNonGoAwayRetries {
-					nonGoAwayRetries++
-					log.Printf("Voice: transient error with resume handle, reconnecting (attempt %d/%d)...",
-						nonGoAwayRetries, maxNonGoAwayRetries)
-					shouldReconnect = true
-					select {
-					case <-ctx.Done():
-						sessionCancel()
-						<-sendDone
-						_ = session.Close()
-						return ctx.Err()
-					case <-time.After(time.Duration(nonGoAwayRetries) * time.Second):
-					}
+				shouldReconnect = rs.shouldReconnect(ctx, "")
+				if !shouldReconnect {
+					sessionCancel()
+					<-sendDone
+					_ = session.Close()
+					return ctx.Err()
 				}
 				break
 			}
-			nonGoAwayRetries = 0 // reset on successful receive
+			rs.Retries = 0 // reset on successful receive
 
 			if msg.SetupComplete != nil {
 				log.Println("Voice: Live session setup complete (native mode)")
@@ -833,14 +848,14 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 
 			// Session resumption: store handle for reconnect.
 			if msg.SessionResumptionUpdate != nil && msg.SessionResumptionUpdate.Resumable {
-				resumeHandle = msg.SessionResumptionUpdate.NewHandle
+				rs.ResumeHandle = msg.SessionResumptionUpdate.NewHandle
 			}
 
 			// GoAway: server is about to disconnect, reconnect with resume handle.
 			if msg.GoAway != nil {
 				log.Printf("Voice: GoAway received (time left: %s), reconnecting...", msg.GoAway.TimeLeft)
 				shouldReconnect = true
-				nonGoAwayRetries = 0 // GoAway is expected, reset transient counter
+				rs.Retries = 0 // GoAway is expected, reset transient counter
 				break
 			}
 		}

@@ -29,8 +29,8 @@ const (
 	MsgDOMMutated        = "DOM_MUTATED"
 	MsgPing              = "PING"
 
-	// Go-driven capture orchestration (XRAY_CDP_GO=1).
-	MsgPageReady         = "PAGE_READY"             // ext → server: tab ready for Go capture
+	// Go-driven capture orchestration.
+	MsgPageReady         = "PAGE_READY"             // ext → server: tab ready for capture
 	MsgRequestSummary    = "REQUEST_SUMMARY"        // server → ext: build registry + return summary
 	MsgSummaryResponse   = "SUMMARY_RESPONSE"       // ext → server: summary + url
 	MsgDrawOverlayCmd    = "DRAW_OVERLAY_CMD"       // server → ext: draw machine overlay
@@ -39,7 +39,6 @@ const (
 	MsgOverlayRemoved    = "OVERLAY_REMOVED"        // ext → server: overlay removed ack
 	MsgDrawHumanOverlay  = "DRAW_HUMAN_OVERLAY_CMD" // server → ext: draw human-friendly overlay
 	MsgHumanOverlayDrawn = "HUMAN_OVERLAY_DRAWN"    // ext → server: human overlay drawn ack
-	MsgCDPGoEnabled      = "CDP_GO_ENABLED"         // server → ext: Go capture mode active
 
 	// CDP proxy message types (Dumb Pipe architecture).
 	MsgCDPAttach       = "CDP_ATTACH"

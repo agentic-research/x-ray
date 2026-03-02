@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"regexp"
 	"strings"
@@ -356,6 +357,7 @@ func CaptureLayerTree(ctx context.Context, p *Proxy, tabID int, macheToBackend m
 
 	// Enable LayerTree.
 	if _, err := p.Send(ctx, tabID, "LayerTree.enable", nil); err != nil {
+		log.Printf("CaptureLayerTree: LayerTree.enable failed (tab %d): %v", tabID, err)
 		return result
 	}
 	defer func() {
@@ -367,12 +369,15 @@ func CaptureLayerTree(ctx context.Context, p *Proxy, tabID int, macheToBackend m
 	select {
 	case layers = <-layersCh:
 	case <-ctx.Done():
+		log.Printf("CaptureLayerTree: context cancelled (tab %d)", tabID)
 		return result
 	case <-time.After(layerTreeTimeout):
+		log.Printf("CaptureLayerTree: layerTreeDidChange timeout after %v (tab %d)", layerTreeTimeout, tabID)
 		return result
 	}
 
 	if len(layers) == 0 {
+		log.Printf("CaptureLayerTree: event arrived but 0 layers (tab %d)", tabID)
 		return result
 	}
 

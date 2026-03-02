@@ -53,8 +53,6 @@ type Handler struct {
 	termBridge     graph.Graph      // global iTerm2 bridge (nil if iTerm not available)
 	planner        *Planner         // Planner for /agent/task (non-voice Talker)
 	cdpProxy       *cdp.Proxy       // CDP proxy for Dumb Pipe architecture
-	cdpGoEnabled   bool             // XRAY_CDP_GO=1: Go-driven capture pipeline
-	cdpVerify      bool             // XRAY_CDP_VERIFY=1: run both paths and log mismatches
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client, liveClient *genai.Client, navModel, liveModel, plannerModel, dbPath string) *Handler {
@@ -88,20 +86,6 @@ func (h *Handler) SetTermBridge(bridge graph.Graph) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.termBridge = bridge
-}
-
-// SetCDPGoEnabled enables or disables the Go-driven CDP capture pipeline.
-func (h *Handler) SetCDPGoEnabled(enabled bool) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.cdpGoEnabled = enabled
-}
-
-// SetCDPVerify enables verification mode (run both JS and Go paths, log mismatches).
-func (h *Handler) SetCDPVerify(enabled bool) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.cdpVerify = enabled
 }
 
 // lookupSession returns the TabSession for the given tab, or nil if none exists.
@@ -228,15 +212,6 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("WebSocket: Client connected (reset schema state for %d sessions)", len(sessions))
 
-	// Notify extension if Go-driven capture is enabled.
-	h.mu.Lock()
-	goCapture := h.cdpGoEnabled
-	h.mu.Unlock()
-	if goCapture {
-		h.sendMessage(conn, OutboundMessage{Type: MsgCDPGoEnabled})
-		log.Println("WebSocket: sent CDP_GO_ENABLED to extension")
-	}
-
 	// Flush any actions that were queued while the extension was disconnected.
 	for _, a := range queued {
 		log.Printf("WebSocket: flushing queued action: %s on %s (tab %d)", a.Action, a.MacheID, a.TabID)
@@ -285,14 +260,6 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		switch msg.Type {
 		case MsgDOMSnapshot:
 			go h.handleDOMSnapshot(conn, msg)
-			// Verification mode: when JS sends DOM_SNAPSHOT, also run Go capture
-			// in the background and log differences (diagnostic only).
-			h.mu.Lock()
-			verify := h.cdpVerify && !h.cdpGoEnabled
-			h.mu.Unlock()
-			if verify {
-				go h.verifyCapture(msg.TabID, msg)
-			}
 		case MsgNavigate:
 			go h.handleNavigate(conn, msg)
 		case MsgDOMUpdate:
@@ -711,33 +678,26 @@ func (h *Handler) SendActionToExtension(tabID int, macheID, action, payload stri
 				msg.PixelY = r.PixelY + r.PixelH/2
 				log.Printf("CV click: %s → pixel (%d, %d) (tab %d)", macheID, msg.PixelX, msg.PixelY, tabID)
 
-				// When Go capture is enabled, dispatch the click directly via CDP proxy
-				// instead of routing through the extension's JS cdpPixelClick.
-				h.mu.Lock()
-				goCapture := h.cdpGoEnabled
-				h.mu.Unlock()
-				if goCapture {
-					go func() {
-						ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-						defer cancel()
-						if err := h.cdpProxy.Attach(ctx, tabID); err != nil {
-							log.Printf("CV click (Go): attach failed: %v", err)
-							return
-						}
-						defer func() {
-							dCtx, dCancel := context.WithTimeout(context.Background(), 5*time.Second)
-							defer dCancel()
-							_ = h.cdpProxy.Detach(dCtx, tabID)
-						}()
-						if err := cdp.PixelClick(ctx, h.cdpProxy, tabID, float64(msg.PixelX), float64(msg.PixelY)); err != nil {
-							log.Printf("CV click (Go): PixelClick failed: %v", err)
-						} else {
-							log.Printf("CV click (Go): dispatched click at (%d, %d) for %s (tab %d)", msg.PixelX, msg.PixelY, macheID, tabID)
-						}
+				// Dispatch click directly via CDP proxy.
+				go func() {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					if err := h.cdpProxy.Attach(ctx, tabID); err != nil {
+						log.Printf("CV click: attach failed: %v", err)
+						return
+					}
+					defer func() {
+						dCtx, dCancel := context.WithTimeout(context.Background(), 5*time.Second)
+						defer dCancel()
+						_ = h.cdpProxy.Detach(dCtx, tabID)
 					}()
-					return
-				}
-				break
+					if err := cdp.PixelClick(ctx, h.cdpProxy, tabID, float64(msg.PixelX), float64(msg.PixelY)); err != nil {
+						log.Printf("CV click: PixelClick failed: %v", err)
+					} else {
+						log.Printf("CV click: dispatched click at (%d, %d) for %s (tab %d)", msg.PixelX, msg.PixelY, macheID, tabID)
+					}
+				}()
+				return
 			}
 		}
 	}
