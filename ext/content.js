@@ -311,9 +311,19 @@ function executeAction(macheId, actionType, payload) {
 // Visible in CDP screenshots so the Cartographer can see which elements are tagged.
 
 const OVERLAY_ID = 'xray-overlay';
+const ZONE_OVERLAY_ID = 'xray-zone-overlay';
 
 // Semantic color legend for the ACI (Agent-Computer Interface).
 // Primary colors are used for high-accuracy identification by Vision models.
+// Zone depth colors for hierarchical zone overlay (dashed borders).
+const ZONE_COLORS = [
+  { border: 'rgb(255, 80, 80)',  fill: [255, 80, 80] },   // depth 0 - red
+  { border: 'rgb(80, 200, 80)',  fill: [80, 200, 80] },   // depth 1 - green
+  { border: 'rgb(80, 80, 255)',  fill: [80, 80, 255] },   // depth 2 - blue
+  { border: 'rgb(255, 200, 0)',  fill: [255, 200, 0] },   // depth 3 - amber
+  { border: 'rgb(200, 80, 255)', fill: [200, 80, 255] },  // depth 4 - purple
+];
+
 const SEMANTIC_COLORS = {
   link: { name: 'MAGENTA', rgb: [255, 0, 255], border: 'rgb(255, 0, 255)' },
   button: { name: 'LIME', rgb: [0, 255, 0], border: 'rgb(0, 255, 0)' },
@@ -404,6 +414,75 @@ function drawOverlay() {
 function removeOverlay() {
   const existing = document.getElementById(OVERLAY_ID);
   if (existing) existing.remove();
+  // Also remove zone overlay to stay in sync.
+  const zones = document.getElementById(ZONE_OVERLAY_ID);
+  if (zones) zones.remove();
+}
+
+function removeZoneOverlay() {
+  const existing = document.getElementById(ZONE_OVERLAY_ID);
+  if (existing) existing.remove();
+}
+
+function drawZoneOverlay(zones) {
+  removeZoneOverlay();
+
+  const overlay = document.createElement('div');
+  overlay.id = ZONE_OVERLAY_ID;
+  overlay.style.cssText =
+    'position: absolute; top: 0; left: 0; width: 100%; height: 100%;' +
+    'pointer-events: none; z-index: 2147483646;';
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  function renderZone(zone, depth) {
+    const bounds = zone.bounds;
+    if (!bounds || bounds.length < 4) return;
+
+    const [nx, ny, nw, nh] = bounds;
+    const px = nx * vw + window.scrollX;
+    const py = ny * vh + window.scrollY;
+    const pw = nw * vw;
+    const ph = nh * vh;
+
+    const color = ZONE_COLORS[depth % ZONE_COLORS.length];
+    const [r, g, b] = color.fill;
+
+    const box = document.createElement('div');
+    box.style.cssText =
+      `position: absolute;` +
+      `left: ${px}px; top: ${py}px;` +
+      `width: ${pw}px; height: ${ph}px;` +
+      `background: rgba(${r}, ${g}, ${b}, 0.06);` +
+      `border: 2px dashed ${color.border};` +
+      `pointer-events: none; box-sizing: border-box;`;
+
+    const label = document.createElement('span');
+    label.textContent = zone.path || zone.id || '?';
+    label.style.cssText =
+      'position: absolute; top: -14px; left: 0;' +
+      `background: ${color.border}; color: #fff;` +
+      'font: bold 9px monospace; padding: 1px 4px;' +
+      'white-space: nowrap; pointer-events: none;' +
+      'line-height: 12px; border-radius: 2px;';
+    box.appendChild(label);
+
+    overlay.appendChild(box);
+
+    if (zone.children) {
+      for (const child of zone.children) {
+        renderZone(child, depth + 1);
+      }
+    }
+  }
+
+  for (const zone of zones) {
+    renderZone(zone, 0);
+  }
+
+  document.documentElement.appendChild(overlay);
+  console.log(`X-Ray: Drew zone overlay with ${zones.length} top-level zones`);
 }
 
 // Redraw overlay on window resize so boxes track their elements.
@@ -433,6 +512,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case 'REMOVE_OVERLAY':
       removeOverlay();
+      sendResponse({ success: true });
+      return true;
+
+    case 'DRAW_ZONES':
+      drawZoneOverlay(message.zones || []);
+      sendResponse({ success: true });
+      return true;
+
+    case 'REMOVE_ZONES':
+      removeZoneOverlay();
       sendResponse({ success: true });
       return true;
 

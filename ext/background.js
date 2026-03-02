@@ -53,6 +53,17 @@ function connectWebSocket() {
     });
   };
 
+  // Forward agent events to content.js for the in-page log overlay.
+  function sendAgentLog(tabId, icon, text) {
+    const send = (tid) => {
+      chrome.tabs.sendMessage(tid, { type: 'AGENT_LOG', icon, text }).catch(() => {});
+    };
+    if (tabId) { send(tabId); return; }
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) send(tabs[0].id);
+    });
+  }
+
   ws.onmessage = async (event) => {
     const msg = JSON.parse(event.data);
     console.log('X-Ray: Received', msg.type, msg);
@@ -319,6 +330,14 @@ function connectWebSocket() {
           try {
             chrome.runtime.sendMessage({ type: 'SCHEMA_READY_EVENT', tabId });
           } catch (_) {}
+        }
+
+        // Forward zone data to content.js for visual rendering.
+        if (msg.schema && msg.schema.mounts) {
+          chrome.tabs.sendMessage(tabId, {
+            type: 'DRAW_ZONES',
+            zones: msg.schema.mounts
+          });
         }
 
         // Flush any queued intent for this tab.
