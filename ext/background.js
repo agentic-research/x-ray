@@ -14,6 +14,7 @@ const gotoInFlight = new Set();  // tabIds currently navigated by GOTO_URL (skip
 const overlayVisible = new Map(); // tabId → boolean (overlay toggle state)
 let agentdLaunching = false;
 const humanOverlayVisible = new Map(); // tabId → boolean (human overlay toggle state)
+let serverCDPGo = false; // Set by CDP_GO_ENABLED from server (XRAY_CDP_GO=1)
 
 // --- Side panel port registry ---
 const sidePanelPorts = new Set();
@@ -397,6 +398,79 @@ function connectWebSocket() {
           msg.stage === 'error' ? '!' : msg.stage === 'cartographer' ? 'C' : 'S',
           `[${msg.stage}] ${msg.message}`);
         break;
+
+      // --- Go-driven capture orchestration (XRAY_CDP_GO=1) ---
+
+      case 'CDP_GO_ENABLED':
+        serverCDPGo = true;
+        console.log('X-Ray: Go-driven CDP capture enabled by server');
+        break;
+
+      case 'REQUEST_SUMMARY': {
+        const tabId = msg.tab_id;
+        let response;
+        try {
+          response = await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
+        } catch (e) {
+          console.log('X-Ray: Content script not ready for REQUEST_SUMMARY, injecting into tab', tabId);
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId },
+              files: ['content.js']
+            });
+            await new Promise(r => setTimeout(r, 200));
+            response = await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
+          } catch (retryErr) {
+            console.error('X-Ray: Content script inject/retry failed for REQUEST_SUMMARY', retryErr);
+            break;
+          }
+        }
+        if (response && response.summary && ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'SUMMARY_RESPONSE',
+            tab_id: tabId,
+            summary: response.summary,
+            url: response.url
+          }));
+        }
+        break;
+      }
+
+      case 'DRAW_OVERLAY_CMD': {
+        const tabId = msg.tab_id;
+        try {
+          await chrome.tabs.sendMessage(tabId, { type: 'DRAW_OVERLAY' });
+        } catch (e) {
+          console.warn('X-Ray: Draw overlay (Go cmd) failed:', e.message);
+        }
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'OVERLAY_DRAWN', tab_id: tabId }));
+        }
+        break;
+      }
+
+      case 'REMOVE_OVERLAY_CMD': {
+        const tabId = msg.tab_id;
+        try {
+          await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' });
+        } catch (_) { /* best-effort */ }
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'OVERLAY_REMOVED', tab_id: tabId }));
+        }
+        break;
+      }
+
+      case 'DRAW_HUMAN_OVERLAY_CMD': {
+        const tabId = msg.tab_id;
+        try {
+          await chrome.tabs.sendMessage(tabId, { type: 'DRAW_HUMAN_OVERLAY' });
+          humanOverlayVisible.set(tabId, true);
+        } catch (_) {}
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'HUMAN_OVERLAY_DRAWN', tab_id: tabId }));
+        }
+        break;
+      }
 
       // --- CDP proxy (Dumb Pipe architecture) ---
 
@@ -791,8 +865,19 @@ function enrichSummaryWithLayers(summary, layerMap) {
 }
 
 // Capture snapshot from the given tab and send to server with tab_id.
-// Flow: build registry → draw overlay → CDP screenshot (overlay visible) → remove overlay → send.
+// When serverCDPGo is true, delegates to the Go server via PAGE_READY message.
+// Otherwise runs the full JS capture pipeline locally.
 async function captureAndSend(tabId, isRescan = false, targetMacheId = null) {
+  if (serverCDPGo && ws && ws.readyState === WebSocket.OPEN) {
+    const payload = { type: 'PAGE_READY', tab_id: tabId };
+    if (isRescan) payload.is_rescan = true;
+    if (targetMacheId) payload.target_mache_id = targetMacheId;
+    ws.send(JSON.stringify(payload));
+    console.log('X-Ray: Delegated capture to Go server (PAGE_READY) for tab', tabId,
+      isRescan ? '(rescan)' : '', targetMacheId ? `(zoom: ${targetMacheId})` : '');
+    return;
+  }
+
   // Step 1: Get summary from content script (builds registry).
   // If the content script isn't loaded (extension reloaded while tab was open), inject it first.
   let response;
