@@ -13,6 +13,7 @@ const lastKnownUrls = new Map(); // tabId → URL (for detecting manual navigati
 const gotoInFlight = new Set();  // tabIds currently navigated by GOTO_URL (skip auto-snapshot)
 const overlayVisible = new Map(); // tabId → boolean (overlay toggle state)
 let agentdLaunching = false;
+const humanOverlayVisible = new Map(); // tabId → boolean (human overlay toggle state)
 
 // --- Side panel port registry ---
 const sidePanelPorts = new Set();
@@ -833,10 +834,16 @@ async function captureAndSend(tabId, isRescan = false, targetMacheId = null) {
     return { screenshot: '', axMap: new Map(), layerMap: new Map() };
   });
 
-  // Step 4: Remove overlay so the user doesn't see it.
+  // Step 4: Remove machine overlay so the user doesn't see it.
   try {
     await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' });
   } catch (_) { /* overlay cleanup is best-effort */ }
+
+  // Step 4b: Show human-friendly overlay (muted colors, thinner borders).
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: 'DRAW_HUMAN_OVERLAY' });
+    humanOverlayVisible.set(tabId, true);
+  } catch (_) {}
 
   // Step 5: Enrich summary with per-element AX roles/names, then layer data, and send.
   let enrichedSummary = cdpData.axMap.size > 0
@@ -876,9 +883,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         const tabId = tabs[0].id;
         try {
-          if (overlayVisible.get(tabId)) {
-            await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' });
-            overlayVisible.set(tabId, false);
+          if (humanOverlayVisible.get(tabId)) {
+            await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_HUMAN_OVERLAY' });
+            humanOverlayVisible.set(tabId, false);
             sendResponse({ ok: true, visible: false });
           } else {
             // Ensure registry is built before drawing.
@@ -889,8 +896,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               await new Promise(r => setTimeout(r, 200));
               await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
             }
-            await chrome.tabs.sendMessage(tabId, { type: 'DRAW_OVERLAY' });
-            overlayVisible.set(tabId, true);
+            await chrome.tabs.sendMessage(tabId, { type: 'DRAW_HUMAN_OVERLAY' });
+            humanOverlayVisible.set(tabId, true);
             sendResponse({ ok: true, visible: true });
           }
         } catch (e) {
@@ -1057,9 +1064,9 @@ chrome.commands.onCommand.addListener((command) => {
       if (!tabs[0]) return;
       const tabId = tabs[0].id;
       try {
-        if (overlayVisible.get(tabId)) {
-          await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' });
-          overlayVisible.set(tabId, false);
+        if (humanOverlayVisible.get(tabId)) {
+          await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_HUMAN_OVERLAY' });
+          humanOverlayVisible.set(tabId, false);
         } else {
           try {
             await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
@@ -1068,8 +1075,8 @@ chrome.commands.onCommand.addListener((command) => {
             await new Promise(r => setTimeout(r, 200));
             await chrome.tabs.sendMessage(tabId, { type: 'CAPTURE_SNAPSHOT' });
           }
-          await chrome.tabs.sendMessage(tabId, { type: 'DRAW_OVERLAY' });
-          overlayVisible.set(tabId, true);
+          await chrome.tabs.sendMessage(tabId, { type: 'DRAW_HUMAN_OVERLAY' });
+          humanOverlayVisible.set(tabId, true);
         }
       } catch (e) {
         console.error('X-Ray: toggle-overlay failed:', e);
@@ -1128,6 +1135,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   pendingIntents.delete(tabId);
   gotoInFlight.delete(tabId);
   overlayVisible.delete(tabId);
+  humanOverlayVisible.delete(tabId);
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'TAB_CLOSED', tab_id: tabId }));
   }
