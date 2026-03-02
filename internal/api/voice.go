@@ -16,6 +16,21 @@ import (
 	"google.golang.org/genai"
 )
 
+// browserFrame is a message read from the browser WebSocket, pushed to the
+// session-scoped sender via a channel so that only one goroutine ever calls
+// conn.ReadMessage (Gorilla forbids concurrent readers).
+type browserFrame struct {
+	msgType int
+	data    []byte
+}
+
+// maxNonGoAwayRetries is the maximum number of consecutive non-GoAway Receive
+// errors before giving up. Resets on successful Receive or GoAway.
+const maxNonGoAwayRetries = 3
+
+// liveConnector abstracts Live.Connect for testability.
+type liveConnector func(ctx context.Context, model string, config *genai.LiveConnectConfig) (*genai.Session, error)
+
 // voiceMessage is the JSON envelope for text messages on the voice WebSocket.
 type voiceMessage struct {
 	Type       string `json:"type"`
@@ -181,6 +196,31 @@ func applyResumeHandle(config *genai.LiveConnectConfig, handle string) {
 	}
 }
 
+// connectWithBackoff wraps a Live.Connect call with exponential backoff.
+// Up to 3 attempts with delays of 1s then 2s. Respects ctx cancellation.
+func connectWithBackoff(ctx context.Context, connect liveConnector, model string, config *genai.LiveConnectConfig) (*genai.Session, error) {
+	const maxAttempts = 3
+	var lastErr error
+	for attempt := range maxAttempts {
+		session, err := connect(ctx, model, config)
+		if err == nil {
+			return session, nil
+		}
+		lastErr = err
+		if attempt == maxAttempts-1 {
+			break
+		}
+		delay := time.Duration(1<<uint(attempt)) * time.Second // 1s, 2s
+		log.Printf("Voice: Live.Connect attempt %d/%d failed: %v (retry in %s)", attempt+1, maxAttempts, err, delay)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+	return nil, fmt.Errorf("Live.Connect failed after %d attempts: %w", maxAttempts, lastErr)
+}
+
 // HandleVoice upgrades to WebSocket and proxies audio between the browser and
 // Gemini's Live API. Navigation work is delegated to the Doer goroutine;
 // the Talker stays responsive with instant check_status/issue_command tools.
@@ -218,15 +258,33 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// Single reader goroutine: browser WebSocket → channel.
+	// Lives for the entire HandleVoice lifetime (not per-session) so that only
+	// one goroutine ever calls conn.ReadMessage (Gorilla forbids concurrent readers).
+	browserCh := make(chan browserFrame, 8)
+	readerDone := make(chan struct{})
+	go func() {
+		defer close(readerDone)
+		for {
+			msgType, data, err := conn.ReadMessage()
+			if err != nil {
+				log.Printf("Voice: browser read error: %v", err)
+				return
+			}
+			browserCh <- browserFrame{msgType: msgType, data: data}
+		}
+	}()
+
 	// Session resumption: reconnect-on-GoAway outer loop.
 	// The browser WS stays open; only the Gemini Live session reconnects.
 	var resumeHandle string
+	var nonGoAwayRetries int
 	var inputBuf, outputBuf strings.Builder
 	for {
 		config := buildLiveConfig()
 		applyResumeHandle(config, resumeHandle)
 
-		session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, config)
+		session, err := connectWithBackoff(ctx, h.LiveClient.Live.Connect, h.LiveModel, config)
 		if err != nil {
 			log.Printf("Voice: Live API connect failed: %v", err)
 			sendVoiceJSON(conn, nil, voiceMessage{Type: "error", Text: "Live API connect failed: " + err.Error()})
@@ -277,8 +335,8 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// --- goroutine 1: browser → Gemini (audio chunks) ---
-		// Each reconnect starts a new sender goroutine tied to this session.
-		// sessionCtx is cancelled on GoAway to kill the old sender (Bug #8 fix).
+		// Reads from browserCh (fed by the single reader goroutine above).
+		// sessionCtx is cancelled on GoAway/error to kill the sender cleanly.
 		sessionCtx, sessionCancel := context.WithCancel(ctx)
 		senderDone := make(chan struct{})
 		go func() {
@@ -287,68 +345,67 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			var audioBytes int
 			lastLog := time.Now()
 			for {
-				msgType, data, err := conn.ReadMessage()
-				if err != nil {
-					log.Printf("Voice: browser read error: %v", err)
+				select {
+				case <-sessionCtx.Done():
+					return
+				case <-readerDone:
+					// Browser WS closed — tear down the Gemini session.
 					_ = session.Close()
 					return
-				}
-				// Check if this session was cancelled (GoAway reconnect).
-				if sessionCtx.Err() != nil {
-					return
-				}
-				switch msgType {
-				case websocket.BinaryMessage:
-					audioChunks++
-					audioBytes += len(data)
-					if time.Since(lastLog) >= 5*time.Second {
-						log.Printf("Voice [tab %d]: receiving audio — %d chunks, %d bytes in last 5s", tabID, audioChunks, audioBytes)
-						audioChunks = 0
-						audioBytes = 0
-						lastLog = time.Now()
-					}
-					sessionMu.Lock()
-					err := session.SendRealtimeInput(genai.LiveRealtimeInput{
-						Audio: &genai.Blob{
-							Data:     data,
-							MIMEType: "audio/pcm;rate=16000",
-						},
-					})
-					sessionMu.Unlock()
-					if err != nil {
-						log.Printf("Voice: SendRealtimeInput error: %v", err)
-						return
-					}
-				case websocket.TextMessage:
-					var cmd voiceMessage
-					if err := json.Unmarshal(data, &cmd); err != nil {
-						continue
-					}
-					switch cmd.Type {
-					case "mic_stop":
-						log.Println("Voice: mic released, sending AudioStreamEnd")
+				case frame := <-browserCh:
+					switch frame.msgType {
+					case websocket.BinaryMessage:
+						audioChunks++
+						audioBytes += len(frame.data)
+						if time.Since(lastLog) >= 5*time.Second {
+							log.Printf("Voice [tab %d]: receiving audio — %d chunks, %d bytes in last 5s", tabID, audioChunks, audioBytes)
+							audioChunks = 0
+							audioBytes = 0
+							lastLog = time.Now()
+						}
 						sessionMu.Lock()
 						err := session.SendRealtimeInput(genai.LiveRealtimeInput{
-							AudioStreamEnd: true,
-						})
-						sessionMu.Unlock()
-						if err != nil {
-							log.Printf("Voice: AudioStreamEnd error: %v", err)
-						}
-					case "text_input":
-						if cmd.Text == "" {
-							continue
-						}
-						log.Printf("Voice [tab %d]: text input: %s", tabID, cmd.Text)
-						sessionMu.Lock()
-						err := session.SendClientContent(genai.LiveClientContentInput{
-							Turns: []*genai.Content{
-								{Role: "user", Parts: []*genai.Part{{Text: cmd.Text}}},
+							Audio: &genai.Blob{
+								Data:     frame.data,
+								MIMEType: "audio/pcm;rate=16000",
 							},
 						})
 						sessionMu.Unlock()
 						if err != nil {
-							log.Printf("Voice: SendClientContent error: %v", err)
+							log.Printf("Voice: SendRealtimeInput error: %v", err)
+							return
+						}
+					case websocket.TextMessage:
+						var cmd voiceMessage
+						if err := json.Unmarshal(frame.data, &cmd); err != nil {
+							continue
+						}
+						switch cmd.Type {
+						case "mic_stop":
+							log.Println("Voice: mic released, sending AudioStreamEnd")
+							sessionMu.Lock()
+							err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+								AudioStreamEnd: true,
+							})
+							sessionMu.Unlock()
+							if err != nil {
+								log.Printf("Voice: AudioStreamEnd error: %v", err)
+							}
+						case "text_input":
+							if cmd.Text == "" {
+								continue
+							}
+							log.Printf("Voice [tab %d]: text input: %s", tabID, cmd.Text)
+							sessionMu.Lock()
+							err := session.SendClientContent(genai.LiveClientContentInput{
+								Turns: []*genai.Content{
+									{Role: "user", Parts: []*genai.Part{{Text: cmd.Text}}},
+								},
+							})
+							sessionMu.Unlock()
+							if err != nil {
+								log.Printf("Voice: SendClientContent error: %v", err)
+							}
 						}
 					}
 				}
@@ -361,8 +418,20 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			msg, err := session.Receive()
 			if err != nil {
 				log.Printf("Voice: Receive error: %v", err)
+				// Transient error with a resume handle: try reconnecting.
+				if resumeHandle != "" && nonGoAwayRetries < maxNonGoAwayRetries {
+					nonGoAwayRetries++
+					log.Printf("Voice [tab %d]: transient error with resume handle, reconnecting (attempt %d/%d)...",
+						tabID, nonGoAwayRetries, maxNonGoAwayRetries)
+					shouldReconnect = true
+					select {
+					case <-ctx.Done():
+					case <-time.After(time.Duration(nonGoAwayRetries) * time.Second):
+					}
+				}
 				break
 			}
+			nonGoAwayRetries = 0 // reset on successful receive
 
 			if msg.SetupComplete != nil {
 				log.Println("Voice: Live session setup complete")
@@ -479,11 +548,13 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			if msg.GoAway != nil {
 				log.Printf("Voice [tab %d]: GoAway received (time left: %s), reconnecting...", tabID, msg.GoAway.TimeLeft)
 				shouldReconnect = true
+				nonGoAwayRetries = 0 // GoAway is expected, reset transient counter
 				break
 			}
 		}
 
-		sessionCancel() // kill the sender goroutine (Bug #8 fix)
+		sessionCancel()
+		<-senderDone // wait for sender goroutine to fully exit before reconnecting
 		_ = session.Close()
 		if d := resolveDoer(); d != nil {
 			d.SetResultNotifyFn(nil)
@@ -491,7 +562,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 		if !shouldReconnect {
 			break
 		}
-		log.Printf("Voice [tab %d]: reconnecting after GoAway...", tabID)
+		log.Printf("Voice [tab %d]: reconnecting...", tabID)
 	}
 
 	log.Printf("Voice: session ended (tab %d)", tabID)
@@ -521,12 +592,13 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 
 	// Session resumption: reconnect-on-GoAway outer loop.
 	var resumeHandle string
+	var nonGoAwayRetries int
 	var inputBuf, outputBuf strings.Builder
 	for {
 		config := buildLiveConfig()
 		applyResumeHandle(config, resumeHandle)
 
-		session, err := h.LiveClient.Live.Connect(ctx, h.LiveModel, config)
+		session, err := connectWithBackoff(ctx, h.LiveClient.Live.Connect, h.LiveModel, config)
 		if err != nil {
 			return fmt.Errorf("voice: Live API connect: %w", err)
 		}
@@ -641,16 +713,29 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 			if err != nil {
 				if ctx.Err() != nil {
 					sessionCancel()
+					<-sendDone
 					_ = session.Close()
 					return ctx.Err()
 				}
-				_ = session.Close()
-				if shouldReconnect {
-					break
+				log.Printf("Voice: Receive error: %v", err)
+				// Transient error with a resume handle: try reconnecting.
+				if resumeHandle != "" && nonGoAwayRetries < maxNonGoAwayRetries {
+					nonGoAwayRetries++
+					log.Printf("Voice: transient error with resume handle, reconnecting (attempt %d/%d)...",
+						nonGoAwayRetries, maxNonGoAwayRetries)
+					shouldReconnect = true
+					select {
+					case <-ctx.Done():
+						sessionCancel()
+						<-sendDone
+						_ = session.Close()
+						return ctx.Err()
+					case <-time.After(time.Duration(nonGoAwayRetries) * time.Second):
+					}
 				}
-				sessionCancel()
-				return fmt.Errorf("voice: Receive: %w", err)
+				break
 			}
+			nonGoAwayRetries = 0 // reset on successful receive
 
 			if msg.SetupComplete != nil {
 				log.Println("Voice: Live session setup complete (native mode)")
@@ -755,16 +840,18 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 			if msg.GoAway != nil {
 				log.Printf("Voice: GoAway received (time left: %s), reconnecting...", msg.GoAway.TimeLeft)
 				shouldReconnect = true
+				nonGoAwayRetries = 0 // GoAway is expected, reset transient counter
 				break
 			}
 		}
 
-		sessionCancel() // kill the sender goroutine (Bug #8 fix)
+		sessionCancel()
+		<-sendDone // wait for sender goroutine to fully exit before reconnecting
 		_ = session.Close()
 		if !shouldReconnect {
 			return nil
 		}
-		log.Println("Voice: reconnecting after GoAway...")
+		log.Println("Voice: reconnecting...")
 	}
 }
 
