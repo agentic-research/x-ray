@@ -14,6 +14,14 @@ const gotoInFlight = new Set();  // tabIds currently navigated by GOTO_URL (skip
 const overlayVisible = new Map(); // tabId → boolean (overlay toggle state)
 let agentdLaunching = false;
 
+// --- Side panel port registry ---
+const sidePanelPorts = new Set();
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'sidepanel') return;
+  sidePanelPorts.add(port);
+  port.onDisconnect.addListener(() => sidePanelPorts.delete(port));
+});
+
 // Load configured WebSocket URL, then connect (auto-launching agentd if needed).
 chrome.storage.local.get({ wsUrl: DEFAULT_WS_URL }, async (items) => {
   wsUrl = items.wsUrl;
@@ -66,17 +74,28 @@ function connectWebSocket() {
         console.log('X-Ray: Sent initial TAB_ACTIVATED for tab', tabs[0].id);
       }
     });
+    // Notify side panels of WS connection status.
+    for (const port of sidePanelPorts) {
+      try { port.postMessage({ type: 'WS_STATUS', connected: true }); } catch (_) {}
+    }
   };
 
-  // Forward agent events to content.js for the in-page log overlay.
+  // Forward agent events to content.js for the in-page log overlay,
+  // and broadcast to all connected side panel ports.
   function sendAgentLog(tabId, icon, text) {
     const send = (tid) => {
       chrome.tabs.sendMessage(tid, { type: 'AGENT_LOG', icon, text }).catch(() => {});
     };
-    if (tabId) { send(tabId); return; }
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) send(tabs[0].id);
-    });
+    if (tabId) { send(tabId); } else {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) send(tabs[0].id);
+      });
+    }
+    // Broadcast to all connected side panel ports.
+    const logEntry = { type: 'AGENT_LOG', icon, text, ts: Date.now() };
+    for (const port of sidePanelPorts) {
+      try { port.postMessage(logEntry); } catch (_) {}
+    }
   }
 
   ws.onmessage = async (event) => {
@@ -115,11 +134,14 @@ function connectWebSocket() {
             }
           });
         }
+        sendAgentLog(targetTab, 'A',
+          `${msg.action} -> ${msg.mache_id}${msg.payload ? ': ' + msg.payload.substring(0, 40) : ''}`);
         break;
       }
 
       case 'SCROLL': {
         const direction = msg.direction || 'down';
+        sendAgentLog(msg.tab_id || null, 'V', `scroll ${direction}`);
         const doScroll = (targetTab) => {
           chrome.tabs.sendMessage(targetTab, {
             type: 'SCROLL',
@@ -156,6 +178,7 @@ function connectWebSocket() {
 
       case 'GOTO_URL': {
         const url = msg.url;
+        sendAgentLog(msg.tab_id || null, 'G', `goto -> ${url}`);
         if (!url) break;
         // Resolve tab: use provided tab_id, fall back to active tab if 0/missing.
         const doGoto = (targetTab) => {
@@ -355,6 +378,8 @@ function connectWebSocket() {
           });
         }
 
+        sendAgentLog(tabId, 'R', `schema ready -- ${(msg.schema?.mounts?.length || 0)} zones`);
+
         // Flush any queued intent for this tab.
         if (tabId && pendingIntents.has(tabId) && ws && ws.readyState === WebSocket.OPEN) {
           const intent = pendingIntents.get(tabId);
@@ -367,6 +392,9 @@ function connectWebSocket() {
 
       case 'STATUS':
         console.log('X-Ray: Status -', msg.stage, msg.message);
+        sendAgentLog(msg.tab_id || null,
+          msg.stage === 'error' ? '!' : msg.stage === 'cartographer' ? 'C' : 'S',
+          `[${msg.stage}] ${msg.message}`);
         break;
 
       // --- CDP proxy (Dumb Pipe architecture) ---
@@ -411,6 +439,10 @@ function connectWebSocket() {
     ws = null;
     if (!reconnectTimer) {
       reconnectTimer = setInterval(connectWebSocket, 5000);
+    }
+    // Notify side panels of WS disconnection.
+    for (const port of sidePanelPorts) {
+      try { port.postMessage({ type: 'WS_STATUS', connected: false }); } catch (_) {}
     }
   };
 
@@ -987,6 +1019,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         chrome.tabs.create({ url: voiceUrl }, () => {
           sendResponse({ ok: true });
         });
+      });
+      return true;
+
+    case 'OPEN_SIDEPANEL':
+      chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT }).then(() => {
+        sendResponse({ ok: true });
+      }).catch(() => {
+        sendResponse({ ok: false });
       });
       return true;
 
