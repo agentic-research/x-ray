@@ -7,10 +7,15 @@
     "activeTab",
     "debugger",
     "downloads",
+    "nativeMessaging",
     "scripting",
+    "sidePanel",
     "storage",
     "tabs"
   ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
   "action": {
     "default_title": "X-Ray",
     "default_popup": "popup.html"

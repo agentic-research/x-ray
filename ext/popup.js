@@ -161,3 +161,11 @@ intentBtn.addEventListener('click', sendIntent);
 intentInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendIntent();
 });
+
+const logBtn = document.getElementById('log-btn');
+if (logBtn) {
+  logBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'OPEN_SIDEPANEL' });
+    window.close();
+  });
+}

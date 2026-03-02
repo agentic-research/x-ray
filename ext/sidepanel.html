@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Menlo', 'Consolas', monospace; background: #0a0a0a; color: #999; font-size: 11px; height: 100vh; display: flex; flex-direction: column; }
+  #header { padding: 8px 12px; background: #111; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  #header h1 { font-size: 11px; font-weight: 600; color: #666; letter-spacing: 1px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #c0392b; }
+  .dot.connected { background: #27ae60; }
+  #controls { padding: 4px 12px; background: #0d0d0d; border-bottom: 1px solid #1a1a1a; display: flex; gap: 6px; flex-shrink: 0; }
+  .ctrl-btn { background: #1a1a1a; border: 1px solid #333; color: #888; font: 10px monospace; padding: 2px 8px; cursor: pointer; border-radius: 3px; }
+  .ctrl-btn:hover { background: #222; color: #ccc; }
+  .ctrl-btn.active { background: #1a2a1a; border-color: #2a4a2a; color: #4a8; }
+  #log { flex: 1; overflow-y: auto; padding: 4px 8px; }
+  .entry { padding: 3px 0; display: flex; gap: 6px; border-left: 3px solid transparent; padding-left: 6px; }
+  .entry .ts { color: #444; flex-shrink: 0; }
+  .entry .icon { flex-shrink: 0; width: 12px; text-align: center; font-weight: bold; }
+  .entry .text { word-break: break-word; }
+  .entry-STATUS { border-left-color: #2980b9; }
+  .entry-STATUS .icon { color: #2980b9; }
+  .entry-EXECUTE { border-left-color: #e67e22; }
+  .entry-EXECUTE .icon { color: #e67e22; }
+  .entry-GOTO { border-left-color: #27ae60; }
+  .entry-GOTO .icon { color: #27ae60; }
+  .entry-SCROLL { border-left-color: #8e44ad; }
+  .entry-SCROLL .icon { color: #8e44ad; }
+  .entry-SCHEMA { border-left-color: #1abc9c; }
+  .entry-SCHEMA .icon { color: #1abc9c; }
+  .entry-ERROR { border-left-color: #e74c3c; }
+  .entry-ERROR .icon { color: #e74c3c; }
+  .entry-SYS { border-left-color: #2c3e50; }
+  .entry-SYS .icon { color: #555; }
+  #empty { color: #333; padding: 20px; text-align: center; }
+</style>
+</head>
+<body>
+  <div id="header">
+    <div class="dot" id="ws-dot"></div>
+    <h1>X-RAY AGENT LOG</h1>
+  </div>
+  <div id="controls">
+    <button class="ctrl-btn active" id="auto-scroll-btn">Auto-scroll</button>
+    <button class="ctrl-btn" id="clear-btn">Clear</button>
+    <button class="ctrl-btn active" id="filter-all">All</button>
+    <button class="ctrl-btn" id="filter-actions">Actions</button>
+  </div>
+  <div id="log">
+    <div id="empty">Waiting for agent activity...</div>
+  </div>
+  <script src="sidepanel.js"></script>
+</body>
+</html>
