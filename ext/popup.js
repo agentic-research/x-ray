@@ -13,8 +13,13 @@ chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
     return;
   }
   if (!resp.wsConnected) {
-    statusEl.textContent = 'Not connected to agentd';
-    statusEl.className = 'error';
+    if (resp.launching) {
+      statusEl.textContent = 'Starting agentd...';
+      statusEl.className = '';
+    } else {
+      statusEl.textContent = 'Not connected to agentd';
+      statusEl.className = 'error';
+    }
     return;
   }
   // Check if current tab is a restricted URL (chrome://, about:, etc.)
@@ -62,8 +67,20 @@ chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
 // Focus input immediately so user can start typing.
 intentInput.focus();
 
-// Listen for SCHEMA_READY broadcast from background.
+// Listen for agentd launch status + SCHEMA_READY broadcast from background.
 chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === 'AGENTD_STARTING') {
+    statusEl.textContent = 'Starting agentd...';
+    statusEl.className = '';
+  }
+  if (msg.type === 'AGENTD_READY') {
+    statusEl.textContent = 'agentd started, connecting...';
+    statusEl.className = '';
+  }
+  if (msg.type === 'AGENTD_FAILED') {
+    statusEl.textContent = 'agentd failed to start';
+    statusEl.className = 'error';
+  }
   if (msg.type === 'SCHEMA_READY_EVENT') {
     intentInput.placeholder = 'Type a command...';
     statusEl.textContent = 'Ready';

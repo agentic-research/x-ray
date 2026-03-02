@@ -1010,6 +1010,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           hasSchema: tabId ? schemaReadyTabs.has(tabId) : false,
           pending: tabId ? pendingSnapshots.has(tabId) : false,
           wsConnected: ws && ws.readyState === WebSocket.OPEN,
+          launching: agentdLaunching,
           tabId
         });
       });
