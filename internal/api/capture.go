@@ -18,11 +18,20 @@ const (
 
 // captureGo is the Go-driven replacement for JS captureAndSend().
 // It orchestrates: summary request → overlay → CDP screenshot + AX + layers → enrich → feed DOM_SNAPSHOT.
+// Serialized per-tab via captureMu to prevent concurrent goroutines from racing on shared channels
+// (wrong summary paired with wrong screenshot).
 func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool, targetMacheID string) {
+	sess := h.getSession(tabID)
+
+	// Serialize captures per tab. If a second PAGE_READY arrives while we're mid-capture,
+	// it blocks here until the first finishes. This prevents channel cross-talk where
+	// goroutine B steals goroutine A's SUMMARY_RESPONSE from the shared SummaryCh.
+	sess.captureMu.Lock()
+	defer sess.captureMu.Unlock()
+
 	ctx, cancel := context.WithTimeout(parentCtx, captureGoTimeout)
 	defer cancel()
 
-	sess := h.getSession(tabID)
 	h.mu.Lock()
 	conn := h.conn
 	h.mu.Unlock()

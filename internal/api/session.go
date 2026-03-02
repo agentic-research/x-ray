@@ -48,6 +48,7 @@ type TabSession struct {
 	SummaryCh        chan SummaryResponse // receives SUMMARY_RESPONSE from extension
 	OverlayDrawnCh   chan struct{}        // receives OVERLAY_DRAWN ack
 	OverlayRemovedCh chan struct{}        // receives OVERLAY_REMOVED ack
+	captureMu        sync.Mutex           // serializes captureGo per tab (prevents channel races)
 
 	schemaMu     sync.Mutex // protects SchemaReady close + schemaGen
 	schemaClosed bool
