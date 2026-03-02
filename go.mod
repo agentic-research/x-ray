@@ -9,6 +9,7 @@ require (
 	github.com/tmc/it2 v0.0.0-20251116041255-d10afde85159
 	google.golang.org/genai v1.47.0
 	google.golang.org/protobuf v1.35.2
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

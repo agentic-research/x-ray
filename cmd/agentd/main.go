@@ -11,8 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -20,17 +18,11 @@ import (
 	"github.com/agentic-research/x-ray/internal/api"
 	"github.com/agentic-research/x-ray/internal/audio"
 	"github.com/agentic-research/x-ray/internal/cartographer"
+	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/agentic-research/x-ray/internal/iterm"
 	"github.com/agentic-research/x-ray/internal/navigator"
 	"github.com/joho/godotenv"
 	"google.golang.org/genai"
-)
-
-const (
-	DefaultGeminiModel       = "gemini-2.5-flash"
-	DefaultGeminiLiveModel   = "gemini-2.5-flash-native-audio-preview-12-2025"
-	DefaultCartographerModel = "llava:13b"
-	DefaultNavigatorModel    = "functiongemma:270m"
 )
 
 func main() {
@@ -42,6 +34,14 @@ func main() {
 	// Load .envrc for GOOGLE_GEMINI_API_KEY / GOOGLE_API_KEY
 	if err := godotenv.Load(".envrc"); err != nil {
 		log.Println("Note: No .envrc file found, using environment")
+	}
+
+	cfg, cfgErr := config.LoadConfig()
+	if cfgErr != nil {
+		log.Printf("Config warning: %v (using defaults)", cfgErr)
+	} else {
+		cfgPath, _ := config.ConfigPath()
+		log.Printf("Config loaded from %s", cfgPath)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -60,73 +60,48 @@ func main() {
 		log.Fatalf("Failed to initialize Gemini Live client: %v", err)
 	}
 
-	model := os.Getenv("GEMINI_MODEL")
-	if model == "" {
-		model = DefaultGeminiModel
-	}
-
-	liveModel := os.Getenv("GEMINI_LIVE_MODEL")
-	if liveModel == "" {
-		liveModel = DefaultGeminiLiveModel
-	}
-
-	plannerModel := os.Getenv("PLANNER_MODEL")
+	plannerModel := cfg.Gemini.PlannerModel
 	if plannerModel == "" {
-		plannerModel = model
+		plannerModel = cfg.Gemini.Model
 	}
 
-	// Cartographer: tropical (algebraic, no LLM) > local VLM > Gemini.
+	// Cartographer: tropical (algebraic, no LLM) > cairn (Leech) > local VLM > Gemini.
 	var cart api.SchemaGenerator
-	if mode := os.Getenv("CARTOGRAPHER_MODE"); mode == "tropical" {
+	switch cfg.Cartographer.Mode {
+	case "tropical":
 		cart = &cartographer.TropicalCartographer{}
-		log.Println("Cartographer: using TropicalCartographer (algebraic, no LLM)")
-	} else if mode == "cairn" {
-		gear := 5
-		if g := os.Getenv("CARTOGRAPHER_GEAR"); g != "" {
-			if n, err := strconv.Atoi(g); err == nil {
-				gear = n
-			}
+		log.Println("Cartographer: TropicalCartographer (algebraic)")
+	case "cairn":
+		cart = &cartographer.CairnCartographer{Gear: cfg.Cartographer.Gear, Scale: cfg.Cartographer.Scale}
+		log.Printf("Cartographer: CairnCartographer (gear=%d, scale=%.1f)", cfg.Cartographer.Gear, cfg.Cartographer.Scale)
+	default:
+		if cfg.Cartographer.Endpoint != "" {
+			cart = &cartographer.OllamaAgent{Endpoint: cfg.Cartographer.Endpoint, Model: cfg.Cartographer.Model}
+			log.Printf("Cartographer: local VLM %s at %s", cfg.Cartographer.Model, cfg.Cartographer.Endpoint)
+		} else {
+			cart = cartographer.NewAgent(client, cfg.Gemini.Model)
 		}
-		scale := 10.0
-		if s := os.Getenv("CARTOGRAPHER_SCALE"); s != "" {
-			if f, err := strconv.ParseFloat(s, 64); err == nil {
-				scale = f
-			}
-		}
-		cart = &cartographer.CairnCartographer{Gear: gear, Scale: scale}
-		log.Printf("Cartographer: using CairnCartographer (Leech gearbox, gear=%d, scale=%.1f)", gear, scale)
-	} else if ep := os.Getenv("CARTOGRAPHER_ENDPOINT"); ep != "" {
-		cartModel := os.Getenv("CARTOGRAPHER_MODEL")
-		if cartModel == "" {
-			cartModel = DefaultCartographerModel
-		}
-		cart = &cartographer.OllamaAgent{Endpoint: ep, Model: cartModel}
-		log.Printf("Cartographer: using local VLM %s at %s", cartModel, ep)
-	} else {
-		cart = cartographer.NewAgent(client, model)
 	}
 
-	// Navigator model: default to Gemini, override with NAVIGATOR_ENDPOINT for local SLM.
+	// Navigator model: default to Gemini, override with navigator.endpoint for local SLM.
 	var navGen navigator.ContentGenerator = &navigator.GeminiGenerator{Client: client}
-	navModel := model
+	navModel := cfg.Gemini.Model
 
-	if ep := os.Getenv("NAVIGATOR_ENDPOINT"); ep != "" {
-		navModel = os.Getenv("NAVIGATOR_MODEL")
+	if cfg.Navigator.Endpoint != "" {
+		navModel = cfg.Navigator.Model
 		if navModel == "" {
-			navModel = DefaultNavigatorModel
+			navModel = cfg.Gemini.Model
 		}
-		format := os.Getenv("NAVIGATOR_FORMAT") // "gemma" or "openai" (default)
-		if format == "gemma" {
-			cliMode := os.Getenv("NAVIGATOR_CLI") == "1"
-			navGen = &navigator.GemmaGenerator{Endpoint: ep, Model: navModel, CLIMode: cliMode}
-			if cliMode {
-				log.Printf("Navigator: using Gemma model %s at %s (CLI mode + GBNF grammar)", navModel, ep)
+		if cfg.Navigator.Format == "gemma" {
+			navGen = &navigator.GemmaGenerator{Endpoint: cfg.Navigator.Endpoint, Model: navModel, CLIMode: cfg.Navigator.CLI}
+			if cfg.Navigator.CLI {
+				log.Printf("Navigator: using Gemma model %s at %s (CLI mode + GBNF grammar)", navModel, cfg.Navigator.Endpoint)
 			} else {
-				log.Printf("Navigator: using Gemma model %s at %s (native function calling)", navModel, ep)
+				log.Printf("Navigator: using Gemma model %s at %s (native function calling)", navModel, cfg.Navigator.Endpoint)
 			}
 		} else {
-			navGen = &navigator.OllamaGenerator{Endpoint: ep, Model: navModel}
-			log.Printf("Navigator: using local model %s at %s (OpenAI format)", navModel, ep)
+			navGen = &navigator.OllamaGenerator{Endpoint: cfg.Navigator.Endpoint, Model: navModel}
+			log.Printf("Navigator: using local model %s at %s (OpenAI format)", navModel, cfg.Navigator.Endpoint)
 		}
 
 		// Pre-warm: send a throwaway request so Ollama loads the model into GPU
@@ -146,15 +121,8 @@ func main() {
 		}()
 	}
 
-	// Schema cache persistence.
-	dbPath := os.Getenv("XRAY_DB")
-	if dbPath == "" {
-		home, _ := os.UserHomeDir()
-		dbPath = filepath.Join(home, ".xray", "schemas.db")
-	}
-
 	// Per-tab Engine + Navigator are created on demand inside Handler.
-	handler := api.NewHandler(cart, navGen, client, liveClient, navModel, liveModel, plannerModel, dbPath)
+	handler := api.NewHandler(cart, navGen, client, liveClient, navModel, cfg.Gemini.LiveModel, plannerModel, cfg.Database.Path)
 	handler.SetOpenBrowserFunc(func(url string) {
 		_ = exec.Command("open", "-a", "Google Chrome", url).Start()
 		// Bring Chrome to foreground — "open -a" doesn't always focus the window.
@@ -178,11 +146,7 @@ func main() {
 	http.HandleFunc("/voice", handler.HandleVoice)
 	http.HandleFunc("/voice-ui", serveVoiceUI)
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	port = ":" + port
+	port := ":" + cfg.Port
 
 	// Start HTTP server in background.
 	server := &http.Server{Addr: port}
