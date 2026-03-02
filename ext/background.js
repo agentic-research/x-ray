@@ -12,12 +12,27 @@ const pendingIntents = new Map(); // tabId → intent string (queued before sche
 const lastKnownUrls = new Map(); // tabId → URL (for detecting manual navigation)
 const gotoInFlight = new Set();  // tabIds currently navigated by GOTO_URL (skip auto-snapshot)
 const overlayVisible = new Map(); // tabId → boolean (overlay toggle state)
+let agentdLaunching = false;
 
-// Load configured WebSocket URL, then connect.
-chrome.storage.local.get({ wsUrl: DEFAULT_WS_URL }, (items) => {
+// Load configured WebSocket URL, then connect (auto-launching agentd if needed).
+chrome.storage.local.get({ wsUrl: DEFAULT_WS_URL }, async (items) => {
   wsUrl = items.wsUrl;
   console.log('X-Ray: Using WebSocket URL:', wsUrl);
-  connectWebSocket();
+
+  // Health check: is agentd already running?
+  const httpBase = wsUrl.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/ws$/, '');
+  try {
+    const resp = await fetch(`${httpBase}/status`, { signal: AbortSignal.timeout(1500) });
+    if (resp.ok) {
+      console.log('X-Ray: agentd already running');
+      connectWebSocket();
+      return;
+    }
+  } catch (_) {}
+
+  // Not running — auto-launch via native messaging.
+  console.log('X-Ray: agentd not running, launching via native messaging');
+  launchAgentd(httpBase);
 });
 
 // Re-connect when the URL is changed at runtime.
