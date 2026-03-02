@@ -311,6 +311,8 @@ function executeAction(macheId, actionType, payload) {
 // Visible in CDP screenshots so the Cartographer can see which elements are tagged.
 
 const OVERLAY_ID = 'xray-overlay';
+const ZONE_OVERLAY_ID = 'xray-zone-overlay';
+const HUMAN_OVERLAY_ID = 'xray-human-overlay';
 
 // Semantic color legend for the ACI (Agent-Computer Interface).
 // Primary colors are used for high-accuracy identification by Vision models.
@@ -321,6 +323,15 @@ const SEMANTIC_COLORS = {
   container: { name: 'BLUE', rgb: [0, 0, 255], border: 'rgb(0, 0, 255)' },
   clickable: { name: 'YELLOW', rgb: [255, 255, 0], border: 'rgb(255, 255, 0)' },
   other: { name: 'RED', rgb: [255, 0, 0], border: 'rgb(255, 0, 0)' }
+};
+
+const HUMAN_COLORS = {
+  link:      { name: 'PERIWINKLE', rgb: [130, 100, 220], border: 'rgb(130, 100, 220)' },
+  button:    { name: 'SEAFOAM',    rgb: [60, 180, 120],  border: 'rgb(60, 180, 120)'  },
+  input:     { name: 'SKY',        rgb: [80, 160, 210],  border: 'rgb(80, 160, 210)'  },
+  container: { name: 'SLATE',      rgb: [100, 120, 160], border: 'rgb(100, 120, 160)' },
+  clickable: { name: 'HONEY',      rgb: [220, 170, 50],  border: 'rgb(220, 170, 50)'  },
+  other:     { name: 'CORAL',      rgb: [210, 90, 80],   border: 'rgb(210, 90, 80)'   },
 };
 
 // Area-adaptive opacity: large elements (canvas, full-page containers) fade
@@ -350,6 +361,22 @@ function getSemanticColor(node) {
   }
 
   return SEMANTIC_COLORS.other;
+}
+
+function getHumanColor(node) {
+  const tag = node.tagName.toLowerCase();
+  const role = node.getAttribute('role');
+  if (tag === 'a') return HUMAN_COLORS.link;
+  if (tag === 'button' || role === 'button') return HUMAN_COLORS.button;
+  if (['input', 'textarea', 'select'].includes(tag)) return HUMAN_COLORS.input;
+  if (node.hasAttribute('data-mache-clickable')) return HUMAN_COLORS.clickable;
+  const containers = ['main', 'section', 'article', 'nav', 'header', 'footer',
+    'aside', 'form', 'ul', 'ol', 'dl', 'table', 'body', 'div'];
+  if (containers.includes(tag) ||
+      (role && ['navigation', 'main', 'list', 'group', 'region'].includes(role))) {
+    return HUMAN_COLORS.container;
+  }
+  return HUMAN_COLORS.other;
 }
 
 function drawOverlay() {
@@ -406,12 +433,63 @@ function removeOverlay() {
   if (existing) existing.remove();
 }
 
+function removeHumanOverlay() {
+  const existing = document.getElementById(HUMAN_OVERLAY_ID);
+  if (existing) existing.remove();
+}
+
+function drawHumanOverlay() {
+  removeHumanOverlay();
+  const overlay = document.createElement('div');
+  overlay.id = HUMAN_OVERLAY_ID;
+  overlay.style.cssText =
+    'position: absolute; top: 0; left: 0; width: 100%; height: 100%;' +
+    'pointer-events: none; z-index: 2147483645;';
+
+  for (const [macheId, node] of elementRegistry) {
+    const rect = node.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) continue;
+    const color = getHumanColor(node);
+    const viewportArea = window.innerWidth * window.innerHeight;
+    const areaRatio = viewportArea > 0 ? (rect.width * rect.height) / viewportArea : 0;
+    const alpha = Math.max(0.05, 0.15 - areaRatio * 0.12);
+    const [r, g, b] = color.rgb;
+
+    const box = document.createElement('div');
+    box.style.cssText =
+      `position: absolute;` +
+      `left: ${rect.left + window.scrollX}px; top: ${rect.top + window.scrollY}px;` +
+      `width: ${rect.width}px; height: ${rect.height}px;` +
+      `background: rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)});` +
+      `border: 1px solid ${color.border};` +
+      `pointer-events: none; box-sizing: border-box; border-radius: 2px;`;
+
+    const label = document.createElement('span');
+    label.textContent = macheId;
+    label.style.cssText =
+      'position: absolute; top: -14px; left: 0;' +
+      `background: ${color.border}; color: #fff;` +
+      'font: bold 9px monospace; padding: 1px 3px;' +
+      'white-space: nowrap; pointer-events: none;' +
+      'line-height: 12px; border-radius: 2px;';
+    box.appendChild(label);
+    overlay.appendChild(box);
+  }
+
+  document.documentElement.appendChild(overlay);
+  console.log(`X-Ray: Drew human overlay with ${elementRegistry.size} boxes`);
+}
+
 // Redraw overlay on window resize so boxes track their elements.
 let resizeTimer = null;
+let _lastZones = null;
 window.addEventListener('resize', () => {
-  if (!document.getElementById(OVERLAY_ID)) return;
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(drawOverlay, 150);
+  resizeTimer = setTimeout(() => {
+    if (document.getElementById(OVERLAY_ID)) drawOverlay();
+    if (document.getElementById(HUMAN_OVERLAY_ID)) drawHumanOverlay();
+    if (document.getElementById(ZONE_OVERLAY_ID) && _lastZones) drawZoneOverlay(_lastZones);
+  }, 150);
 });
 
 // Listen for messages from background.js
@@ -433,6 +511,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case 'REMOVE_OVERLAY':
       removeOverlay();
+      sendResponse({ success: true });
+      return true;
+
+    case 'DRAW_HUMAN_OVERLAY':
+      drawHumanOverlay();
+      sendResponse({ success: true });
+      return true;
+
+    case 'REMOVE_HUMAN_OVERLAY':
+      removeHumanOverlay();
       sendResponse({ success: true });
       return true;
 
