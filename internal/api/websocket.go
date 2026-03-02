@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/agentic-research/mache/graph"
+	"github.com/agentic-research/x-ray/internal/cdp"
 	"github.com/agentic-research/x-ray/internal/focus"
 	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/agentic-research/x-ray/internal/navigator"
@@ -51,6 +52,7 @@ type Handler struct {
 	openBrowserFn  func(url string) // fallback when no WS connection; nil = no-op (tests)
 	termBridge     graph.Graph      // global iTerm2 bridge (nil if iTerm not available)
 	planner        *Planner         // Planner for /agent/task (non-voice Talker)
+	cdpProxy       *cdp.Proxy       // CDP proxy for Dumb Pipe architecture
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client, liveClient *genai.Client, navModel, liveModel, plannerModel, dbPath string) *Handler {
@@ -64,6 +66,7 @@ func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client,
 		PlannerModel:  plannerModel,
 		sessions:      make(map[int]*TabSession),
 		schemas:       NewSchemaCache(dbPath),
+		cdpProxy:      cdp.New(nil),
 	}
 	if client != nil && plannerModel != "" {
 		h.planner = &Planner{handler: h, client: client, model: plannerModel}
@@ -186,6 +189,7 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	h.mu.Lock()
 	h.conn = conn
+	h.cdpProxy.SetSender(h)
 	queued := h.pending
 	h.pending = nil
 	// Snapshot existing sessions — content.js was re-injected on reconnect and
@@ -274,6 +278,21 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Voice [ext tab %d]: %s", msg.TabID, msg.Message)
 		case MsgPing:
 			// Client-side keep-alive heartbeat — no action needed.
+
+		// CDP proxy messages (Dumb Pipe architecture).
+		case MsgCDPAttached:
+			h.cdpProxy.HandleAttached(msg.TabID)
+		case MsgCDPAttachFailed:
+			h.cdpProxy.HandleAttachFailed(msg.TabID, msg.CDPError)
+		case MsgCDPResult:
+			h.cdpProxy.HandleResult(msg.CDPRequestID, msg.CDPResult)
+		case MsgCDPError:
+			h.cdpProxy.HandleError(msg.CDPRequestID, msg.CDPError)
+		case MsgCDPEvent:
+			h.cdpProxy.HandleEvent(msg.TabID, msg.CDPMethod, msg.CDPParams)
+		case MsgCDPDetached:
+			h.cdpProxy.HandleDetached(msg.TabID)
+
 		default:
 			log.Printf("WebSocket: unknown message type: %s", msg.Type)
 		}
@@ -597,6 +616,20 @@ func (h *Handler) sendMessage(conn *websocket.Conn, msg OutboundMessage) {
 	if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
 		log.Printf("Failed to send message: %v", err)
 	}
+}
+
+// SendJSON implements cdp.Sender, writing a raw JSON map over the extension WebSocket.
+func (h *Handler) SendJSON(msg map[string]any) error {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.conn == nil {
+		return fmt.Errorf("extension not connected")
+	}
+	return h.conn.WriteMessage(websocket.TextMessage, data)
 }
 
 // SendActionToExtension sends an EXECUTE_ACTION message over the extension WebSocket.

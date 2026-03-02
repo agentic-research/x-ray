@@ -334,6 +334,41 @@ function connectWebSocket() {
       case 'STATUS':
         console.log('X-Ray: Status -', msg.stage, msg.message);
         break;
+
+      // --- CDP proxy (Dumb Pipe architecture) ---
+
+      case 'CDP_ATTACH': {
+        const tabId = msg.tab_id;
+        try {
+          await chrome.debugger.attach({ tabId }, '1.3');
+          ws.send(JSON.stringify({ type: 'CDP_ATTACHED', tab_id: tabId }));
+        } catch (e) {
+          ws.send(JSON.stringify({ type: 'CDP_ATTACH_FAILED', tab_id: tabId, cdp_error: e.message }));
+        }
+        break;
+      }
+
+      case 'CDP_SEND': {
+        const { cdp_id, tab_id, cdp_method, cdp_params } = msg;
+        try {
+          const result = await chrome.debugger.sendCommand(
+            { tabId: tab_id }, cdp_method, cdp_params || {}
+          );
+          ws.send(JSON.stringify({ type: 'CDP_RESULT', cdp_id, cdp_result: result }));
+        } catch (e) {
+          ws.send(JSON.stringify({ type: 'CDP_ERROR', cdp_id, cdp_error: e.message }));
+        }
+        break;
+      }
+
+      case 'CDP_DETACH': {
+        const tabId = msg.tab_id;
+        try {
+          await chrome.debugger.detach({ tabId });
+        } catch (_) {}
+        ws.send(JSON.stringify({ type: 'CDP_DETACHED', tab_id: tabId }));
+        break;
+      }
     }
   };
 
@@ -1021,5 +1056,17 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   overlayVisible.delete(tabId);
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'TAB_CLOSED', tab_id: tabId }));
+  }
+});
+
+// Forward CDP events to Go server for proxy consumers.
+chrome.debugger.onEvent.addListener((source, method, params) => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: 'CDP_EVENT',
+      tab_id: source.tabId,
+      cdp_method: method,
+      cdp_params: params
+    }));
   }
 });

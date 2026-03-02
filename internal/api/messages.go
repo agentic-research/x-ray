@@ -1,6 +1,10 @@
 package api
 
-import "github.com/agentic-research/x-ray/internal/navigator"
+import (
+	"encoding/json"
+
+	"github.com/agentic-research/x-ray/internal/navigator"
+)
 
 // Message type constants for WebSocket communication.
 const (
@@ -24,6 +28,17 @@ const (
 	MsgTabClosed         = "TAB_CLOSED"
 	MsgDOMMutated        = "DOM_MUTATED"
 	MsgPing              = "PING"
+
+	// CDP proxy message types (Dumb Pipe architecture).
+	MsgCDPAttach       = "CDP_ATTACH"
+	MsgCDPAttached     = "CDP_ATTACHED"
+	MsgCDPAttachFailed = "CDP_ATTACH_FAILED"
+	MsgCDPSend         = "CDP_SEND"
+	MsgCDPResult       = "CDP_RESULT"
+	MsgCDPError        = "CDP_ERROR"
+	MsgCDPEvent        = "CDP_EVENT"
+	MsgCDPDetach       = "CDP_DETACH"
+	MsgCDPDetached     = "CDP_DETACHED"
 )
 
 // TabInfo is an alias for navigator.TabInfo (canonical definition lives there).
@@ -41,6 +56,13 @@ type InboundMessage struct {
 	Message       string              `json:"message,omitempty"`        // VOICE_LOG text
 	IsRescan      bool                `json:"is_rescan,omitempty"`      // bypass schema cache on rescan
 	Tabs          []TabInfo           `json:"tabs,omitempty"`           // TABS_LISTED response
+
+	// CDP proxy fields (Dumb Pipe architecture).
+	CDPRequestID int64           `json:"cdp_id,omitempty"`
+	CDPMethod    string          `json:"cdp_method,omitempty"`
+	CDPResult    json.RawMessage `json:"cdp_result,omitempty"`
+	CDPError     string          `json:"cdp_error,omitempty"`
+	CDPParams    json.RawMessage `json:"cdp_params,omitempty"`
 }
 
 // OutboundMessage is the envelope for all server -> browser messages.
