@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -79,6 +80,21 @@ func main() {
 	if mode := os.Getenv("CARTOGRAPHER_MODE"); mode == "tropical" {
 		cart = &cartographer.TropicalCartographer{}
 		log.Println("Cartographer: using TropicalCartographer (algebraic, no LLM)")
+	} else if mode == "cairn" {
+		gear := 5
+		if g := os.Getenv("CARTOGRAPHER_GEAR"); g != "" {
+			if n, err := strconv.Atoi(g); err == nil {
+				gear = n
+			}
+		}
+		scale := 10.0
+		if s := os.Getenv("CARTOGRAPHER_SCALE"); s != "" {
+			if f, err := strconv.ParseFloat(s, 64); err == nil {
+				scale = f
+			}
+		}
+		cart = &cartographer.CairnCartographer{Gear: gear, Scale: scale}
+		log.Printf("Cartographer: using CairnCartographer (Leech gearbox, gear=%d, scale=%.1f)", gear, scale)
 	} else if ep := os.Getenv("CARTOGRAPHER_ENDPOINT"); ep != "" {
 		cartModel := os.Getenv("CARTOGRAPHER_MODEL")
 		if cartModel == "" {
