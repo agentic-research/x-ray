@@ -54,6 +54,7 @@ type Handler struct {
 	planner        *Planner         // Planner for /agent/task (non-voice Talker)
 	cdpProxy       *cdp.Proxy       // CDP proxy for Dumb Pipe architecture
 	cdpGoEnabled   bool             // XRAY_CDP_GO=1: Go-driven capture pipeline
+	cdpVerify      bool             // XRAY_CDP_VERIFY=1: run both paths and log mismatches
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client, liveClient *genai.Client, navModel, liveModel, plannerModel, dbPath string) *Handler {
@@ -94,6 +95,13 @@ func (h *Handler) SetCDPGoEnabled(enabled bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.cdpGoEnabled = enabled
+}
+
+// SetCDPVerify enables verification mode (run both JS and Go paths, log mismatches).
+func (h *Handler) SetCDPVerify(enabled bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.cdpVerify = enabled
 }
 
 // lookupSession returns the TabSession for the given tab, or nil if none exists.
@@ -277,6 +285,14 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		switch msg.Type {
 		case MsgDOMSnapshot:
 			go h.handleDOMSnapshot(conn, msg)
+			// Verification mode: when JS sends DOM_SNAPSHOT, also run Go capture
+			// in the background and log differences (diagnostic only).
+			h.mu.Lock()
+			verify := h.cdpVerify && !h.cdpGoEnabled
+			h.mu.Unlock()
+			if verify {
+				go h.verifyCapture(msg.TabID, msg)
+			}
 		case MsgNavigate:
 			go h.handleNavigate(conn, msg)
 		case MsgDOMUpdate:

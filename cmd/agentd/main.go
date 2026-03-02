@@ -127,6 +127,10 @@ func main() {
 		handler.SetCDPGoEnabled(true)
 		log.Println("CDP: Go-driven capture enabled (XRAY_CDP_GO=1)")
 	}
+	if cfg.CDP.Verify {
+		handler.SetCDPVerify(true)
+		log.Println("CDP: Verification mode enabled (XRAY_CDP_VERIFY=1)")
+	}
 
 	handler.SetOpenBrowserFunc(func(url string) {
 		_ = exec.Command("open", "-a", "Google Chrome", url).Start()

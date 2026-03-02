@@ -22,6 +22,7 @@ type Config struct {
 // CDPConfig holds CDP pipeline settings.
 type CDPConfig struct {
 	GoCapture bool `yaml:"go_capture"` // XRAY_CDP_GO=1 enables Go-driven capture
+	Verify    bool `yaml:"verify"`     // XRAY_CDP_VERIFY=1 runs both paths and logs mismatches
 }
 
 // GeminiConfig holds Gemini API settings.
@@ -167,6 +168,9 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv("XRAY_CDP_GO"); v == "1" {
 		cfg.CDP.GoCapture = true
+	}
+	if v := os.Getenv("XRAY_CDP_VERIFY"); v == "1" {
+		cfg.CDP.Verify = true
 	}
 }
 
