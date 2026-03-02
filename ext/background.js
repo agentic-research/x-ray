@@ -611,6 +611,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const tabId = tabs[0].id;
         try {
           if (humanOverlayVisible.get(tabId)) {
+            // Remove all overlay types (machine, zone, and human).
+            await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_OVERLAY' });
+            await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_ZONES' });
             await chrome.tabs.sendMessage(tabId, { type: 'REMOVE_HUMAN_OVERLAY' });
             humanOverlayVisible.set(tabId, false);
             sendResponse({ ok: true, visible: false });
