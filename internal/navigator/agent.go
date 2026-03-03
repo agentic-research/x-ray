@@ -761,14 +761,18 @@ SEMI-FORMAL REASONING — think in three steps before every action:
 3. CONCLUSION: Decide. "Action: act(_c/7, click). Expected: reviews appear in /browser/main/content."
 This prevents wasted actions — never click without knowing WHY it leads to the goal.
 
-GREP RESULTS — using mache IDs from text_index:
-- grep results from text_index include [mache-N] tags, e.g.: a "12 Reviews"  (top)  [mache-42]
-- You can act directly on the mache ID: act("mache-42", "click")
+GREP STRATEGY:
+- Use SHORT keywords (1-2 words), never full phrases. "ear cups being small" → grep("small|ear cups").
+- Use regex OR: grep("price|cost"), grep("review|rating"), grep("small|tiny|little").
+- Think about SYNONYMS: if the task says "small", also try "tiny|little|compact".
+- grep results from text_index include [mache-N] tags — act directly: act("mache-42", "click").
 - grep also searches page_text (full visible text) for content not in interactive elements.
+- When grep returns long text blocks, read them carefully for ALL relevant names/items, not just the search term.
 
 COMPLETENESS — before reporting an answer:
-- Check for pagination: grep("next|page.*of|>>"). If found, navigate ALL pages.
+- Check for pagination: grep("next|page|>>"). If found, navigate ALL pages.
 - Compare counts: if page says "12 Reviews" but you've only seen 5, keep looking.
+- When collecting names/items from text, read the FULL content (cat page_text) and extract ALL matches, not just grep hits. People phrase things differently.
 - Record findings as you go: act("/tasks/active/scratch", "type", "Found: <name/item>"). This persists across continuations.
 - Accumulate findings across pages/sections before answering.
 

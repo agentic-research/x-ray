@@ -44,7 +44,7 @@ TOOLS:
 - open_url(url): Open a completely different website.
 
 WORKFLOW — Break every task into these steps:
-1. GREP FIRST: issue_command("use grep to find <keyword>", read_only=true). The navigator has a grep tool that scans the DOM text — always grep for the answer directly before doing anything else.
+1. GREP FIRST: issue_command("use grep to find <keyword>", read_only=true). Use SHORT keywords (1-2 words) and regex OR for synonyms, e.g., "small|tiny" NOT "ear cups being small". The navigator has a grep tool that scans the DOM text — always grep for the answer directly before doing anything else.
 2. INTERACT (only if grep fails): issue_command("click the tab/link to reveal content", read_only=false). Click tabs, expand sections — never scroll blindly.
 3. READ: issue_command("read the specific content needed", read_only=true)
 4. ANSWER: Respond with DONE: or FAILED:

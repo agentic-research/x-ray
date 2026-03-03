@@ -88,10 +88,19 @@ def prepare_eval_dir(results: list[dict], eval_dir: Path) -> None:
         elif r.get("status", "").lower() not in ("done", "success", "completed", "failed"):
             status = "error"
 
+        # Split comma-separated retrieved data into a list for the evaluator.
+        # The agent returns "Alice, Bob, Charlie" but webarena-verified expects
+        # ["alice", "bob", "charlie"] for array-valued RETRIEVE tasks.
+        raw_data = r.get("summary", "")
+        if "," in raw_data:
+            retrieved_data = [item.strip() for item in raw_data.split(",") if item.strip()]
+        else:
+            retrieved_data = raw_data
+
         agent_response = {
             "task_type": task_type,
             "status": status,
-            "retrieved_data": r.get("summary", ""),
+            "retrieved_data": retrieved_data,
             "final_url": r.get("url_final", ""),
         }
 
