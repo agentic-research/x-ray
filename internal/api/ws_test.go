@@ -64,6 +64,15 @@ func sendJSON(t *testing.T, conn *websocket.Conn, msg any) {
 	}
 }
 
+func containsEntry(entries []string, name string) bool {
+	for _, e := range entries {
+		if e == name {
+			return true
+		}
+	}
+	return false
+}
+
 func TestWSDOMSnapshotCreatesSession(t *testing.T) {
 	cart := &mockCartographer{
 		schema: `{"mounts":[{"virtual_path":"/main/zone","mache_id":"mache-1","description":"test zone"}]}`,
@@ -292,11 +301,17 @@ func TestWSMultipleTabIsolation(t *testing.T) {
 	entriesA, _ := sessA.Engine.ListDir("/")
 	entriesB, _ := sessB.Engine.ListDir("/")
 
-	if len(entriesA) != 1 || entriesA[0] != "zone_a/" {
-		t.Errorf("tab 10 expected [zone_a/], got %v", entriesA)
+	if !containsEntry(entriesA, "zone_a/") {
+		t.Errorf("tab 10 should contain zone_a/, got %v", entriesA)
 	}
-	if len(entriesB) != 1 || entriesB[0] != "zone_b/" {
-		t.Errorf("tab 20 expected [zone_b/], got %v", entriesB)
+	if !containsEntry(entriesB, "zone_b/") {
+		t.Errorf("tab 20 should contain zone_b/, got %v", entriesB)
+	}
+	if containsEntry(entriesA, "zone_b/") {
+		t.Error("tab 10 should NOT contain zone_b (isolation broken)")
+	}
+	if containsEntry(entriesB, "zone_a/") {
+		t.Error("tab 20 should NOT contain zone_a (isolation broken)")
 	}
 }
 

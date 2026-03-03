@@ -112,11 +112,11 @@ tasks:
         PID_FILE="$HOME/.xray/agentd.pid"
         if [ -f "$PID_FILE" ]; then
           PID=$(cat "$PID_FILE")
-          if kill -0 "$PID" 2>/dev/null; then
-            kill "$PID"
+          if /bin/kill -0 "$PID" 2>/dev/null; then
+            /bin/kill "$PID"
             echo "Sent SIGTERM to agentd (PID $PID)"
-            for i in 1 2 3; do kill -0 "$PID" 2>/dev/null || break; sleep 1; done
-            if kill -0 "$PID" 2>/dev/null; then kill -9 "$PID"; echo "Force-killed (PID $PID)"; fi
+            for i in 1 2 3; do /bin/kill -0 "$PID" 2>/dev/null || break; sleep 1; done
+            if /bin/kill -0 "$PID" 2>/dev/null; then /bin/kill -9 "$PID"; echo "Force-killed (PID $PID)"; fi
           else
             echo "PID $PID not running (stale PID file)"
           fi
@@ -124,7 +124,7 @@ tasks:
         else
           PID=$(lsof -i ":${XRAY_PORT:-8080}" -sTCP:LISTEN -t 2>/dev/null | head -1 || true)
           if [ -n "$PID" ]; then
-            kill "$PID" && echo "Killed agentd on port ${XRAY_PORT:-8080} (PID $PID)"
+            /bin/kill "$PID" && echo "Killed agentd on port ${XRAY_PORT:-8080} (PID $PID)"
           else
             echo "No agentd running"
           fi

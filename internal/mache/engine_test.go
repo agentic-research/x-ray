@@ -1348,6 +1348,67 @@ func TestValidateSchemaBounds_MinorReflow(t *testing.T) {
 	}
 }
 
+func TestBuildTextIndex(t *testing.T) {
+	e := NewEngine()
+	if err := e.ApplySchema(sampleSchema); err != nil {
+		t.Fatal(err)
+	}
+	e.LoadChildren(sampleSummary, nil)
+
+	// text_index should be readable at the root level.
+	content, err := e.ReadFile("/text_index")
+	if err != nil {
+		t.Fatalf("text_index not found: %v", err)
+	}
+
+	// Should contain interactive element text.
+	if !strings.Contains(content, `a "Home"`) {
+		t.Errorf("text_index should contain 'a \"Home\"', got:\n%s", content)
+	}
+	if !strings.Contains(content, `a "First Story Title"`) {
+		t.Errorf("text_index should contain 'a \"First Story Title\"', got:\n%s", content)
+	}
+	// nav/div/footer elements have short text, so they're included.
+	if !strings.Contains(content, `nav "Site Navigation"`) {
+		t.Errorf("text_index should contain short-text elements like nav, got:\n%s", content)
+	}
+}
+
+func TestBuildTextIndex_ExcludesLongContainerText(t *testing.T) {
+	e := NewEngine()
+	schema := `{"mounts":[{"virtual_path":"/main/content","mache_id":"mache-1","description":"Content"}]}`
+	if err := e.ApplySchema(schema); err != nil {
+		t.Fatal(err)
+	}
+
+	// A container div with text > 100 chars should be excluded.
+	longText := strings.Repeat("x", 150)
+	summary := fmt.Sprintf(`Interactive Elements:
+ID: mache-1 | Parent: none | Tag: div | Text: "%s"
+ID: mache-2 | Parent: mache-1 | Tag: a | Text: "Reviews 12"
+ID: mache-3 | Parent: mache-1 | Tag: button | Text: "Add to Cart"
+`, longText)
+
+	e.LoadChildren(summary, nil)
+
+	content, err := e.ReadFile("/text_index")
+	if err != nil {
+		t.Fatalf("text_index not found: %v", err)
+	}
+
+	// Short clickable elements should be present.
+	if !strings.Contains(content, `a "Reviews 12"`) {
+		t.Errorf("should contain 'a \"Reviews 12\"', got:\n%s", content)
+	}
+	if !strings.Contains(content, `button "Add to Cart"`) {
+		t.Errorf("should contain 'button \"Add to Cart\"', got:\n%s", content)
+	}
+	// Long div text should be excluded (not interactive, text > 100 chars).
+	if strings.Contains(content, longText) {
+		t.Error("should not contain long non-interactive container text")
+	}
+}
+
 func TestValidateSchemaBounds_ZeroBounds(t *testing.T) {
 	// Cached mount has no bounds (older format). Should be skipped.
 	cachedSchema := `{"mounts":[{

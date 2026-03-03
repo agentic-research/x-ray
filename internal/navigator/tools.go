@@ -321,7 +321,7 @@ type GrepTool struct{ fs *NavFS }
 func (t *GrepTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
 		Name:        "grep",
-		Description: "Search all zone children AND description files for a text pattern (case-insensitive, supports regex with |). Returns matching lines with zone paths. Use SHORT single keywords (1-2 words), NOT full phrases. Supports regex: 'price|cost' matches either word.",
+		Description: "Search zone children, descriptions, and the global text_index for a text pattern (case-insensitive, supports regex with |). Returns matching lines with zone paths. Use SHORT single keywords (1-2 words), NOT full phrases. Supports regex: 'price|cost' matches either word.",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
@@ -370,8 +370,8 @@ func (t *GrepTool) grepWalk(dirPath, lower string, re *regexp.Regexp, matches *[
 			childPath = dirPath + "/" + name
 		}
 
-		// Search both children and description files.
-		if name == "children" || name == "description" {
+		// Search children, description, and text_index files.
+		if name == "children" || name == "description" || name == "text_index" {
 			content, err := t.fs.ReadFile(childPath)
 			if err != nil || content == "" {
 				continue

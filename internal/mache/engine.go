@@ -865,4 +865,52 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 		e.store.AddNode(cDir)
 		zoneNode.Children = appendUnique(zoneNode.Children, cDirID)
 	}
+
+	// Build a global text_index: every text-bearing element, regardless of
+	// zone assignment. This lets grep find content even when elements are
+	// orphaned (parent chains break, spatial containment misses).
+	e.buildTextIndex(elements)
+}
+
+// buildTextIndex creates a root-level "text_index" file listing interactive
+// and short-text elements from the DOM summary. Focuses on clickable elements
+// (a, button, input, select, textarea, [role=tab/button/link]) plus any
+// element with concise text (≤100 chars). This ensures grep can discover
+// content even when elements aren't assigned to any zone.
+func (e *Engine) buildTextIndex(elements []SummaryElement) {
+	// Tags that are inherently interactive.
+	interactive := map[string]bool{
+		"a": true, "button": true, "input": true,
+		"select": true, "textarea": true, "summary": true,
+	}
+	// AX roles that indicate interactivity.
+	interactiveRoles := map[string]bool{
+		"tab": true, "button": true, "link": true,
+		"checkbox": true, "radio": true, "switch": true,
+		"menuitem": true, "option": true, "combobox": true,
+		"searchbox": true, "textbox": true,
+	}
+
+	var sb strings.Builder
+	for _, el := range elements {
+		if el.Text == "" {
+			continue
+		}
+		isInteractive := interactive[el.Tag] || interactiveRoles[el.AXRole]
+		isShort := len(el.Text) <= 100
+		if !isInteractive && !isShort {
+			continue
+		}
+		text := el.Text
+		if len(text) > 100 {
+			text = text[:100] + "…"
+		}
+		fmt.Fprintf(&sb, "%s \"%s\"\n", el.Tag, text)
+	}
+	if sb.Len() == 0 {
+		return
+	}
+
+	indexID := "text_index"
+	e.store.AddRoot(&graph.Node{ID: indexID, Data: []byte(strings.TrimRight(sb.String(), "\n"))})
 }
