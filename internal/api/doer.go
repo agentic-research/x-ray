@@ -29,9 +29,10 @@ const (
 
 // DoerGoal is sent from the Talker to the Doer.
 type DoerGoal struct {
-	ID       string // unique goal ID for correlation
-	Text     string // natural language intent
-	ReadOnly bool   // true → Navigator cannot use act(); must answer with text
+	ID          string // unique goal ID for correlation
+	Text        string // natural language intent
+	ReadOnly    bool   // true → Navigator cannot use act(); must answer with text
+	TaskContext string // higher-level task from the Planner (used in continuations)
 }
 
 // DoerResult is produced when a goal completes or fails.
@@ -288,7 +289,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 		}
 		// goto/rescan/switch_tab already waited for SchemaReady in dispatchAction.
 
-		enrichedIntent = buildContinuation(goal.Text, step, action, lastSummary)
+		enrichedIntent = buildContinuation(goal.Text, goal.TaskContext, step, action, lastSummary)
 	}
 
 	// Exhausted steps — return whatever we have.
@@ -488,12 +489,17 @@ func isInteractiveAction(action string) bool {
 }
 
 // buildContinuation creates an enriched intent for the next step in the loop.
-// It tells the Navigator what happened and asks it to continue toward the goal.
-func buildContinuation(goal string, step int, action *navigator.ActionResult, summary string) string {
+// It tells the Navigator what happened and asks it to continue toward the overall task.
+func buildContinuation(goal, taskContext string, step int, action *navigator.ActionResult, summary string) string {
+	context := goal
+	if taskContext != "" {
+		context = taskContext
+	}
 	return fmt.Sprintf("[CONTINUATION — Step %d completed]\n"+
-		"Original goal: %s\nLast action: %s on %s\nResult: %s\n\n"+
-		"The page has updated. Explore the new page structure to continue working on "+
-		"the original goal. If the goal is achievable by reading page content, provide "+
-		"a text answer. If more actions are needed, take the next step.",
-		step+1, goal, action.Action, action.Path, summary)
+		"Completed action: %s (last: %s on %s → %s)\n"+
+		"Overall task: %s\n\n"+
+		"The page has updated. Focus on the OVERALL TASK, not the completed action. "+
+		"If the answer is in the page content, use grep or cat to find it and provide a text answer. "+
+		"If more actions are needed, take the next step.",
+		step+1, goal, action.Action, action.Path, summary, context)
 }

@@ -279,7 +279,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 			malformedRetries = 0 // Reset on successful parse.
 			var responseParts []*genai.Part
 			for _, fc := range functionCalls {
-				result := p.executeTool(ctx, fc, doer, tabID, sess)
+				result := p.executeTool(ctx, fc, doer, tabID, sess, intent)
 				log.Printf("Planner: tool %s → %s", fc.Name, truncate(result, 200))
 				responseParts = append(responseParts, &genai.Part{
 					FunctionResponse: &genai.FunctionResponse{
@@ -304,7 +304,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 
 // executeTool dispatches a single Planner tool call.
 // For issue_command, it blocks until the Doer completes (unlike the voice Talker which is async).
-func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer *Doer, tabID int, sess *TabSession) string {
+func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer *Doer, tabID int, sess *TabSession, taskContext string) string {
 	switch fc.Name {
 	case "open_url":
 		url, _ := fc.Args["url"].(string)
@@ -339,7 +339,7 @@ func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer 
 			resultCh <- summary
 		})
 
-		doer.Submit(DoerGoal{ID: goalID, Text: goal, ReadOnly: readOnly})
+		doer.Submit(DoerGoal{ID: goalID, Text: goal, ReadOnly: readOnly, TaskContext: taskContext})
 		log.Printf("Planner: issue_command %q (read_only=%v)", goal, readOnly)
 
 		select {

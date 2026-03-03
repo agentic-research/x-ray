@@ -188,7 +188,7 @@ function generateSummary() {
     // Clone and strip <script>/<style> to avoid JS/CSS garbage in text.
     const clone = node.cloneNode(true);
     clone.querySelectorAll('script, style').forEach(s => s.remove());
-    let text = (clone.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 500);
+    let text = (clone.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 1500);
     // Fallback to aria-label/title for icon-only elements (e.g., notification bell, menu icons)
     if (!text) {
       text = node.getAttribute('aria-label') || node.getAttribute('title') || '';

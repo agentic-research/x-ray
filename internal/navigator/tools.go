@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -288,7 +289,7 @@ type GrepTool struct{ fs *NavFS }
 func (t *GrepTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
 		Name:        "grep",
-		Description: "Search all zone children AND description files for a text pattern (case-insensitive). Returns matching lines with their zone paths. Use for finding specific content across the page. For reading ALL content in a zone, use cat(path/children) instead.",
+		Description: "Search all zone children AND description files for a text pattern (case-insensitive, supports regex with |). Returns matching lines with zone paths. Use SHORT single keywords (1-2 words), NOT full phrases. Supports regex: 'price|cost' matches either word.",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
@@ -304,10 +305,16 @@ func (t *GrepTool) Execute(_ context.Context, args map[string]any) (string, *Act
 	if pattern == "" {
 		return "Error: pattern is required", nil
 	}
-	lower := strings.ToLower(pattern)
+
+	// Try to compile as regex (case-insensitive); fall back to literal substring.
+	re, err := regexp.Compile("(?i)" + pattern)
+	if err != nil {
+		// Invalid regex — use literal case-insensitive match.
+		re = nil
+	}
 
 	var matches []string
-	t.grepWalk("", lower, &matches)
+	t.grepWalk("", strings.ToLower(pattern), re, &matches)
 
 	if len(matches) == 0 {
 		return fmt.Sprintf("No matches for %q", pattern), nil
@@ -317,7 +324,7 @@ func (t *GrepTool) Execute(_ context.Context, args map[string]any) (string, *Act
 
 // grepWalk recursively walks the filesystem looking for "children" and
 // "description" files, returning lines matching the pattern.
-func (t *GrepTool) grepWalk(dirPath, lower string, matches *[]string) {
+func (t *GrepTool) grepWalk(dirPath, lower string, re *regexp.Regexp, matches *[]string) {
 	entries, err := t.fs.ListDir(dirPath)
 	if err != nil {
 		return
@@ -339,7 +346,13 @@ func (t *GrepTool) grepWalk(dirPath, lower string, matches *[]string) {
 			}
 			zonePath := strings.TrimSuffix(childPath, "/"+name)
 			for _, line := range strings.Split(content, "\n") {
-				if strings.Contains(strings.ToLower(line), lower) {
+				matched := false
+				if re != nil {
+					matched = re.MatchString(line)
+				} else {
+					matched = strings.Contains(strings.ToLower(line), lower)
+				}
+				if matched {
 					*matches = append(*matches, zonePath+": "+line)
 				}
 			}
@@ -348,7 +361,7 @@ func (t *GrepTool) grepWalk(dirPath, lower string, matches *[]string) {
 
 		// Recurse into directories (skip _c/ — those are individual children).
 		if strings.HasSuffix(entry, "/") && name != "_c" {
-			t.grepWalk(childPath, lower, matches)
+			t.grepWalk(childPath, lower, re, matches)
 		}
 	}
 }
