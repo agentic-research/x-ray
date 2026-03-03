@@ -279,14 +279,34 @@ func loadTasks(path, subset string) ([]WATask, error) {
 		return filtered, nil
 	}
 
-	// Named subsets: "hard" returns the WebArena-Verified 258-task subset.
-	// For now, return all tasks — the hard subset is defined by the task file itself
-	// when downloaded from webarena-verified.
+	// Named subsets.
 	if subset == "hard" {
 		return allTasks, nil
 	}
 
-	return nil, fmt.Errorf("unknown subset %q (use 'full', 'hard', or comma-separated task IDs)", subset)
+	// Site-based filtering: "shopping", "gitlab", "reddit", etc.
+	// Matches tasks where any site in the task's Sites list matches.
+	knownSites := map[string]bool{
+		"shopping": true, "shopping_admin": true, "reddit": true,
+		"gitlab": true, "wikipedia": true, "map": true,
+	}
+	if knownSites[subset] {
+		var filtered []WATask
+		for _, t := range allTasks {
+			for _, s := range t.Sites {
+				if s == subset {
+					filtered = append(filtered, t)
+					break
+				}
+			}
+		}
+		if len(filtered) == 0 {
+			return nil, fmt.Errorf("no tasks matched site %q", subset)
+		}
+		return filtered, nil
+	}
+
+	return nil, fmt.Errorf("unknown subset %q (use 'full', 'hard', site name, or comma-separated task IDs)", subset)
 }
 
 func isNumeric(s string) bool {

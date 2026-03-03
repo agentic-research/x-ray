@@ -182,6 +182,11 @@ func TestBug_DoerGoroutineLeakOnTabClose(t *testing.T) {
 	h := newTestHandler()
 	sess := h.getSession(1)
 
+	// Inject a mock generator so HandleIntent doesn't panic on nil if the loop processes the goal.
+	sess.Navigator = &mockIntentHandler{
+		textResp: "dummy",
+	}
+
 	// Use getOrCreateDoer (the fixed path) which stores doerCancel.
 	doer := h.getOrCreateDoer(1, sess)
 
