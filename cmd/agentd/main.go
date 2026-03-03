@@ -158,32 +158,31 @@ func main() {
 		}
 	}()
 
-	if *voiceFlag {
-		if !audio.Available() {
-			log.Fatal("Voice mode requires sox (brew install sox)")
-		}
-		// Trap signals so Ctrl+C cancels the voice loop context.
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		go func() {
-			sig := <-sigCh
-			log.Printf("Received %s, shutting down...", sig)
-			cancel()
-		}()
-		runVoiceLoop(ctx, cancel, handler)
-	} else {
-		// No voice mode — block until signal, then shut down gracefully.
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	// Trap signals so Ctrl+C triggers clean shutdown.
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
 		sig := <-sigCh
 		log.Printf("Received %s, shutting down...", sig)
-
+		cancel()
+		// Close stdin to unblock the PTT scanner loop in voice mode.
+		_ = os.Stdin.Close()
+		// Graceful HTTP shutdown.
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			log.Printf("HTTP shutdown error: %v", err)
 		}
-		cancel()
+	}()
+
+	if *voiceFlag {
+		if !audio.Available() {
+			log.Fatal("Voice mode requires sox (brew install sox)")
+		}
+		runVoiceLoop(ctx, cancel, handler)
+	} else {
+		// No voice mode — block until context is cancelled.
+		<-ctx.Done()
 	}
 }
 
@@ -291,6 +290,13 @@ func runVoiceLoop(ctx context.Context, cancel context.CancelFunc, handler *api.H
 			fmt.Println("  [ Paused. Press ENTER to resume. ]")
 		}
 	}
+
+	// Clean up recorder if stdin closed while recording.
+	if recording && recorder != nil {
+		_ = recorder.Stop()
+	}
+	close(mic)
+	close(speaker)
 }
 
 func serveVoiceUI(w http.ResponseWriter, r *http.Request) {
