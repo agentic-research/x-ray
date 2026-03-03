@@ -76,6 +76,8 @@ func (m *mockIntentHandler) SetProgressFunc(fn func(toolName string, args map[st
 func (m *mockIntentHandler) SetListTabsFunc(_ func(ctx context.Context) ([]navigator.TabInfo, error)) {
 }
 
+func (m *mockIntentHandler) SetViewport(_, _, _ float64) {}
+
 // waitForDone blocks until the Doer finishes (DoerDone or DoerFailed) or times out.
 // It wires a completion channel through SetResultNotifyFn internally.
 func waitForDone(t *testing.T, doer *Doer, timeout time.Duration) *DoerResult {

@@ -44,15 +44,15 @@ TOOLS:
 - open_url(url): Open a completely different website.
 
 WORKFLOW — Break every task into these steps:
-1. SEARCH FIRST: issue_command("search for <keyword>", read_only=true). The navigator has a grep tool — always search for the answer directly before doing anything else.
-2. INTERACT (only if search fails): issue_command("click the tab/link to reveal content", read_only=false). Click tabs, expand sections — never scroll blindly.
+1. GREP FIRST: issue_command("use grep to find <keyword>", read_only=true). The navigator has a grep tool that scans the DOM text — always grep for the answer directly before doing anything else.
+2. INTERACT (only if grep fails): issue_command("click the tab/link to reveal content", read_only=false). Click tabs, expand sections — never scroll blindly.
 3. READ: issue_command("read the specific content needed", read_only=true)
 4. ANSWER: Respond with DONE: or FAILED:
 
 CRITICAL PATTERNS:
-- Content behind tabs (e.g., Reviews): search first, then click the tab, then search again.
+- Content behind tabs (e.g., Reviews): grep first, then click the tab, then grep again.
 - Hidden content: click to reveal, never scroll hoping to find it.
-- Search results: type a query and submit, then read results.
+- NEVER say "search for X" — say "use grep to find X". The word "search" is ambiguous and the navigator may type into the website's search bar instead.
 - If read_only=true fails to find content, ALWAYS try read_only=false next to interact with the page.
 
 TERMINATION:
@@ -190,6 +190,24 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 					Parts: []*genai.Part{{Text: "Your previous function call had invalid JSON. Call the issue_command tool with {\"goal\": \"your goal here\", \"read_only\": true} or {\"goal\": \"your goal here\"}."}},
 				})
 				continue
+			}
+
+			// PROHIBITED_CONTENT: Gemini safety filter false-positive.
+			// Retry once — often non-deterministic.
+			if finishReason == "PROHIBITED_CONTENT" {
+				malformedRetries++
+				log.Printf("Planner: PROHIBITED_CONTENT at turn %d (retry %d/%d)", turn, malformedRetries, maxMalformedRetries)
+				if malformedRetries <= maxMalformedRetries {
+					history = append(history, &genai.Content{
+						Role:  "model",
+						Parts: []*genai.Part{{Text: "Let me rephrase."}},
+					})
+					history = append(history, &genai.Content{
+						Role:  "user",
+						Parts: []*genai.Part{{Text: "Please proceed with the task. Call issue_command with the appropriate goal."}},
+					})
+					continue
+				}
 			}
 
 			errMsg := "Empty response from Gemini"
@@ -415,10 +433,22 @@ func (h *Handler) resolveTab(ctx context.Context, requestedTabID int, startURL s
 			if u, err := url.Parse(tab.URL); err == nil && u.Host == targetHost {
 				log.Printf("Planner: reusing tab %d (%s) for %s", tab.ID, tab.URL, startURL)
 				if tab.URL != startURL {
-					// Same host, different path — navigate it.
-					h.sendGoto(tab.ID, startURL)
+					// Same host, different path — navigate to the new URL and
+					// wait for a fresh schema before returning. Without this wait,
+					// the planner would see HasSchema()=true from the OLD page
+					// and skip the schema-ready gate, running against stale data.
 					sess := h.getSession(tab.ID)
 					sess.ResetSchema()
+					h.sendGoto(tab.ID, startURL)
+					log.Printf("Planner: navigating reused tab %d to %s, waiting for schema", tab.ID, startURL)
+					select {
+					case <-sess.GetSchemaReady():
+						log.Printf("Planner: schema ready after tab reuse (tab %d)", tab.ID)
+					case <-time.After(30 * time.Second):
+						log.Printf("Planner: schema timeout after tab reuse (tab %d), proceeding", tab.ID)
+					case <-ctx.Done():
+						return 0
+					}
 				}
 				return tab.ID
 			}

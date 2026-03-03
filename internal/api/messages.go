@@ -57,17 +57,23 @@ type TabInfo = navigator.TabInfo
 
 // InboundMessage is the envelope for all browser -> server messages.
 type InboundMessage struct {
-	Type          string              `json:"type"`
-	TabID         int                 `json:"tab_id,omitempty"`
-	URL           string              `json:"url,omitempty"`
-	Summary       string              `json:"summary,omitempty"`
-	Screenshot    string              `json:"screenshot,omitempty"` // base64-encoded JPEG (scaled)
-	Intent        string              `json:"intent,omitempty"`
-	ResolvedItems map[string][]string `json:"resolved_items,omitempty"`  // zone mache-id → resolved child mache-ids
-	Message       string              `json:"message,omitempty"`         // VOICE_LOG text
-	IsRescan      bool                `json:"is_rescan,omitempty"`       // bypass schema cache on rescan
-	TargetMacheID string              `json:"target_mache_id,omitempty"` // PAGE_READY: magnifying glass target
-	Tabs          []TabInfo           `json:"tabs,omitempty"`            // TABS_LISTED response
+	Type           string              `json:"type"`
+	TabID          int                 `json:"tab_id,omitempty"`
+	URL            string              `json:"url,omitempty"`
+	Summary        string              `json:"summary,omitempty"`
+	Screenshot     string              `json:"screenshot,omitempty"` // base64-encoded JPEG (scaled)
+	Intent         string              `json:"intent,omitempty"`
+	ResolvedItems  map[string][]string `json:"resolved_items,omitempty"`  // zone mache-id → resolved child mache-ids
+	Message        string              `json:"message,omitempty"`         // VOICE_LOG text
+	IsRescan       bool                `json:"is_rescan,omitempty"`       // bypass schema cache on rescan
+	TargetMacheID  string              `json:"target_mache_id,omitempty"` // PAGE_READY: magnifying glass target
+	AtBottom       bool                `json:"at_bottom,omitempty"`       // DOM_UPDATE: page scrolled to bottom
+	AtTop          bool                `json:"at_top,omitempty"`          // DOM_UPDATE: page scrolled to top
+	ScrollMoved    bool                `json:"scroll_moved,omitempty"`    // DOM_UPDATE: scroll actually changed position
+	ScrollY        float64             `json:"scroll_y,omitempty"`        // DOM_UPDATE: current scroll position (px)
+	ScrollHeight   float64             `json:"scroll_height,omitempty"`   // DOM_UPDATE: total document height (px)
+	ViewportHeight float64             `json:"viewport_height,omitempty"` // DOM_UPDATE: viewport height (px)
+	Tabs           []TabInfo           `json:"tabs,omitempty"`            // TABS_LISTED response
 
 	// CDP proxy fields (Dumb Pipe architecture).
 	CDPRequestID int64           `json:"cdp_id,omitempty"`

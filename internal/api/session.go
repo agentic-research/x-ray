@@ -17,8 +17,14 @@ type pendingAction struct {
 
 // DOMUpdate carries the post-scroll summary and any browser-resolved primary items.
 type DOMUpdate struct {
-	Summary       string
-	ResolvedItems map[string][]string
+	Summary        string
+	ResolvedItems  map[string][]string
+	AtBottom       bool    // page is at bottom after scroll
+	AtTop          bool    // page is at top after scroll
+	ScrollMoved    bool    // scroll actually changed position
+	ScrollY        float64 // current scroll position (px)
+	ScrollHeight   float64 // total document height (px)
+	ViewportHeight float64 // viewport height (px)
 }
 
 // SummaryResponse carries the content-script summary for Go-driven capture.

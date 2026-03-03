@@ -491,7 +491,7 @@ function drawZoneOverlay(zones) {
       `pointer-events: none; box-sizing: border-box;`;
 
     const label = document.createElement('span');
-    label.textContent = zone.path || zone.id || '?';
+    label.textContent = zone.virtual_path || zone.mache_id || '?';
     label.style.cssText =
       'position: absolute; top: -14px; left: 0;' +
       `background: ${color.border}; color: #fff;` +
@@ -672,6 +672,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'SCROLL': {
       const preScrollSize = elementRegistry.size;
       const preScrollHeight = document.documentElement.scrollHeight;
+      const preScrollY = window.scrollY;
 
       if (message.direction === 'up') {
         window.scrollBy({ top: -window.innerHeight, behavior: 'smooth' });
@@ -721,7 +722,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             console.log('X-Ray: Resolved selectors for', Object.keys(resolvedItems).length, 'zones');
           }
 
-          sendResponse({ summary, url: window.location.href, resolved_items: resolvedItems });
+          const afterScrollY = window.scrollY;
+          const scrollHeight = document.documentElement.scrollHeight;
+          const viewportHeight = window.innerHeight;
+          const atBottom = afterScrollY + viewportHeight >= scrollHeight - 5;
+          const atTop = afterScrollY <= 5;
+          const scrollMoved = Math.abs(afterScrollY - preScrollY) > 5;
+          sendResponse({ summary, url: window.location.href, resolved_items: resolvedItems, at_bottom: atBottom, at_top: atTop, scroll_moved: scrollMoved, scroll_y: afterScrollY, scroll_height: scrollHeight, viewport_height: viewportHeight });
         }
       }, 500);
       return true;

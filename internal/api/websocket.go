@@ -437,8 +437,14 @@ func (h *Handler) handleDOMUpdate(msg InboundMessage) {
 		return
 	}
 	update := DOMUpdate{
-		Summary:       msg.Summary,
-		ResolvedItems: msg.ResolvedItems,
+		Summary:        msg.Summary,
+		ResolvedItems:  msg.ResolvedItems,
+		AtBottom:       msg.AtBottom,
+		AtTop:          msg.AtTop,
+		ScrollMoved:    msg.ScrollMoved,
+		ScrollY:        msg.ScrollY,
+		ScrollHeight:   msg.ScrollHeight,
+		ViewportHeight: msg.ViewportHeight,
 	}
 	select {
 	case sess.DOMUpdateCh <- update:
@@ -488,8 +494,19 @@ func (h *Handler) scrollPage(ctx context.Context, conn *websocket.Conn, sess *Ta
 	select {
 	case update := <-sess.DOMUpdateCh:
 		sess.Engine.LoadChildren(update.Summary, update.ResolvedItems)
-		log.Printf("Scroll: updated children for tab %d after scroll %s (%d zones resolved)",
-			tabID, direction, len(update.ResolvedItems))
+		// Update the Navigator's viewport state so tree dumps show position.
+		sess.Navigator.SetViewport(update.ScrollY, update.ScrollHeight, update.ViewportHeight)
+		log.Printf("Scroll: updated children for tab %d after scroll %s (%d zones resolved, viewport %.0f/%.0f)",
+			tabID, direction, len(update.ResolvedItems), update.ScrollY, update.ScrollHeight)
+		// Report when the page didn't actually move (already at boundary).
+		if !update.ScrollMoved || (direction == "down" && update.AtBottom) {
+			if update.AtBottom {
+				return navigator.ErrAtBottom
+			}
+			if update.AtTop {
+				return navigator.ErrAtTop
+			}
+		}
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

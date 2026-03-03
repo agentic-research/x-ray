@@ -12,6 +12,12 @@ import (
 	"google.golang.org/genai"
 )
 
+// Sentinel errors for scroll position reporting.
+var (
+	ErrAtBottom = errors.New("already at bottom of page")
+	ErrAtTop    = errors.New("already at top of page")
+)
+
 // --- ls ---
 
 type LsTool struct{ fs *NavFS }
@@ -125,8 +131,9 @@ func (t *ActTool) Execute(_ context.Context, args map[string]any) (string, *Acti
 // --- scroll ---
 
 type ScrollTool struct {
-	mu       sync.RWMutex
-	scrollFn func(ctx context.Context, direction string) error
+	mu          sync.RWMutex
+	scrollFn    func(ctx context.Context, direction string) error
+	getViewport func() string // returns viewport position string after scroll
 }
 
 func (t *ScrollTool) Declaration() *genai.FunctionDeclaration {
@@ -154,9 +161,34 @@ func (t *ScrollTool) Execute(ctx context.Context, args map[string]any) (string, 
 		return "Error: scroll not available in this context", nil
 	}
 	if err := fn(ctx, direction); err != nil {
+		if errors.Is(err, ErrAtBottom) {
+			msg := "Already at the bottom of the page — no more content below."
+			if t.getViewport != nil {
+				if vp := t.getViewport(); vp != "" {
+					msg += " " + vp
+				}
+			}
+			return msg, nil
+		}
+		if errors.Is(err, ErrAtTop) {
+			msg := "Already at the top of the page — no more content above."
+			if t.getViewport != nil {
+				if vp := t.getViewport(); vp != "" {
+					msg += " " + vp
+				}
+			}
+			return msg, nil
+		}
 		return fmt.Sprintf("Error scrolling: %v", err), nil
 	}
-	return fmt.Sprintf("Scrolled %s. Use cat on the children file to see updated content.", direction), nil
+	msg := fmt.Sprintf("Scrolled %s.", direction)
+	if t.getViewport != nil {
+		if vp := t.getViewport(); vp != "" {
+			msg += " " + vp + "."
+		}
+	}
+	msg += " Use cat on the children file to see updated content."
+	return msg, nil
 }
 
 // --- goto ---

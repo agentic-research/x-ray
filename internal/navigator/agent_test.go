@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/agentic-research/mache/graph"
 	"github.com/agentic-research/x-ray/internal/mache"
 	"google.golang.org/genai"
 )
@@ -282,6 +283,179 @@ func TestExecuteToolActEnter(t *testing.T) {
 	}
 	if !strings.Contains(result, "Executing enter") {
 		t.Errorf("result should mention executing enter: %s", result)
+	}
+}
+
+// --- stat tool tests ---
+
+func TestExecuteToolStatFile(t *testing.T) {
+	agent := newTestAgent()
+	fc := &genai.FunctionCall{Name: "stat", Args: map[string]any{"path": "/main/stories/children"}}
+
+	result, action := agent.ExecuteTool(context.Background(), fc)
+	if action != nil {
+		t.Fatal("stat should not return an action")
+	}
+	if !strings.Contains(result, "file:") {
+		t.Errorf("expected 'file:' prefix, got %q", result)
+	}
+	if !strings.Contains(result, "chars") {
+		t.Errorf("expected char count, got %q", result)
+	}
+	if !strings.Contains(result, "lines") {
+		t.Errorf("expected line count, got %q", result)
+	}
+}
+
+func TestExecuteToolStatDir(t *testing.T) {
+	agent := newTestAgent()
+	fc := &genai.FunctionCall{Name: "stat", Args: map[string]any{"path": "/main/stories"}}
+
+	result, action := agent.ExecuteTool(context.Background(), fc)
+	if action != nil {
+		t.Fatal("stat should not return an action")
+	}
+	if !strings.Contains(result, "dir:") {
+		t.Errorf("expected 'dir:' prefix, got %q", result)
+	}
+	if !strings.Contains(result, "entries") {
+		t.Errorf("expected entry count, got %q", result)
+	}
+}
+
+func TestExecuteToolStatBadPath(t *testing.T) {
+	agent := newTestAgent()
+	fc := &genai.FunctionCall{Name: "stat", Args: map[string]any{"path": "/nonexistent"}}
+
+	result, _ := agent.ExecuteTool(context.Background(), fc)
+	if !strings.Contains(result, "Error") {
+		t.Errorf("expected error for bad path, got %q", result)
+	}
+}
+
+// --- ASCII layout tests ---
+
+const layoutSchema = `{
+  "mounts": [
+    {
+      "virtual_path": "/header/nav",
+      "mache_id": "mache-0",
+      "description": "Top navigation",
+      "bounds": [0, 0, 1, 0.1]
+    },
+    {
+      "virtual_path": "/sidebar/menu",
+      "mache_id": "mache-10",
+      "description": "Side menu with 6 items",
+      "bounds": [0, 0.1, 0.2, 0.8]
+    },
+    {
+      "virtual_path": "/main/content",
+      "mache_id": "mache-20",
+      "description": "Main content area",
+      "bounds": [0.2, 0.1, 0.8, 0.7]
+    },
+    {
+      "virtual_path": "/footer/links",
+      "mache_id": "mache-50",
+      "description": "Footer navigation",
+      "bounds": [0, 0.9, 1, 0.1]
+    }
+  ]
+}`
+
+func newLayoutTestAgent() *Agent {
+	engine := mache.NewEngine()
+	if err := engine.ApplySchema(layoutSchema); err != nil {
+		panic(err)
+	}
+	composite := graph.NewCompositeGraph()
+	if err := composite.Mount("browser", engine); err != nil {
+		panic(err)
+	}
+	return NewAgent(nil, "test", composite)
+}
+
+func TestBuildASCIILayout(t *testing.T) {
+	agent := newLayoutTestAgent()
+	layout := agent.buildASCIILayout()
+
+	if layout == "" {
+		t.Fatal("expected non-empty ASCII layout")
+	}
+	if !strings.Contains(layout, "Page layout:") {
+		t.Error("missing 'Page layout:' header")
+	}
+	// All four zone paths should appear.
+	for _, zone := range []string{"header/nav", "sidebar/menu", "main/content", "footer/links"} {
+		if !strings.Contains(layout, zone) {
+			t.Errorf("layout missing zone %q:\n%s", zone, layout)
+		}
+	}
+}
+
+func TestBuildASCIILayoutOffScreen(t *testing.T) {
+	// Zones with negative bounds should be clamped or excluded.
+	schema := `{
+      "mounts": [
+        {
+          "virtual_path": "/header/feed",
+          "mache_id": "mache-1",
+          "description": "Off-screen zone",
+          "bounds": [0.5, -6.4, 0.3, 0.08]
+        },
+        {
+          "virtual_path": "/main/content",
+          "mache_id": "mache-2",
+          "description": "Visible zone",
+          "bounds": [0.2, 0.1, 0.6, 0.8]
+        }
+      ]
+    }`
+	engine := mache.NewEngine()
+	if err := engine.ApplySchema(schema); err != nil {
+		t.Fatal(err)
+	}
+	composite := graph.NewCompositeGraph()
+	if err := composite.Mount("browser", engine); err != nil {
+		t.Fatal(err)
+	}
+	agent := NewAgent(nil, "test", composite)
+	layout := agent.buildASCIILayout()
+
+	// Off-screen zone should be filtered out (fully above viewport).
+	if strings.Contains(layout, "Off-screen") {
+		t.Error("off-screen zone should not appear in layout")
+	}
+	// Visible zone should be present.
+	if !strings.Contains(layout, "main/content") {
+		t.Errorf("visible zone missing from layout:\n%s", layout)
+	}
+}
+
+func TestBuildASCIILayoutInTreeDump(t *testing.T) {
+	agent := newLayoutTestAgent()
+	dump := agent.buildTreeDump()
+
+	// Tree dump should include both ASCII layout and tree listing.
+	if !strings.Contains(dump, "Page layout:") {
+		t.Error("tree dump missing ASCII layout")
+	}
+	if !strings.Contains(dump, "header/") {
+		t.Error("tree dump missing tree listing")
+	}
+}
+
+func TestParseBounds(t *testing.T) {
+	x, y, w, h := parseBounds("[0.123,0.456,0.789,0.234]")
+	if x != 0.123 || y != 0.456 || w != 0.789 || h != 0.234 {
+		t.Errorf("unexpected bounds: %f,%f,%f,%f", x, y, w, h)
+	}
+
+	// Invalid input should return zeroes.
+	x, y, w, h = parseBounds("garbage")
+	if x != 0 || y != 0 || w != 0 || h != 0 {
+		t.Errorf("expected zero bounds for garbage input, got %f,%f,%f,%f", x, y, w, h)
 	}
 }
 

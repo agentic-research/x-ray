@@ -21,4 +21,5 @@ type IntentHandler interface {
 	SetScrollFunc(fn func(ctx context.Context, direction string) error)
 	SetProgressFunc(fn func(toolName string, args map[string]any))
 	SetListTabsFunc(fn func(ctx context.Context) ([]navigator.TabInfo, error))
+	SetViewport(scrollY, scrollHeight, viewportHeight float64)
 }

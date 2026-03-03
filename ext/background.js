@@ -155,7 +155,13 @@ function connectWebSocket() {
                 tab_id: targetTab,
                 summary: response.summary,
                 url: response.url,
-                resolved_items: response.resolved_items || {}
+                resolved_items: response.resolved_items || {},
+                at_bottom: !!response.at_bottom,
+                at_top: !!response.at_top,
+                scroll_moved: response.scroll_moved !== false,
+                scroll_y: response.scroll_y || 0,
+                scroll_height: response.scroll_height || 0,
+                viewport_height: response.viewport_height || 0
               }));
               console.log('X-Ray: Scroll', direction, '— sent DOM_UPDATE for tab', targetTab,
                 'resolved:', Object.keys(response.resolved_items || {}).length, 'zones');
