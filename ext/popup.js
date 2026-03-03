@@ -179,10 +179,5 @@ intentInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendIntent();
 });
 
-const logBtn = document.getElementById('log-btn');
-if (logBtn) {
-  logBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'OPEN_SIDEPANEL' });
-    window.close();
-  });
-}
+// Auto-open the agent log side panel whenever the popup opens.
+chrome.runtime.sendMessage({ type: 'OPEN_SIDEPANEL' });
