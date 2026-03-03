@@ -268,6 +268,9 @@ func buildDOMSubtreeGroups(elements []element, visualTypes map[int]string) []zon
 		zones = append(zones, z)
 	}
 
+	// Sort by position so map iteration order doesn't affect output.
+	sortZonesByPosition(zones)
+
 	return zones
 }
 
@@ -326,6 +329,10 @@ func structuralFallbackZones(elements []element) []zone {
 		computeZoneFeatures(&z, elements)
 		zones = append(zones, z)
 	}
+
+	// Sort by position so map iteration order doesn't affect output.
+	sortZonesByPosition(zones)
+
 	return zones
 }
 
@@ -335,15 +342,7 @@ func foldCairnZones(zones []zone, elements []element, minZ, maxZ int) []zone {
 		return zones
 	}
 
-	// First: use H^0 cohomology folding from tropical.go if we have too many zones
-	if len(zones) > maxZ {
-		folded := foldCoherentZones(zones, elements, 0.7)
-		if len(folded) >= minZ {
-			zones = folded
-		}
-	}
-
-	// Still too many? Agglomerative merge by spatial proximity
+	// Too many? Agglomerative merge by spatial proximity
 	for len(zones) > maxZ {
 		zones = mergeClosestZones(zones, elements)
 	}
@@ -352,6 +351,20 @@ func foldCairnZones(zones []zone, elements []element, minZ, maxZ int) []zone {
 	// (the structural grouping provides a natural floor)
 
 	return zones
+}
+
+// sortZonesByPosition sorts zones top-to-bottom, left-to-right for deterministic output.
+// Uses rootIdx as tiebreaker when centers are identical.
+func sortZonesByPosition(zones []zone) {
+	sort.Slice(zones, func(i, j int) bool {
+		if zones[i].centerY != zones[j].centerY {
+			return zones[i].centerY < zones[j].centerY
+		}
+		if zones[i].centerX != zones[j].centerX {
+			return zones[i].centerX < zones[j].centerX
+		}
+		return zones[i].rootIdx < zones[j].rootIdx
+	})
 }
 
 // mergeClosestZones merges the two spatially closest zones.
@@ -391,13 +404,6 @@ func mergeClosestZones(zones []zone, elements []element) []zone {
 		}
 	}
 
-	// Sort by position for determinism
-	sort.Slice(result, func(i, j int) bool {
-		if result[i].centerY != result[j].centerY {
-			return result[i].centerY < result[j].centerY
-		}
-		return result[i].centerX < result[j].centerX
-	})
-
+	sortZonesByPosition(result)
 	return result
 }

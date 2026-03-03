@@ -191,6 +191,13 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = conn.Close() }()
 
+	// Connection-scoped context: cancelled when this WS handler returns
+	// (i.e., when the browser disconnects). All goroutines spawned from this
+	// connection inherit this context so they abort instead of running to
+	// completion against a dead socket.
+	connCtx, connCancel := context.WithCancel(context.Background())
+	defer connCancel()
+
 	h.mu.Lock()
 	h.conn = conn
 	h.cdpProxy.SetSender(h)
@@ -260,9 +267,9 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		switch msg.Type {
 		case MsgDOMSnapshot:
-			go h.handleDOMSnapshot(conn, msg)
+			go h.handleDOMSnapshot(connCtx, conn, msg)
 		case MsgNavigate:
-			go h.handleNavigate(conn, msg)
+			go h.handleNavigate(connCtx, conn, msg)
 		case MsgDOMUpdate:
 			h.handleDOMUpdate(msg)
 		case MsgSelectorsResolved:
@@ -285,7 +292,7 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		// Go-driven capture orchestration messages.
 		case MsgPageReady:
-			go h.captureGo(context.Background(), msg.TabID, msg.IsRescan, msg.TargetMacheID)
+			go h.captureGo(connCtx, msg.TabID, msg.IsRescan, msg.TargetMacheID)
 		case MsgSummaryResponse:
 			h.handleSummaryResponse(msg)
 		case MsgOverlayDrawn:
@@ -315,8 +322,7 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) handleNavigate(conn *websocket.Conn, msg InboundMessage) {
-	ctx := context.Background()
+func (h *Handler) handleNavigate(ctx context.Context, conn *websocket.Conn, msg InboundMessage) {
 	sess := h.getSession(msg.TabID)
 
 	// Wait for schema if it hasn't arrived yet (intent queued before snapshot finished).
@@ -688,7 +694,7 @@ func (h *Handler) SendActionToExtension(tabID int, macheID, action, payload stri
 						return
 					}
 					defer func() {
-						dCtx, dCancel := context.WithTimeout(context.Background(), 5*time.Second)
+						dCtx, dCancel := context.WithTimeout(context.Background(), 2*time.Second)
 						defer dCancel()
 						_ = h.cdpProxy.Detach(dCtx, tabID)
 					}()

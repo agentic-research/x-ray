@@ -14,8 +14,8 @@ import (
 // ---------------------------------------------------------------------------
 // Bug 1: Global Event Handler Race Condition
 //
-// CaptureLayerTree uses SetEventHandler/getEventHandler to save-and-restore
-// a global function pointer. When two tabs run CaptureLayerTree concurrently:
+// The old code used SetEventHandler/getEventHandler to save-and-restore
+// a global function pointer. When two tabs ran CaptureLayerTree concurrently:
 //   1. Tab A saves prevA=nil, sets handlerA
 //   2. Tab B saves prevB=handlerA, sets handlerB
 //   3. Tab A finishes, defer restores prevA=nil → clobbers Tab B's handler

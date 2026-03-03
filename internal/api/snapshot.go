@@ -15,8 +15,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (h *Handler) handleDOMSnapshot(conn *websocket.Conn, msg InboundMessage) {
-	ctx := context.Background()
+func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, msg InboundMessage) {
 	sess := h.getSession(msg.TabID)
 
 	// Early tab promotion: if the voice Doer is stranded on tab 0 (no extension

@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/agentic-research/x-ray/internal/cdp"
@@ -100,7 +102,7 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 		return
 	}
 	defer func() {
-		dCtx, dCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		dCtx, dCancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer dCancel()
 		_ = h.cdpProxy.Detach(dCtx, tabID)
 	}()
@@ -176,6 +178,16 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 		enrichedSummary = cdp.EnrichSummaryWithLayers(enrichedSummary, layerMap)
 	}
 
+	// 5b. On targeted rescan, filter summary to elements intersecting the clip.
+	// This avoids sending 1,500 elements to the Cartographer when the screenshot
+	// only shows a small cropped region.
+	if box != nil && pageWidth > 0 && pageHeight > 0 {
+		before := strings.Count(enrichedSummary, "\n")
+		enrichedSummary = filterSummaryByClip(enrichedSummary, clip, pageWidth, pageHeight)
+		after := strings.Count(enrichedSummary, "\n")
+		log.Printf("captureGo: rescan filter kept %d/%d summary lines (tab %d)", after, before, tabID)
+	}
+
 	log.Printf("captureGo: captured tab %d — %d AX, %d layers, screenshot=%d chars",
 		tabID, len(axMap), len(layerMap), len(screenshot))
 
@@ -188,7 +200,52 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 		Screenshot: screenshot,
 		IsRescan:   isRescan,
 	}
-	h.handleDOMSnapshot(conn, syntheticMsg)
+	h.handleDOMSnapshot(parentCtx, conn, syntheticMsg)
+}
+
+// filterSummaryByClip keeps only summary lines whose Bounds intersect the
+// normalized clip rectangle. Lines without parseable bounds are kept as-is.
+func filterSummaryByClip(summary string, clip cdp.ScreenshotClip, pageW, pageH float64) string {
+	// Normalize clip to [0,1] range.
+	cx := clip.X / pageW
+	cy := clip.Y / pageH
+	cw := clip.Width / pageW
+	ch := clip.Height / pageH
+
+	lines := strings.Split(summary, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		// Try to extract bounds from "Bounds: [x, y, w, h]".
+		var bx, by, bw, bh float64
+		n, _ := fmt.Sscanf(extractBoundsField(line), "[%f, %f, %f, %f]", &bx, &by, &bw, &bh)
+		if n != 4 {
+			// No parseable bounds — keep the line (could be a header or metadata).
+			kept = append(kept, line)
+			continue
+		}
+		// AABB intersection test.
+		if bx+bw > cx && bx < cx+cw && by+bh > cy && by < cy+ch {
+			kept = append(kept, line)
+		}
+	}
+	return strings.Join(kept, "\n")
+}
+
+// extractBoundsField finds the "Bounds: [...]" value in a summary line.
+func extractBoundsField(line string) string {
+	idx := strings.Index(line, "Bounds: [")
+	if idx < 0 {
+		return ""
+	}
+	start := idx + len("Bounds: ")
+	end := strings.Index(line[start:], "]")
+	if end < 0 {
+		return ""
+	}
+	return line[start : start+end+1]
 }
 
 // sendOverlayCleanup removes the machine overlay and draws the human-friendly overlay.

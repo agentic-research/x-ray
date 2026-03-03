@@ -359,45 +359,34 @@ func TestConcurrentSend(t *testing.T) {
 	}
 }
 
-func TestEventHandler(t *testing.T) {
+func TestSubscribeEvents(t *testing.T) {
 	ms := &mockSender{}
 	p := New(ms)
 
-	var gotTabID int
-	var gotMethod string
-	var gotParams json.RawMessage
-	done := make(chan struct{})
-	p.SetEventHandler(func(tabID int, method string, params json.RawMessage) {
-		gotTabID = tabID
-		gotMethod = method
-		gotParams = params
-		close(done)
-	})
+	ch := p.SubscribeEvents(42)
 
 	params := json.RawMessage(`{"layers":[]}`)
 	p.HandleEvent(42, "LayerTree.layerTreeDidChange", params)
 
 	select {
-	case <-done:
+	case ev := <-ch:
+		if ev.Method != "LayerTree.layerTreeDidChange" {
+			t.Errorf("expected method LayerTree.layerTreeDidChange, got %s", ev.Method)
+		}
+		if string(ev.Params) != `{"layers":[]}` {
+			t.Errorf("unexpected params: %s", ev.Params)
+		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("event handler was not called")
+		t.Fatal("event was not delivered to subscriber")
 	}
 
-	if gotTabID != 42 {
-		t.Errorf("expected tabID 42, got %d", gotTabID)
-	}
-	if gotMethod != "LayerTree.layerTreeDidChange" {
-		t.Errorf("expected method LayerTree.layerTreeDidChange, got %s", gotMethod)
-	}
-	if string(gotParams) != `{"layers":[]}` {
-		t.Errorf("unexpected params: %s", gotParams)
-	}
+	p.UnsubscribeEvents(42)
 }
 
-func TestEventHandler_Nil(t *testing.T) {
+func TestHandleEvent_NoSubscriber(t *testing.T) {
 	ms := &mockSender{}
 	p := New(ms)
 
-	// Should not panic when no handler is set.
+	// Should not panic when no subscriber exists.
 	p.HandleEvent(1, "Page.loadEventFired", json.RawMessage(`{}`))
 }

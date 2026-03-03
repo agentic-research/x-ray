@@ -13,9 +13,6 @@ type Sender interface {
 	SendJSON(msg map[string]any) error
 }
 
-// EventHandler is called when a CDP event arrives from the browser.
-type EventHandler func(tabID int, method string, params json.RawMessage)
-
 type cdpResponse struct {
 	Result json.RawMessage
 	Error  string
@@ -35,8 +32,6 @@ type Proxy struct {
 	attachM sync.Map // int -> chan error (tabID -> attach result)
 	detachM sync.Map // int -> chan struct{}
 
-	eventMu   sync.RWMutex
-	eventFn   EventHandler
 	eventSubs sync.Map // int (tabID) -> chan EventMsg
 }
 
@@ -48,13 +43,6 @@ func New(sender Sender) *Proxy {
 // SetSender updates the sender (e.g., on WS reconnect).
 func (p *Proxy) SetSender(s Sender) {
 	p.sender = s
-}
-
-// SetEventHandler registers a callback for CDP events (e.g., LayerTree.layerTreeDidChange).
-func (p *Proxy) SetEventHandler(fn EventHandler) {
-	p.eventMu.Lock()
-	p.eventFn = fn
-	p.eventMu.Unlock()
 }
 
 // Attach asks the extension to chrome.debugger.attach(tabId, '1.3').
@@ -192,13 +180,5 @@ func (p *Proxy) HandleEvent(tabID int, method string, params json.RawMessage) {
 		default:
 			// Channel full — subscriber too slow; drop event.
 		}
-	}
-
-	// Also call legacy global handler for backwards compat.
-	p.eventMu.RLock()
-	fn := p.eventFn
-	p.eventMu.RUnlock()
-	if fn != nil {
-		fn(tabID, method, params)
 	}
 }
