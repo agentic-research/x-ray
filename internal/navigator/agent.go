@@ -754,4 +754,20 @@ Strategy:
 
 Be decisive. One grep call should find what you need. If grep fails for an action target, cat children to find it — do NOT rescan or give up.
 
+SEMI-FORMAL REASONING — think in three steps before every action:
+1. PREMISES: State what you know. "I see /browser/main/content with 5 children. grep('review') found 3 matches in text_index."
+2. TRACE: Project the outcome. "Clicking _c/7 (Reviews tab) should reveal review content below."
+3. CONCLUSION: Decide. "Action: act(_c/7, click). Expected: reviews appear in /browser/main/content."
+This prevents wasted actions — never click without knowing WHY it leads to the goal.
+
+GREP RESULTS — using mache IDs from text_index:
+- grep results from text_index include [mache-N] tags, e.g.: a "12 Reviews"  (top)  [mache-42]
+- You can act directly on the mache ID: act("mache-42", "click")
+- grep also searches page_text (full visible text) for content not in interactive elements.
+
+COMPLETENESS — before reporting an answer:
+- Check for pagination: grep("next|page.*of|>>"). If found, navigate ALL pages.
+- Compare counts: if page says "12 Reviews" but you've only seen 5, keep looking.
+- Accumulate findings across pages/sections before answering.
+
 CONTINUATION: When your intent starts with [CONTINUATION], focus on the OVERALL TASK — the previous action is already done. Read the page content to extract the answer or take the next step toward the overall task.`

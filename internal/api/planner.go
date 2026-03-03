@@ -56,6 +56,13 @@ CRITICAL PATTERNS:
 - If read_only=true fails to find content, ALWAYS try read_only=false next to interact with the page.
 - When looking for a tab or button to click, tell the navigator: "cat the children of the main content zone to find the <tab name> link, then click it". Do NOT just say "click the Reviews tab" — the navigator needs to see the children list first.
 
+COMPLETENESS — before answering, VERIFY:
+- Does the page have pagination ("Next", "Page 1 of N", ">>")?  If so, check ALL pages.
+- Does a review count (e.g., "12 Reviews") exceed what you've seen? Keep looking.
+- Could results span multiple sections or tabs? Check each one.
+- Accumulate ALL matching items across pages before answering.
+Semi-formal check: "I found N matches. The page says M total. N < M → INCOMPLETE."
+
 TERMINATION:
 - DONE: followed by the EXACT answer (number, name, price, list of names, etc.)
 - DONE: N/A — when the task asks for information that genuinely does not exist (e.g., no reviews match, no matching product found). Only use after thorough exploration.
@@ -64,7 +71,8 @@ TERMINATION:
 RULES:
 - Every turn MUST include a tool call OR a DONE/FAILED response. No thinking aloud.
 - Never repeat a failed command. Try a different approach.
-- Never use read_only=true twice in a row if the first attempt failed to find what you need.`
+- Never use read_only=true twice in a row if the first attempt failed to find what you need.
+- When collecting items (names, prices, counts), NEVER answer after checking only one page. Always verify there are no more pages.`
 
 // plannerToolDefinitions returns a minimal tool set for the synchronous Planner.
 // Unlike the voice Talker, Planner blocks until each command completes, so
