@@ -64,6 +64,9 @@ deploy/.terraform/
 deploy/.terraform.lock.hcl
 deploy/terraform.tfstate*
 
+# WebArena data (large downloads, ~96GB)
+docker/webarena-data/
+
 # Submission tracking (local)
 RUBRIC.md
 DEVPOST.md

@@ -73,8 +73,22 @@ sites_for_subset() {
     map)            echo "map" ;;
     full|hard)      echo "shopping shopping_admin reddit gitlab wikipedia" ;;
     *)
-      # Comma-separated task IDs — need all sites since we don't know which
-      echo "shopping shopping_admin reddit gitlab wikipedia"
+      # Comma-separated task IDs — look up actual sites from tasks JSON.
+      if [[ -f "$TASKS" ]]; then
+        # Extract sites for matching task IDs using python (jq-free).
+        python3 -c "
+import json, sys
+ids = {int(x) for x in '${1}'.split(',')}
+tasks = json.load(open('${TASKS}'))
+sites = set()
+for t in tasks:
+    if t['task_id'] in ids:
+        sites.update(t.get('sites', []))
+print(' '.join(sorted(sites)) if sites else 'shopping shopping_admin reddit gitlab wikipedia')
+"
+      else
+        echo "shopping shopping_admin reddit gitlab wikipedia"
+      fi
       ;;
   esac
 }
@@ -163,7 +177,9 @@ for site in $NEEDED_SITES; do
     max_retries=180  # gitlab is slow
   fi
 
-  while ! curl -sf -o /dev/null --max-time 2 "$url" 2>/dev/null; do
+  # Use -L to follow redirects (wikipedia/kiwix redirects on /).
+  # Use -w to check for any HTTP response rather than requiring 200.
+  while ! curl -sL -o /dev/null --max-time 3 -w '' "$url" 2>/dev/null; do
     retries=$((retries + 1))
     if [[ $retries -ge $max_retries ]]; then
       echo "TIMEOUT (${max_retries}s)"
