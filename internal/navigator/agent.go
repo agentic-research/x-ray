@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -204,7 +205,9 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 
 	// Pre-fill a tree dump so the model sees the full filesystem structure upfront.
 	treeDump := a.buildTreeDump()
-	log.Printf("Navigator: pre-filled tree:\n%s", treeDump)
+	if os.Getenv("XRAY_DEBUG") == "1" {
+		log.Printf("Navigator: pre-filled tree:\n%s", treeDump)
+	}
 
 	var history []*genai.Content
 	if treeDump == "" {

@@ -363,7 +363,9 @@ func CaptureLayerTree(ctx context.Context, p *Proxy, tabID int, macheToBackend m
 
 	// Enable LayerTree.
 	if _, err := p.Send(ctx, tabID, "LayerTree.enable", nil); err != nil {
-		log.Printf("CaptureLayerTree: LayerTree.enable failed (tab %d): %v", tabID, err)
+		if !strings.Contains(err.Error(), "-32601") {
+			log.Printf("CaptureLayerTree: LayerTree.enable failed (tab %d): %v", tabID, err)
+		}
 		return result
 	}
 	defer func() {

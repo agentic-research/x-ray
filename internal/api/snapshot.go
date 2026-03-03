@@ -9,6 +9,7 @@ import (
 	"image"
 	_ "image/png" // register PNG decoder for format-agnostic image.Decode
 	"log"
+	"os"
 	"time"
 
 	"github.com/agentic-research/x-ray/internal/mache"
@@ -129,11 +130,15 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 		// --- Overlay color readback: classify overlay pixels for masking ---
 		var overlayMap *OverlayMap
 		var decodedImg image.Image
+		var coverageRatio float64
 		if len(screenshotBytes) > 0 {
 			if img, _, err := image.Decode(bytes.NewReader(screenshotBytes)); err == nil {
 				decodedImg = img
 				overlayMap = ClassifyOverlay(img, 900)
-				log.Printf("Overlay coverage: %.1f%% (tab %d)", overlayMap.CoverageRatio()*100, msg.TabID)
+				coverageRatio = overlayMap.CoverageRatio() * 100
+				if os.Getenv("XRAY_DEBUG") == "1" {
+					log.Printf("Overlay coverage: %.1f%% (tab %d)", coverageRatio, msg.TabID)
+				}
 			} else {
 				log.Printf("Overlay classification failed (tab %d): %v", msg.TabID, err)
 			}
@@ -150,7 +155,9 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 			} else if len(cvRegions) > 0 {
 				screenshotBytes = annotatedImg
 				localCVRegions = cvRegions
-				log.Printf("Edge detection: found %d cv regions (tab %d)", len(cvRegions), msg.TabID)
+				if os.Getenv("XRAY_DEBUG") == "1" {
+					log.Printf("Edge detection: found %d cv regions (tab %d)", len(cvRegions), msg.TabID)
+				}
 			}
 			sess.SetCVRegions(localCVRegions)
 		}
@@ -190,7 +197,18 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 			return
 		}
 
-		log.Printf("Cartographer generated schema (tab %d) in %s: %s", msg.TabID, time.Since(cartStart), schemaJSON)
+		// Count zones simply by parsing CartographerOutput structure
+		var tempOutput mache.CartographerOutput
+		numZones := 0
+		if err := json.Unmarshal([]byte(schemaJSON), &tempOutput); err == nil {
+			numZones = len(tempOutput.Mounts)
+		}
+
+		log.Printf("Cartographer: built %d zones in %s (tab %d, %d cv regions, %.1f%% overlay)",
+			numZones, time.Since(cartStart), msg.TabID, len(localCVRegions), coverageRatio)
+		if os.Getenv("XRAY_DEBUG") == "1" {
+			log.Printf("Cartographer generated schema (tab %d): %s", msg.TabID, schemaJSON)
+		}
 
 		// Validate and repair: if zone anchors are hallucinated but children are valid,
 		// swap the anchor instead of regenerating (avoids the integer-extrapolation trap).

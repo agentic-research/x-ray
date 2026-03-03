@@ -22,6 +22,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"log"
+	"os"
 	"sort"
 )
 
@@ -70,7 +71,9 @@ func (cc *CairnCartographer) GenerateSchema(
 		maxZ = 7
 	}
 
-	log.Printf("CairnCartographer: generating schema (gear=%d, scale=%.1f, grid=%d)", gear, scale, gridSize)
+	if os.Getenv("XRAY_DEBUG") == "1" {
+		log.Printf("CairnCartographer: generating schema (gear=%d, scale=%.1f, grid=%d)", gear, scale, gridSize)
+	}
 
 	// Step 1: Parse DOM summary (reuse from tropical.go)
 	elements := parseElements(summary)
@@ -133,7 +136,9 @@ func (cc *CairnCartographer) GenerateSchema(
 		return "", fmt.Errorf("marshal schema: %w", err)
 	}
 
-	log.Printf("CairnCartographer: %d zones from %d elements (gear=%d)", len(mounts), len(elements), gear)
+	if os.Getenv("XRAY_DEBUG") == "1" {
+		log.Printf("CairnCartographer: %d zones from %d elements (gear=%d)", len(mounts), len(elements), gear)
+	}
 	return string(data), nil
 }
 

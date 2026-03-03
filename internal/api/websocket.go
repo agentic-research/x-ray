@@ -465,7 +465,7 @@ func (h *Handler) handleSelectorsResolved(msg InboundMessage) {
 	}
 	select {
 	case sess.SelectorsResolved <- resolved:
-		log.Printf("Selectors resolved for tab %d (%d zones)", msg.TabID, len(resolved))
+		// Message delivered to snapshot handler (which logs it).
 	default:
 		log.Printf("Selectors resolved for tab %d but no listener, discarding", msg.TabID)
 	}

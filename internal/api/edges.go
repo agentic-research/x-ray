@@ -10,6 +10,7 @@ import (
 	_ "image/png" // register PNG decoder for format-agnostic image.Decode
 	"log"
 	"math"
+	"os"
 )
 
 // EdgeRegion describes a rectangular UI region detected via edge analysis inside
@@ -53,10 +54,14 @@ func DetectCanvasRegions(imgData []byte, existingBounds [][4]float64, overlayMap
 	if overlayMap != nil {
 		cropBoxes = overlayMap.FindUncoloredRegions(100, 100, 20)
 		if len(cropBoxes) == 0 {
-			log.Printf("Edge detection: no uncolored regions >= 100x100, skipping Canny")
+			if os.Getenv("XRAY_DEBUG") == "1" {
+				log.Printf("Edge detection: no uncolored regions >= 100x100, skipping Canny")
+			}
 			return nil, imgData, nil
 		}
-		log.Printf("Edge detection: %d uncolored regions to scan", len(cropBoxes))
+		if os.Getenv("XRAY_DEBUG") == "1" {
+			log.Printf("Edge detection: %d uncolored regions to scan", len(cropBoxes))
+		}
 	} else {
 		cropBoxes = []image.Rectangle{image.Rect(0, 0, w, h)}
 	}
