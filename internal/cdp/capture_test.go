@@ -862,3 +862,83 @@ func waitDone(t *testing.T, done <-chan struct{}) {
 func itoa(n int) string {
 	return strconv.Itoa(n)
 }
+
+// --- PageText ---
+
+func TestPageText_Success(t *testing.T) {
+	ms := &mockSender{}
+	p := New(ms)
+	ctx := context.Background()
+
+	var text string
+	var gotErr error
+	done := make(chan struct{})
+	go func() {
+		text, gotErr = PageText(ctx, p, 1)
+		close(done)
+	}()
+
+	waitForMsg(t, ms)
+	msg := ms.lastMsg()
+	if msg["cdp_method"] != "Runtime.evaluate" {
+		t.Fatalf("expected Runtime.evaluate, got %v", msg["cdp_method"])
+	}
+	p.HandleResult(msg["cdp_id"].(int64), json.RawMessage(`{
+		"result":{"value":"Hello world\nReview: great product"}
+	}`))
+	waitDone(t, done)
+
+	if gotErr != nil {
+		t.Fatalf("unexpected error: %v", gotErr)
+	}
+	if text != "Hello world\nReview: great product" {
+		t.Errorf("unexpected text: %q", text)
+	}
+}
+
+func TestPageText_Truncation(t *testing.T) {
+	ms := &mockSender{}
+	p := New(ms)
+	ctx := context.Background()
+
+	longText := strings.Repeat("A", PageTextMaxLen+1000)
+	var text string
+	done := make(chan struct{})
+	go func() {
+		text, _ = PageText(ctx, p, 1)
+		close(done)
+	}()
+
+	waitForMsg(t, ms)
+	msg := ms.lastMsg()
+	p.HandleResult(msg["cdp_id"].(int64), json.RawMessage(
+		`{"result":{"value":"`+longText+`"}}`,
+	))
+	waitDone(t, done)
+
+	if len(text) != PageTextMaxLen {
+		t.Errorf("expected truncation to %d, got %d", PageTextMaxLen, len(text))
+	}
+}
+
+func TestPageText_Error(t *testing.T) {
+	ms := &mockSender{}
+	p := New(ms)
+	ctx := context.Background()
+
+	var gotErr error
+	done := make(chan struct{})
+	go func() {
+		_, gotErr = PageText(ctx, p, 1)
+		close(done)
+	}()
+
+	waitForMsg(t, ms)
+	msg := ms.lastMsg()
+	p.HandleError(msg["cdp_id"].(int64), "execution context destroyed")
+	waitDone(t, done)
+
+	if gotErr == nil {
+		t.Fatal("expected error, got nil")
+	}
+}

@@ -1429,17 +1429,46 @@ ID: mache-4 | Parent: mache-1 | Tag: button | Text: "Buy" | Bounds: [0.8, 0.4, 0
 		t.Fatalf("text_index not found: %v", err)
 	}
 
-	// Logo at (0.06, 0.035) → top-left
-	if !strings.Contains(content, `a "Logo"  (top-left)`) {
-		t.Errorf("expected top-left label for Logo, got:\n%s", content)
+	// Logo at (0.06, 0.035) → top-left, with mache_id
+	if !strings.Contains(content, `a "Logo"  (top-left)  [mache-2]`) {
+		t.Errorf("expected top-left label with mache_id for Logo, got:\n%s", content)
 	}
 	// Reviews at (0.5, 0.725) → bottom
-	if !strings.Contains(content, `a "Reviews"  (bottom)`) {
-		t.Errorf("expected bottom label for Reviews, got:\n%s", content)
+	if !strings.Contains(content, `a "Reviews"  (bottom)  [mache-3]`) {
+		t.Errorf("expected bottom label with mache_id for Reviews, got:\n%s", content)
 	}
 	// Buy at (0.85, 0.425) → right
-	if !strings.Contains(content, `button "Buy"  (right)`) {
-		t.Errorf("expected right label for Buy, got:\n%s", content)
+	if !strings.Contains(content, `button "Buy"  (right)  [mache-4]`) {
+		t.Errorf("expected right label with mache_id for Buy, got:\n%s", content)
+	}
+}
+
+func TestSetPageText(t *testing.T) {
+	e := NewEngine()
+	schema := `{"mounts":[{"virtual_path":"/main/content","mache_id":"mache-1","description":"Content"}]}`
+	if err := e.ApplySchema(schema); err != nil {
+		t.Fatal(err)
+	}
+	e.LoadChildren("ID: mache-1 | Parent: none | Tag: div | Text: \"Content\"", nil)
+
+	e.SetPageText("Review by Alice: great under water photo quality")
+
+	content, err := e.ReadFile("/page_text")
+	if err != nil {
+		t.Fatalf("page_text not found: %v", err)
+	}
+	if !strings.Contains(content, "under water photo") {
+		t.Errorf("page_text should contain review text, got:\n%s", content)
+	}
+}
+
+func TestSetPageText_Empty(t *testing.T) {
+	e := NewEngine()
+	e.SetPageText("")
+
+	_, err := e.ReadFile("/page_text")
+	if err == nil {
+		t.Error("empty page text should not create a file")
 	}
 }
 

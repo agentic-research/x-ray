@@ -327,6 +327,9 @@ func (h *Handler) resolveAndFinalize(ctx context.Context, conn *websocket.Conn, 
 	}
 
 	sess.Engine.LoadChildren(msg.Summary, resolvedItems)
+	if msg.PageText != "" {
+		sess.Engine.SetPageText(msg.PageText)
+	}
 	sess.Navigator.SetGraph(sess.Composite)
 
 	// Signal that schema is ready — unblocks any waiting handleNavigate or voice tool call.

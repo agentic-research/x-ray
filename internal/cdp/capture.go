@@ -180,6 +180,34 @@ func CaptureScreenshot(ctx context.Context, p *Proxy, tabID int, clip Screenshot
 	return resp.Data, nil
 }
 
+// PageTextMaxLen caps page text to avoid excessive memory usage.
+const PageTextMaxLen = 100_000
+
+// PageText extracts all visible text from the page using Runtime.evaluate.
+// Returns the text (truncated to PageTextMaxLen) or empty string on error.
+func PageText(ctx context.Context, p *Proxy, tabID int) (string, error) {
+	result, err := p.Send(ctx, tabID, "Runtime.evaluate", map[string]any{
+		"expression":    "document.body.innerText",
+		"returnByValue": true,
+	})
+	if err != nil {
+		return "", fmt.Errorf("PageText: %w", err)
+	}
+	var resp struct {
+		Result struct {
+			Value string `json:"value"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(result, &resp); err != nil {
+		return "", fmt.Errorf("PageText: unmarshal: %w", err)
+	}
+	text := resp.Result.Value
+	if len(text) > PageTextMaxLen {
+		text = text[:PageTextMaxLen]
+	}
+	return text, nil
+}
+
 // axNode represents a node from Accessibility.getFullAXTree.
 type axNode struct {
 	BackendDOMNodeID int `json:"backendDOMNodeId"`

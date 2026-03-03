@@ -79,7 +79,7 @@ type ActTool struct{ fs *NavFS }
 func (t *ActTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
 		Name:        "act",
-		Description: "Execute an action on the element at this virtual path. For browser elements: click, focus, type, enter. For terminal sessions: type (send text), enter (send keypress), focus (bring to front).",
+		Description: "Execute an action on the element at this virtual path or bare mache ID. Accepts virtual paths (e.g., '/browser/main/feed/_c/3') OR bare mache IDs from grep results (e.g., 'mache-42'). For browser elements: click, focus, type, enter. For terminal sessions: type (send text), enter (send keypress), focus (bring to front).",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
@@ -321,7 +321,7 @@ type GrepTool struct{ fs *NavFS }
 func (t *GrepTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
 		Name:        "grep",
-		Description: "Search zone children, descriptions, and the global text_index for a text pattern (case-insensitive, supports regex with |). Returns matching lines with zone paths. Use SHORT single keywords (1-2 words), NOT full phrases. Supports regex: 'price|cost' matches either word.",
+		Description: "Search zone children, descriptions, and the global text_index for a text pattern (case-insensitive, supports regex with |). Returns matching lines with zone paths. When results include [mache-N], use that ID directly with act() to click the element. Use SHORT single keywords (1-2 words), NOT full phrases. Supports regex: 'price|cost' matches either word.",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
@@ -370,8 +370,8 @@ func (t *GrepTool) grepWalk(dirPath, lower string, re *regexp.Regexp, matches *[
 			childPath = dirPath + "/" + name
 		}
 
-		// Search children, description, and text_index files.
-		if name == "children" || name == "description" || name == "text_index" {
+		// Search children, description, text_index, and page_text files.
+		if name == "children" || name == "description" || name == "text_index" || name == "page_text" {
 			content, err := t.fs.ReadFile(childPath)
 			if err != nil || content == "" {
 				continue

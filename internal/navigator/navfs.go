@@ -59,7 +59,13 @@ func (f *NavFS) ReadFile(filePath string) (string, error) {
 }
 
 // ResolveMacheID finds the mache_id for a given virtual path.
+// Also accepts bare mache IDs (e.g., "mache-42") directly — useful when
+// the Navigator gets a mache_id from text_index grep results.
 func (f *NavFS) ResolveMacheID(nodePath string) (string, error) {
+	clean := cleanPath(nodePath)
+	if strings.HasPrefix(clean, "mache-") {
+		return clean, nil
+	}
 	p := f.resolvePath(nodePath)
 	node, err := f.g.GetNode(p)
 	if err != nil {

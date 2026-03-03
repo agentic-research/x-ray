@@ -907,9 +907,9 @@ func (e *Engine) buildTextIndex(elements []SummaryElement) {
 		}
 		label := spatialLabel(el.Bounds)
 		if label != "" {
-			fmt.Fprintf(&sb, "%s \"%s\"  (%s)\n", el.Tag, text, label)
+			fmt.Fprintf(&sb, "%s \"%s\"  (%s)  [%s]\n", el.Tag, text, label, el.ID)
 		} else {
-			fmt.Fprintf(&sb, "%s \"%s\"\n", el.Tag, text)
+			fmt.Fprintf(&sb, "%s \"%s\"  [%s]\n", el.Tag, text, el.ID)
 		}
 	}
 	if sb.Len() == 0 {
@@ -918,6 +918,18 @@ func (e *Engine) buildTextIndex(elements []SummaryElement) {
 
 	indexID := "text_index"
 	e.store.AddRoot(&graph.Node{ID: indexID, Data: []byte(strings.TrimRight(sb.String(), "\n"))})
+}
+
+// SetPageText stores the full visible page text as a root-level file.
+// This captures review text, article bodies, and other non-interactive content
+// that element-tagging misses. Searchable via grep.
+func (e *Engine) SetPageText(text string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if text == "" {
+		return
+	}
+	e.store.AddRoot(&graph.Node{ID: "page_text", Data: []byte(text)})
 }
 
 // spatialLabel converts a bounds string "[x, y, w, h]" into a human-readable

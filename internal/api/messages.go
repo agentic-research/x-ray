@@ -73,6 +73,7 @@ type InboundMessage struct {
 	ScrollY        float64             `json:"scroll_y,omitempty"`        // DOM_UPDATE: current scroll position (px)
 	ScrollHeight   float64             `json:"scroll_height,omitempty"`   // DOM_UPDATE: total document height (px)
 	ViewportHeight float64             `json:"viewport_height,omitempty"` // DOM_UPDATE: viewport height (px)
+	PageText       string              `json:"page_text,omitempty"`       // CDP Runtime.evaluate body text
 	Tabs           []TabInfo           `json:"tabs,omitempty"`            // TABS_LISTED response
 
 	// CDP proxy fields (Dumb Pipe architecture).

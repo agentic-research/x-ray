@@ -151,6 +151,12 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 		log.Printf("captureGo: FullAXTree failed (tab %d): %v — proceeding without AX", tabID, axErr)
 	}
 
+	// 3e2. Page text (visible innerText for grep-searchable content).
+	pageText, ptErr := cdp.PageText(ctx, h.cdpProxy, tabID)
+	if ptErr != nil {
+		log.Printf("captureGo: PageText failed (tab %d): %v — proceeding without page text", tabID, ptErr)
+	}
+
 	// 3f. Mache → backend node ID mapping.
 	macheToBackend, err := cdp.MacheBackendMap(ctx, h.cdpProxy, tabID, rootNodeID)
 	if err != nil {
@@ -204,6 +210,7 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 		Summary:    enrichedSummary,
 		Screenshot: screenshot,
 		IsRescan:   isRescan,
+		PageText:   pageText,
 	}
 	h.handleDOMSnapshot(parentCtx, conn, syntheticMsg)
 }
