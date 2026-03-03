@@ -105,6 +105,37 @@ tasks:
     cmds:
       - ./{{.BINARY_NAME}}
 
+  stop:
+    desc: Stop a running agentd process
+    cmds:
+      - |
+        PID_FILE="$HOME/.xray/agentd.pid"
+        if [ -f "$PID_FILE" ]; then
+          PID=$(cat "$PID_FILE")
+          if kill -0 "$PID" 2>/dev/null; then
+            kill "$PID"
+            echo "Sent SIGTERM to agentd (PID $PID)"
+            for i in 1 2 3; do kill -0 "$PID" 2>/dev/null || break; sleep 1; done
+            if kill -0 "$PID" 2>/dev/null; then kill -9 "$PID"; echo "Force-killed (PID $PID)"; fi
+          else
+            echo "PID $PID not running (stale PID file)"
+          fi
+          rm -f "$PID_FILE"
+        else
+          PID=$(lsof -i ":${XRAY_PORT:-8080}" -sTCP:LISTEN -t 2>/dev/null | head -1 || true)
+          if [ -n "$PID" ]; then
+            kill "$PID" && echo "Killed agentd on port ${XRAY_PORT:-8080} (PID $PID)"
+          else
+            echo "No agentd running"
+          fi
+        fi
+
+  restart:
+    desc: Stop then rebuild and run agentd
+    cmds:
+      - task: stop
+      - task: run
+
   demo:
     desc: Build and run the voice demo (Talker/Doer swarm)
     deps: [build]
