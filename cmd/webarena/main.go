@@ -25,6 +25,8 @@ type WATask struct {
 	Sites            []string `json:"sites"`
 	StartURLs        []string `json:"start_urls"`
 	StartURL         string   `json:"start_url"` // legacy single-URL format
+	TaskType         string   `json:"task_type"` // "RETRIEVE", "NAVIGATE", "ACTION", etc.
+	EvalType         string   `json:"eval_type"` // evaluation method from task metadata
 }
 
 // URL template placeholders → default local ports.
@@ -101,6 +103,11 @@ func main() {
 			break
 		}
 
+		// Reset browser state between tasks to prevent leakage.
+		if i > 0 {
+			resetBrowser(ctx, agentdURL)
+		}
+
 		result := runTask(ctx, agentdURL, task, time.Duration(timeoutSec)*time.Second)
 
 		if err := writer.WriteResult(result); err != nil {
@@ -138,11 +145,12 @@ func main() {
 
 // plannerResult mirrors api.PlannerResult for JSON decoding.
 type plannerResult struct {
-	Status  string `json:"status"`
-	Summary string `json:"summary"`
-	Success bool   `json:"success"`
-	Error   string `json:"error"`
-	Turns   int    `json:"turns"`
+	Status   string `json:"status"`
+	Summary  string `json:"summary"`
+	Success  bool   `json:"success"`
+	Error    string `json:"error"`
+	Turns    int    `json:"turns"`
+	URLFinal string `json:"url_final"`
 }
 
 // runTask executes a single WebArena task via POST /agent/task.
@@ -157,6 +165,7 @@ func runTask(ctx context.Context, agentdURL string, task WATask, timeout time.Du
 		TaskID:   task.TaskID,
 		Intent:   task.Intent,
 		StartURL: startURL,
+		TaskType: task.TaskType,
 	}
 
 	body, _ := json.Marshal(map[string]any{
@@ -207,6 +216,7 @@ func runTask(ctx context.Context, agentdURL string, task WATask, timeout time.Du
 	result.Status = pr.Status
 	result.Summary = pr.Summary
 	result.Success = pr.Success
+	result.URLFinal = pr.URLFinal
 	if pr.Error != "" {
 		result.Error = pr.Error
 	}
@@ -282,6 +292,31 @@ func loadTasks(path, subset string) ([]WATask, error) {
 func isNumeric(s string) bool {
 	_, err := strconv.Atoi(s)
 	return err == nil
+}
+
+// resetBrowser navigates the active tab to about:blank between tasks to prevent
+// state leakage (cart contents, search results, login sessions).
+func resetBrowser(ctx context.Context, agentdURL string) {
+	resetCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	body, _ := json.Marshal(map[string]any{
+		"intent":    "DONE: reset",
+		"tab_id":    0,
+		"start_url": "about:blank",
+	})
+
+	req, err := http.NewRequestWithContext(resetCtx, http.MethodPost, agentdURL+"/agent/task", bytes.NewReader(body))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Printf("Reset: failed to navigate to about:blank: %v", err)
+		return
+	}
+	_ = resp.Body.Close()
 }
 
 func envOr(key, fallback string) string {

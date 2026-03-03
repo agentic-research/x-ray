@@ -25,38 +25,62 @@ type Planner struct {
 
 // PlannerResult is the JSON response from HandleAgentTask.
 type PlannerResult struct {
-	Status  string `json:"status"` // "done", "failed", "error", "cancelled"
-	Summary string `json:"summary"`
-	Success bool   `json:"success"`
-	Error   string `json:"error,omitempty"`
-	Turns   int    `json:"turns"`
+	Status   string `json:"status"` // "done", "failed", "error", "cancelled"
+	Summary  string `json:"summary"`
+	Success  bool   `json:"success"`
+	Error    string `json:"error,omitempty"`
+	Turns    int    `json:"turns"`
+	URLFinal string `json:"url_final,omitempty"`
 }
 
 // plannerSystemPrompt adapts the Talker system prompt for autonomous benchmark execution.
-var plannerSystemPrompt = `You are an autonomous web agent executing a benchmark task. You have a background navigator (Doer) that can see and interact with the browser.
+var plannerSystemPrompt = `You are an autonomous web agent executing a benchmark task. You have a background navigator (Doer) that can see and interact with the browser. The page is already loaded at the task's start URL.
 
 YOUR TOOLS:
-- issue_command(goal, read_only?): Dispatch a navigation/interaction command to your background navigator. This works for actions AND questions about the page. Examples: "click the first story", "go to reddit.com", "search for golang tutorials", "scroll down", "read the main heading".
-  Set read_only=true when the task requires READING information from the page (e.g., "what is the price?", "list the items", "describe the page").
-  Leave read_only=false (or omit) when the task requires an ACTION (e.g., "click...", "type...", "submit...", "navigate to...").
+- issue_command(goal, read_only?): Dispatch a navigation/interaction command to your background navigator.
+  Set read_only=true ONLY for pure observation on the already-loaded page (e.g., "read the page title", "list the items shown", "what is the price displayed?").
+  Set read_only=false (or omit) when ANY clicking, typing, scrolling, searching, or navigation is needed — even if the end goal is to read information.
+  Common pattern: navigate/search with read_only=false, then read the result with read_only=true.
 - check_status(): Check what the navigator is currently doing.
 - cancel_task(): Cancel the current background task.
-- open_url(url): Open a URL in a NEW browser tab.
+- open_url(url): Open a URL in a NEW browser tab. Use when the task requires a different website.
 
 TERMINATION PROTOCOL:
 - When the task is accomplished, respond with: DONE: <your answer or confirmation>
 - When you cannot complete the task after reasonable attempts, respond with: FAILED: <reason>
-- For information retrieval tasks, DONE: should include the specific answer.
-- For action tasks, DONE: should confirm what was accomplished.
+- For information retrieval tasks, DONE: must include the EXACT answer (the specific number, name, price, date, URL, etc.) — not a description of what you did.
+- For action tasks, DONE: should confirm the specific outcome (e.g., "Posted comment 'hello' on thread X").
 
-BEHAVIOR:
-1. Break the task into steps. Use issue_command() for each step.
-2. After each command completes, analyze the result and decide the next step.
-3. For information retrieval tasks, set read_only=true on issue_command to ensure the navigator reads rather than acts.
-4. If a command fails or returns unexpected results, try alternative approaches before giving up.
+TASK DECOMPOSITION:
+Classify the task, then follow the appropriate pattern:
+
+Information retrieval ("what is", "how many", "list", "find the price of", "tell me"):
+1. issue_command("read the page to understand its structure", read_only=true)
+2. issue_command("search/navigate to find the relevant content") — read_only=false if clicking or typing is needed
+3. issue_command("read the specific answer from the page", read_only=true)
+4. DONE: <exact answer>
+
+Action tasks ("post", "create", "add to cart", "submit", "delete", "update"):
+1. issue_command("read the page to find the relevant form/button", read_only=true)
+2. issue_command("fill in <field> with <value>") or issue_command("click <element>")
+3. issue_command("submit the form") or issue_command("confirm the action")
+4. issue_command("verify the action succeeded — look for confirmation message", read_only=true)
+5. DONE: <confirmation of what was accomplished>
+
+Navigation tasks ("go to", "find the page for", "navigate to"):
+1. issue_command("navigate to <target>") — click links, use nav menus, search
+2. issue_command("verify we arrived at the correct page", read_only=true)
+3. DONE: <confirmation or URL>
+
+RULES:
+1. Every turn MUST include a tool call or a DONE/FAILED response. Never respond with only text.
+2. Start by reading the page (read_only=true) to understand what you're looking at before taking action.
+3. After each command result, decide the next step immediately. Do not repeat commands that already succeeded.
+4. If a command fails, try an alternative approach (different search terms, different navigation path, scroll to find hidden elements).
 5. Do NOT add conversational filler. Be direct and efficient.
-6. If you get "No active browser tab", use open_url() to open a website first.
-7. When the navigator returns a result that answers the task, immediately respond with DONE: <answer>.`
+6. If you get "No active browser tab", use open_url() to open the start URL.
+7. When the navigator returns a result that answers the task, IMMEDIATELY respond with DONE: <answer>. Do not issue more commands.
+8. For multi-site tasks, use open_url() to open additional sites as needed.`
 
 // RunTask executes a high-level task using the Planner→Doer loop.
 // Blocks until the task completes, fails, or the context is cancelled.
@@ -429,6 +453,10 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Planner: starting task: %s", truncate(req.Intent, 100))
 	result := h.planner.RunTask(ctx, req.Intent, tabID)
+
+	// Capture the final URL for NAVIGATE-type task evaluation.
+	result.URLFinal = sess.GetCurrentURL()
+
 	log.Printf("Planner: task finished: status=%s turns=%d summary=%s",
 		result.Status, result.Turns, truncate(result.Summary, 100))
 

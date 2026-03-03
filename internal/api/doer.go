@@ -176,20 +176,6 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 		d.sess.Navigator.SetListTabsFunc(nil)
 	}()
 
-	// Wait for schema, but proceed without one if it takes too long.
-	// HandleIntent works with empty state for goto intents (e.g., "go to reddit.com"
-	// produces a goto action regardless of whether a page schema exists).
-	d.updateStep("waiting for page schema")
-	select {
-	case <-d.sess.GetSchemaReady():
-		// Schema is ready — full tree available.
-	case <-time.After(15 * time.Second):
-		log.Printf("Doer [tab %d]: schema not ready after 15s, proceeding without", d.tabID)
-	case <-goalCtx.Done():
-		d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
-		return
-	}
-
 	// Multi-step loop: dispatch action, wait for page settle, feed result back.
 	enrichedIntent := goal.Text
 	var lastSummary string

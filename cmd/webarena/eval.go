@@ -14,6 +14,7 @@ type TaskResult struct {
 	TaskID    int      `json:"task_id"`
 	Intent    string   `json:"intent"`
 	StartURL  string   `json:"start_url"`
+	TaskType  string   `json:"task_type,omitempty"` // "RETRIEVE", "NAVIGATE", "ACTION"
 	Success   bool     `json:"success"`
 	Status    string   `json:"status"` // "done", "failed", "timeout", "error"
 	Actions   []Action `json:"actions"`

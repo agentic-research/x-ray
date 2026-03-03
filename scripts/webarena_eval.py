@@ -68,8 +68,9 @@ def prepare_eval_dir(results: list[dict], eval_dir: Path) -> None:
         task_dir.mkdir(parents=True, exist_ok=True)
 
         # Map x-ray result to webarena-verified agent_response format.
+        task_type = r.get("task_type", "RETRIEVE") or "RETRIEVE"
         agent_response = {
-            "task_type": "RETRIEVE",  # Default; actual type comes from task metadata
+            "task_type": task_type,
             "status": "completed" if r.get("status") in ("done", "failed") else "error",
             "retrieved_data": r.get("summary", ""),
             "final_url": r.get("url_final", ""),
