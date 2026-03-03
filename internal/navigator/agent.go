@@ -395,8 +395,19 @@ type zoneInfo struct {
 	x, y, w, h float64
 }
 
-// buildASCIILayout renders a spatial ASCII grid of browser zones.
-// Zones with off-screen or zero bounds are omitted.
+// elemInfo holds a single clickable/text element for the ASCII render.
+type elemInfo struct {
+	ordinal int
+	text    string
+	tag     string
+	x, y    float64 // center position (normalized)
+	w, h    float64
+}
+
+// buildASCIILayout renders a spatial ASCII grid showing actual page elements
+// with clickable ordinal IDs. Instead of empty zone boxes, the LLM sees
+// "[1] Home  [2] Electronics  [3] Cameras" painted at their real positions,
+// like a Lynx-style text rendering of the page.
 func (a *Agent) buildASCIILayout() string {
 	// Collect zones with bounds from the browser/ mount.
 	var zones []zoneInfo
@@ -405,36 +416,34 @@ func (a *Agent) buildASCIILayout() string {
 		return ""
 	}
 
-	// Clamp to visible viewport [0,1] and filter off-screen zones.
+	// Collect all child elements across all zones.
+	var elems []elemInfo
+	for _, z := range zones {
+		a.collectZoneElements(z.path, &elems)
+	}
+
+	// Clamp zones to visible viewport [0,1].
 	var visible []zoneInfo
 	for _, z := range zones {
-		// Clamp to viewport.
 		x1 := math.Max(0, z.x)
 		y1 := math.Max(0, z.y)
 		x2 := math.Min(1, z.x+z.w)
 		y2 := math.Min(1, z.y+z.h)
 		if x2 <= x1 || y2 <= y1 {
-			continue // fully off-screen or zero area
+			continue
 		}
 		visible = append(visible, zoneInfo{
 			path: z.path, desc: z.desc,
 			x: x1, y: y1, w: x2 - x1, h: y2 - y1,
 		})
 	}
-	if len(visible) == 0 {
+
+	if len(visible) == 0 && len(elems) == 0 {
 		return ""
 	}
 
-	// Sort by y then x for top-to-bottom, left-to-right layout.
-	sort.Slice(visible, func(i, j int) bool {
-		if visible[i].y != visible[j].y {
-			return visible[i].y < visible[j].y
-		}
-		return visible[i].x < visible[j].x
-	})
-
 	// Render to a character grid.
-	const gridW, gridH = 72, 20
+	const gridW, gridH = 80, 24
 	grid := make([][]byte, gridH)
 	for i := range grid {
 		grid[i] = make([]byte, gridW)
@@ -443,77 +452,89 @@ func (a *Agent) buildASCIILayout() string {
 		}
 	}
 
+	// 1. Draw zone borders (light dotted lines).
 	for _, z := range visible {
-		// Map normalized coords to grid.
 		col0 := int(z.x * float64(gridW))
 		row0 := int(z.y * float64(gridH))
 		col1 := int((z.x + z.w) * float64(gridW))
 		row1 := int((z.y + z.h) * float64(gridH))
-
-		// Clamp to grid.
-		if col0 < 0 {
-			col0 = 0
-		}
-		if row0 < 0 {
-			row0 = 0
-		}
-		if col1 > gridW {
-			col1 = gridW
-		}
-		if row1 > gridH {
-			row1 = gridH
-		}
+		col0 = clampInt(col0, 0, gridW-1)
+		row0 = clampInt(row0, 0, gridH-1)
+		col1 = clampInt(col1, 1, gridW)
+		row1 = clampInt(row1, 1, gridH)
 		if col1-col0 < 2 || row1-row0 < 1 {
-			continue // too small to render
+			continue
 		}
-
-		// Draw border.
+		// Horizontal borders.
 		for c := col0; c < col1; c++ {
-			if row0 < gridH {
-				grid[row0][c] = '-'
-			}
+			grid[row0][c] = '-'
 			if row1-1 < gridH {
 				grid[row1-1][c] = '-'
 			}
 		}
+		// Vertical borders.
 		for r := row0; r < row1; r++ {
-			if col0 < gridW {
-				grid[r][col0] = '|'
-			}
+			grid[r][col0] = '|'
 			if col1-1 < gridW {
 				grid[r][col1-1] = '|'
 			}
 		}
+	}
 
-		// Label: zone path (trimmed to fit).
-		label := z.path
-		maxLabel := col1 - col0 - 2
-		if maxLabel < 1 {
+	// 2. Paint elements: "[ordinal] text" at their grid position.
+	// Filter off-screen elements and sort by y then x.
+	var onScreen []elemInfo
+	for _, el := range elems {
+		// Skip elements fully outside the [0,1] viewport.
+		if el.y+el.h <= 0 || el.y >= 1 || el.x+el.w <= 0 || el.x >= 1 {
 			continue
 		}
-		if len(label) > maxLabel {
-			label = label[:maxLabel]
+		onScreen = append(onScreen, el)
+	}
+	sort.Slice(onScreen, func(i, j int) bool {
+		if onScreen[i].y != onScreen[j].y {
+			return onScreen[i].y < onScreen[j].y
 		}
-		labelRow := row0
-		if labelRow < gridH {
-			for i, ch := range label {
-				if col0+1+i < col1-1 {
-					grid[labelRow][col0+1+i] = byte(ch)
-				}
-			}
+		return onScreen[i].x < onScreen[j].x
+	})
+
+	for _, el := range onScreen {
+		if el.text == "" {
+			continue
+		}
+		// Map element position to grid, nudging 1 col right to avoid zone border.
+		col := int(el.x*float64(gridW)) + 1
+		row := int(el.y * float64(gridH))
+		col = clampInt(col, 1, gridW-1)
+		row = clampInt(row, 0, gridH-1)
+
+		// Format: [ordinal] text
+		label := fmt.Sprintf("[%d] %s", el.ordinal, el.text)
+		// Truncate to fit in the grid from this position.
+		maxLen := gridW - col
+		if maxLen <= 0 {
+			continue
+		}
+		if len(label) > maxLen {
+			label = label[:maxLen]
 		}
 
-		// Description on next row if space.
-		if row0+1 < row1-1 && z.desc != "" {
-			desc := z.desc
-			if len(desc) > maxLabel {
-				desc = desc[:maxLabel]
+		// Paint label, skipping cells already occupied by earlier elements.
+		for i := 0; i < len(label); i++ {
+			c := col + i
+			if c >= gridW {
+				break
 			}
-			for i, ch := range desc {
-				if col0+1+i < col1-1 {
-					grid[row0+1][col0+1+i] = byte(ch)
+			if grid[row][c] != ' ' && grid[row][c] != '-' {
+				// Cell occupied — try to nudge down one row.
+				if row+1 < gridH && grid[row+1][c] == ' ' {
+					row++
+					i-- // retry this character on the new row
+					continue
 				}
+				continue // skip collision
 			}
+			grid[row][c] = label[i]
 		}
 	}
 
@@ -528,6 +549,67 @@ func (a *Agent) buildASCIILayout() string {
 		sb.WriteByte('\n')
 	}
 	return sb.String()
+}
+
+// collectZoneElements reads the _c/ children of a zone and extracts
+// ordinal, text, tag, and bounds for the ASCII render.
+func (a *Agent) collectZoneElements(zonePath string, elems *[]elemInfo) {
+	cPath := "browser/" + zonePath + "/_c"
+	entries, err := a.fs.ListDir(cPath)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		ordStr := strings.TrimSuffix(entry, "/")
+		ordinal, err := strconv.Atoi(ordStr)
+		if err != nil {
+			continue
+		}
+		childPath := cPath + "/" + ordStr
+
+		text, _ := a.fs.ReadFile(childPath + "/text")
+		tag, _ := a.fs.ReadFile(childPath + "/tag")
+		boundsStr, _ := a.fs.ReadFile(childPath + "/bounds")
+
+		text = strings.TrimSpace(text)
+		if text == "" {
+			// Fall back to AX name for elements with no visible text.
+			text, _ = a.fs.ReadFile(childPath + "/name")
+			text = strings.TrimSpace(text)
+		}
+		if text == "" {
+			continue
+		}
+		// Truncate long text to keep the grid readable.
+		if len(text) > 25 {
+			text = text[:22] + "..."
+		}
+
+		var x, y, w, h float64
+		if boundsStr != "" {
+			x, y, w, h = parseBounds(boundsStr)
+		}
+		if w <= 0 || h <= 0 {
+			continue // no valid bounds — skip
+		}
+
+		*elems = append(*elems, elemInfo{
+			ordinal: ordinal,
+			text:    text,
+			tag:     strings.TrimSpace(tag),
+			x:       x, y: y, w: w, h: h,
+		})
+	}
+}
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
 }
 
 // collectZones recursively finds zone directories with bounds under the given path.

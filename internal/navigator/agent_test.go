@@ -369,6 +369,21 @@ func newLayoutTestAgent() *Agent {
 	if err := engine.ApplySchema(layoutSchema); err != nil {
 		panic(err)
 	}
+	// Load children so the ASCII render has actual elements to paint.
+	summary := `Interactive Elements:
+ID: mache-1 | Parent: mache-0 | Tag: a | Text: "Home" | Bounds: [0.01, 0.02, 0.08, 0.05]
+ID: mache-2 | Parent: mache-0 | Tag: a | Text: "Electronics" | Bounds: [0.12, 0.02, 0.10, 0.05]
+ID: mache-3 | Parent: mache-0 | Tag: a | Text: "Cameras" | Bounds: [0.25, 0.02, 0.08, 0.05]
+ID: mache-21 | Parent: mache-20 | Tag: h1 | Text: "Sony Alpha A7 III" | Bounds: [0.25, 0.15, 0.40, 0.05]
+ID: mache-22 | Parent: mache-20 | Tag: span | Text: "$1,998.00" | Bounds: [0.25, 0.22, 0.15, 0.04]
+ID: mache-23 | Parent: mache-20 | Tag: a | Text: "Add to Cart" | Bounds: [0.25, 0.30, 0.12, 0.04]
+ID: mache-24 | Parent: mache-20 | Tag: a | Text: "Description" | Bounds: [0.25, 0.55, 0.10, 0.04]
+ID: mache-25 | Parent: mache-20 | Tag: a | Text: "Reviews" | Bounds: [0.40, 0.55, 0.08, 0.04]
+ID: mache-26 | Parent: mache-20 | Tag: a | Text: "Specifications" | Bounds: [0.55, 0.55, 0.12, 0.04]
+ID: mache-51 | Parent: mache-50 | Tag: a | Text: "About" | Bounds: [0.01, 0.92, 0.06, 0.04]
+ID: mache-52 | Parent: mache-50 | Tag: a | Text: "Privacy" | Bounds: [0.10, 0.92, 0.06, 0.04]
+`
+	engine.LoadChildren(summary, nil)
 	composite := graph.NewCompositeGraph()
 	if err := composite.Mount("browser", engine); err != nil {
 		panic(err)
@@ -386,16 +401,150 @@ func TestBuildASCIILayout(t *testing.T) {
 	if !strings.Contains(layout, "Page layout:") {
 		t.Error("missing 'Page layout:' header")
 	}
-	// All four zone paths should appear.
-	for _, zone := range []string{"header/nav", "sidebar/menu", "main/content", "footer/links"} {
-		if !strings.Contains(layout, zone) {
-			t.Errorf("layout missing zone %q:\n%s", zone, layout)
+	// Elements with ordinals and text should appear.
+	for _, want := range []string{"Home", "Reviews", "Add to Cart", "About"} {
+		if !strings.Contains(layout, want) {
+			t.Errorf("layout missing element %q:\n%s", want, layout)
 		}
+	}
+	// Ordinal markers should appear (at least [1]).
+	if !strings.Contains(layout, "[") {
+		t.Errorf("layout missing ordinal markers:\n%s", layout)
+	}
+	t.Logf("ASCII layout:\n%s", layout)
+}
+
+func TestBuildASCIILayoutProductPage(t *testing.T) {
+	// Simulate a product page with nav tabs, a product title, and action buttons.
+	// Verify the ASCII render shows clickable elements at roughly correct positions.
+	schema := `{
+  "mounts": [
+    {
+      "virtual_path": "/header/nav",
+      "mache_id": "mache-0",
+      "description": "Top navigation",
+      "bounds": [0, 0, 1, 0.08]
+    },
+    {
+      "virtual_path": "/main/product",
+      "mache_id": "mache-10",
+      "description": "Product detail",
+      "bounds": [0.1, 0.10, 0.8, 0.80]
+    }
+  ]
+}`
+	summary := `Interactive Elements:
+ID: mache-1 | Parent: mache-0 | Tag: a | Text: "Home" | Bounds: [0.02, 0.02, 0.06, 0.04]
+ID: mache-2 | Parent: mache-0 | Tag: a | Text: "Electronics" | Bounds: [0.10, 0.02, 0.10, 0.04]
+ID: mache-3 | Parent: mache-0 | Tag: a | Text: "Cameras" | Bounds: [0.22, 0.02, 0.08, 0.04]
+ID: mache-11 | Parent: mache-10 | Tag: h1 | Text: "Fujifilm X100VI" | Bounds: [0.15, 0.14, 0.30, 0.05]
+ID: mache-12 | Parent: mache-10 | Tag: span | Text: "$1,599.00" | Bounds: [0.15, 0.22, 0.12, 0.04]
+ID: mache-13 | Parent: mache-10 | Tag: button | Text: "Add to Cart" | Bounds: [0.15, 0.30, 0.14, 0.05]
+ID: mache-14 | Parent: mache-10 | Tag: a | Text: "Description" | Bounds: [0.15, 0.50, 0.10, 0.04]
+ID: mache-15 | Parent: mache-10 | Tag: a | Text: "Reviews" | Bounds: [0.30, 0.50, 0.08, 0.04]
+ID: mache-16 | Parent: mache-10 | Tag: a | Text: "Specifications" | Bounds: [0.42, 0.50, 0.12, 0.04]
+`
+	engine := mache.NewEngine()
+	if err := engine.ApplySchema(schema); err != nil {
+		t.Fatal(err)
+	}
+	engine.LoadChildren(summary, nil)
+	composite := graph.NewCompositeGraph()
+	if err := composite.Mount("browser", engine); err != nil {
+		t.Fatal(err)
+	}
+	agent := NewAgent(nil, "test", composite)
+	layout := agent.buildASCIILayout()
+	t.Logf("Product page ASCII:\n%s", layout)
+
+	// Nav items should be in the top rows.
+	if !strings.Contains(layout, "Home") {
+		t.Error("missing Home nav link")
+	}
+	if !strings.Contains(layout, "Electronics") {
+		t.Error("missing Electronics nav link")
+	}
+	// Product content should be present.
+	if !strings.Contains(layout, "Fujifilm") {
+		t.Error("missing product title")
+	}
+	if !strings.Contains(layout, "$1,599.00") {
+		t.Error("missing product price")
+	}
+	if !strings.Contains(layout, "Add to Cart") {
+		t.Error("missing Add to Cart button")
+	}
+	// Tab navigation — this is the key Reviews tab scenario.
+	if !strings.Contains(layout, "Reviews") {
+		t.Errorf("missing Reviews tab — the whole point:\n%s", layout)
+	}
+	if !strings.Contains(layout, "Description") {
+		t.Error("missing Description tab")
+	}
+	if !strings.Contains(layout, "Specifications") {
+		t.Error("missing Specifications tab")
+	}
+	// Every element should have an ordinal prefix.
+	lines := strings.Split(layout, "\n")
+	elemCount := 0
+	for _, line := range lines {
+		if strings.Contains(line, "[") && strings.Contains(line, "]") {
+			elemCount++
+		}
+	}
+	if elemCount < 5 {
+		t.Errorf("expected at least 5 lines with ordinal markers, got %d", elemCount)
+	}
+}
+
+func TestBuildASCIILayoutSpatialOrder(t *testing.T) {
+	// Verify elements are positioned top-to-bottom: nav items above product content.
+	schema := `{
+  "mounts": [
+    {
+      "virtual_path": "/header/nav",
+      "mache_id": "mache-0",
+      "description": "Nav",
+      "bounds": [0, 0, 1, 0.08]
+    },
+    {
+      "virtual_path": "/main/body",
+      "mache_id": "mache-10",
+      "description": "Body",
+      "bounds": [0, 0.10, 1, 0.80]
+    }
+  ]
+}`
+	summary := `Interactive Elements:
+ID: mache-1 | Parent: mache-0 | Tag: a | Text: "TopNav" | Bounds: [0.02, 0.02, 0.08, 0.04]
+ID: mache-11 | Parent: mache-10 | Tag: a | Text: "BottomLink" | Bounds: [0.02, 0.80, 0.10, 0.04]
+`
+	engine := mache.NewEngine()
+	if err := engine.ApplySchema(schema); err != nil {
+		t.Fatal(err)
+	}
+	engine.LoadChildren(summary, nil)
+	composite := graph.NewCompositeGraph()
+	if err := composite.Mount("browser", engine); err != nil {
+		t.Fatal(err)
+	}
+	agent := NewAgent(nil, "test", composite)
+	layout := agent.buildASCIILayout()
+	t.Logf("Spatial order ASCII:\n%s", layout)
+
+	topIdx := strings.Index(layout, "TopNav")
+	bottomIdx := strings.Index(layout, "BottomLink")
+	if topIdx < 0 || bottomIdx < 0 {
+		t.Fatalf("missing elements:\n%s", layout)
+	}
+	if topIdx >= bottomIdx {
+		t.Errorf("TopNav (pos %d) should appear before BottomLink (pos %d) in the render", topIdx, bottomIdx)
 	}
 }
 
 func TestBuildASCIILayoutOffScreen(t *testing.T) {
 	// Zones with negative bounds should be clamped or excluded.
+	// Elements inside visible zones should appear; off-screen zones should not contribute.
 	schema := `{
       "mounts": [
         {
@@ -412,24 +561,30 @@ func TestBuildASCIILayoutOffScreen(t *testing.T) {
         }
       ]
     }`
+	summary := `Interactive Elements:
+ID: mache-3 | Parent: mache-2 | Tag: a | Text: "VisibleLink" | Bounds: [0.30, 0.30, 0.10, 0.04]
+ID: mache-4 | Parent: mache-1 | Tag: a | Text: "OffScreenLink" | Bounds: [0.55, -6.0, 0.10, 0.04]
+`
 	engine := mache.NewEngine()
 	if err := engine.ApplySchema(schema); err != nil {
 		t.Fatal(err)
 	}
+	engine.LoadChildren(summary, nil)
 	composite := graph.NewCompositeGraph()
 	if err := composite.Mount("browser", engine); err != nil {
 		t.Fatal(err)
 	}
 	agent := NewAgent(nil, "test", composite)
 	layout := agent.buildASCIILayout()
+	t.Logf("Off-screen test:\n%s", layout)
 
-	// Off-screen zone should be filtered out (fully above viewport).
-	if strings.Contains(layout, "Off-screen") {
-		t.Error("off-screen zone should not appear in layout")
+	// Visible zone element should be present.
+	if !strings.Contains(layout, "VisibleLink") {
+		t.Errorf("visible element missing from layout:\n%s", layout)
 	}
-	// Visible zone should be present.
-	if !strings.Contains(layout, "main/content") {
-		t.Errorf("visible zone missing from layout:\n%s", layout)
+	// Off-screen element should NOT appear (bounds have negative y, off viewport).
+	if strings.Contains(layout, "OffScreenLink") {
+		t.Error("off-screen element should not appear in layout")
 	}
 }
 
