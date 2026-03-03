@@ -171,6 +171,15 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 
 	log.Printf("Doer [tab %d]: executing goal %q", d.tabID, goal.Text)
 
+	// Populate /tasks/active/task so Navigator can cat it.
+	taskText := goal.Text
+	if goal.TaskContext != "" {
+		taskText = goal.TaskContext + "\n\nCurrent sub-goal: " + goal.Text
+	}
+	if d.sess.Tasks != nil {
+		d.sess.Tasks.SetTask(taskText)
+	}
+
 	// Wire navigator callbacks (scroll, progress, list_tabs).
 	d.wireNavigatorCallbacks()
 	defer func() {

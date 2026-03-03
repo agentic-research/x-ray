@@ -6,6 +6,7 @@ import (
 
 	"github.com/agentic-research/mache/graph"
 	"github.com/agentic-research/x-ray/internal/mache"
+	"github.com/agentic-research/x-ray/internal/tasks"
 )
 
 // pendingAction is an action queued for dispatch when the extension reconnects.
@@ -45,6 +46,7 @@ type TabSession struct {
 	SelectorsResolved chan map[string][]string // receives resolved items from RESOLVE_SELECTORS round-trip
 	RescanPath        string                   // set by voice handler for targeted rescan, consumed by handleDOMSnapshot
 	CurrentURL        string                   // URL of the page currently loaded or loading (prevents redundant goto)
+	Tasks             *tasks.Graph             // /tasks/ mount — active goal + scratch (shared with Navigator)
 	Doer              *Doer                    // background execution agent (created lazily on first voice session)
 	doerCancel        context.CancelFunc       // cancels the Doer's Run goroutine (not just the current goal)
 	TabsListedCh      chan []TabInfo           // receives tab list from LIST_TABS round-trip

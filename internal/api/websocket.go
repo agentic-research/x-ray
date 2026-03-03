@@ -18,6 +18,7 @@ import (
 	"github.com/agentic-research/x-ray/internal/focus"
 	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/agentic-research/x-ray/internal/navigator"
+	"github.com/agentic-research/x-ray/internal/tasks"
 	"github.com/gorilla/websocket"
 	"google.golang.org/genai"
 )
@@ -112,6 +113,12 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		}
 	}
 
+	// Mount task tracking graph for Navigator scratchpad.
+	taskGraph := tasks.New()
+	if err := composite.Mount("tasks", taskGraph); err != nil {
+		log.Printf("Session: mount tasks (tab %d): %v", tabID, err)
+	}
+
 	// Add the dynamic focus mount that routes to the currently active application.
 	appMapping := map[string]string{
 		"Google Chrome": "browser",
@@ -128,6 +135,7 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		Engine:            engine,
 		Composite:         composite,
 		Navigator:         nav,
+		Tasks:             taskGraph,
 		SchemaReady:       make(chan struct{}),
 		DOMUpdateCh:       make(chan DOMUpdate, 1),
 		DOMMutatedCh:      make(chan struct{}, 1),
