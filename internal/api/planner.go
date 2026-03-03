@@ -34,53 +34,69 @@ type PlannerResult struct {
 }
 
 // plannerSystemPrompt adapts the Talker system prompt for autonomous benchmark execution.
-var plannerSystemPrompt = `You are an autonomous web agent executing a benchmark task. You have a background navigator (Doer) that can see and interact with the browser. The page is already loaded at the task's start URL.
+// Tool schemas are provided via the Tools parameter — do NOT re-describe syntax here.
+var plannerSystemPrompt = `You are an autonomous web agent. You dispatch commands to a browser navigator that can see and interact with web pages. The page is already loaded at the task's start URL.
 
-YOUR TOOLS:
-- issue_command(goal, read_only?): Dispatch a navigation/interaction command to your background navigator.
-  Set read_only=true ONLY for pure observation on the already-loaded page (e.g., "read the page title", "list the items shown", "what is the price displayed?").
-  Set read_only=false (or omit) when ANY clicking, typing, scrolling, searching, or navigation is needed — even if the end goal is to read information.
-  Common pattern: navigate/search with read_only=false, then read the result with read_only=true.
-- check_status(): Check what the navigator is currently doing.
-- cancel_task(): Cancel the current background task.
-- open_url(url): Open a URL in a NEW browser tab. Use when the task requires a different website.
+TOOLS:
+- issue_command(goal, read_only): Send a goal to the navigator.
+  read_only=true: observe only (read text, check structure). No clicks or typing.
+  read_only=false: interact (click, type, scroll, navigate). Use this by default.
+- open_url(url): Open a completely different website.
 
-TERMINATION PROTOCOL:
-- When the task is accomplished, respond with: DONE: <your answer or confirmation>
-- When you cannot complete the task after reasonable attempts, respond with: FAILED: <reason>
-- For information retrieval tasks, DONE: must include the EXACT answer (the specific number, name, price, date, URL, etc.) — not a description of what you did.
-- For action tasks, DONE: should confirm the specific outcome (e.g., "Posted comment 'hello' on thread X").
+WORKFLOW — Break every task into these steps:
+1. OBSERVE: issue_command("describe the page structure", read_only=true)
+2. INTERACT: issue_command("click/scroll/type to reach the content", read_only=false)
+3. READ: issue_command("read the specific content needed", read_only=true)
+4. ANSWER: Respond with DONE: or FAILED:
 
-TASK DECOMPOSITION:
-Classify the task, then follow the appropriate pattern:
+CRITICAL PATTERNS:
+- Content behind tabs (e.g., Reviews): use read_only=false to CLICK the tab first, then read_only=true to read.
+- Content below the fold: use read_only=false to SCROLL DOWN, then read_only=true to read.
+- Search results: use read_only=false to TYPE a query and submit, then read_only=true to read results.
+- If read_only=true fails to find content, ALWAYS try read_only=false next to interact with the page.
 
-Information retrieval ("what is", "how many", "list", "find the price of", "tell me"):
-1. issue_command("read the page to understand its structure", read_only=true)
-2. issue_command("search/navigate to find the relevant content") — read_only=false if clicking or typing is needed
-3. issue_command("read the specific answer from the page", read_only=true)
-4. DONE: <exact answer>
-
-Action tasks ("post", "create", "add to cart", "submit", "delete", "update"):
-1. issue_command("read the page to find the relevant form/button", read_only=true)
-2. issue_command("fill in <field> with <value>") or issue_command("click <element>")
-3. issue_command("submit the form") or issue_command("confirm the action")
-4. issue_command("verify the action succeeded — look for confirmation message", read_only=true)
-5. DONE: <confirmation of what was accomplished>
-
-Navigation tasks ("go to", "find the page for", "navigate to"):
-1. issue_command("navigate to <target>") — click links, use nav menus, search
-2. issue_command("verify we arrived at the correct page", read_only=true)
-3. DONE: <confirmation or URL>
+TERMINATION:
+- DONE: followed by the EXACT answer (number, name, price, list of names, etc.)
+- FAILED: followed by the reason.
 
 RULES:
-1. Every turn MUST include a tool call or a DONE/FAILED response. Never respond with only text.
-2. Start by reading the page (read_only=true) to understand what you're looking at before taking action.
-3. After each command result, decide the next step immediately. Do not repeat commands that already succeeded.
-4. If a command fails, try an alternative approach (different search terms, different navigation path, scroll to find hidden elements).
-5. Do NOT add conversational filler. Be direct and efficient.
-6. If you get "No active browser tab", use open_url() to open the start URL.
-7. When the navigator returns a result that answers the task, IMMEDIATELY respond with DONE: <answer>. Do not issue more commands.
-8. For multi-site tasks, use open_url() to open additional sites as needed.`
+- Every turn MUST include a tool call OR a DONE/FAILED response. No thinking aloud.
+- Never repeat a failed command. Try a different approach.
+- Never use read_only=true twice in a row if the first attempt failed to find what you need.`
+
+// plannerToolDefinitions returns a minimal tool set for the synchronous Planner.
+// Unlike the voice Talker, Planner blocks until each command completes, so
+// check_status and cancel_task are unnecessary. Fewer tools = simpler JSON
+// schema = fewer MALFORMED_FUNCTION_CALL errors from Gemini.
+func plannerToolDefinitions() []*genai.Tool {
+	return []*genai.Tool{{
+		FunctionDeclarations: []*genai.FunctionDeclaration{
+			{
+				Name:        "issue_command",
+				Description: "Send a goal to the browser navigator. Returns a summary when done.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"goal":      {Type: genai.TypeString, Description: "What to do in the browser"},
+						"read_only": {Type: genai.TypeString, Description: "Set to 'true' to just observe the page, or 'false' to interact (click, type, scroll)", Enum: []string{"true", "false"}},
+					},
+					Required: []string{"goal"},
+				},
+			},
+			{
+				Name:        "open_url",
+				Description: "Open a URL in a new browser tab.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"url": {Type: genai.TypeString, Description: "URL to open"},
+					},
+					Required: []string{"url"},
+				},
+			},
+		},
+	}}
+}
 
 // RunTask executes a high-level task using the Planner→Doer loop.
 // Blocks until the task completes, fails, or the context is cancelled.
@@ -97,8 +113,18 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{{Text: plannerSystemPrompt}},
 		},
-		Tools: talkerToolDefinitions(),
+		Tools:       plannerToolDefinitions(),
+		Temperature: genai.Ptr(float32(0.1)),
+		SafetySettings: []*genai.SafetySetting{
+			{Category: genai.HarmCategoryHarassment, Threshold: genai.HarmBlockThresholdOff},
+			{Category: genai.HarmCategoryHateSpeech, Threshold: genai.HarmBlockThresholdOff},
+			{Category: genai.HarmCategorySexuallyExplicit, Threshold: genai.HarmBlockThresholdOff},
+			{Category: genai.HarmCategoryDangerousContent, Threshold: genai.HarmBlockThresholdOff},
+		},
 	}
+
+	malformedRetries := 0
+	const maxMalformedRetries = 5
 
 	for turn := 0; turn < maxPlannerTurns; turn++ {
 		if ctx.Err() != nil {
@@ -114,10 +140,74 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 			}
 		}
 
+		// Diagnostic: log full response shape on every turn for debugging.
+		if len(resp.Candidates) > 0 {
+			c := resp.Candidates[0]
+			contentDesc := "nil"
+			if c.Content != nil {
+				parts := make([]string, 0, len(c.Content.Parts))
+				for _, p := range c.Content.Parts {
+					if p.FunctionCall != nil {
+						argsJSON, _ := json.Marshal(p.FunctionCall.Args)
+						parts = append(parts, fmt.Sprintf("FC(%s, %s)", p.FunctionCall.Name, string(argsJSON)))
+					} else if p.Text != "" {
+						parts = append(parts, fmt.Sprintf("Text(%s)", truncate(p.Text, 80)))
+					} else {
+						parts = append(parts, "Other")
+					}
+				}
+				contentDesc = fmt.Sprintf("role=%s parts=[%s]", c.Content.Role, strings.Join(parts, ", "))
+			}
+			log.Printf("Planner: turn %d response: finish=%s content=%s", turn, c.FinishReason, contentDesc)
+		} else {
+			log.Printf("Planner: turn %d response: no candidates", turn)
+		}
+
 		if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil {
+			// MALFORMED_FUNCTION_CALL: Gemini tried to call a tool but produced
+			// invalid JSON. Nudge it to retry rather than aborting.
+			finishReason := ""
+			if len(resp.Candidates) > 0 {
+				finishReason = string(resp.Candidates[0].FinishReason)
+			}
+			if finishReason == string(genai.FinishReasonMalformedFunctionCall) {
+				malformedRetries++
+				log.Printf("Planner: malformed function call at turn %d (retry %d/%d)", turn, malformedRetries, maxMalformedRetries)
+				if malformedRetries > maxMalformedRetries {
+					return PlannerResult{
+						Status: "error",
+						Error:  fmt.Sprintf("Gemini produced %d consecutive malformed function calls", malformedRetries),
+						Turns:  turn,
+					}
+				}
+				// Maintain proper turn alternation: model placeholder, then user nudge.
+				history = append(history, &genai.Content{
+					Role:  "model",
+					Parts: []*genai.Part{{Text: "Let me try that again."}},
+				})
+				history = append(history, &genai.Content{
+					Role:  "user",
+					Parts: []*genai.Part{{Text: "Your previous function call had invalid JSON. Call the issue_command tool with {\"goal\": \"your goal here\", \"read_only\": true} or {\"goal\": \"your goal here\"}."}},
+				})
+				continue
+			}
+
+			errMsg := "Empty response from Gemini"
+			if resp.PromptFeedback != nil {
+				if resp.PromptFeedback.BlockReason != "" {
+					errMsg += fmt.Sprintf(" (blocked: %s)", resp.PromptFeedback.BlockReason)
+				}
+				if resp.PromptFeedback.BlockReasonMessage != "" {
+					errMsg += fmt.Sprintf(" — %s", resp.PromptFeedback.BlockReasonMessage)
+				}
+			}
+			if len(resp.Candidates) > 0 && resp.Candidates[0].FinishReason != "" {
+				errMsg += fmt.Sprintf(" (finish_reason: %s)", resp.Candidates[0].FinishReason)
+			}
+			log.Printf("Planner: empty response at turn %d: %s (model=%s)", turn, errMsg, p.model)
 			return PlannerResult{
 				Status: "error",
-				Error:  "Empty response from Gemini",
+				Error:  errMsg,
 				Turns:  turn,
 			}
 		}
@@ -186,6 +276,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 
 		// Execute function calls.
 		if len(functionCalls) > 0 {
+			malformedRetries = 0 // Reset on successful parse.
 			var responseParts []*genai.Part
 			for _, fc := range functionCalls {
 				result := p.executeTool(ctx, fc, doer, tabID, sess)
@@ -239,7 +330,7 @@ func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer 
 		if goal == "" {
 			return "Error: goal is required."
 		}
-		readOnly, _ := fc.Args["read_only"].(bool)
+		readOnly := fmt.Sprintf("%v", fc.Args["read_only"]) == "true"
 		goalID := fmt.Sprintf("plan-%d", time.Now().UnixMilli())
 
 		// Set up blocking channel to wait for Doer completion.
@@ -461,6 +552,32 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 		result.Status, result.Turns, truncate(result.Summary, 100))
 
 	writeJSON(w, result)
+}
+
+// HandleAgentReset is the HTTP handler for POST /agent/reset.
+// Resets schema state for the active tab so the next task starts fresh.
+// Does NOT navigate — resolveTab handles reusing tabs and navigating to the new URL.
+func (h *Handler) HandleAgentReset(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+
+	h.mu.Lock()
+	tabID := h.activeVoiceTab
+	h.mu.Unlock()
+
+	if tabID == 0 {
+		writeJSON(w, map[string]string{"status": "ok", "message": "no active tab"})
+		return
+	}
+
+	// Reset the session's schema state so the next task starts fresh.
+	sess := h.getSession(tabID)
+	sess.ResetSchema()
+
+	log.Printf("Reset: cleared schema for tab %d", tabID)
+	writeJSON(w, map[string]string{"status": "ok", "tab_id": fmt.Sprintf("%d", tabID)})
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

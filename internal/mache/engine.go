@@ -587,17 +587,27 @@ func collectDescendants(parentMap map[string][]SummaryElement, rootID string, ma
 const maxChildrenPerZone = 200
 
 // selectChildItems determines which descendants appear in the children listing
-// and _c/ directory. With primary items, only those are listed (preserving
-// order). Otherwise, all descendants with non-empty text are included.
+// and _c/ directory. Primary items are listed first (preserving order), then
+// supplemented with other text-bearing descendants so the Navigator can see
+// all meaningful content in the zone (e.g., "Reviews 12" tab labels that
+// don't match the zone's CSS item_selector).
 func selectChildItems(descendants []SummaryElement, primaryItems []string) []SummaryElement {
 	if len(primaryItems) > 0 {
 		byID := make(map[string]SummaryElement, len(descendants))
 		for _, d := range descendants {
 			byID[d.ID] = d
 		}
+		seen := make(map[string]bool, len(primaryItems))
 		var items []SummaryElement
 		for _, id := range primaryItems {
 			if d, ok := byID[id]; ok {
+				items = append(items, d)
+				seen[id] = true
+			}
+		}
+		// Supplement with other text-bearing descendants not in primary items.
+		for _, d := range descendants {
+			if d.Text != "" && !seen[d.ID] {
 				items = append(items, d)
 			}
 		}

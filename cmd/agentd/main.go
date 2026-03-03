@@ -141,6 +141,7 @@ func main() {
 	http.HandleFunc("/doer", handler.HandleDoerHTTP)
 	http.HandleFunc("/status", handler.HandleStatus)
 	http.HandleFunc("/agent/task", handler.HandleAgentTask)
+	http.HandleFunc("/agent/reset", handler.HandleAgentReset)
 	http.HandleFunc("/voice", handler.HandleVoice)
 	http.HandleFunc("/voice-ui", serveVoiceUI)
 

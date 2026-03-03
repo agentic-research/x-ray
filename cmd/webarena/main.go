@@ -314,26 +314,21 @@ func isNumeric(s string) bool {
 	return err == nil
 }
 
-// resetBrowser navigates the active tab to about:blank between tasks to prevent
-// state leakage (cart contents, search results, login sessions).
+// resetBrowser resets schema state between tasks via POST /agent/reset.
+// Does NOT navigate to about:blank — resolveTab will reuse existing tabs
+// and navigate them to the new start URL, which is faster and avoids
+// creating new tabs every time.
 func resetBrowser(ctx context.Context, agentdURL string) {
-	resetCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	resetCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	body, _ := json.Marshal(map[string]any{
-		"intent":    "DONE: reset",
-		"tab_id":    0,
-		"start_url": "about:blank",
-	})
-
-	req, err := http.NewRequestWithContext(resetCtx, http.MethodPost, agentdURL+"/agent/task", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(resetCtx, http.MethodPost, agentdURL+"/agent/reset", nil)
 	if err != nil {
 		return
 	}
-	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Printf("Reset: failed to navigate to about:blank: %v", err)
+		log.Printf("Reset: %v", err)
 		return
 	}
 	_ = resp.Body.Close()

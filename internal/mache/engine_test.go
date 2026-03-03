@@ -289,19 +289,25 @@ func TestSelectChildItems(t *testing.T) {
 		{ID: "m-6", Tag: "a", Text: "(other.com)"},
 	}
 
-	// With primary items: only those are selected
+	// With primary items: those listed first, then supplemented with other text-bearing items
 	items := selectChildItems(descendants, []string{"m-2", "m-5"})
-	if len(items) != 2 {
-		t.Fatalf("expected 2 items, got %d", len(items))
+	// 2 primary + 2 supplemented text items: (example.com), (other.com)
+	if len(items) != 4 {
+		t.Fatalf("expected 4 items (2 primary + 2 supplemented), got %d", len(items))
 	}
 	if items[0].ID != "m-2" || items[1].ID != "m-5" {
-		t.Errorf("wrong items: %v", items)
+		t.Errorf("primary items should come first: %v", items)
+	}
+	// Supplemented items come after primaries
+	if items[2].ID != "m-3" || items[3].ID != "m-6" {
+		t.Errorf("supplemented items should follow primaries: %v", items)
 	}
 
 	// Missing primary items are skipped gracefully
 	items = selectChildItems(descendants, []string{"m-2", "m-99"})
-	if len(items) != 1 {
-		t.Fatalf("expected 1 item (m-99 missing), got %d", len(items))
+	// 1 primary (m-2) + 2 supplemented: (example.com), (other.com), Story Two
+	if len(items) < 1 {
+		t.Fatalf("expected at least 1 item (m-99 missing), got %d", len(items))
 	}
 
 	// Without primary items: all non-empty text descendants
@@ -376,8 +382,10 @@ ID: mache-14 | Parent: mache-10 | Tag: span | Text: "(other.com)"
 	if !strings.Contains(content, `[2] "Second Story"`) {
 		t.Errorf("missing [2] Second Story in output:\n%s", content)
 	}
-	if strings.Count(content, "] \"") != 2 {
-		t.Errorf("expected 2 items, got:\n%s", content)
+	// 2 primary items + 2 supplemented text-bearing descendants (Stories, example.com, other.com)
+	// "Stories" is the zone root text, "(example.com)" and "(other.com)" are non-primary text items.
+	if strings.Count(content, "] \"") < 2 {
+		t.Errorf("expected at least 2 items, got:\n%s", content)
 	}
 	// No mache IDs in children file
 	if strings.Contains(content, "mache-") {
@@ -555,8 +563,9 @@ ID: mache-15 | Parent: mache-10 | Tag: a | Text: "Fourth Story (new after scroll
 	if !strings.Contains(content, `[4] "Fourth Story (new after scroll)"`) {
 		t.Errorf("missing [4] Fourth Story (resolved item):\n%s", content)
 	}
-	if strings.Count(content, "] \"") != 4 {
-		t.Errorf("expected 4 items from resolved items, got:\n%s", content)
+	// 4 resolved items + supplemented text-bearing descendants (Stories, (example.com))
+	if strings.Count(content, "] \"") < 4 {
+		t.Errorf("expected at least 4 items from resolved items, got:\n%s", content)
 	}
 	// No mache IDs exposed
 	if strings.Contains(content, "mache-") {

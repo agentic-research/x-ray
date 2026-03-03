@@ -39,9 +39,9 @@ chrome.storage.local.get({ wsUrl: DEFAULT_WS_URL }, async (items) => {
     }
   } catch (_) {}
 
-  // Not running — auto-launch via native messaging.
-  console.log('X-Ray: agentd not running, launching via native messaging');
-  launchAgentd(httpBase);
+  // Not running — connect anyway; the reconnect timer will retry until agentd starts.
+  console.log('X-Ray: agentd not running, connecting (will retry until available)');
+  connectWebSocket();
 });
 
 // Re-connect when the URL is changed at runtime.
@@ -282,6 +282,7 @@ function connectWebSocket() {
           }
           console.log('X-Ray: Created tab', tab.id, 'for', url);
           if (tab.windowId) chrome.windows.update(tab.windowId, { focused: true });
+          gotoInFlight.add(tab.id); // Suppress persistent onUpdated listener (prevent double capture)
           // Notify server immediately (before schema ready) so activeVoiceTab is set.
           if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'TAB_ACTIVATED', tab_id: tab.id }));
@@ -290,6 +291,7 @@ function connectWebSocket() {
           const listener = (tabId, changeInfo) => {
             if (tabId === tab.id && changeInfo.status === 'complete') {
               chrome.tabs.onUpdated.removeListener(listener);
+              gotoInFlight.delete(tab.id);
               lastKnownUrls.set(tab.id, url); // Sync tracked URL
               waitForLayoutStable(tab.id).then(() => {
                 pendingSnapshots.add(tab.id);
@@ -298,7 +300,10 @@ function connectWebSocket() {
             }
           };
           chrome.tabs.onUpdated.addListener(listener);
-          setTimeout(() => chrome.tabs.onUpdated.removeListener(listener), 30000);
+          setTimeout(() => {
+            chrome.tabs.onUpdated.removeListener(listener);
+            gotoInFlight.delete(tab.id);
+          }, 30000);
         });
         break;
       }

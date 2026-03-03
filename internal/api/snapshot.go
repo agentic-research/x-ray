@@ -50,30 +50,35 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 	} else if key != "" {
 		if cached, ok := h.schemas.Get(key); ok {
 			staleZones := mache.ValidateSchemaZones(cached, msg.Summary)
+			forceFull := false
 			if len(staleZones) == 0 {
 				// Secondary guard: catch cross-tab cache poisoning by bounds shift.
 				// Same mache-ID can map to a different element in a different tab.
 				boundsStale := mache.ValidateSchemaBounds(cached, msg.Summary, 0.10)
 				if len(boundsStale) > 0 {
-					log.Printf("Schema CACHE BOUNDS MISMATCH for %q (tab %d) — %d zones displaced: %v",
+					// Bounds-only mismatches trigger FULL regen, not partial.
+					// Partial regen crops screenshots to old bounds, but those regions
+					// may overlap with valid zones. The Cartographer then produces zones
+					// at conflicting paths, causing valid zones (like sidebar/content
+					// with reviews) to be lost during merge.
+					forceFull = true
+					log.Printf("Schema CACHE BOUNDS MISMATCH for %q (tab %d) — %d zones displaced: %v — full regen",
 						key, msg.TabID, len(boundsStale), boundsStale)
 				}
-				for path, id := range boundsStale {
-					staleZones[path] = id
-				}
 			}
-			if len(staleZones) == 0 {
+			if len(staleZones) == 0 && !forceFull {
 				schemaJSON = cached
 				fromCache = true
 				log.Printf("Schema CACHE HIT for %q (tab %d) — skipping Cartographer", key, msg.TabID)
 				h.sendMessage(conn, OutboundMessage{
 					Type: MsgStatus, TabID: msg.TabID, Message: "Using cached schema", Stage: "cartographer",
 				})
-			} else {
+			} else if !forceFull {
 				// Count total zones in the cached schema.
 				totalZones := countCachedZones(cached)
 
-				// Partial regen: only some zones are stale.
+				// Partial regen: only some zones are stale (mache-IDs missing from DOM).
+				// Note: bounds-only mismatches always do full regen (staleZones stays empty above).
 				if totalZones > 0 && len(staleZones) < totalZones {
 					log.Printf("Schema cache PARTIAL STALE for %q (tab %d) — %d/%d zones stale: %v",
 						key, msg.TabID, len(staleZones), totalZones, staleZones)

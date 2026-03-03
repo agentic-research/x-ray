@@ -22,7 +22,7 @@ func NewNavFS(g graph.Graph) *NavFS {
 
 // ListDir returns child names at the given path, with "/" suffix for directories.
 func (f *NavFS) ListDir(dirPath string) ([]string, error) {
-	p := cleanPath(dirPath)
+	p := f.resolvePath(dirPath)
 
 	childIDs, err := f.g.ListChildren(p)
 	if err != nil {
@@ -47,7 +47,7 @@ func (f *NavFS) ListDir(dirPath string) ([]string, error) {
 
 // ReadFile returns the text content of a file node.
 func (f *NavFS) ReadFile(filePath string) (string, error) {
-	p := cleanPath(filePath)
+	p := f.resolvePath(filePath)
 	node, err := f.g.GetNode(p)
 	if err != nil {
 		return "", fmt.Errorf("not found: %s", filePath)
@@ -60,7 +60,7 @@ func (f *NavFS) ReadFile(filePath string) (string, error) {
 
 // ResolveMacheID finds the mache_id for a given virtual path.
 func (f *NavFS) ResolveMacheID(nodePath string) (string, error) {
-	p := cleanPath(nodePath)
+	p := f.resolvePath(nodePath)
 	node, err := f.g.GetNode(p)
 	if err != nil {
 		return "", fmt.Errorf("no mache_id found at %s", nodePath)
@@ -92,7 +92,7 @@ func (f *NavFS) ResolveMacheID(nodePath string) (string, error) {
 // Act performs an action on the node at the given path, routing through
 // the underlying graph. Returns ErrActNotSupported for passive graphs.
 func (f *NavFS) Act(nodePath, action, payload string) (*graph.ActionResult, error) {
-	p := cleanPath(nodePath)
+	p := f.resolvePath(nodePath)
 	return f.g.Act(p, action, payload)
 }
 
@@ -109,4 +109,30 @@ func cleanPath(p string) string {
 		return ""
 	}
 	return p
+}
+
+// resolvePath cleans a path and, if it doesn't exist in the graph, tries
+// prepending "browser/" as a fallback. LLMs frequently omit the /browser/
+// prefix when generating paths from the tree dump.
+func (f *NavFS) resolvePath(rawPath string) string {
+	p := cleanPath(rawPath)
+	// Check if the path exists as-is.
+	if _, err := f.g.GetNode(p); err == nil {
+		return p
+	}
+	// Also check if it's a valid directory (ListChildren succeeds).
+	if _, err := f.g.ListChildren(p); err == nil {
+		return p
+	}
+	// Try prepending "browser/" if not already prefixed.
+	if !strings.HasPrefix(p, "browser/") && p != "browser" && p != "" {
+		candidate := "browser/" + p
+		if _, err := f.g.GetNode(candidate); err == nil {
+			return candidate
+		}
+		if _, err := f.g.ListChildren(candidate); err == nil {
+			return candidate
+		}
+	}
+	return p // Return original — let the caller produce the error.
 }

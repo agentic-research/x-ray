@@ -84,7 +84,10 @@ func talkerToolDefinitions() []*genai.Tool {
 			{
 				Name:        "check_status",
 				Description: "Check what the background navigator is currently doing. Returns the current goal, step, and result if finished. Use this when the user asks 'what are you doing?' or to check if a previous command has completed.",
-				Parameters:  &genai.Schema{Type: genai.TypeObject},
+				Parameters: &genai.Schema{
+					Type:       genai.TypeObject,
+					Properties: map[string]*genai.Schema{},
+				},
 			},
 			{
 				Name:        "issue_command",
@@ -101,7 +104,10 @@ func talkerToolDefinitions() []*genai.Tool {
 			{
 				Name:        "cancel_task",
 				Description: "Cancel the current background navigation task. Use when the user says stop, cancel, or nevermind.",
-				Parameters:  &genai.Schema{Type: genai.TypeObject},
+				Parameters: &genai.Schema{
+					Type:       genai.TypeObject,
+					Properties: map[string]*genai.Schema{},
+				},
 			},
 			{
 				Name:        "open_url",

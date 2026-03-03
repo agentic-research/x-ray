@@ -276,7 +276,7 @@ var gemmaFnCallRe = regexp.MustCompile(`\{\s*"name"\s*:\s*"([\w.]+)"\s*,\s*"(?:p
 
 // cliCommands is the set of valid CLI command prefixes.
 var cliCommands = map[string]bool{
-	"ls": true, "cat": true, "act": true,
+	"ls": true, "cat": true, "act": true, "grep": true,
 	"browser.scroll": true, "browser.goto": true, "browser.rescan": true,
 	"browser.list_tabs": true, "browser.switch_tab": true,
 	"iterm.new_window": true, "iterm.new_tab": true,
@@ -464,6 +464,8 @@ func buildCLIToolPrompt(tools []*genai.Tool) string {
 				sb.WriteString("  ls <path>\n")
 			case "cat":
 				sb.WriteString("  cat <path>\n")
+			case "grep":
+				sb.WriteString("  grep <pattern>\n")
 			case "act":
 				sb.WriteString("  act <action> <path> [\"payload\"]\n")
 				sb.WriteString("    actions: ► (click), ⊙ (focus), ✎ (type), ⏎ (enter)\n")
@@ -602,6 +604,12 @@ func ParseCLICommand(s string) *genai.FunctionCall {
 		}
 		return &genai.FunctionCall{Name: "cat", Args: map[string]any{"path": rest}}
 
+	case "grep":
+		if rest == "" {
+			return nil
+		}
+		return &genai.FunctionCall{Name: "grep", Args: map[string]any{"pattern": rest}}
+
 	case "act":
 		return parseActCLI(rest)
 
@@ -690,6 +698,8 @@ func FunctionCallToCLI(fc *genai.FunctionCall) string {
 		return "ls " + getString("path")
 	case "cat":
 		return "cat " + getString("path")
+	case "grep":
+		return "grep " + getString("pattern")
 	case "act":
 		action := getString("action")
 		// Emit glyph for CLI-mode history formatting.

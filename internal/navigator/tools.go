@@ -281,6 +281,78 @@ func (t *SwitchTabTool) Execute(_ context.Context, args map[string]any) (string,
 		&ActionResult{Action: "browser.switch_tab", Path: fmt.Sprintf("%d", tabID)}
 }
 
+// --- grep ---
+
+type GrepTool struct{ fs *NavFS }
+
+func (t *GrepTool) Declaration() *genai.FunctionDeclaration {
+	return &genai.FunctionDeclaration{
+		Name:        "grep",
+		Description: "Search all zone children AND description files for a text pattern (case-insensitive). Returns matching lines with their zone paths. Use for finding specific content across the page. For reading ALL content in a zone, use cat(path/children) instead.",
+		Parameters: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"pattern": {Type: genai.TypeString, Description: "Text to search for (case-insensitive substring match)"},
+			},
+			Required: []string{"pattern"},
+		},
+	}
+}
+
+func (t *GrepTool) Execute(_ context.Context, args map[string]any) (string, *ActionResult) {
+	pattern, _ := args["pattern"].(string)
+	if pattern == "" {
+		return "Error: pattern is required", nil
+	}
+	lower := strings.ToLower(pattern)
+
+	var matches []string
+	t.grepWalk("", lower, &matches)
+
+	if len(matches) == 0 {
+		return fmt.Sprintf("No matches for %q", pattern), nil
+	}
+	return strings.Join(matches, "\n"), nil
+}
+
+// grepWalk recursively walks the filesystem looking for "children" and
+// "description" files, returning lines matching the pattern.
+func (t *GrepTool) grepWalk(dirPath, lower string, matches *[]string) {
+	entries, err := t.fs.ListDir(dirPath)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		name := strings.TrimSuffix(entry, "/")
+		var childPath string
+		if dirPath == "" || dirPath == "/" {
+			childPath = "/" + name
+		} else {
+			childPath = dirPath + "/" + name
+		}
+
+		// Search both children and description files.
+		if name == "children" || name == "description" {
+			content, err := t.fs.ReadFile(childPath)
+			if err != nil || content == "" {
+				continue
+			}
+			zonePath := strings.TrimSuffix(childPath, "/"+name)
+			for _, line := range strings.Split(content, "\n") {
+				if strings.Contains(strings.ToLower(line), lower) {
+					*matches = append(*matches, zonePath+": "+line)
+				}
+			}
+			continue
+		}
+
+		// Recurse into directories (skip _c/ — those are individual children).
+		if strings.HasSuffix(entry, "/") && name != "_c" {
+			t.grepWalk(childPath, lower, matches)
+		}
+	}
+}
+
 // --- iterm.new_window ---
 
 type NewWindowTool struct{ fs *NavFS }

@@ -68,6 +68,7 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 	ls := &LsTool{fs: fs}
 	cat := &CatTool{fs: fs}
 	act := &ActTool{fs: fs}
+	grepTool := &GrepTool{fs: fs}
 	scroll := &ScrollTool{}
 	goTo := &GotoTool{}
 	rescan := &RescanTool{fs: fs}
@@ -80,6 +81,7 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 	reg.Register(ls)
 	reg.Register(cat)
 	reg.Register(act)
+	reg.Register(grepTool)
 	reg.Register(scroll)
 	reg.Register(goTo)
 	reg.Register(rescan)
@@ -154,6 +156,12 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 		},
 		Tools:       tools,
 		Temperature: genai.Ptr(float32(0.1)),
+		SafetySettings: []*genai.SafetySetting{
+			{Category: genai.HarmCategoryHarassment, Threshold: genai.HarmBlockThresholdOff},
+			{Category: genai.HarmCategoryHateSpeech, Threshold: genai.HarmBlockThresholdOff},
+			{Category: genai.HarmCategorySexuallyExplicit, Threshold: genai.HarmBlockThresholdOff},
+			{Category: genai.HarmCategoryDangerousContent, Threshold: genai.HarmBlockThresholdOff},
+		},
 	}
 
 	// Pre-fill a tree dump so the model sees the full filesystem structure upfront.
@@ -332,6 +340,7 @@ Your tools:
 General (work on any mount):
 - ls(path): List directory contents. Start with ls("/") to see available mount points.
 - cat(path): Read a file. Use for "description", "children", "buffer", "status" files.
+- grep(pattern): Search ALL children and description files across all zones for a text pattern (case-insensitive). Returns matching lines with zone paths. Best for finding specific content (names, prices, keywords). To read ALL content in a zone, use cat() instead.
 - act(path, action, payload?): Execute an action on the element at this path.
   For browser elements: "click", "focus", "type", "enter".
   For terminal sessions: "type" (send text — include \n for Enter), "enter" (send special key like "ctrl-c"), "focus" (bring window to front).
@@ -373,16 +382,16 @@ Before calling act(), ALWAYS classify the user's intent:
 CRITICAL CONSTRAINTS:
 - Do NOT hallucinate tools or paths. Only use paths confirmed via ls().
 - Never guess a path. Always ls() a directory before trying to cat() or act().
-- You have exactly ten tools: ls, cat, act, browser.scroll, browser.goto, browser.rescan, browser.list_tabs, browser.switch_tab, iterm.new_window, iterm.new_tab.
+- You have exactly eleven tools: ls, cat, act, grep, browser.scroll, browser.goto, browser.rescan, browser.list_tabs, browser.switch_tab, iterm.new_window, iterm.new_tab.
 - If you cannot find an element, use browser.rescan() before giving up.
 
 Strategy:
 1. ls("/") to see mount points (browser/, iterm/).
 2. Navigate into the relevant mount based on the user's intent.
-3. Read description/status files to confirm context.
-4. For browser: cat "children" → act on "_c/N".
+3. For INFORMATION RETRIEVAL: use grep(pattern) to search all zones at once — skip catting individual files.
+4. For browser ACTIONS: cat "children" → act on "_c/N".
 5. For terminal: cat "buffer" → act with "type" to send commands.
 
-Be decisive. Two calls should be enough: cat children → act.
+Be decisive. For info retrieval: one grep call should find what you need. For actions: cat children → act.
 
 CONTINUATION: When your intent starts with [CONTINUATION], a previous action was executed and the page may have changed. Verify the action worked, then continue toward the original goal.`
