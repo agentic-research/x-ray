@@ -147,6 +147,14 @@ func main() {
 
 	port := ":" + cfg.Port
 
+	// Write PID file so the process can be found and stopped later.
+	pidFile := pidFilePath()
+	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0o644); err != nil {
+		log.Printf("Warning: could not write PID file %s: %v", pidFile, err)
+	} else {
+		log.Printf("PID file: %s", pidFile)
+	}
+
 	// Start HTTP server in background.
 	server := &http.Server{Addr: port}
 	go func() {
@@ -165,6 +173,8 @@ func main() {
 		cancel()
 		// Close stdin to unblock the PTT scanner loop in voice mode.
 		_ = os.Stdin.Close()
+		// Remove PID file on clean shutdown.
+		_ = os.Remove(pidFile)
 		// Graceful HTTP shutdown.
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()
@@ -299,4 +309,15 @@ func runVoiceLoop(ctx context.Context, cancel context.CancelFunc, handler *api.H
 
 func serveVoiceUI(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "static/voice.html")
+}
+
+// pidFilePath returns ~/.xray/agentd.pid.
+func pidFilePath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "/tmp/xray-agentd.pid"
+	}
+	dir := home + "/.xray"
+	_ = os.MkdirAll(dir, 0o755)
+	return dir + "/agentd.pid"
 }

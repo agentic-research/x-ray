@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # xray-launcher.sh — Chrome Native Messaging host for X-Ray agentd.
 # Chrome launches this; we start agentd if needed, return the status.
+# Also usable as: xray-launcher.sh stop  (kills running agentd)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -8,6 +9,40 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BINARY="$PROJECT_DIR/bin/agentd"
 LOG_FILE="$PROJECT_DIR/logs/agentd.log"
 PORT="${XRAY_PORT:-8080}"
+PID_FILE="$HOME/.xray/agentd.pid"
+
+# --- Stop command (not part of NM protocol, used from CLI) ---
+if [ "${1:-}" = "stop" ]; then
+  if [ -f "$PID_FILE" ]; then
+    PID=$(cat "$PID_FILE")
+    if kill -0 "$PID" 2>/dev/null; then
+      kill "$PID"
+      echo "Sent SIGTERM to agentd (PID $PID)"
+      # Wait up to 3s for clean exit.
+      for _ in 1 2 3; do
+        kill -0 "$PID" 2>/dev/null || break
+        sleep 1
+      done
+      if kill -0 "$PID" 2>/dev/null; then
+        kill -9 "$PID"
+        echo "Force-killed agentd (PID $PID)"
+      fi
+    else
+      echo "PID $PID not running (stale PID file)"
+    fi
+    rm -f "$PID_FILE"
+  else
+    echo "No PID file at $PID_FILE"
+    # Fall back to port scan.
+    PID=$(lsof -i ":$PORT" -sTCP:LISTEN -t 2>/dev/null | head -1 || true)
+    if [ -n "$PID" ]; then
+      kill "$PID" && echo "Killed agentd on port $PORT (PID $PID)"
+    else
+      echo "No agentd found on port $PORT"
+    fi
+  fi
+  exit 0
+fi
 
 # Native messaging protocol: read 4-byte LE length + JSON from stdin.
 read_message() {
