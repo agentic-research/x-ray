@@ -72,6 +72,33 @@ func FilterSummaryByBounds(summary string, region [4]float64, margin float64) st
 	return strings.Join(kept, "\n")
 }
 
+// parseBoundsString parses a bounds string like "[0.1, 0.2, 0.3, 0.4]" into [4]float64.
+// Returns zero value and false if parsing fails.
+func parseBoundsString(s string) ([4]float64, bool) {
+	m := boundsRe.FindStringSubmatch("Bounds: " + s)
+	if m == nil {
+		return [4]float64{}, false
+	}
+	x, _ := strconv.ParseFloat(m[1], 64)
+	y, _ := strconv.ParseFloat(m[2], 64)
+	w, _ := strconv.ParseFloat(m[3], 64)
+	h, _ := strconv.ParseFloat(m[4], 64)
+	return [4]float64{x, y, w, h}, true
+}
+
+// boundsContains checks if the center of inner falls within outer.
+// Used for spatial containment: an element "belongs" to a zone if its center
+// is inside the zone's bounding box.
+func boundsContains(outer, inner [4]float64) bool {
+	if inner[2] <= 0 || inner[3] <= 0 || outer[2] <= 0 || outer[3] <= 0 {
+		return false
+	}
+	cx := inner[0] + inner[2]/2
+	cy := inner[1] + inner[3]/2
+	return cx >= outer[0] && cx <= outer[0]+outer[2] &&
+		cy >= outer[1] && cy <= outer[1]+outer[3]
+}
+
 // clamp01 clamps v to the range [0, 1].
 func clamp01(v float64) float64 {
 	if v < 0 {

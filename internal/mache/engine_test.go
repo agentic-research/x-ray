@@ -721,6 +721,84 @@ ID: mache-27 | Parent: mache-25 | Tag: a | Text: "Third Story"
 	}
 }
 
+func TestLoadChildrenSpatialContainment(t *testing.T) {
+	// Simulates the orphaned Reviews tab bug: element is registered and
+	// visible on screen but its parent chain goes to body (not through the
+	// zone root), so both collectZoneMembers and collectDescendants miss it.
+	// The spatial containment fallback should claim it based on bounds overlap.
+	schema := `{
+  "mounts": [
+    {
+      "virtual_path": "/main/product-tabs",
+      "mache_id": "mache-32",
+      "description": "Product tab navigation",
+      "primary_items": [],
+      "bounds": [0.05, 0.40, 0.90, 0.10]
+    }
+  ]
+}`
+	// mache-32 is the zone root. mache-99 (Reviews tab) has parent=body (none),
+	// NOT under mache-32 — so parent-chain walk and BFS both fail.
+	// But its bounds [0.10, 0.42, 0.08, 0.03] are inside the zone.
+	// mache-200 is far outside the zone bounds — should NOT be claimed.
+	summary := `Interactive Elements:
+ID: mache-32 | Parent: none | Tag: div | Text: "" | Bounds: [0.05, 0.40, 0.90, 0.10]
+ID: mache-99 | Parent: none | Tag: a | Text: "Reviews" | Bounds: [0.10, 0.42, 0.08, 0.03]
+ID: mache-100 | Parent: none | Tag: a | Text: "Description" | Bounds: [0.20, 0.42, 0.10, 0.03]
+ID: mache-200 | Parent: none | Tag: a | Text: "Unrelated" | Bounds: [0.50, 0.80, 0.10, 0.05]
+`
+	e := NewEngine()
+	if err := e.ApplySchema(schema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+	e.LoadChildren(summary, nil)
+
+	content, err := e.ReadFile("/main/product-tabs/children")
+	if err != nil {
+		t.Fatalf("children file missing (spatial containment fallback failed): %v", err)
+	}
+
+	if !strings.Contains(content, "Reviews") {
+		t.Errorf("spatial containment should have claimed Reviews tab:\n%s", content)
+	}
+	if !strings.Contains(content, "Description") {
+		t.Errorf("spatial containment should have claimed Description tab:\n%s", content)
+	}
+	if strings.Contains(content, "Unrelated") {
+		t.Errorf("spatial containment should NOT claim element outside zone bounds:\n%s", content)
+	}
+}
+
+func TestLoadChildrenSpatialSkipsLargeZones(t *testing.T) {
+	// Zones covering >80% of the viewport should not use spatial containment,
+	// to prevent every element being claimed by a full-page zone.
+	schema := `{
+  "mounts": [
+    {
+      "virtual_path": "/main/fullpage",
+      "mache_id": "mache-1",
+      "description": "Full page zone",
+      "primary_items": [],
+      "bounds": [0.0, 0.0, 1.0, 1.0]
+    }
+  ]
+}`
+	summary := `Interactive Elements:
+ID: mache-1 | Parent: none | Tag: div | Text: "" | Bounds: [0.0, 0.0, 1.0, 1.0]
+ID: mache-50 | Parent: none | Tag: a | Text: "Orphan" | Bounds: [0.10, 0.10, 0.05, 0.03]
+`
+	e := NewEngine()
+	if err := e.ApplySchema(schema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+	e.LoadChildren(summary, nil)
+
+	_, err := e.ReadFile("/main/fullpage/children")
+	if err == nil {
+		t.Error("full-page zone should NOT claim orphans via spatial containment")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // MergeSchema tests (Stream C — Phase 6)
 // ---------------------------------------------------------------------------

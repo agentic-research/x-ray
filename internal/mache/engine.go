@@ -747,6 +747,31 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 			}
 		}
 
+		// Fourth fallback — spatial containment: when parent-chain walking
+		// and BFS both fail (because unregistered intermediate DOM containers
+		// break the parent chain), claim orphaned elements whose center falls
+		// within this zone's bounding box.
+		if len(descendants) == 0 && m.Bounds != ([4]float64{}) {
+			// Guard: skip zones covering >80% of the viewport to prevent
+			// every element being claimed by a full-page zone.
+			zoneArea := m.Bounds[2] * m.Bounds[3]
+			if zoneArea <= 0.8 {
+				already := make(map[string]bool) // not needed here but future-proof
+				for _, el := range elements {
+					if el.ID == m.MacheID || already[el.ID] {
+						continue
+					}
+					elBounds, ok := parseBoundsString(el.Bounds)
+					if !ok {
+						continue
+					}
+					if boundsContains(m.Bounds, elBounds) {
+						descendants = append(descendants, el)
+					}
+				}
+			}
+		}
+
 		if len(descendants) == 0 {
 			continue
 		}
