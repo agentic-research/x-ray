@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -77,6 +78,8 @@ func (m *mockIntentHandler) SetListTabsFunc(_ func(ctx context.Context) ([]navig
 }
 
 func (m *mockIntentHandler) SetViewport(_, _, _ float64) {}
+
+func (m *mockIntentHandler) SetSectionHints(_ string) {}
 
 // waitForDone blocks until the Doer finishes (DoerDone or DoerFailed) or times out.
 // It wires a completion channel through SetResultNotifyFn internally.
@@ -665,5 +668,54 @@ func TestDoerMultiStepClickOpensNewTab(t *testing.T) {
 	}
 	if calls := mock99.handleCalls.Load(); calls != 1 {
 		t.Errorf("expected 1 HandleIntent call on tab 99, got %d", calls)
+	}
+}
+
+func TestParseActionPath(t *testing.T) {
+	tests := []struct {
+		path        string
+		wantZone    string
+		wantOrdinal string
+	}{
+		{"/main/feed_4/_c/4", "/main/feed_4", "4"},
+		{"/header/nav/_c/12", "/header/nav", "12"},
+		{"/main/content/items/_c/3", "/main/content/items", "3"},
+		{"/foo", "", ""},
+		{"", "", ""},
+		{"/_c/1", "", "1"},
+		{"/main/feed/_c/4/text", "/main/feed", "4"},
+	}
+	for _, tt := range tests {
+		zone, ordinal := parseActionPath(tt.path)
+		if zone != tt.wantZone || ordinal != tt.wantOrdinal {
+			t.Errorf("parseActionPath(%q) = (%q, %q), want (%q, %q)",
+				tt.path, zone, ordinal, tt.wantZone, tt.wantOrdinal)
+		}
+	}
+}
+
+func TestFormatSectionHints(t *testing.T) {
+	sections := []NavSection{
+		{ZonePath: "/main/feed_4", Action: "click", Ordinal: "4", ElementText: "Reviews 12"},
+		{ZonePath: "/header/search", Action: "type", Ordinal: "1", ElementText: "Search", Payload: "laptop"},
+	}
+	got := formatSectionHints(sections)
+	if got == "" {
+		t.Fatal("expected non-empty hints")
+	}
+	if !strings.Contains(got, "Previously successful actions") {
+		t.Error("missing header")
+	}
+	if !strings.Contains(got, `click [4] "Reviews 12"`) {
+		t.Errorf("missing click hint in: %s", got)
+	}
+	if !strings.Contains(got, `type "laptop" into [1] "Search"`) {
+		t.Errorf("missing type hint in: %s", got)
+	}
+}
+
+func TestFormatSectionHintsEmpty(t *testing.T) {
+	if got := formatSectionHints(nil); got != "" {
+		t.Errorf("expected empty string for nil sections, got %q", got)
 	}
 }

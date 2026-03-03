@@ -1,12 +1,17 @@
 package api
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io/fs"
 	"log"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,6 +34,42 @@ type SchemaCache struct {
 	mu     sync.RWMutex
 	store  *graph.MemoryStore
 	dbPath string // empty = pure in-memory mode
+}
+
+// NavSection records a navigation action taken within a specific zone,
+// keyed by a goal hash so that similar goals map to the same slot.
+type NavSection struct {
+	GoalHash    string
+	ZonePath    string
+	Fingerprint string
+	Ordinal     string
+	ElementText string
+	Action      string
+	Payload     string // for type actions (e.g., search queries)
+	Outcome     string
+	RecordedAt  int64
+}
+
+// urlPattern matches http/https URLs for stripping from goal text.
+var urlPattern = regexp.MustCompile(`https?://\S+`)
+
+// digitPattern matches sequences of digits for normalization.
+var digitPattern = regexp.MustCompile(`\d+`)
+
+// multiSpace collapses runs of whitespace into a single space.
+var multiSpace = regexp.MustCompile(`\s+`)
+
+// NormalizeGoalHash produces a stable 16-hex-char hash from goal text.
+// URLs are stripped, digit sequences replaced with "#", and whitespace collapsed
+// before hashing, so that "click item 42" and "click item 99" produce the same hash.
+func NormalizeGoalHash(goalText string) string {
+	s := strings.ToLower(goalText)
+	s = urlPattern.ReplaceAllString(s, "")
+	s = digitPattern.ReplaceAllString(s, "#")
+	s = multiSpace.ReplaceAllString(s, " ")
+	s = strings.TrimSpace(s)
+	h := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(h[:])[:16]
 }
 
 // NewSchemaCache creates a schema cache. If dbPath is empty, the cache is
@@ -184,14 +225,63 @@ func (c *SchemaCache) PutZones(key string, mounts []mache.Mount) {
 		}
 	}
 
-	// Clear existing zone entries (full replacement).
+	// Backup sections from old zones before clearing.
+	// Key: escaped zone path, Value: slice of section backups.
+	type sectionBackup struct {
+		goalHash    string
+		ordinal     string
+		elementText string
+		action      string
+		payload     string
+		fingerprint string
+		outcome     string
+		recordedAt  string
+	}
+	savedSections := map[string][]sectionBackup{}
 	if zonesNode, err := c.store.GetNode(zonesDir); err == nil {
+		for _, oldZoneID := range zonesNode.Children {
+			escaped := strings.TrimPrefix(oldZoneID, zonesDir+"/")
+			sectionsDir := oldZoneID + "/sections"
+			sdNode, err := c.store.GetNode(sectionsDir)
+			if err != nil {
+				continue
+			}
+			for _, secID := range sdNode.Children {
+				parts := strings.Split(secID, "/")
+				gh := parts[len(parts)-1]
+				sb := sectionBackup{goalHash: gh}
+				if n, err := c.store.GetNode(secID + "/ordinal"); err == nil {
+					sb.ordinal = string(n.Data)
+				}
+				if n, err := c.store.GetNode(secID + "/element_text"); err == nil {
+					sb.elementText = string(n.Data)
+				}
+				if n, err := c.store.GetNode(secID + "/action"); err == nil {
+					sb.action = string(n.Data)
+				}
+				if n, err := c.store.GetNode(secID + "/payload"); err == nil {
+					sb.payload = string(n.Data)
+				}
+				if n, err := c.store.GetNode(secID + "/fingerprint"); err == nil {
+					sb.fingerprint = string(n.Data)
+				}
+				if n, err := c.store.GetNode(secID + "/outcome"); err == nil {
+					sb.outcome = string(n.Data)
+				}
+				if n, err := c.store.GetNode(secID + "/recorded_at"); err == nil {
+					sb.recordedAt = string(n.Data)
+				}
+				savedSections[escaped] = append(savedSections[escaped], sb)
+			}
+		}
+		// Clear existing zone entries (full replacement).
 		zonesNode.Children = []string{}
 	}
 
 	// Write each mount as a zone entry.
 	for _, m := range mounts {
 		zoneID := zonesDir + "/" + escapeZonePath(m.VirtualPath)
+		escaped := escapeZonePath(m.VirtualPath)
 		mountJSON, _ := json.Marshal(m)
 
 		c.store.AddNode(&graph.Node{
@@ -205,6 +295,48 @@ func (c *SchemaCache) PutZones(key string, mounts []mache.Mount) {
 
 		if zonesNode, err := c.store.GetNode(zonesDir); err == nil {
 			zonesNode.Children = appendUniqueStr(zonesNode.Children, zoneID)
+		}
+
+		// Restore sections whose fingerprint matches the new zone's fingerprint.
+		if backups, ok := savedSections[escaped]; ok {
+			sectionsDir := zoneID + "/sections"
+			c.store.AddNode(&graph.Node{
+				ID:       sectionsDir,
+				Mode:     fs.ModeDir,
+				Children: []string{},
+			})
+			if zoneNode, err := c.store.GetNode(zoneID); err == nil {
+				zoneNode.Children = appendUniqueStr(zoneNode.Children, sectionsDir)
+			}
+			for _, sb := range backups {
+				if sb.fingerprint != m.Fingerprint {
+					continue
+				}
+				secID := sectionsDir + "/" + sb.goalHash
+				c.store.AddNode(&graph.Node{
+					ID:   secID,
+					Mode: fs.ModeDir,
+					Children: []string{
+						secID + "/ordinal",
+						secID + "/element_text",
+						secID + "/action",
+						secID + "/payload",
+						secID + "/fingerprint",
+						secID + "/outcome",
+						secID + "/recorded_at",
+					},
+				})
+				c.store.AddNode(&graph.Node{ID: secID + "/ordinal", Data: []byte(sb.ordinal), ModTime: now})
+				c.store.AddNode(&graph.Node{ID: secID + "/element_text", Data: []byte(sb.elementText), ModTime: now})
+				c.store.AddNode(&graph.Node{ID: secID + "/action", Data: []byte(sb.action), ModTime: now})
+				c.store.AddNode(&graph.Node{ID: secID + "/payload", Data: []byte(sb.payload), ModTime: now})
+				c.store.AddNode(&graph.Node{ID: secID + "/fingerprint", Data: []byte(sb.fingerprint), ModTime: now})
+				c.store.AddNode(&graph.Node{ID: secID + "/outcome", Data: []byte(sb.outcome), ModTime: now})
+				c.store.AddNode(&graph.Node{ID: secID + "/recorded_at", Data: []byte(sb.recordedAt), ModTime: now})
+				if sdNode, err := c.store.GetNode(sectionsDir); err == nil {
+					sdNode.Children = appendUniqueStr(sdNode.Children, secID)
+				}
+			}
 		}
 	}
 
@@ -344,6 +476,250 @@ func (c *SchemaCache) PutZone(key string, m mache.Mount) {
 	}
 
 	c.persistLocked()
+}
+
+// GetZoneFingerprint returns the fingerprint for a zone, or "" if not found.
+func (c *SchemaCache) GetZoneFingerprint(key, zonePath string) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	fpID := key + "/zones/" + escapeZonePath(zonePath) + "/fingerprint"
+	node, err := c.store.GetNode(fpID)
+	if err != nil {
+		return ""
+	}
+	return string(node.Data)
+}
+
+// maxSectionsPerZone is the cap on how many nav sections a single zone retains.
+const maxSectionsPerZone = 5
+
+// PutSection stores a NavSection under its zone. At most 5 sections are kept
+// per zone; the oldest by RecordedAt is evicted when the cap is exceeded.
+// Same GoalHash overwrites (idempotent).
+func (c *SchemaCache) PutSection(key string, section NavSection) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	escaped := escapeZonePath(section.ZonePath)
+	zoneID := key + "/zones/" + escaped
+	sectionsDir := zoneID + "/sections"
+
+	// Ensure sections/ directory node exists under the zone.
+	if _, err := c.store.GetNode(sectionsDir); err != nil {
+		c.store.AddNode(&graph.Node{
+			ID:       sectionsDir,
+			Mode:     fs.ModeDir,
+			Children: []string{},
+		})
+		if zoneNode, err := c.store.GetNode(zoneID); err == nil {
+			zoneNode.Children = appendUniqueStr(zoneNode.Children, sectionsDir)
+		}
+	}
+
+	now := time.Now()
+	secID := sectionsDir + "/" + section.GoalHash
+
+	// Create/overwrite the section directory node.
+	c.store.AddNode(&graph.Node{
+		ID:   secID,
+		Mode: fs.ModeDir,
+		Children: []string{
+			secID + "/ordinal",
+			secID + "/element_text",
+			secID + "/action",
+			secID + "/payload",
+			secID + "/fingerprint",
+			secID + "/outcome",
+			secID + "/recorded_at",
+		},
+	})
+	c.store.AddNode(&graph.Node{ID: secID + "/ordinal", Data: []byte(section.Ordinal), ModTime: now})
+	c.store.AddNode(&graph.Node{ID: secID + "/element_text", Data: []byte(section.ElementText), ModTime: now})
+	c.store.AddNode(&graph.Node{ID: secID + "/action", Data: []byte(section.Action), ModTime: now})
+	c.store.AddNode(&graph.Node{ID: secID + "/payload", Data: []byte(section.Payload), ModTime: now})
+	c.store.AddNode(&graph.Node{ID: secID + "/fingerprint", Data: []byte(section.Fingerprint), ModTime: now})
+	c.store.AddNode(&graph.Node{ID: secID + "/outcome", Data: []byte(section.Outcome), ModTime: now})
+	c.store.AddNode(&graph.Node{ID: secID + "/recorded_at", Data: []byte(strconv.FormatInt(section.RecordedAt, 10)), ModTime: now})
+
+	// Add to sections dir children (dedup).
+	if sdNode, err := c.store.GetNode(sectionsDir); err == nil {
+		sdNode.Children = appendUniqueStr(sdNode.Children, secID)
+
+		// Enforce max 5 sections: evict oldest by RecordedAt.
+		if len(sdNode.Children) > maxSectionsPerZone {
+			oldestIdx := -1
+			var oldestTS int64 = math.MaxInt64
+			for i, childID := range sdNode.Children {
+				if raNode, err := c.store.GetNode(childID + "/recorded_at"); err == nil {
+					ts, _ := strconv.ParseInt(string(raNode.Data), 10, 64)
+					if ts < oldestTS {
+						oldestTS = ts
+						oldestIdx = i
+					}
+				}
+			}
+			if oldestIdx >= 0 {
+				sdNode.Children = append(sdNode.Children[:oldestIdx], sdNode.Children[oldestIdx+1:]...)
+			}
+		}
+	}
+
+	c.persistLocked()
+}
+
+// GetSections returns NavSections for a zone whose fingerprint matches
+// currentFingerprint. Stale sections (fingerprint mismatch) are GC'd.
+// Uses a full Lock because it may mutate the graph during GC.
+func (c *SchemaCache) GetSections(key, zonePath, currentFingerprint string) []NavSection {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.getSectionsLocked(key, zonePath, currentFingerprint, true)
+}
+
+// getSectionsLocked is the inner implementation shared by GetSections and
+// GetAllSectionsForURL. If gcPersist is true it calls persistLocked after GC.
+func (c *SchemaCache) getSectionsLocked(key, zonePath, currentFingerprint string, gcPersist bool) []NavSection {
+	escaped := escapeZonePath(zonePath)
+	sectionsDir := key + "/zones/" + escaped + "/sections"
+	sdNode, err := c.store.GetNode(sectionsDir)
+	if err != nil {
+		return nil
+	}
+
+	var result []NavSection
+	var keep []string
+	gcHappened := false
+
+	for _, childID := range sdNode.Children {
+		sec := c.readSectionNode(childID)
+		if sec == nil {
+			continue
+		}
+		sec.ZonePath = zonePath
+		if sec.Fingerprint == currentFingerprint {
+			result = append(result, *sec)
+			keep = append(keep, childID)
+		} else {
+			gcHappened = true
+		}
+	}
+
+	if gcHappened {
+		sdNode.Children = keep
+		if gcPersist {
+			c.persistLocked()
+		}
+	}
+
+	// Sort newest first.
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].RecordedAt > result[j].RecordedAt
+	})
+
+	return result
+}
+
+// readSectionNode reads a single section directory node and returns a NavSection.
+func (c *SchemaCache) readSectionNode(secID string) *NavSection {
+	secNode, err := c.store.GetNode(secID)
+	if err != nil {
+		return nil
+	}
+	_ = secNode // validate existence
+
+	sec := &NavSection{}
+	// Extract goal hash from the node ID (last path segment).
+	parts := strings.Split(secID, "/")
+	sec.GoalHash = parts[len(parts)-1]
+
+	if n, err := c.store.GetNode(secID + "/ordinal"); err == nil {
+		sec.Ordinal = string(n.Data)
+	}
+	if n, err := c.store.GetNode(secID + "/element_text"); err == nil {
+		sec.ElementText = string(n.Data)
+	}
+	if n, err := c.store.GetNode(secID + "/action"); err == nil {
+		sec.Action = string(n.Data)
+	}
+	if n, err := c.store.GetNode(secID + "/payload"); err == nil {
+		sec.Payload = string(n.Data)
+	}
+	if n, err := c.store.GetNode(secID + "/fingerprint"); err == nil {
+		sec.Fingerprint = string(n.Data)
+	}
+	if n, err := c.store.GetNode(secID + "/outcome"); err == nil {
+		sec.Outcome = string(n.Data)
+	}
+	if n, err := c.store.GetNode(secID + "/recorded_at"); err == nil {
+		sec.RecordedAt, _ = strconv.ParseInt(string(n.Data), 10, 64)
+	}
+
+	return sec
+}
+
+// GetAllSectionsForURL walks all zones under a URL key and returns every
+// valid (fingerprint-matching) NavSection. Stale sections are GC'd.
+func (c *SchemaCache) GetAllSectionsForURL(key string) []NavSection {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	zonesDir := key + "/zones"
+	zonesNode, err := c.store.GetNode(zonesDir)
+	if err != nil {
+		return nil
+	}
+
+	var all []NavSection
+	anyGC := false
+
+	for _, zoneID := range zonesNode.Children {
+		// Recover the zone path from the escaped node ID.
+		escaped := strings.TrimPrefix(zoneID, zonesDir+"/")
+		zonePath := "/" + strings.ReplaceAll(escaped, "~", "/")
+
+		// Read the zone's fingerprint.
+		fp := ""
+		if fpNode, err := c.store.GetNode(zoneID + "/fingerprint"); err == nil {
+			fp = string(fpNode.Data)
+		}
+
+		sectionsDir := zoneID + "/sections"
+		sdNode, err := c.store.GetNode(sectionsDir)
+		if err != nil {
+			continue
+		}
+
+		var keep []string
+		for _, childID := range sdNode.Children {
+			sec := c.readSectionNode(childID)
+			if sec == nil {
+				continue
+			}
+			sec.ZonePath = zonePath
+			if sec.Fingerprint == fp {
+				all = append(all, *sec)
+				keep = append(keep, childID)
+			} else {
+				anyGC = true
+			}
+		}
+		if len(keep) != len(sdNode.Children) {
+			sdNode.Children = keep
+		}
+	}
+
+	if anyGC {
+		c.persistLocked()
+	}
+
+	// Sort newest first.
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].RecordedAt > all[j].RecordedAt
+	})
+
+	return all
 }
 
 func appendUniqueStr(slice []string, val string) []string {

@@ -51,6 +51,9 @@ type Agent struct {
 	viewportPageH   float64
 	viewportHeight  float64
 
+	sectionMu    sync.RWMutex
+	sectionHints string
+
 	registry      *ToolRegistry
 	scrollTool    *ScrollTool
 	listTabs      *ListTabsTool
@@ -168,6 +171,14 @@ func (a *Agent) SetProgressFunc(fn func(toolName string, args map[string]any)) {
 	a.progressFn = fn
 }
 
+// SetSectionHints stores pre-computed section hints to be injected into the
+// next HandleIntent tree dump. Thread-safe; cleared after each HandleIntent call.
+func (a *Agent) SetSectionHints(hints string) {
+	a.sectionMu.Lock()
+	defer a.sectionMu.Unlock()
+	a.sectionHints = hints
+}
+
 // SetListTabsFunc injects the callback used by the list_tabs tool.
 func (a *Agent) SetListTabsFunc(fn func(ctx context.Context) ([]TabInfo, error)) {
 	a.listTabs.mu.Lock()
@@ -205,6 +216,15 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 
 	// Pre-fill a tree dump so the model sees the full filesystem structure upfront.
 	treeDump := a.buildTreeDump()
+
+	// Inject section hints (previously successful actions) if available.
+	a.sectionMu.RLock()
+	hints := a.sectionHints
+	a.sectionMu.RUnlock()
+	if hints != "" {
+		treeDump += "\n\n" + hints
+	}
+
 	if os.Getenv("XRAY_DEBUG") == "1" {
 		log.Printf("Navigator: pre-filled tree:\n%s", treeDump)
 	}

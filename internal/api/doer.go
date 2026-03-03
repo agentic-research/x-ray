@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -188,6 +190,16 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 			d.updateStep("exploring page structure")
 		}
 
+		// Inject section hints before HandleIntent so the Navigator sees them.
+		if url := d.sess.GetCurrentURL(); url != "" {
+			if key := CacheKey(url); key != "" {
+				sections := d.handler.schemas.GetAllSectionsForURL(key)
+				if hints := formatSectionHints(sections); hints != "" {
+					d.sess.Navigator.SetSectionHints(hints)
+				}
+			}
+		}
+
 		action, textResponse, err := d.sess.Navigator.HandleIntent(goalCtx, enrichedIntent, goal.ReadOnly)
 		if err != nil {
 			if goalCtx.Err() != nil {
@@ -292,6 +304,9 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 			}
 		}
 		// goto/rescan/switch_tab already waited for SchemaReady in dispatchAction.
+
+		// Record successful interactive actions as NavSections for future reuse.
+		d.recordNavSection(goal, action)
 
 		enrichedIntent = buildContinuation(goal.Text, goal.TaskContext, step, action, lastSummary)
 	}
@@ -490,6 +505,99 @@ func (d *Doer) finishGoal(goalID string, success bool, summary, errStr string) {
 // Also returns false for terminal window creation actions since they don't modify the DOM.
 func isInteractiveAction(action string) bool {
 	return action != "browser.goto" && action != "browser.rescan" && action != "browser.switch_tab"
+}
+
+// parseActionPath splits an action path like "/main/feed_4/_c/4" into
+// (zonePath="/main/feed_4", ordinal="4"). Returns ("","") if no _c found.
+func parseActionPath(path string) (zonePath, ordinal string) {
+	parts := strings.SplitN(path, "/_c/", 2)
+	if len(parts) != 2 {
+		return "", ""
+	}
+	zonePath = parts[0]
+	ordinal = parts[1]
+	// Strip any trailing sub-path from ordinal (e.g. "4/text" → "4").
+	if idx := strings.IndexByte(ordinal, '/'); idx >= 0 {
+		ordinal = ordinal[:idx]
+	}
+	return zonePath, ordinal
+}
+
+// extractElementText reads the text node for the element at the given action path.
+// Returns truncated text (max 50 chars) or "".
+func (d *Doer) extractElementText(action *navigator.ActionResult) string {
+	textPath := "browser" + action.Path + "/text"
+	node, err := d.sess.Composite.GetNode(textPath)
+	if err != nil || len(node.Data) == 0 {
+		return ""
+	}
+	text := strings.TrimSpace(string(node.Data))
+	if len(text) > 50 {
+		text = text[:50]
+	}
+	return text
+}
+
+// recordNavSection persists a successful interactive action as a NavSection
+// in the schema cache, so future visits to the same page shape can reuse it.
+func (d *Doer) recordNavSection(goal DoerGoal, action *navigator.ActionResult) {
+	if !isInteractiveAction(action.Action) {
+		return
+	}
+	zonePath, ordinal := parseActionPath(action.Path)
+	if zonePath == "" {
+		return
+	}
+
+	url := d.sess.GetCurrentURL()
+	key := CacheKey(url)
+	if key == "" {
+		return
+	}
+
+	fp := d.handler.schemas.GetZoneFingerprint(key, zonePath)
+	if fp == "" {
+		return
+	}
+
+	elemText := d.extractElementText(action)
+	goalHash := NormalizeGoalHash(goal.Text)
+
+	section := NavSection{
+		GoalHash:    goalHash,
+		ZonePath:    zonePath,
+		Fingerprint: fp,
+		Ordinal:     ordinal,
+		ElementText: elemText,
+		Action:      action.Action,
+		Payload:     action.Payload,
+		RecordedAt:  time.Now().Unix(),
+	}
+
+	d.handler.schemas.PutSection(key, section)
+	if os.Getenv("XRAY_DEBUG") == "1" {
+		log.Printf("Doer [tab %d]: recorded NavSection goal=%s zone=%s ordinal=%s action=%s",
+			d.tabID, goalHash, zonePath, ordinal, action.Action)
+	}
+}
+
+// formatSectionHints renders NavSections as text for injection into the
+// Navigator's tree dump, giving it hints about previously successful actions.
+func formatSectionHints(sections []NavSection) string {
+	if len(sections) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString("=== Previously successful actions on this page ===\n")
+	for _, s := range sections {
+		switch s.Action {
+		case "type":
+			fmt.Fprintf(&sb, "- In %s: type %q into [%s] %q\n", s.ZonePath, s.Payload, s.Ordinal, s.ElementText)
+		default:
+			fmt.Fprintf(&sb, "- In %s: %s [%s] %q\n", s.ZonePath, s.Action, s.Ordinal, s.ElementText)
+		}
+	}
+	return sb.String()
 }
 
 // buildContinuation creates an enriched intent for the next step in the loop.

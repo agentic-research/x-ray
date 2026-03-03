@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -402,5 +403,259 @@ func TestPutZonesPersistsToSQLite(t *testing.T) {
 	}
 	if len(output.Mounts) != 3 {
 		t.Fatalf("expected 3 persisted mounts, got %d", len(output.Mounts))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// NavSection tests
+// ---------------------------------------------------------------------------
+
+func TestNormalizeGoalHash(t *testing.T) {
+	// URL stripping: same hash with and without URL.
+	h1 := NormalizeGoalHash("find reviews on https://example.com/page")
+	h2 := NormalizeGoalHash("find reviews on")
+	if h1 != h2 {
+		t.Errorf("URL stripping failed: %q != %q", h1, h2)
+	}
+
+	// Number replacement: different numbers → same hash.
+	h3 := NormalizeGoalHash("click item 42")
+	h4 := NormalizeGoalHash("click item 99")
+	if h3 != h4 {
+		t.Errorf("number normalization failed: %q != %q", h3, h4)
+	}
+
+	// Stability: same input → same output.
+	h5 := NormalizeGoalHash("find the reviews tab")
+	h6 := NormalizeGoalHash("find the reviews tab")
+	if h5 != h6 {
+		t.Errorf("stability failed: %q != %q", h5, h6)
+	}
+
+	// Length is 16 hex chars.
+	if len(h5) != 16 {
+		t.Errorf("expected 16-char hash, got %d: %q", len(h5), h5)
+	}
+}
+
+func TestPutSectionAndGetSections(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/product"
+	c.PutZones(key, []mache.Mount{
+		{VirtualPath: "/main/feed_4", MacheID: "m-10", Fingerprint: "fp-A"},
+	})
+
+	section := NavSection{
+		GoalHash:    NormalizeGoalHash("find the reviews"),
+		ZonePath:    "/main/feed_4",
+		Fingerprint: "fp-A",
+		Ordinal:     "4",
+		ElementText: "Reviews 12",
+		Action:      "click",
+		RecordedAt:  1000,
+	}
+	c.PutSection(key, section)
+
+	got := c.GetSections(key, "/main/feed_4", "fp-A")
+	if len(got) != 1 {
+		t.Fatalf("expected 1 section, got %d", len(got))
+	}
+	if got[0].Ordinal != "4" {
+		t.Errorf("ordinal = %q, want 4", got[0].Ordinal)
+	}
+	if got[0].ElementText != "Reviews 12" {
+		t.Errorf("element_text = %q, want 'Reviews 12'", got[0].ElementText)
+	}
+	if got[0].Action != "click" {
+		t.Errorf("action = %q, want 'click'", got[0].Action)
+	}
+}
+
+func TestGetSectionsStaleGC(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/product"
+	c.PutZones(key, []mache.Mount{
+		{VirtualPath: "/main/feed", MacheID: "m-10", Fingerprint: "fp-A"},
+	})
+	c.PutSection(key, NavSection{
+		GoalHash:    "hash1",
+		ZonePath:    "/main/feed",
+		Fingerprint: "fp-A",
+		Ordinal:     "1",
+		Action:      "click",
+		RecordedAt:  1000,
+	})
+
+	// Query with different fingerprint → should return empty and GC.
+	got := c.GetSections(key, "/main/feed", "fp-B")
+	if len(got) != 0 {
+		t.Fatalf("expected 0 sections with mismatched fingerprint, got %d", len(got))
+	}
+
+	// Re-query with original fingerprint → should also be empty (GC'd).
+	got = c.GetSections(key, "/main/feed", "fp-A")
+	if len(got) != 0 {
+		t.Fatalf("expected 0 sections after GC, got %d", len(got))
+	}
+}
+
+func TestPutSectionMaxFive(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/page"
+	c.PutZones(key, []mache.Mount{
+		{VirtualPath: "/main/content", MacheID: "m-1", Fingerprint: "fp-X"},
+	})
+
+	// Insert 6 sections with different goal hashes.
+	for i := 0; i < 6; i++ {
+		c.PutSection(key, NavSection{
+			GoalHash:    fmt.Sprintf("goal-%d", i),
+			ZonePath:    "/main/content",
+			Fingerprint: "fp-X",
+			Ordinal:     fmt.Sprintf("%d", i),
+			Action:      "click",
+			RecordedAt:  int64(1000 + i),
+		})
+	}
+
+	got := c.GetSections(key, "/main/content", "fp-X")
+	if len(got) != 5 {
+		t.Fatalf("expected 5 sections (max cap), got %d", len(got))
+	}
+
+	// The oldest (RecordedAt=1000, goal-0) should have been evicted.
+	for _, s := range got {
+		if s.GoalHash == "goal-0" {
+			t.Error("goal-0 (oldest) should have been evicted")
+		}
+	}
+}
+
+func TestPutSectionIdempotent(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/page"
+	c.PutZones(key, []mache.Mount{
+		{VirtualPath: "/main/feed", MacheID: "m-1", Fingerprint: "fp-A"},
+	})
+
+	c.PutSection(key, NavSection{
+		GoalHash:    "same-hash",
+		ZonePath:    "/main/feed",
+		Fingerprint: "fp-A",
+		Ordinal:     "3",
+		ElementText: "Old Text",
+		Action:      "click",
+		RecordedAt:  1000,
+	})
+	c.PutSection(key, NavSection{
+		GoalHash:    "same-hash",
+		ZonePath:    "/main/feed",
+		Fingerprint: "fp-A",
+		Ordinal:     "3",
+		ElementText: "New Text",
+		Action:      "click",
+		RecordedAt:  2000,
+	})
+
+	got := c.GetSections(key, "/main/feed", "fp-A")
+	if len(got) != 1 {
+		t.Fatalf("expected 1 section (idempotent overwrite), got %d", len(got))
+	}
+	if got[0].ElementText != "New Text" {
+		t.Errorf("expected updated text 'New Text', got %q", got[0].ElementText)
+	}
+}
+
+func TestGetAllSectionsForURL(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/page"
+	c.PutZones(key, []mache.Mount{
+		{VirtualPath: "/header/nav", MacheID: "m-0", Fingerprint: "fp-0"},
+		{VirtualPath: "/main/feed", MacheID: "m-10", Fingerprint: "fp-10"},
+	})
+
+	c.PutSection(key, NavSection{
+		GoalHash: "h1", ZonePath: "/header/nav", Fingerprint: "fp-0",
+		Ordinal: "1", Action: "click", RecordedAt: 1000,
+	})
+	c.PutSection(key, NavSection{
+		GoalHash: "h2", ZonePath: "/main/feed", Fingerprint: "fp-10",
+		Ordinal: "5", Action: "click", RecordedAt: 2000,
+	})
+
+	got := c.GetAllSectionsForURL(key)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 sections across zones, got %d", len(got))
+	}
+}
+
+func TestPutZonesPreservesSections(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/product"
+	mounts := []mache.Mount{
+		{VirtualPath: "/main/feed", MacheID: "m-10", Fingerprint: "fp-A"},
+	}
+	c.PutZones(key, mounts)
+
+	c.PutSection(key, NavSection{
+		GoalHash: "h1", ZonePath: "/main/feed", Fingerprint: "fp-A",
+		Ordinal: "4", ElementText: "Reviews", Action: "click", RecordedAt: 1000,
+	})
+
+	// Re-PutZones with same fingerprint — section should survive.
+	c.PutZones(key, mounts)
+
+	got := c.GetSections(key, "/main/feed", "fp-A")
+	if len(got) != 1 {
+		t.Fatalf("expected section to survive PutZones with same fingerprint, got %d", len(got))
+	}
+	if got[0].ElementText != "Reviews" {
+		t.Errorf("unexpected element text: %q", got[0].ElementText)
+	}
+}
+
+func TestPutZonesEvictsStaleSections(t *testing.T) {
+	c := NewSchemaCache("")
+	key := "example.com/product"
+	c.PutZones(key, []mache.Mount{
+		{VirtualPath: "/main/feed", MacheID: "m-10", Fingerprint: "fp-A"},
+	})
+
+	c.PutSection(key, NavSection{
+		GoalHash: "h1", ZonePath: "/main/feed", Fingerprint: "fp-A",
+		Ordinal: "4", Action: "click", RecordedAt: 1000,
+	})
+
+	// Re-PutZones with different fingerprint — section should be evicted.
+	c.PutZones(key, []mache.Mount{
+		{VirtualPath: "/main/feed", MacheID: "m-10", Fingerprint: "fp-B"},
+	})
+
+	got := c.GetSections(key, "/main/feed", "fp-B")
+	if len(got) != 0 {
+		t.Fatalf("expected stale section to be evicted after fingerprint change, got %d", len(got))
+	}
+}
+
+func TestSectionsPersistToSQLite(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test-sections.db")
+
+	c1 := NewSchemaCache(dbPath)
+	c1.PutZones("example.com/page", []mache.Mount{
+		{VirtualPath: "/main/feed", MacheID: "m-10", Fingerprint: "fp-A"},
+	})
+	c1.PutSection("example.com/page", NavSection{
+		GoalHash: "h1", ZonePath: "/main/feed", Fingerprint: "fp-A",
+		Ordinal: "4", ElementText: "Reviews", Action: "click", RecordedAt: 1000,
+	})
+
+	// Reload from disk.
+	c2 := NewSchemaCache(dbPath)
+	got := c2.GetSections("example.com/page", "/main/feed", "fp-A")
+	if len(got) != 1 {
+		t.Fatalf("expected section to persist to SQLite, got %d", len(got))
+	}
+	if got[0].ElementText != "Reviews" {
+		t.Errorf("unexpected element text after reload: %q", got[0].ElementText)
 	}
 }
