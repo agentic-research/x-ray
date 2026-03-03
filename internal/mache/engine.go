@@ -630,9 +630,46 @@ func selectChildItems(descendants []SummaryElement, primaryItems []string) []Sum
 func formatOrdinalChildren(items []SummaryElement) string {
 	var sb strings.Builder
 	for i, d := range items {
-		fmt.Fprintf(&sb, "[%d] \"%s\"\n", i+1, d.Text)
+		marker := lynxMarker(d.Tag, d.AXRole)
+		text := d.Text
+		if len(text) > 80 {
+			text = text[:77] + "..."
+		}
+		fmt.Fprintf(&sb, "%s[%d] %s\n", marker, i+1, text)
 	}
 	return strings.TrimRight(sb.String(), "\n")
+}
+
+// lynxMarker returns a Lynx-style prefix for element type differentiation.
+// Links return "" (most common — no noise). Buttons, inputs, etc. get markers.
+func lynxMarker(tag, axRole string) string {
+	switch tag {
+	case "button":
+		return "(btn) "
+	case "input":
+		return "[___] "
+	case "select":
+		return "[v] "
+	case "img":
+		return "[img] "
+	case "h1", "h2", "h3", "h4", "h5", "h6":
+		return "# "
+	}
+	switch axRole {
+	case "button":
+		return "(btn) "
+	case "checkbox":
+		return "[ ] "
+	case "radio":
+		return "( ) "
+	case "textbox", "searchbox", "combobox":
+		return "[___] "
+	case "tab":
+		return "(tab) "
+	case "heading":
+		return "# "
+	}
+	return ""
 }
 
 // buildParentOfMap builds a child→parent lookup from parsed summary elements.
@@ -873,10 +910,11 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 }
 
 // buildTextIndex creates a root-level "text_index" file listing interactive
-// and short-text elements from the DOM summary. Focuses on clickable elements
-// (a, button, input, select, textarea, [role=tab/button/link]) plus any
-// element with concise text (≤100 chars). Each entry includes a spatial label
-// (e.g., "top-left", "bottom-center") derived from normalized bounds.
+// and short-text elements from the DOM summary. Uses Lynx-style formatting:
+// - Reading order (y-major, x-minor sort)
+// - Grouped by spatial region (-- top -- / -- center -- / -- bottom --)
+// - Element type markers: (btn), [___], #, (tab), etc.
+// - Mache IDs in brackets for direct act() clickability
 func (e *Engine) buildTextIndex(elements []SummaryElement) {
 	// Tags that are inherently interactive.
 	interactive := map[string]bool{
@@ -891,7 +929,11 @@ func (e *Engine) buildTextIndex(elements []SummaryElement) {
 		"searchbox": true, "textbox": true,
 	}
 
-	var sb strings.Builder
+	type indexEntry struct {
+		el     SummaryElement
+		cx, cy float64
+	}
+	var entries []indexEntry
 	for _, el := range elements {
 		if el.Text == "" {
 			continue
@@ -901,16 +943,42 @@ func (e *Engine) buildTextIndex(elements []SummaryElement) {
 		if !isInteractive && !isShort {
 			continue
 		}
-		text := el.Text
-		if len(text) > 100 {
-			text = text[:100] + "…"
+		var cx, cy float64
+		if b, ok := parseBoundsString(el.Bounds); ok {
+			cx = b[0] + b[2]/2
+			cy = b[1] + b[3]/2
 		}
-		label := spatialLabel(el.Bounds)
-		if label != "" {
-			fmt.Fprintf(&sb, "%s \"%s\"  (%s)  [%s]\n", el.Tag, text, label, el.ID)
-		} else {
-			fmt.Fprintf(&sb, "%s \"%s\"  [%s]\n", el.Tag, text, el.ID)
+		entries = append(entries, indexEntry{el: el, cx: cx, cy: cy})
+	}
+	if len(entries) == 0 {
+		return
+	}
+
+	// Sort by reading order: y-major, x-minor.
+	sort.Slice(entries, func(i, j int) bool {
+		if math.Abs(entries[i].cy-entries[j].cy) > 0.05 {
+			return entries[i].cy < entries[j].cy
 		}
+		return entries[i].cx < entries[j].cx
+	})
+
+	var sb strings.Builder
+	lastRegion := ""
+	for _, ent := range entries {
+		region := verticalRegion(ent.cy)
+		if region != lastRegion {
+			if sb.Len() > 0 {
+				sb.WriteByte('\n')
+			}
+			fmt.Fprintf(&sb, "-- %s --\n", region)
+			lastRegion = region
+		}
+		marker := lynxMarker(ent.el.Tag, ent.el.AXRole)
+		text := ent.el.Text
+		if len(text) > 80 {
+			text = text[:77] + "..."
+		}
+		fmt.Fprintf(&sb, "%s[%s] %s\n", marker, ent.el.ID, text)
 	}
 	if sb.Len() == 0 {
 		return
@@ -971,4 +1039,17 @@ func spatialLabel(boundsStr string) string {
 		return horiz
 	}
 	return vert + "-" + horiz
+}
+
+// verticalRegion maps a normalized y center to a coarse region name.
+// Used by buildTextIndex for Lynx-style section headers.
+func verticalRegion(cy float64) string {
+	switch {
+	case cy < 0.33:
+		return "top"
+	case cy < 0.66:
+		return "center"
+	default:
+		return "bottom"
+	}
 }

@@ -215,7 +215,7 @@ func TestLoadChildren(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile children failed: %v", err)
 	}
-	if !strings.Contains(content, `[1] "First Story Title"`) {
+	if !strings.Contains(content, `[1] First Story Title`) {
 		t.Errorf("children file missing first story: %q", content)
 	}
 
@@ -334,7 +334,7 @@ func TestFormatOrdinalChildren(t *testing.T) {
 		{ID: "m-5", Tag: "a", Text: "Story Two"},
 	}
 	got := formatOrdinalChildren(items)
-	want := "[1] \"Story One\"\n[2] \"Story Two\""
+	want := "[1] Story One\n[2] Story Two"
 	if got != want {
 		t.Errorf("expected:\n%s\ngot:\n%s", want, got)
 	}
@@ -342,6 +342,48 @@ func TestFormatOrdinalChildren(t *testing.T) {
 	// No mache IDs should appear in output
 	if strings.Contains(got, "m-2") || strings.Contains(got, "m-5") {
 		t.Error("ordinal format should not expose mache IDs")
+	}
+}
+
+func TestLynxMarker(t *testing.T) {
+	cases := []struct {
+		tag, role, want string
+	}{
+		{"a", "", ""},
+		{"button", "", "(btn) "},
+		{"input", "", "[___] "},
+		{"select", "", "[v] "},
+		{"img", "", "[img] "},
+		{"h1", "", "# "},
+		{"h3", "", "# "},
+		{"div", "button", "(btn) "},
+		{"div", "checkbox", "[ ] "},
+		{"div", "radio", "( ) "},
+		{"div", "tab", "(tab) "},
+		{"div", "textbox", "[___] "},
+		{"div", "heading", "# "},
+		{"div", "", ""},
+		{"span", "link", ""},
+	}
+	for _, tc := range cases {
+		got := lynxMarker(tc.tag, tc.role)
+		if got != tc.want {
+			t.Errorf("lynxMarker(%q, %q) = %q, want %q", tc.tag, tc.role, got, tc.want)
+		}
+	}
+}
+
+func TestFormatOrdinalChildrenWithMarkers(t *testing.T) {
+	items := []SummaryElement{
+		{ID: "m-1", Tag: "a", Text: "Home"},
+		{ID: "m-2", Tag: "button", Text: "Submit"},
+		{ID: "m-3", Tag: "input", Text: "Search"},
+		{ID: "m-4", Tag: "h2", Text: "Products"},
+	}
+	got := formatOrdinalChildren(items)
+	want := "[1] Home\n(btn) [2] Submit\n[___] [3] Search\n# [4] Products"
+	if got != want {
+		t.Errorf("expected:\n%s\ngot:\n%s", want, got)
 	}
 }
 
@@ -375,16 +417,15 @@ ID: mache-14 | Parent: mache-10 | Tag: span | Text: "(other.com)"
 		t.Fatalf("ReadFile children failed: %v", err)
 	}
 
-	// 2 primary items in ordinal format
-	if !strings.Contains(content, `[1] "First Story"`) {
+	// 2 primary items in ordinal format (no quotes in Lynx-style)
+	if !strings.Contains(content, `[1] First Story`) {
 		t.Errorf("missing [1] First Story in output:\n%s", content)
 	}
-	if !strings.Contains(content, `[2] "Second Story"`) {
+	if !strings.Contains(content, `[2] Second Story`) {
 		t.Errorf("missing [2] Second Story in output:\n%s", content)
 	}
-	// 2 primary items + 2 supplemented text-bearing descendants (Stories, example.com, other.com)
-	// "Stories" is the zone root text, "(example.com)" and "(other.com)" are non-primary text items.
-	if strings.Count(content, "] \"") < 2 {
+	// At least 2 items present
+	if strings.Count(content, "] ") < 2 {
 		t.Errorf("expected at least 2 items, got:\n%s", content)
 	}
 	// No mache IDs in children file
@@ -553,18 +594,18 @@ ID: mache-15 | Parent: mache-10 | Tag: a | Text: "Fourth Story (new after scroll
 		t.Fatalf("ReadFile children failed: %v", err)
 	}
 
-	// All 4 resolved items should appear in ordinal format
-	if !strings.Contains(content, `[1] "First Story"`) {
+	// All 4 resolved items should appear in ordinal format (no quotes)
+	if !strings.Contains(content, `[1] First Story`) {
 		t.Errorf("missing [1] First Story:\n%s", content)
 	}
-	if !strings.Contains(content, `[3] "Third Story (new after scroll)"`) {
+	if !strings.Contains(content, `[3] Third Story (new after scroll)`) {
 		t.Errorf("missing [3] Third Story (resolved item):\n%s", content)
 	}
-	if !strings.Contains(content, `[4] "Fourth Story (new after scroll)"`) {
+	if !strings.Contains(content, `[4] Fourth Story (new after scroll)`) {
 		t.Errorf("missing [4] Fourth Story (resolved item):\n%s", content)
 	}
-	// 4 resolved items + supplemented text-bearing descendants (Stories, (example.com))
-	if strings.Count(content, "] \"") < 4 {
+	// At least 4 items present
+	if strings.Count(content, "] ") < 4 {
 		t.Errorf("expected at least 4 items from resolved items, got:\n%s", content)
 	}
 	// No mache IDs exposed
@@ -697,18 +738,18 @@ ID: mache-27 | Parent: mache-25 | Tag: a | Text: "Third Story"
 		t.Fatalf("children file missing (leaf zone root fallback failed): %v", err)
 	}
 
-	// All 3 primary items should appear in ordinal format
-	if !strings.Contains(content, `[1] "First Story"`) {
+	// All 3 primary items should appear in ordinal format (no quotes)
+	if !strings.Contains(content, `[1] First Story`) {
 		t.Errorf("missing [1] First Story:\n%s", content)
 	}
-	if !strings.Contains(content, `[2] "Second Story"`) {
+	if !strings.Contains(content, `[2] Second Story`) {
 		t.Errorf("missing [2] Second Story:\n%s", content)
 	}
-	if !strings.Contains(content, `[3] "Third Story"`) {
+	if !strings.Contains(content, `[3] Third Story`) {
 		t.Errorf("missing [3] Third Story:\n%s", content)
 	}
-	if strings.Count(content, "] \"") != 3 {
-		t.Errorf("expected 3 items, got:\n%s", content)
+	if strings.Count(content, "\n") != 2 {
+		t.Errorf("expected 3 items (2 newlines), got:\n%s", content)
 	}
 
 	// _c/ should also be populated
@@ -999,7 +1040,7 @@ func TestMergeSchemaPreservesChildren(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile children before merge failed: %v", err)
 	}
-	if !strings.Contains(content, `[1] "First Story Title"`) {
+	if !strings.Contains(content, `[1] First Story Title`) {
 		t.Errorf("missing children content before merge: %q", content)
 	}
 
@@ -1014,7 +1055,7 @@ func TestMergeSchemaPreservesChildren(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile children after merge failed: %v", err)
 	}
-	if !strings.Contains(content, `[1] "First Story Title"`) {
+	if !strings.Contains(content, `[1] First Story Title`) {
 		t.Errorf("children lost after merge: %q", content)
 	}
 }
@@ -1361,16 +1402,20 @@ func TestBuildTextIndex(t *testing.T) {
 		t.Fatalf("text_index not found: %v", err)
 	}
 
-	// Should contain interactive element text.
-	if !strings.Contains(content, `a "Home"`) {
-		t.Errorf("text_index should contain 'a \"Home\"', got:\n%s", content)
+	// Lynx-style format: [mache-ID] text, grouped by region.
+	if !strings.Contains(content, `[mache-1] Home`) {
+		t.Errorf("text_index should contain '[mache-1] Home', got:\n%s", content)
 	}
-	if !strings.Contains(content, `a "First Story Title"`) {
-		t.Errorf("text_index should contain 'a \"First Story Title\"', got:\n%s", content)
+	if !strings.Contains(content, `[mache-16] First Story Title`) {
+		t.Errorf("text_index should contain '[mache-16] First Story Title', got:\n%s", content)
 	}
-	// nav/div/footer elements have short text, so they're included.
-	if !strings.Contains(content, `nav "Site Navigation"`) {
+	// Short-text elements included.
+	if !strings.Contains(content, `[mache-0] Site Navigation`) {
 		t.Errorf("text_index should contain short-text elements like nav, got:\n%s", content)
+	}
+	// Region headers present.
+	if !strings.Contains(content, "-- ") {
+		t.Errorf("text_index should contain region headers, got:\n%s", content)
 	}
 }
 
@@ -1396,12 +1441,12 @@ ID: mache-3 | Parent: mache-1 | Tag: button | Text: "Add to Cart"
 		t.Fatalf("text_index not found: %v", err)
 	}
 
-	// Short clickable elements should be present.
-	if !strings.Contains(content, `a "Reviews 12"`) {
-		t.Errorf("should contain 'a \"Reviews 12\"', got:\n%s", content)
+	// Short clickable elements should be present (Lynx-style format).
+	if !strings.Contains(content, `[mache-2] Reviews 12`) {
+		t.Errorf("should contain '[mache-2] Reviews 12', got:\n%s", content)
 	}
-	if !strings.Contains(content, `button "Add to Cart"`) {
-		t.Errorf("should contain 'button \"Add to Cart\"', got:\n%s", content)
+	if !strings.Contains(content, `(btn) [mache-3] Add to Cart`) {
+		t.Errorf("should contain '(btn) [mache-3] Add to Cart', got:\n%s", content)
 	}
 	// Long div text should be excluded (not interactive, text > 100 chars).
 	if strings.Contains(content, longText) {
@@ -1429,17 +1474,27 @@ ID: mache-4 | Parent: mache-1 | Tag: button | Text: "Buy" | Bounds: [0.8, 0.4, 0
 		t.Fatalf("text_index not found: %v", err)
 	}
 
-	// Logo at (0.06, 0.035) → top-left, with mache_id
-	if !strings.Contains(content, `a "Logo"  (top-left)  [mache-2]`) {
-		t.Errorf("expected top-left label with mache_id for Logo, got:\n%s", content)
+	// Lynx-style: region headers instead of per-element spatial labels.
+	// Logo at cy=0.035 → top region
+	if !strings.Contains(content, "-- top --") {
+		t.Errorf("expected '-- top --' region header, got:\n%s", content)
 	}
-	// Reviews at (0.5, 0.725) → bottom
-	if !strings.Contains(content, `a "Reviews"  (bottom)  [mache-3]`) {
-		t.Errorf("expected bottom label with mache_id for Reviews, got:\n%s", content)
+	if !strings.Contains(content, `[mache-2] Logo`) {
+		t.Errorf("expected Logo entry in text_index, got:\n%s", content)
 	}
-	// Buy at (0.85, 0.425) → right
-	if !strings.Contains(content, `button "Buy"  (right)  [mache-4]`) {
-		t.Errorf("expected right label with mache_id for Buy, got:\n%s", content)
+	// Reviews at cy=0.725 → bottom region
+	if !strings.Contains(content, "-- bottom --") {
+		t.Errorf("expected '-- bottom --' region header, got:\n%s", content)
+	}
+	if !strings.Contains(content, `[mache-3] Reviews`) {
+		t.Errorf("expected Reviews entry in text_index, got:\n%s", content)
+	}
+	// Buy button at cy=0.425 → center region, with (btn) marker
+	if !strings.Contains(content, "-- center --") {
+		t.Errorf("expected '-- center --' region header, got:\n%s", content)
+	}
+	if !strings.Contains(content, `(btn) [mache-4] Buy`) {
+		t.Errorf("expected '(btn) [mache-4] Buy' in text_index, got:\n%s", content)
 	}
 }
 

@@ -189,7 +189,12 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 	}()
 
 	// Multi-step loop: dispatch action, wait for page settle, feed result back.
+	// Always include TaskContext so the Navigator knows the overall goal,
+	// not just the Planner's 1-sentence sub-command ("contextual amnesia" fix).
 	enrichedIntent := goal.Text
+	if goal.TaskContext != "" {
+		enrichedIntent = fmt.Sprintf("OVERALL TASK: %s\n\nCurrent step: %s", goal.TaskContext, goal.Text)
+	}
 	var lastSummary string
 
 	for step := 0; step < maxGoalSteps; step++ {

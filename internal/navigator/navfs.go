@@ -111,7 +111,14 @@ func (f *NavFS) GetProperty(nodePath, key string) (string, bool) {
 
 // Act performs an action on the node at the given path, routing through
 // the underlying graph. Returns ErrActNotSupported for passive graphs.
+// Bare mache IDs (e.g., "mache-42") are not routable through the graph,
+// so we return ErrActNotSupported to let the caller fall back to
+// ResolveMacheID → ActionResult dispatch.
 func (f *NavFS) Act(nodePath, action, payload string) (*graph.ActionResult, error) {
+	clean := cleanPath(nodePath)
+	if strings.HasPrefix(clean, "mache-") {
+		return nil, graph.ErrActNotSupported
+	}
 	p := f.resolvePath(nodePath)
 	return f.g.Act(p, action, payload)
 }

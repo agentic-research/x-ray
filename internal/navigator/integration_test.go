@@ -108,8 +108,8 @@ func TestToolChainLsToChildren(t *testing.T) {
 		Name: "cat", Args: map[string]any{"path": "/main/story_list/children"},
 	})
 
-	// Should have ordinal children listing (no mache IDs)
-	if !strings.Contains(result, `[1] "`) {
+	// Should have ordinal children listing (Lynx-style, no quotes, no mache IDs)
+	if !strings.Contains(result, "[1] ") {
 		t.Errorf("children missing [1]: %s", result)
 	}
 	if !strings.Contains(result, "Timeframe") {
@@ -118,7 +118,7 @@ func TestToolChainLsToChildren(t *testing.T) {
 	if !strings.Contains(result, "Global Intelligence Crisis") {
 		t.Errorf("children missing second story: %s", result)
 	}
-	if !strings.Contains(result, `[3] "`) {
+	if !strings.Contains(result, "[3] ") {
 		t.Errorf("children missing [3]: %s", result)
 	}
 	// No mache IDs exposed in children listing
@@ -167,6 +167,31 @@ func TestToolChainActOnZone(t *testing.T) {
 	}
 	if action.MacheID != "mache-100" {
 		t.Errorf("expected mache-100, got %q", action.MacheID)
+	}
+}
+
+func TestToolChainActWithBareMacheID(t *testing.T) {
+	engine := buildHNEngine(t)
+	agent := NewAgent(nil, "test", engine)
+
+	// Act with a bare mache ID (from text_index grep results).
+	// Previously this returned "Error: node not found" because
+	// CompositeGraph couldn't route "mache-22" (no mount prefix).
+	result, action := agent.ExecuteTool(context.Background(), &genai.FunctionCall{
+		Name: "act", Args: map[string]any{
+			"path":   "mache-22",
+			"action": "click",
+		},
+	})
+
+	if action == nil {
+		t.Fatalf("act on bare mache-id should return ActionResult, got: %s", result)
+	}
+	if action.MacheID != "mache-22" {
+		t.Errorf("expected mache-22, got %q", action.MacheID)
+	}
+	if action.Action != "click" {
+		t.Errorf("expected click, got %q", action.Action)
 	}
 }
 
