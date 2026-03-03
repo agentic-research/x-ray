@@ -89,6 +89,20 @@ func (f *NavFS) ResolveMacheID(nodePath string) (string, error) {
 	return "", fmt.Errorf("no mache_id found at %s", nodePath)
 }
 
+// GetProperty returns a property value from a directory node.
+func (f *NavFS) GetProperty(nodePath, key string) (string, bool) {
+	p := f.resolvePath(nodePath)
+	node, err := f.g.GetNode(p)
+	if err != nil || node.Properties == nil {
+		return "", false
+	}
+	v, ok := node.Properties[key]
+	if !ok {
+		return "", false
+	}
+	return string(v), true
+}
+
 // Act performs an action on the node at the given path, routing through
 // the underlying graph. Returns ErrActNotSupported for passive graphs.
 func (f *NavFS) Act(nodePath, action, payload string) (*graph.ActionResult, error) {

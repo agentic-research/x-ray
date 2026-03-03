@@ -366,6 +366,53 @@ func (t *GrepTool) grepWalk(dirPath, lower string, re *regexp.Regexp, matches *[
 	}
 }
 
+// --- stat ---
+
+type StatTool struct{ fs *NavFS }
+
+func (t *StatTool) Declaration() *genai.FunctionDeclaration {
+	return &genai.FunctionDeclaration{
+		Name:        "stat",
+		Description: "Show size info for a file or directory. Returns char/line counts for files, child counts for directories. Use before cat() to gauge content size.",
+		Parameters: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"path": {Type: genai.TypeString, Description: "Path to inspect, e.g. '/browser/main/feed/children' or '/browser/main/feed'"},
+			},
+			Required: []string{"path"},
+		},
+	}
+}
+
+func (t *StatTool) Execute(_ context.Context, args map[string]any) (string, *ActionResult) {
+	p, _ := args["path"].(string)
+
+	// Try as file first.
+	content, err := t.fs.ReadFile(p)
+	if err == nil {
+		lines := strings.Count(content, "\n")
+		if len(content) > 0 && !strings.HasSuffix(content, "\n") {
+			lines++ // count last line without trailing newline
+		}
+		return fmt.Sprintf("file: %d chars, %d lines", len(content), lines), nil
+	}
+
+	// Try as directory.
+	entries, err := t.fs.ListDir(p)
+	if err != nil {
+		return fmt.Sprintf("Error: %v", err), nil
+	}
+	dirs, files := 0, 0
+	for _, e := range entries {
+		if strings.HasSuffix(e, "/") {
+			dirs++
+		} else {
+			files++
+		}
+	}
+	return fmt.Sprintf("dir: %d entries (%d files, %d dirs)", len(entries), files, dirs), nil
+}
+
 // --- iterm.new_window ---
 
 type NewWindowTool struct{ fs *NavFS }

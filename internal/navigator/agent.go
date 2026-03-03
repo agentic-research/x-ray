@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -67,6 +70,7 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 
 	ls := &LsTool{fs: fs}
 	cat := &CatTool{fs: fs}
+	stat := &StatTool{fs: fs}
 	act := &ActTool{fs: fs}
 	grepTool := &GrepTool{fs: fs}
 	scroll := &ScrollTool{}
@@ -80,6 +84,7 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 	reg := NewToolRegistry()
 	reg.Register(ls)
 	reg.Register(cat)
+	reg.Register(stat)
 	reg.Register(act)
 	reg.Register(grepTool)
 	reg.Register(scroll)
@@ -276,13 +281,21 @@ func (a *Agent) ExecuteTool(ctx context.Context, fc *genai.FunctionCall) (string
 	return a.registry.Execute(ctx, fc)
 }
 
-// buildTreeDump generates a compact tree listing of the virtual filesystem.
+// buildTreeDump generates a compact tree listing of the virtual filesystem,
+// prefixed with an ASCII spatial layout when zone bounds are available.
 func (a *Agent) buildTreeDump() string {
 	rootEntries, err := a.fs.ListDir("/")
 	if err != nil || len(rootEntries) == 0 {
 		return ""
 	}
 	var sb strings.Builder
+
+	// ASCII layout first — gives spatial context before the tree.
+	if layout := a.buildASCIILayout(); layout != "" {
+		sb.WriteString(layout)
+		sb.WriteByte('\n')
+	}
+
 	for _, entry := range rootEntries {
 		a.walkTree(&sb, "/"+strings.TrimSuffix(entry, "/"), entry, "", 0)
 	}
@@ -327,6 +340,198 @@ func (a *Agent) walkTree(sb *strings.Builder, fullPath, name, indent string, dep
 	}
 }
 
+// zoneInfo holds parsed zone metadata for the ASCII layout.
+type zoneInfo struct {
+	path       string
+	desc       string
+	x, y, w, h float64
+}
+
+// buildASCIILayout renders a spatial ASCII grid of browser zones.
+// Zones with off-screen or zero bounds are omitted.
+func (a *Agent) buildASCIILayout() string {
+	// Collect zones with bounds from the browser/ mount.
+	var zones []zoneInfo
+	a.collectZones("browser", &zones)
+	if len(zones) == 0 {
+		return ""
+	}
+
+	// Clamp to visible viewport [0,1] and filter off-screen zones.
+	var visible []zoneInfo
+	for _, z := range zones {
+		// Clamp to viewport.
+		x1 := math.Max(0, z.x)
+		y1 := math.Max(0, z.y)
+		x2 := math.Min(1, z.x+z.w)
+		y2 := math.Min(1, z.y+z.h)
+		if x2 <= x1 || y2 <= y1 {
+			continue // fully off-screen or zero area
+		}
+		visible = append(visible, zoneInfo{
+			path: z.path, desc: z.desc,
+			x: x1, y: y1, w: x2 - x1, h: y2 - y1,
+		})
+	}
+	if len(visible) == 0 {
+		return ""
+	}
+
+	// Sort by y then x for top-to-bottom, left-to-right layout.
+	sort.Slice(visible, func(i, j int) bool {
+		if visible[i].y != visible[j].y {
+			return visible[i].y < visible[j].y
+		}
+		return visible[i].x < visible[j].x
+	})
+
+	// Render to a character grid.
+	const gridW, gridH = 72, 20
+	grid := make([][]byte, gridH)
+	for i := range grid {
+		grid[i] = make([]byte, gridW)
+		for j := range grid[i] {
+			grid[i][j] = ' '
+		}
+	}
+
+	for _, z := range visible {
+		// Map normalized coords to grid.
+		col0 := int(z.x * float64(gridW))
+		row0 := int(z.y * float64(gridH))
+		col1 := int((z.x + z.w) * float64(gridW))
+		row1 := int((z.y + z.h) * float64(gridH))
+
+		// Clamp to grid.
+		if col0 < 0 {
+			col0 = 0
+		}
+		if row0 < 0 {
+			row0 = 0
+		}
+		if col1 > gridW {
+			col1 = gridW
+		}
+		if row1 > gridH {
+			row1 = gridH
+		}
+		if col1-col0 < 2 || row1-row0 < 1 {
+			continue // too small to render
+		}
+
+		// Draw border.
+		for c := col0; c < col1; c++ {
+			if row0 < gridH {
+				grid[row0][c] = '-'
+			}
+			if row1-1 < gridH {
+				grid[row1-1][c] = '-'
+			}
+		}
+		for r := row0; r < row1; r++ {
+			if col0 < gridW {
+				grid[r][col0] = '|'
+			}
+			if col1-1 < gridW {
+				grid[r][col1-1] = '|'
+			}
+		}
+
+		// Label: zone path (trimmed to fit).
+		label := z.path
+		maxLabel := col1 - col0 - 2
+		if maxLabel < 1 {
+			continue
+		}
+		if len(label) > maxLabel {
+			label = label[:maxLabel]
+		}
+		labelRow := row0
+		if labelRow < gridH {
+			for i, ch := range label {
+				if col0+1+i < col1-1 {
+					grid[labelRow][col0+1+i] = byte(ch)
+				}
+			}
+		}
+
+		// Description on next row if space.
+		if row0+1 < row1-1 && z.desc != "" {
+			desc := z.desc
+			if len(desc) > maxLabel {
+				desc = desc[:maxLabel]
+			}
+			for i, ch := range desc {
+				if col0+1+i < col1-1 {
+					grid[row0+1][col0+1+i] = byte(ch)
+				}
+			}
+		}
+	}
+
+	// Render grid to string, trimming trailing whitespace per row.
+	var sb strings.Builder
+	sb.WriteString("Page layout:\n")
+	for _, row := range grid {
+		line := strings.TrimRight(string(row), " ")
+		if line != "" {
+			sb.WriteString(line)
+		}
+		sb.WriteByte('\n')
+	}
+	return sb.String()
+}
+
+// collectZones recursively finds zone directories with bounds under the given path.
+func (a *Agent) collectZones(dirPath string, zones *[]zoneInfo) {
+	entries, err := a.fs.ListDir(dirPath)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry, "/") {
+			continue
+		}
+		name := strings.TrimSuffix(entry, "/")
+		childPath := dirPath + "/" + name
+		if name == "_c" {
+			continue
+		}
+
+		// Check for bounds property.
+		if boundsStr, ok := a.fs.GetProperty(childPath, "bounds"); ok {
+			desc, _ := a.fs.ReadFile(childPath + "/description")
+			x, y, w, h := parseBounds(boundsStr)
+			if w > 0 && h > 0 {
+				// Use path relative to browser/ for display.
+				displayPath := strings.TrimPrefix(childPath, "browser/")
+				*zones = append(*zones, zoneInfo{
+					path: displayPath, desc: desc,
+					x: x, y: y, w: w, h: h,
+				})
+			}
+		}
+
+		// Recurse into subdirectories.
+		a.collectZones(childPath, zones)
+	}
+}
+
+// parseBounds extracts [x,y,w,h] from a bounds string like "[0.123,0.456,0.789,0.234]".
+func parseBounds(s string) (x, y, w, h float64) {
+	s = strings.TrimPrefix(s, "[")
+	s = strings.TrimSuffix(s, "]")
+	parts := strings.Split(s, ",")
+	if len(parts) != 4 {
+		return x, y, w, h
+	}
+	x, _ = strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+	y, _ = strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+	w, _ = strconv.ParseFloat(strings.TrimSpace(parts[2]), 64)
+	h, _ = strconv.ParseFloat(strings.TrimSpace(parts[3]), 64)
+	return x, y, w, h
+}
+
 // NavigatorSystemPrompt is the system instruction shared by text and voice modes.
 const NavigatorSystemPrompt = `You are 'The Navigator', an agent that helps users interact with web pages and terminal sessions through a semantic filesystem.
 
@@ -340,6 +545,7 @@ Your tools:
 General (work on any mount):
 - ls(path): List directory contents. Start with ls("/") to see available mount points.
 - cat(path): Read a file. Use for "description", "children", "buffer", "status" files.
+- stat(path): Show size info (chars/lines for files, child count for dirs). Use before cat() to gauge content size.
 - grep(pattern): Search ALL children and description files for a pattern (case-insensitive, regex OK). Use SHORT keywords (1-2 words max), never full phrases. Supports | for alternatives: grep("review|rating"). To read full zone content, use cat() instead.
 - act(path, action, payload?): Execute an action on the element at this path.
   For browser elements: "click", "focus", "type", "enter".
@@ -382,7 +588,7 @@ Before calling act(), ALWAYS classify the user's intent:
 CRITICAL CONSTRAINTS:
 - Do NOT hallucinate tools or paths. Only use paths confirmed via ls().
 - Never guess a path. Always ls() a directory before trying to cat() or act().
-- You have exactly eleven tools: ls, cat, act, grep, browser.scroll, browser.goto, browser.rescan, browser.list_tabs, browser.switch_tab, iterm.new_window, iterm.new_tab.
+- You have exactly twelve tools: ls, cat, stat, act, grep, browser.scroll, browser.goto, browser.rescan, browser.list_tabs, browser.switch_tab, iterm.new_window, iterm.new_tab.
 - If you cannot find an element, use browser.rescan() before giving up.
 
 Strategy:

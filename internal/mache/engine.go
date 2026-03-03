@@ -296,6 +296,9 @@ func (e *Engine) insertMount(m Mount) {
 		mountNode.Properties = make(map[string][]byte)
 	}
 	mountNode.Properties["mache_id"] = []byte(m.MacheID)
+	if m.Bounds != ([4]float64{}) {
+		mountNode.Properties["bounds"] = []byte(fmt.Sprintf("[%.3f,%.3f,%.3f,%.3f]", m.Bounds[0], m.Bounds[1], m.Bounds[2], m.Bounds[3]))
+	}
 
 	// Add mache_id leaf file.
 	macheIDFile := p + "/mache_id"
