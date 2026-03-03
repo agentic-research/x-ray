@@ -56,6 +56,12 @@ CRITICAL PATTERNS:
 - If read_only=true fails to find content, ALWAYS try read_only=false next to interact with the page.
 - When looking for a tab or button to click, tell the navigator: "cat the children of the main content zone to find the <tab name> link, then click it". Do NOT just say "click the Reviews tab" — the navigator needs to see the children list first.
 
+WORKING MEMORY — the navigator has a scratchpad at /tasks/active/scratch:
+- When collecting MULTIPLE items (names, prices, etc.) across pages, ALWAYS tell the navigator: "save your findings to the scratchpad before navigating to the next page."
+- Example: issue_command("grep for reviews mentioning 'small', then save each reviewer name to the scratchpad, then click Page Next", read_only=false)
+- Before answering DONE, issue_command("read the scratchpad to collect all findings", read_only=true).
+- This prevents losing findings when the page changes.
+
 COMPLETENESS — before answering, VERIFY:
 - Does the page have pagination ("Next", "Page 1 of N", ">>")?  If so, check ALL pages.
 - Does a review count (e.g., "12 Reviews") exceed what you've seen? Keep looking.

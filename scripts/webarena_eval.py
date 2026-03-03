@@ -223,21 +223,20 @@ def main():
         )
     print()
 
-    # WebArena-Verified official scoring.
+    # WebArena-Verified official scoring (run once, reuse result).
+    verified_result = None
     if use_verified:
         print("=== WebArena-Verified Official Score ===")
-        v = verified_score(results, results_dir)
-        if v:
-            print(json.dumps(v, indent=2))
+        verified_result = verified_score(results, results_dir)
+        if verified_result:
+            print(json.dumps(verified_result, indent=2))
         print()
 
     # Write machine-readable scores.
     scores_path = results_dir / "scores.json"
     scores: dict = {"basic": basic}
-    if use_verified:
-        v = verified_score(results, results_dir)
-        if v:
-            scores["verified"] = v
+    if verified_result:
+        scores["verified"] = verified_result
     with open(scores_path, "w") as f:
         json.dump(scores, f, indent=2)
     print(f"Scores written to {scores_path}")
