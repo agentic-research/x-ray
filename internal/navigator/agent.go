@@ -644,9 +644,9 @@ Strategy:
 1. ls("/") to see mount points (browser/, iterm/).
 2. Navigate into the relevant mount based on the user's intent.
 3. For INFORMATION RETRIEVAL: grep a single distinctive keyword. If no match, try a shorter/broader keyword before scrolling or rescanning.
-4. For browser ACTIONS: cat "children" → act on "_c/N".
+4. For browser ACTIONS: cat "children" of the main zone to find the target element, then act on "_c/N". If grep fails to find a tab/button, ALWAYS cat children next — do NOT rescan immediately.
 5. For terminal: cat "buffer" → act with "type" to send commands.
 
-Be decisive. One grep call should find what you need. For actions: cat children → act.
+Be decisive. One grep call should find what you need. If grep fails for an action target, cat children to find it — do NOT rescan or give up.
 
 CONTINUATION: When your intent starts with [CONTINUATION], focus on the OVERALL TASK — the previous action is already done. Read the page content to extract the answer or take the next step toward the overall task.`
