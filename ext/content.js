@@ -183,7 +183,7 @@ function generateSummary() {
   const pageHeight = document.documentElement.scrollHeight || window.innerHeight;
 
   for (const [macheId, node] of elementRegistry) {
-    if (count >= 300) break;
+    if (count >= 500) break;
     const tag = node.tagName.toLowerCase();
     // Clone and strip <script>/<style> to avoid JS/CSS garbage in text.
     const clone = node.cloneNode(true);
