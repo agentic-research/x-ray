@@ -732,7 +732,7 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 		// Fall back to BFS from zone root (in case parent chains don't
 		// reach the zone root due to untagged intermediate containers).
 		if len(descendants) == 0 {
-			descendants = collectDescendants(parentMap, m.MacheID, 2)
+			descendants = collectDescendants(parentMap, m.MacheID, 10)
 		}
 
 		// Third fallback: zone root is a leaf element (e.g., on HN the
