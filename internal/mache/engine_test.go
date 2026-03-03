@@ -1409,6 +1409,65 @@ ID: mache-3 | Parent: mache-1 | Tag: button | Text: "Add to Cart"
 	}
 }
 
+func TestBuildTextIndex_SpatialLabels(t *testing.T) {
+	e := NewEngine()
+	schema := `{"mounts":[{"virtual_path":"/main/content","mache_id":"mache-1","description":"Content"}]}`
+	if err := e.ApplySchema(schema); err != nil {
+		t.Fatal(err)
+	}
+
+	summary := `Interactive Elements:
+ID: mache-1 | Parent: none | Tag: div | Text: "Page" | Bounds: [0.0, 0.0, 1.0, 1.0]
+ID: mache-2 | Parent: mache-1 | Tag: a | Text: "Logo" | Bounds: [0.01, 0.01, 0.1, 0.05]
+ID: mache-3 | Parent: mache-1 | Tag: a | Text: "Reviews" | Bounds: [0.35, 0.7, 0.3, 0.05]
+ID: mache-4 | Parent: mache-1 | Tag: button | Text: "Buy" | Bounds: [0.8, 0.4, 0.1, 0.05]
+`
+	e.LoadChildren(summary, nil)
+
+	content, err := e.ReadFile("/text_index")
+	if err != nil {
+		t.Fatalf("text_index not found: %v", err)
+	}
+
+	// Logo at (0.06, 0.035) → top-left
+	if !strings.Contains(content, `a "Logo"  (top-left)`) {
+		t.Errorf("expected top-left label for Logo, got:\n%s", content)
+	}
+	// Reviews at (0.5, 0.725) → bottom
+	if !strings.Contains(content, `a "Reviews"  (bottom)`) {
+		t.Errorf("expected bottom label for Reviews, got:\n%s", content)
+	}
+	// Buy at (0.85, 0.425) → right
+	if !strings.Contains(content, `button "Buy"  (right)`) {
+		t.Errorf("expected right label for Buy, got:\n%s", content)
+	}
+}
+
+func TestSpatialLabel(t *testing.T) {
+	tests := []struct {
+		bounds string
+		want   string
+	}{
+		{"[0.1, 0.1, 0.1, 0.1]", "top-left"},
+		{"[0.4, 0.05, 0.2, 0.05]", "top"},
+		{"[0.8, 0.05, 0.1, 0.05]", "top-right"},
+		{"[0.05, 0.4, 0.1, 0.1]", "left"},
+		{"[0.4, 0.4, 0.2, 0.2]", "center"},
+		{"[0.8, 0.4, 0.1, 0.1]", "right"},
+		{"[0.05, 0.8, 0.1, 0.1]", "bottom-left"},
+		{"[0.4, 0.8, 0.2, 0.1]", "bottom"},
+		{"[0.8, 0.8, 0.1, 0.1]", "bottom-right"},
+		{"", ""},
+		{"invalid", ""},
+	}
+	for _, tt := range tests {
+		got := spatialLabel(tt.bounds)
+		if got != tt.want {
+			t.Errorf("spatialLabel(%q) = %q, want %q", tt.bounds, got, tt.want)
+		}
+	}
+}
+
 func TestValidateSchemaBounds_ZeroBounds(t *testing.T) {
 	// Cached mount has no bounds (older format). Should be skipped.
 	cachedSchema := `{"mounts":[{

@@ -875,8 +875,8 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 // buildTextIndex creates a root-level "text_index" file listing interactive
 // and short-text elements from the DOM summary. Focuses on clickable elements
 // (a, button, input, select, textarea, [role=tab/button/link]) plus any
-// element with concise text (≤100 chars). This ensures grep can discover
-// content even when elements aren't assigned to any zone.
+// element with concise text (≤100 chars). Each entry includes a spatial label
+// (e.g., "top-left", "bottom-center") derived from normalized bounds.
 func (e *Engine) buildTextIndex(elements []SummaryElement) {
 	// Tags that are inherently interactive.
 	interactive := map[string]bool{
@@ -905,7 +905,12 @@ func (e *Engine) buildTextIndex(elements []SummaryElement) {
 		if len(text) > 100 {
 			text = text[:100] + "…"
 		}
-		fmt.Fprintf(&sb, "%s \"%s\"\n", el.Tag, text)
+		label := spatialLabel(el.Bounds)
+		if label != "" {
+			fmt.Fprintf(&sb, "%s \"%s\"  (%s)\n", el.Tag, text, label)
+		} else {
+			fmt.Fprintf(&sb, "%s \"%s\"\n", el.Tag, text)
+		}
 	}
 	if sb.Len() == 0 {
 		return
@@ -913,4 +918,45 @@ func (e *Engine) buildTextIndex(elements []SummaryElement) {
 
 	indexID := "text_index"
 	e.store.AddRoot(&graph.Node{ID: indexID, Data: []byte(strings.TrimRight(sb.String(), "\n"))})
+}
+
+// spatialLabel converts a bounds string "[x, y, w, h]" into a human-readable
+// position label like "top-left", "center", "bottom-right". Uses the element
+// center point mapped to a 3×3 grid.
+func spatialLabel(boundsStr string) string {
+	b, ok := parseBoundsString(boundsStr)
+	if !ok {
+		return ""
+	}
+	cx := b[0] + b[2]/2 // center x
+	cy := b[1] + b[3]/2 // center y
+
+	var vert, horiz string
+	switch {
+	case cy < 0.33:
+		vert = "top"
+	case cy < 0.66:
+		vert = "mid"
+	default:
+		vert = "bottom"
+	}
+	switch {
+	case cx < 0.33:
+		horiz = "left"
+	case cx < 0.66:
+		horiz = "center"
+	default:
+		horiz = "right"
+	}
+
+	if vert == "mid" && horiz == "center" {
+		return "center"
+	}
+	if horiz == "center" {
+		return vert
+	}
+	if vert == "mid" {
+		return horiz
+	}
+	return vert + "-" + horiz
 }
