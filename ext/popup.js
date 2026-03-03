@@ -180,4 +180,5 @@ intentInput.addEventListener('keydown', (e) => {
 });
 
 // Auto-open the agent log side panel whenever the popup opens.
-chrome.runtime.sendMessage({ type: 'OPEN_SIDEPANEL' });
+// Must call directly from popup (user gesture context) — background relay loses the gesture.
+chrome.sidePanel.open({ windowId: chrome.windows.WINDOW_ID_CURRENT }).catch(() => {});
