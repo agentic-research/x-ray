@@ -44,15 +44,15 @@ TOOLS:
 - open_url(url): Open a completely different website.
 
 WORKFLOW — Break every task into these steps:
-1. OBSERVE: issue_command("describe the page structure", read_only=true)
-2. INTERACT: issue_command("click/scroll/type to reach the content", read_only=false)
+1. SEARCH FIRST: issue_command("search for <keyword>", read_only=true). The navigator has a grep tool — always search for the answer directly before doing anything else.
+2. INTERACT (only if search fails): issue_command("click the tab/link to reveal content", read_only=false). Click tabs, expand sections — never scroll blindly.
 3. READ: issue_command("read the specific content needed", read_only=true)
 4. ANSWER: Respond with DONE: or FAILED:
 
 CRITICAL PATTERNS:
-- Content behind tabs (e.g., Reviews): use read_only=false to CLICK the tab first, then read_only=true to read.
-- Content below the fold: use read_only=false to SCROLL DOWN, then read_only=true to read.
-- Search results: use read_only=false to TYPE a query and submit, then read_only=true to read results.
+- Content behind tabs (e.g., Reviews): search first, then click the tab, then search again.
+- Hidden content: click to reveal, never scroll hoping to find it.
+- Search results: type a query and submit, then read results.
 - If read_only=true fails to find content, ALWAYS try read_only=false next to interact with the page.
 
 TERMINATION:
