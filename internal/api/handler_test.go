@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/agentic-research/x-ray/internal/config"
 )
 
 // stubCartographer is a no-op SchemaGenerator for unit tests.
@@ -22,6 +24,16 @@ func (s *stubCartographer) GenerateSchema(ctx context.Context, screenshot []byte
 func newTestHandler() *Handler {
 	h := NewHandler(&stubCartographer{}, nil, nil, nil, "test-model", "test-live-model", "", "")
 	h.openBrowserFn = nil // prevent tests from opening real Chrome windows
+	h.Timeouts = config.TimeoutsConfig{
+		SchemaWait: 30,
+		ScrollWait: 10,
+		Summary:    10,
+		Overlay:    10,
+		Capture:    30,
+		LayerTree:  2,
+	}
+	h.CDPTargetWidth = 800
+	h.CDPMaxHeight = 16384
 	return h
 }
 

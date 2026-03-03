@@ -21,7 +21,6 @@ import (
 	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/agentic-research/x-ray/internal/iterm"
 	"github.com/agentic-research/x-ray/internal/navigator"
-	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )
 
@@ -30,11 +29,6 @@ func main() {
 	flag.Parse()
 
 	log.Println("Starting X-Ray Agentd")
-
-	// Load .envrc for GOOGLE_GEMINI_API_KEY / GOOGLE_API_KEY
-	if err := godotenv.Load(".envrc"); err != nil {
-		log.Println("Note: No .envrc file found, using environment")
-	}
 
 	cfg, cfgErr := config.LoadConfig()
 	if cfgErr != nil {
@@ -123,6 +117,9 @@ func main() {
 
 	// Per-tab Engine + Navigator are created on demand inside Handler.
 	handler := api.NewHandler(cart, navGen, client, liveClient, navModel, cfg.Gemini.LiveModel, plannerModel, cfg.Database.Path)
+	handler.Timeouts = cfg.Timeouts
+	handler.CDPTargetWidth = float64(cfg.Cartographer.TargetWidth)
+	handler.CDPMaxHeight = float64(cfg.Cartographer.MaxHeight)
 
 	handler.SetOpenBrowserFunc(func(url string) {
 		_ = exec.Command("open", "-a", "Google Chrome", url).Start()

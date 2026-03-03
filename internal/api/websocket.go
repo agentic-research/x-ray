@@ -15,6 +15,7 @@ import (
 
 	"github.com/agentic-research/mache/graph"
 	"github.com/agentic-research/x-ray/internal/cdp"
+	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/agentic-research/x-ray/internal/focus"
 	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/agentic-research/x-ray/internal/navigator"
@@ -24,24 +25,22 @@ import (
 
 var boundsRe = regexp.MustCompile(`Bounds: \[([\d.]+), ([\d.]+), ([\d.]+), ([\d.]+)\]`)
 
-const (
-	schemaWaitTimeout = 30 * time.Second
-	scrollWaitTimeout = 10 * time.Second
-)
-
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
 // Handler holds the dependencies for the WebSocket handler.
 type Handler struct {
-	Cartographer  SchemaGenerator
-	NavGen        navigator.ContentGenerator // for creating per-tab Navigators
-	LiveClient    *genai.Client              // Live API client (voice mode)
-	PlannerClient *genai.Client              // regular (non-Live) Gemini client for Planner
-	NavModel      string                     // model name for creating per-tab Navigators
-	LiveModel     string                     // model name for voice sessions
-	PlannerModel  string                     // model name for Planner (e.g., "gemini-2.5-flash")
+	Cartographer   SchemaGenerator
+	NavGen         navigator.ContentGenerator // for creating per-tab Navigators
+	LiveClient     *genai.Client              // Live API client (voice mode)
+	PlannerClient  *genai.Client              // regular (non-Live) Gemini client for Planner
+	NavModel       string                     // model name for creating per-tab Navigators
+	LiveModel      string                     // model name for voice sessions
+	PlannerModel   string                     // model name for Planner (e.g., "gemini-2.5-flash")
+	Timeouts       config.TimeoutsConfig      // configurable orchestration timeouts
+	CDPTargetWidth float64                    // screenshot width for scale computation
+	CDPMaxHeight   float64                    // max page height cap
 
 	mu             sync.Mutex
 	conn           *websocket.Conn
@@ -334,7 +333,7 @@ func (h *Handler) handleNavigate(ctx context.Context, conn *websocket.Conn, msg 
 		select {
 		case <-sess.GetSchemaReady():
 			log.Printf("Navigator: schema ready, proceeding (tab %d)", msg.TabID)
-		case <-time.After(schemaWaitTimeout):
+		case <-time.After(config.Dur(h.Timeouts.SchemaWait)):
 			log.Printf("Navigator: timed out waiting for schema (tab %d)", msg.TabID)
 			h.sendMessage(conn, OutboundMessage{
 				Type: MsgStatus, TabID: msg.TabID, Message: "Timed out waiting for schema", Stage: "error",
@@ -494,7 +493,7 @@ func (h *Handler) scrollPage(ctx context.Context, conn *websocket.Conn, sess *Ta
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-time.After(scrollWaitTimeout):
+	case <-time.After(config.Dur(h.Timeouts.ScrollWait)):
 		return fmt.Errorf("scroll timed out waiting for DOM update")
 	}
 }
@@ -698,7 +697,7 @@ func (h *Handler) SendActionToExtension(tabID int, macheID, action, payload stri
 						defer dCancel()
 						_ = h.cdpProxy.Detach(dCtx, tabID)
 					}()
-					if err := cdp.PixelClick(ctx, h.cdpProxy, tabID, float64(msg.PixelX), float64(msg.PixelY)); err != nil {
+					if err := cdp.PixelClick(ctx, h.cdpProxy, tabID, float64(msg.PixelX), float64(msg.PixelY), h.CDPTargetWidth); err != nil {
 						log.Printf("CV click: PixelClick failed: %v", err)
 					} else {
 						log.Printf("CV click: dispatched click at (%d, %d) for %s (tab %d)", msg.PixelX, msg.PixelY, macheID, tabID)
@@ -801,7 +800,7 @@ func (h *Handler) HandleNavigateHTTP(w http.ResponseWriter, r *http.Request) {
 	if !sess.GetEngine().HasSchema() {
 		select {
 		case <-sess.GetSchemaReady():
-		case <-time.After(schemaWaitTimeout):
+		case <-time.After(config.Dur(h.Timeouts.SchemaWait)):
 			http.Error(w, "timed out waiting for schema", http.StatusServiceUnavailable)
 			return
 		}

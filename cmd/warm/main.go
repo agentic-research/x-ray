@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/agentic-research/x-ray/internal/api"
+	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/agentic-research/x-ray/internal/mache"
-	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )
 
@@ -309,10 +309,7 @@ func main() {
 	log.SetFlags(log.Ltime | log.Lmsgprefix)
 	log.SetPrefix("[warm] ")
 
-	// Load environment.
-	if err := godotenv.Load(".envrc"); err != nil {
-		log.Println("Note: No .envrc file found, using environment")
-	}
+	config.LoadEnv()
 
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: %s <url> [url...]\n", os.Args[0])

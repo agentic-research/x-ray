@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
+	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 )
 
@@ -16,6 +18,7 @@ type Config struct {
 	Cartographer CartographerConfig `yaml:"cartographer"`
 	Navigator    NavigatorConfig    `yaml:"navigator"`
 	Ollama       OllamaConfig       `yaml:"ollama"`
+	Timeouts     TimeoutsConfig     `yaml:"timeouts"`
 	Database     DatabaseConfig     `yaml:"database"`
 }
 
@@ -28,11 +31,13 @@ type GeminiConfig struct {
 
 // CartographerConfig holds schema generation settings.
 type CartographerConfig struct {
-	Mode     string  `yaml:"mode"`
-	Gear     int     `yaml:"gear"`
-	Scale    float64 `yaml:"scale"`
-	Endpoint string  `yaml:"endpoint"`
-	Model    string  `yaml:"model"`
+	Mode        string  `yaml:"mode"`
+	Gear        int     `yaml:"gear"`
+	Scale       float64 `yaml:"scale"`
+	Endpoint    string  `yaml:"endpoint"`
+	Model       string  `yaml:"model"`
+	TargetWidth int     `yaml:"target_width"` // CDP screenshot width (default: 800)
+	MaxHeight   int     `yaml:"max_height"`   // CDP max page height cap (default: 16384)
 }
 
 // NavigatorConfig holds navigation/action generation settings.
@@ -60,6 +65,23 @@ func (o OllamaConfig) Apply(reqBody map[string]any) {
 	}
 }
 
+// TimeoutsConfig holds orchestration timeout durations (in seconds).
+// Users running heavy local models may need to bump SchemaWait and Capture
+// to 60–90s to prevent the Doer from giving up prematurely.
+type TimeoutsConfig struct {
+	SchemaWait int `yaml:"schema_wait"` // Wait for schema before navigation (default: 30)
+	ScrollWait int `yaml:"scroll_wait"` // Wait for DOM update after scroll (default: 10)
+	Summary    int `yaml:"summary"`     // Wait for SUMMARY_RESPONSE (default: 10)
+	Overlay    int `yaml:"overlay"`     // Wait for OVERLAY_DRAWN (default: 10)
+	Capture    int `yaml:"capture"`     // Overall captureGo deadline (default: 30)
+	LayerTree  int `yaml:"layer_tree"`  // Wait for LayerTree event (default: 2)
+}
+
+// Dur converts an int-seconds field to time.Duration.
+func Dur(seconds int) time.Duration {
+	return time.Duration(seconds) * time.Second
+}
+
 // DatabaseConfig holds persistence settings.
 type DatabaseConfig struct {
 	Path string `yaml:"path"`
@@ -74,10 +96,12 @@ func defaults() *Config {
 			LiveModel: "gemini-2.5-flash-native-audio-preview-12-2025",
 		},
 		Cartographer: CartographerConfig{
-			Mode:  "tropical",
-			Gear:  5,
-			Scale: 10.0,
-			Model: "llava:13b",
+			Mode:        "tropical",
+			Gear:        5,
+			Scale:       10.0,
+			Model:       "llava:13b",
+			TargetWidth: 800,
+			MaxHeight:   16384,
 		},
 		Navigator: NavigatorConfig{
 			Model:  "functiongemma:270m",
@@ -87,6 +111,14 @@ func defaults() *Config {
 			KeepAlive: -1,
 			NumGPU:    99,
 			NumCtx:    8192,
+		},
+		Timeouts: TimeoutsConfig{
+			SchemaWait: 30,
+			ScrollWait: 10,
+			Summary:    10,
+			Overlay:    10,
+			Capture:    30,
+			LayerTree:  2,
 		},
 		Database: DatabaseConfig{
 			Path: filepath.Join(home, ".xray", "schemas.db"),
@@ -107,9 +139,17 @@ func ConfigPath() (string, error) {
 	return filepath.Join(home, ".agentic-research", "x-ray", "config.yaml"), nil
 }
 
+// LoadEnv loads environment variables from .envrc if present.
+// Called automatically by LoadConfig; also usable standalone by binaries
+// that need env vars but not the full YAML config.
+func LoadEnv() {
+	_ = godotenv.Load(".envrc")
+}
+
 // LoadConfig loads configuration with precedence: defaults < YAML < env vars.
 // Never returns nil -- on error returns defaults alongside the error.
 func LoadConfig() (*Config, error) {
+	LoadEnv()
 	cfg := defaults()
 
 	path, err := ConfigPath()
@@ -194,6 +234,26 @@ func applyEnvOverrides(cfg *Config) {
 			cfg.Ollama.NumCtx = n
 		}
 	}
+	if v := os.Getenv("CARTOGRAPHER_TARGET_WIDTH"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Cartographer.TargetWidth = n
+		}
+	}
+	if v := os.Getenv("CARTOGRAPHER_MAX_HEIGHT"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Cartographer.MaxHeight = n
+		}
+	}
+	if v := os.Getenv("TIMEOUT_SCHEMA_WAIT"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Timeouts.SchemaWait = n
+		}
+	}
+	if v := os.Getenv("TIMEOUT_CAPTURE"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Timeouts.Capture = n
+		}
+	}
 	if v := os.Getenv("XRAY_DB"); v != "" {
 		cfg.Database.Path = expandHome(v)
 	}
@@ -239,6 +299,10 @@ cartographer:
   endpoint: ""
   # Local VLM model name.
   model: "` + cfg.Cartographer.Model + `"
+  # CDP screenshot width. Lower = faster screenshots, less detail for VLM.
+  target_width: ` + strconv.Itoa(cfg.Cartographer.TargetWidth) + `
+  # CDP max page height cap (infinite-scroll guard).
+  max_height: ` + strconv.Itoa(cfg.Cartographer.MaxHeight) + `
 
 navigator:
   # Local LLM endpoint (Ollama / llama.cpp). Set to enable local navigator.
@@ -258,6 +322,20 @@ ollama:
   num_gpu: ` + strconv.Itoa(cfg.Ollama.NumGPU) + `
   # Context window size.
   num_ctx: ` + strconv.Itoa(cfg.Ollama.NumCtx) + `
+
+timeouts:
+  # Seconds to wait for schema before navigation. Bump to 60-90 for heavy local models.
+  schema_wait: ` + strconv.Itoa(cfg.Timeouts.SchemaWait) + `
+  # Seconds to wait for DOM update after scroll.
+  scroll_wait: ` + strconv.Itoa(cfg.Timeouts.ScrollWait) + `
+  # Seconds to wait for SUMMARY_RESPONSE from content script.
+  summary: ` + strconv.Itoa(cfg.Timeouts.Summary) + `
+  # Seconds to wait for overlay draw confirmation.
+  overlay: ` + strconv.Itoa(cfg.Timeouts.Overlay) + `
+  # Overall captureGo deadline. Bump to 60-90 for heavy local models.
+  capture: ` + strconv.Itoa(cfg.Timeouts.Capture) + `
+  # Seconds to wait for LayerTree.layerTreeDidChange event.
+  layer_tree: ` + strconv.Itoa(cfg.Timeouts.LayerTree) + `
 
 database:
   # SQLite path for schema cache. Supports ~ for home directory.

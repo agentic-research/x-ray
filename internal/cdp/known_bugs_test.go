@@ -75,11 +75,6 @@ func TestBug_ConcurrentCaptureLayerTreeIsolation(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// Short timeout for the test.
-	oldTimeout := layerTreeTimeout
-	layerTreeTimeout = 2 * time.Second
-	defer func() { layerTreeTimeout = oldTimeout }()
-
 	ctx := context.Background()
 
 	// Background responder: continuously drains messages and responds.
@@ -125,8 +120,8 @@ func TestBug_ConcurrentCaptureLayerTreeIsolation(t *testing.T) {
 	}()
 
 	// Launch Tab A and Tab B captures concurrently.
-	go func() { defer wg.Done(); resultA = CaptureLayerTree(ctx, p, 1, macheA) }()
-	go func() { defer wg.Done(); resultB = CaptureLayerTree(ctx, p, 2, macheB) }()
+	go func() { defer wg.Done(); resultA = CaptureLayerTree(ctx, p, 1, macheA, 2*time.Second) }()
+	go func() { defer wg.Done(); resultB = CaptureLayerTree(ctx, p, 2, macheB, 2*time.Second) }()
 
 	// Wait for both to complete.
 	doneCh := make(chan struct{})

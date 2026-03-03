@@ -12,7 +12,8 @@ import (
 	"time"
 )
 
-// Screenshot scaling constants (match JS CDP_TARGET_WIDTH / CDP_MAX_HEIGHT).
+// Default screenshot scaling constants. These are used by tests and serve as
+// documentation of the defaults; production code receives values from config.
 const (
 	CDPTargetWidth = 800   // scaled-down width for Gemini (topology, not pixels)
 	CDPMaxHeight   = 16384 // cap for infinite-scroll pages
@@ -61,8 +62,8 @@ type LayerInfo struct {
 }
 
 // LayoutMetrics calls Page.getLayoutMetrics and returns CSS content dimensions.
-// Height is capped at CDPMaxHeight.
-func LayoutMetrics(ctx context.Context, p *Proxy, tabID int) (width, height float64, err error) {
+// Height is capped at maxHeight.
+func LayoutMetrics(ctx context.Context, p *Proxy, tabID int, maxHeight float64) (width, height float64, err error) {
 	result, err := p.Send(ctx, tabID, "Page.getLayoutMetrics", nil)
 	if err != nil {
 		return 0, 0, err
@@ -76,7 +77,7 @@ func LayoutMetrics(ctx context.Context, p *Proxy, tabID int) (width, height floa
 	if err := json.Unmarshal(result, &resp); err != nil {
 		return 0, 0, fmt.Errorf("LayoutMetrics: unmarshal: %w", err)
 	}
-	h := math.Min(resp.CSSContentSize.Height, CDPMaxHeight)
+	h := math.Min(resp.CSSContentSize.Height, maxHeight)
 	return resp.CSSContentSize.Width, h, nil
 }
 
@@ -146,16 +147,16 @@ func ElementBoxModel(ctx context.Context, p *Proxy, tabID, rootNodeID int, mache
 
 // BuildClip computes a ScreenshotClip. If box is non-nil, crops to the element
 // with 50px padding (magnifying glass mode). Otherwise full-page.
-func BuildClip(pageWidth, pageHeight float64, box *BoxModel) ScreenshotClip {
+func BuildClip(pageWidth, pageHeight float64, box *BoxModel, targetWidth float64) ScreenshotClip {
 	if box != nil {
 		cx := math.Max(0, box.X-ElementBoxPadding)
 		cy := math.Max(0, box.Y-ElementBoxPadding)
 		cw := math.Min(pageWidth-cx, box.W+2*ElementBoxPadding)
 		ch := math.Min(pageHeight-cy, box.H+2*ElementBoxPadding)
-		scale := math.Min(1, CDPTargetWidth/cw)
+		scale := math.Min(1, targetWidth/cw)
 		return ScreenshotClip{X: cx, Y: cy, Width: cw, Height: ch, Scale: scale}
 	}
-	scale := math.Min(1, CDPTargetWidth/pageWidth)
+	scale := math.Min(1, targetWidth/pageWidth)
 	return ScreenshotClip{X: 0, Y: 0, Width: pageWidth, Height: pageHeight, Scale: scale}
 }
 
@@ -335,7 +336,7 @@ type layer struct {
 // CaptureLayerTree enables LayerTree, waits for layerTreeDidChange event,
 // then resolves paint order via DFS and compositing reasons.
 // Returns map[macheID]LayerInfo. Degrades gracefully on errors/timeouts.
-func CaptureLayerTree(ctx context.Context, p *Proxy, tabID int, macheToBackend map[string]int) map[string]LayerInfo {
+func CaptureLayerTree(ctx context.Context, p *Proxy, tabID int, macheToBackend map[string]int, timeout time.Duration) map[string]LayerInfo {
 	result := make(map[string]LayerInfo)
 
 	// Subscribe to events for this tab before enabling LayerTree.
@@ -369,15 +370,15 @@ func CaptureLayerTree(ctx context.Context, p *Proxy, tabID int, macheToBackend m
 		_, _ = p.Send(ctx, tabID, "LayerTree.disable", nil)
 	}()
 
-	// Wait for event (2s timeout, same as JS).
+	// Wait for event.
 	var layers []layer
 	select {
 	case layers = <-layersCh:
 	case <-ctx.Done():
 		log.Printf("CaptureLayerTree: context cancelled (tab %d)", tabID)
 		return result
-	case <-time.After(layerTreeTimeout):
-		log.Printf("CaptureLayerTree: layerTreeDidChange timeout after %v (tab %d)", layerTreeTimeout, tabID)
+	case <-time.After(timeout):
+		log.Printf("CaptureLayerTree: layerTreeDidChange timeout after %v (tab %d)", timeout, tabID)
 		return result
 	}
 
@@ -497,13 +498,9 @@ func CaptureLayerTree(ctx context.Context, p *Proxy, tabID int, macheToBackend m
 	return result
 }
 
-// layerTreeTimeout is the duration to wait for LayerTree.layerTreeDidChange.
-// Overridable in tests.
-var layerTreeTimeout = 2 * time.Second
-
 // PixelClick dispatches a click at screenshot-relative coordinates.
 // Unscales from screenshot pixels back to CSS pixels using the same formula as JS.
-func PixelClick(ctx context.Context, p *Proxy, tabID int, scaledX, scaledY float64) error {
+func PixelClick(ctx context.Context, p *Proxy, tabID int, scaledX, scaledY, targetWidth float64) error {
 	// 1. Get CSS content width for scale computation.
 	result, err := p.Send(ctx, tabID, "Page.getLayoutMetrics", nil)
 	if err != nil {
@@ -520,7 +517,7 @@ func PixelClick(ctx context.Context, p *Proxy, tabID int, scaledX, scaledY float
 
 	// 2. Same scale formula as JS.
 	actualWidth := resp.CSSContentSize.Width
-	scale := math.Min(1, CDPTargetWidth/actualWidth)
+	scale := math.Min(1, targetWidth/actualWidth)
 
 	// 3. Unscale screenshot coords → CSS viewport coords.
 	viewportX := scaledX / scale

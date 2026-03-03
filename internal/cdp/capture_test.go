@@ -20,7 +20,7 @@ func TestLayoutMetrics_Success(t *testing.T) {
 	var gotErr error
 	done := make(chan struct{})
 	go func() {
-		width, height, gotErr = LayoutMetrics(ctx, p, 1)
+		width, height, gotErr = LayoutMetrics(ctx, p, 1, CDPMaxHeight)
 		close(done)
 	}()
 
@@ -53,7 +53,7 @@ func TestLayoutMetrics_CapsHeight(t *testing.T) {
 	var height float64
 	done := make(chan struct{})
 	go func() {
-		_, height, _ = LayoutMetrics(ctx, p, 1)
+		_, height, _ = LayoutMetrics(ctx, p, 1, CDPMaxHeight)
 		close(done)
 	}()
 
@@ -77,7 +77,7 @@ func TestLayoutMetrics_Error(t *testing.T) {
 	var gotErr error
 	done := make(chan struct{})
 	go func() {
-		_, _, gotErr = LayoutMetrics(ctx, p, 1)
+		_, _, gotErr = LayoutMetrics(ctx, p, 1, CDPMaxHeight)
 		close(done)
 	}()
 
@@ -207,7 +207,7 @@ func TestElementBoxModel_NotFound(t *testing.T) {
 // --- BuildClip ---
 
 func TestBuildClip_FullPage(t *testing.T) {
-	clip := BuildClip(1440, 5000, nil)
+	clip := BuildClip(1440, 5000, nil, CDPTargetWidth)
 	if clip.X != 0 || clip.Y != 0 {
 		t.Errorf("expected origin (0,0), got (%f,%f)", clip.X, clip.Y)
 	}
@@ -221,7 +221,7 @@ func TestBuildClip_FullPage(t *testing.T) {
 }
 
 func TestBuildClip_NarrowPage(t *testing.T) {
-	clip := BuildClip(600, 800, nil)
+	clip := BuildClip(600, 800, nil, CDPTargetWidth)
 	if clip.Scale != 1.0 {
 		t.Errorf("expected scale 1.0 for narrow page, got %f", clip.Scale)
 	}
@@ -229,7 +229,7 @@ func TestBuildClip_NarrowPage(t *testing.T) {
 
 func TestBuildClip_WithTarget(t *testing.T) {
 	box := &BoxModel{X: 100, Y: 200, W: 300, H: 400}
-	clip := BuildClip(1440, 5000, box)
+	clip := BuildClip(1440, 5000, box, CDPTargetWidth)
 	// cx = max(0, 100-50) = 50, cy = max(0, 200-50) = 150
 	// cw = min(1440-50, 300+100) = 400, ch = min(5000-150, 400+100) = 500
 	if clip.X != 50 || clip.Y != 150 {
@@ -250,7 +250,7 @@ func TestBuildClip_WithTarget(t *testing.T) {
 func TestBuildClip_TargetNearEdge(t *testing.T) {
 	// Element near right edge: X=1400, W=100 → with pad, would exceed 1440
 	box := &BoxModel{X: 1400, Y: 0, W: 100, H: 50}
-	clip := BuildClip(1440, 800, box)
+	clip := BuildClip(1440, 800, box, CDPTargetWidth)
 	// cx = max(0, 1400-50) = 1350, cy = max(0, 0-50) = 0
 	// cw = min(1440-1350, 100+100) = 90, ch = min(800-0, 50+100) = 150
 	if clip.X != 1350 {
@@ -516,7 +516,7 @@ func TestCaptureLayerTree_Success(t *testing.T) {
 	var result map[string]LayerInfo
 	done := make(chan struct{})
 	go func() {
-		result = CaptureLayerTree(ctx, p, 1, macheToBackend)
+		result = CaptureLayerTree(ctx, p, 1, macheToBackend, 2*time.Second)
 		close(done)
 	}()
 
@@ -565,11 +565,6 @@ func TestCaptureLayerTree_Success(t *testing.T) {
 }
 
 func TestCaptureLayerTree_EventTimeout(t *testing.T) {
-	// Override timeout to be short for the test.
-	oldTimeout := layerTreeTimeout
-	layerTreeTimeout = 50 * time.Millisecond
-	defer func() { layerTreeTimeout = oldTimeout }()
-
 	ms := &mockSender{}
 	p := New(ms)
 	ctx := context.Background()
@@ -579,7 +574,7 @@ func TestCaptureLayerTree_EventTimeout(t *testing.T) {
 	var result map[string]LayerInfo
 	done := make(chan struct{})
 	go func() {
-		result = CaptureLayerTree(ctx, p, 1, macheToBackend)
+		result = CaptureLayerTree(ctx, p, 1, macheToBackend, 50*time.Millisecond)
 		close(done)
 	}()
 
@@ -615,7 +610,7 @@ func TestPixelClick_Success(t *testing.T) {
 	var gotErr error
 	done := make(chan struct{})
 	go func() {
-		gotErr = PixelClick(ctx, p, 1, 400, 200)
+		gotErr = PixelClick(ctx, p, 1, 400, 200, CDPTargetWidth)
 		close(done)
 	}()
 
@@ -657,7 +652,7 @@ func TestPixelClick_ScaleMapping(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		_ = PixelClick(ctx, p, 1, 400, 200)
+		_ = PixelClick(ctx, p, 1, 400, 200, CDPTargetWidth)
 		close(done)
 	}()
 
@@ -703,7 +698,7 @@ func TestPixelClick_NarrowPage_NoScale(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		_ = PixelClick(ctx, p, 1, 300, 150)
+		_ = PixelClick(ctx, p, 1, 300, 150, CDPTargetWidth)
 		close(done)
 	}()
 

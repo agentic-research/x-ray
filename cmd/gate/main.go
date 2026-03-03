@@ -10,17 +10,14 @@ import (
 	"time"
 
 	"github.com/agentic-research/x-ray/internal/cartographer"
-	"github.com/joho/godotenv"
+	"github.com/agentic-research/x-ray/internal/config"
 	"google.golang.org/genai"
 )
 
 func main() {
 	log.Println("--- X-Ray Cartographer 48-Hour Gate Test ---")
 
-	// Load .envrc if present
-	if err := godotenv.Load(".envrc"); err != nil {
-		log.Println("Note: No .envrc file found or failed to load")
-	}
+	config.LoadEnv()
 
 	htmlPath := "testdata/dummy.html"
 	summaryPath := "testdata/dummy_summary.txt"

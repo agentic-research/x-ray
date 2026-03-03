@@ -8,14 +8,8 @@ import (
 	"time"
 
 	"github.com/agentic-research/x-ray/internal/cdp"
+	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/gorilla/websocket"
-)
-
-// Orchestration timeouts for Go-driven capture.
-const (
-	summaryTimeout   = 10 * time.Second
-	overlayTimeout   = 10 * time.Second
-	captureGoTimeout = 30 * time.Second
 )
 
 // captureGo is the Go-driven replacement for JS captureAndSend().
@@ -37,7 +31,7 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(parentCtx, captureGoTimeout)
+	ctx, cancel := context.WithTimeout(parentCtx, config.Dur(h.Timeouts.Capture))
 	defer cancel()
 
 	h.mu.Lock()
@@ -60,7 +54,7 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 	var summaryResp SummaryResponse
 	select {
 	case summaryResp = <-sess.SummaryCh:
-	case <-time.After(summaryTimeout):
+	case <-time.After(config.Dur(h.Timeouts.Summary)):
 		log.Printf("captureGo: summary request timed out (tab %d)", tabID)
 		h.sendMessage(conn, OutboundMessage{
 			Type: MsgStatus, TabID: tabID, Message: "Summary request timed out", Stage: "error",
@@ -85,7 +79,7 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 
 	select {
 	case <-sess.OverlayDrawnCh:
-	case <-time.After(overlayTimeout):
+	case <-time.After(config.Dur(h.Timeouts.Overlay)):
 		log.Printf("captureGo: overlay draw timed out (tab %d), continuing", tabID)
 	case <-ctx.Done():
 		return
@@ -108,7 +102,7 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 	}()
 
 	// 3a. Layout metrics.
-	pageWidth, pageHeight, err := cdp.LayoutMetrics(ctx, h.cdpProxy, tabID)
+	pageWidth, pageHeight, err := cdp.LayoutMetrics(ctx, h.cdpProxy, tabID, h.CDPMaxHeight)
 	if err != nil {
 		log.Printf("captureGo: LayoutMetrics failed (tab %d): %v", tabID, err)
 		h.sendOverlayCleanup(conn, tabID, sess)
@@ -134,7 +128,7 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 	}
 
 	// 3d. Build clip and capture screenshot.
-	clip := cdp.BuildClip(pageWidth, pageHeight, box)
+	clip := cdp.BuildClip(pageWidth, pageHeight, box, h.CDPTargetWidth)
 	screenshot, err := cdp.CaptureScreenshot(ctx, h.cdpProxy, tabID, clip)
 	if err != nil {
 		log.Printf("captureGo: CaptureScreenshot failed (tab %d): %v", tabID, err)
@@ -163,7 +157,7 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 	// 3h. Layer tree.
 	var layerMap map[string]cdp.LayerInfo
 	if macheToBackend != nil {
-		layerMap = cdp.CaptureLayerTree(ctx, h.cdpProxy, tabID, macheToBackend)
+		layerMap = cdp.CaptureLayerTree(ctx, h.cdpProxy, tabID, macheToBackend, config.Dur(h.Timeouts.LayerTree))
 	}
 
 	// 4. Remove machine overlay, draw human overlay.

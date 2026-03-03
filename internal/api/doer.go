@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/agentic-research/x-ray/internal/navigator"
 )
@@ -254,7 +255,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 				d.handler.sendRescan(d.tabID, "")
 				select {
 				case <-d.sess.GetSchemaReady():
-				case <-time.After(schemaWaitTimeout):
+				case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
 				case <-goalCtx.Done():
 					d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
 					return
@@ -274,7 +275,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 					select {
 					case <-d.sess.GetSchemaReady():
 						// New tab loaded — continue loop.
-					case <-time.After(schemaWaitTimeout):
+					case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
 						// Timed out waiting for new tab.
 					case <-goalCtx.Done():
 						d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
@@ -287,7 +288,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 					select {
 					case <-d.sess.GetSchemaReady():
 						// Rescan complete — continue loop with fresh VFS.
-					case <-time.After(schemaWaitTimeout):
+					case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
 						// Give up waiting for rescan.
 					case <-goalCtx.Done():
 						d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
@@ -317,7 +318,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 			select {
 			case <-d.sess.GetSchemaReady():
 				return fmt.Sprintf("Already on %s, page is loaded.", action.Path)
-			case <-time.After(schemaWaitTimeout):
+			case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
 				return fmt.Sprintf("Already on %s but schema is still loading.", action.Path)
 			case <-ctx.Done():
 				return "Navigation cancelled."
@@ -341,7 +342,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		select {
 		case <-d.sess.GetSchemaReady():
 			return fmt.Sprintf("Navigated to %s. Page is loaded.", action.Path)
-		case <-time.After(schemaWaitTimeout):
+		case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
 			return fmt.Sprintf("Navigated to %s but page load timed out.", action.Path)
 		case <-ctx.Done():
 			return "Navigation cancelled."
@@ -377,7 +378,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 				return fmt.Sprintf("Zoomed into %s for more detail.", action.Path)
 			}
 			return "Page rescanned."
-		case <-time.After(schemaWaitTimeout):
+		case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
 			return "Rescan timed out."
 		case <-ctx.Done():
 			return "Rescan cancelled."
@@ -404,7 +405,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		select {
 		case <-newSess.GetSchemaReady():
 			return fmt.Sprintf("Switched to tab %d. Page is loaded.", switchTabID)
-		case <-time.After(schemaWaitTimeout):
+		case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
 			return fmt.Sprintf("Switched to tab %d but schema timed out.", switchTabID)
 		case <-ctx.Done():
 			return "Tab switch cancelled."

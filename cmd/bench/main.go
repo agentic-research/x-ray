@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/agentic-research/x-ray/internal/cartographer"
+	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/agentic-research/x-ray/internal/navigator"
-	"github.com/joho/godotenv"
 	"google.golang.org/genai"
 )
 
@@ -39,7 +39,7 @@ type benchResult struct {
 }
 
 func main() {
-	_ = godotenv.Load(".envrc")
+	config.LoadEnv()
 
 	cases, err := loadCases("testdata/bench_cases.json")
 	if err != nil {
