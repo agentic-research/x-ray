@@ -15,6 +15,7 @@ type Config struct {
 	Gemini       GeminiConfig       `yaml:"gemini"`
 	Cartographer CartographerConfig `yaml:"cartographer"`
 	Navigator    NavigatorConfig    `yaml:"navigator"`
+	Ollama       OllamaConfig       `yaml:"ollama"`
 	Database     DatabaseConfig     `yaml:"database"`
 }
 
@@ -42,6 +43,23 @@ type NavigatorConfig struct {
 	CLI      bool   `yaml:"cli"`
 }
 
+// OllamaConfig holds Ollama-specific request defaults shared by
+// both Cartographer and Navigator when talking to a local model.
+type OllamaConfig struct {
+	KeepAlive int `yaml:"keep_alive"` // -1 = keep model loaded indefinitely
+	NumGPU    int `yaml:"num_gpu"`    // 99 = offload all layers to GPU
+	NumCtx    int `yaml:"num_ctx"`    // context window size
+}
+
+// Apply adds Ollama-specific fields to a request body map.
+func (o OllamaConfig) Apply(reqBody map[string]any) {
+	reqBody["keep_alive"] = o.KeepAlive
+	reqBody["options"] = map[string]any{
+		"num_gpu": o.NumGPU,
+		"num_ctx": o.NumCtx,
+	}
+}
+
 // DatabaseConfig holds persistence settings.
 type DatabaseConfig struct {
 	Path string `yaml:"path"`
@@ -64,6 +82,11 @@ func defaults() *Config {
 		Navigator: NavigatorConfig{
 			Model:  "functiongemma:270m",
 			Format: "openai",
+		},
+		Ollama: OllamaConfig{
+			KeepAlive: -1,
+			NumGPU:    99,
+			NumCtx:    8192,
 		},
 		Database: DatabaseConfig{
 			Path: filepath.Join(home, ".xray", "schemas.db"),
@@ -156,6 +179,21 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv("NAVIGATOR_CLI"); v != "" {
 		cfg.Navigator.CLI = v == "1"
 	}
+	if v := os.Getenv("OLLAMA_KEEP_ALIVE"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Ollama.KeepAlive = n
+		}
+	}
+	if v := os.Getenv("OLLAMA_NUM_GPU"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Ollama.NumGPU = n
+		}
+	}
+	if v := os.Getenv("OLLAMA_NUM_CTX"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Ollama.NumCtx = n
+		}
+	}
 	if v := os.Getenv("XRAY_DB"); v != "" {
 		cfg.Database.Path = expandHome(v)
 	}
@@ -211,6 +249,15 @@ navigator:
   format: "` + cfg.Navigator.Format + `"
   # CLI mode for Gemma (space-delimited commands, GBNF grammar).
   cli: false
+
+# Ollama-specific request defaults (shared by cartographer + navigator).
+ollama:
+  # -1 = keep model loaded indefinitely (avoids reload latency).
+  keep_alive: ` + strconv.Itoa(cfg.Ollama.KeepAlive) + `
+  # 99 = offload all layers to GPU.
+  num_gpu: ` + strconv.Itoa(cfg.Ollama.NumGPU) + `
+  # Context window size.
+  num_ctx: ` + strconv.Itoa(cfg.Ollama.NumCtx) + `
 
 database:
   # SQLite path for schema cache. Supports ~ for home directory.

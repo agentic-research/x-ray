@@ -76,7 +76,7 @@ func main() {
 		log.Printf("Cartographer: CairnCartographer (gear=%d, scale=%.1f)", cfg.Cartographer.Gear, cfg.Cartographer.Scale)
 	default:
 		if cfg.Cartographer.Endpoint != "" {
-			cart = &cartographer.OllamaAgent{Endpoint: cfg.Cartographer.Endpoint, Model: cfg.Cartographer.Model}
+			cart = &cartographer.OllamaAgent{Endpoint: cfg.Cartographer.Endpoint, Model: cfg.Cartographer.Model, Ollama: cfg.Ollama}
 			log.Printf("Cartographer: local VLM %s at %s", cfg.Cartographer.Model, cfg.Cartographer.Endpoint)
 		} else {
 			cart = cartographer.NewAgent(client, cfg.Gemini.Model)
@@ -93,14 +93,14 @@ func main() {
 			navModel = cfg.Gemini.Model
 		}
 		if cfg.Navigator.Format == "gemma" {
-			navGen = &navigator.GemmaGenerator{Endpoint: cfg.Navigator.Endpoint, Model: navModel, CLIMode: cfg.Navigator.CLI}
+			navGen = &navigator.GemmaGenerator{Endpoint: cfg.Navigator.Endpoint, Model: navModel, Ollama: cfg.Ollama, CLIMode: cfg.Navigator.CLI}
 			if cfg.Navigator.CLI {
 				log.Printf("Navigator: using Gemma model %s at %s (CLI mode + GBNF grammar)", navModel, cfg.Navigator.Endpoint)
 			} else {
 				log.Printf("Navigator: using Gemma model %s at %s (native function calling)", navModel, cfg.Navigator.Endpoint)
 			}
 		} else {
-			navGen = &navigator.OllamaGenerator{Endpoint: cfg.Navigator.Endpoint, Model: navModel}
+			navGen = &navigator.OllamaGenerator{Endpoint: cfg.Navigator.Endpoint, Model: navModel, Ollama: cfg.Ollama}
 			log.Printf("Navigator: using local model %s at %s (OpenAI format)", navModel, cfg.Navigator.Endpoint)
 		}
 

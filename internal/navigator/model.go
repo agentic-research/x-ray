@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/agentic-research/x-ray/internal/config"
 	"google.golang.org/genai"
 )
 
@@ -36,6 +37,7 @@ func (g *GeminiGenerator) GenerateContent(ctx context.Context, model string, his
 type OllamaGenerator struct {
 	Endpoint   string // e.g. http://localhost:11434/v1
 	Model      string // e.g. llama3.2
+	Ollama     config.OllamaConfig
 	HTTPClient *http.Client
 }
 
@@ -51,13 +53,8 @@ func (o *OllamaGenerator) GenerateContent(ctx context.Context, model string, his
 		"model":           model,
 		"messages":        messages,
 		"response_format": map[string]string{"type": "json_object"},
-		// Ollama extensions: keep model resident and use full GPU offload.
-		"keep_alive": -1,
-		"options": map[string]any{
-			"num_gpu": 99,
-			"num_ctx": 8192,
-		},
 	}
+	o.Ollama.Apply(reqBody)
 	if len(tools) > 0 {
 		reqBody["tools"] = tools
 	}
@@ -267,6 +264,7 @@ type openAIFunctionCall struct {
 type GemmaGenerator struct {
 	Endpoint   string // e.g. http://localhost:11434/v1
 	Model      string // e.g. gemma3:270m
+	Ollama     config.OllamaConfig
 	HTTPClient *http.Client
 	CLIMode    bool   // use CLI command format instead of JSON
 	Grammar    string // GBNF grammar for constrained decoding (optional, set per-call)
@@ -312,13 +310,8 @@ func (g *GemmaGenerator) GenerateContent(ctx context.Context, model string, hist
 	reqBody := map[string]any{
 		"model":    model,
 		"messages": messages,
-		// Ollama extensions: keep model resident and use full GPU offload.
-		"keep_alive": -1,
-		"options": map[string]any{
-			"num_gpu": 99,
-			"num_ctx": 8192,
-		},
 	}
+	g.Ollama.Apply(reqBody)
 	if config != nil && config.Temperature != nil {
 		reqBody["temperature"] = *config.Temperature
 	}

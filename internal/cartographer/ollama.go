@@ -9,6 +9,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/agentic-research/x-ray/internal/config"
 )
 
 // OllamaAgent talks to an OpenAI-compatible vision endpoint (Ollama, vLLM, etc.)
@@ -16,6 +18,7 @@ import (
 type OllamaAgent struct {
 	Endpoint   string // e.g. http://localhost:11434/v1
 	Model      string // e.g. llava:13b
+	Ollama     config.OllamaConfig
 	HTTPClient *http.Client
 }
 
@@ -59,13 +62,8 @@ func (o *OllamaAgent) GenerateSchema(ctx context.Context, screenshot []byte, mim
 		},
 		"temperature": 0.1,
 		"stream":      false,
-		// Ollama extensions: keep model resident and use full GPU offload.
-		"keep_alive": -1,
-		"options": map[string]any{
-			"num_gpu": 99,
-			"num_ctx": 8192,
-		},
 	}
+	o.Ollama.Apply(reqBody)
 
 	body, err := json.Marshal(reqBody)
 	if err != nil {
