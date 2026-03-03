@@ -769,9 +769,9 @@ ID: mache-200 | Parent: none | Tag: a | Text: "Unrelated" | Bounds: [0.50, 0.80,
 	}
 }
 
-func TestLoadChildrenSpatialSkipsLargeZones(t *testing.T) {
-	// Zones covering >80% of the viewport should not use spatial containment,
-	// to prevent every element being claimed by a full-page zone.
+func TestLoadChildrenSpatialSkipsFullPage(t *testing.T) {
+	// Zones that are essentially the full page (body/root — origin near 0,0
+	// and spanning >96% in both dimensions) should NOT use spatial containment.
 	schema := `{
   "mounts": [
     {
@@ -796,6 +796,40 @@ ID: mache-50 | Parent: none | Tag: a | Text: "Orphan" | Bounds: [0.10, 0.10, 0.0
 	_, err := e.ReadFile("/main/fullpage/children")
 	if err == nil {
 		t.Error("full-page zone should NOT claim orphans via spatial containment")
+	}
+}
+
+func TestLoadChildrenSpatialAllowsLargeMainZone(t *testing.T) {
+	// A large <main> zone (85-95% of viewport) that has some offset from
+	// origin should still use spatial containment — only truly full-page
+	// zones (origin ~0,0 spanning ~100%) are skipped.
+	schema := `{
+  "mounts": [
+    {
+      "virtual_path": "/main/content",
+      "mache_id": "mache-1",
+      "description": "Main content area",
+      "primary_items": [],
+      "bounds": [0.0, 0.08, 0.99, 0.90]
+    }
+  ]
+}`
+	summary := `Interactive Elements:
+ID: mache-1 | Parent: none | Tag: div | Text: "" | Bounds: [0.0, 0.08, 0.99, 0.90]
+ID: mache-50 | Parent: none | Tag: a | Text: "Reviews" | Bounds: [0.10, 0.42, 0.08, 0.03]
+`
+	e := NewEngine()
+	if err := e.ApplySchema(schema); err != nil {
+		t.Fatalf("ApplySchema failed: %v", err)
+	}
+	e.LoadChildren(summary, nil)
+
+	content, err := e.ReadFile("/main/content/children")
+	if err != nil {
+		t.Fatalf("large main zone should use spatial containment: %v", err)
+	}
+	if !strings.Contains(content, "Reviews") {
+		t.Errorf("large main zone should claim Reviews via spatial containment:\n%s", content)
 	}
 }
 

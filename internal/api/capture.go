@@ -2,13 +2,13 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/agentic-research/x-ray/internal/cdp"
 	"github.com/agentic-research/x-ray/internal/config"
+	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/gorilla/websocket"
 )
 
@@ -30,6 +30,16 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 	case <-parentCtx.Done():
 		return
 	}
+
+	// On any early-return failure, unblock Planner/Doer waiters so they don't
+	// hang for 30s on GetSchemaReady(). The Planner already handles the "no
+	// schema" case gracefully ("proceeding anyway").
+	captureOK := false
+	defer func() {
+		if !captureOK {
+			sess.SignalSchemaReady()
+		}
+	}()
 
 	ctx, cancel := context.WithTimeout(parentCtx, config.Dur(h.Timeouts.Capture))
 	defer cancel()
@@ -186,6 +196,7 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 		tabID, len(axMap), len(layerMap), len(screenshot))
 
 	// 6. Synthesize InboundMessage and feed into existing handleDOMSnapshot pipeline.
+	captureOK = true
 	syntheticMsg := InboundMessage{
 		Type:       MsgDOMSnapshot,
 		TabID:      tabID,
@@ -201,10 +212,12 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 // normalized clip rectangle. Lines without parseable bounds are kept as-is.
 func filterSummaryByClip(summary string, clip cdp.ScreenshotClip, pageW, pageH float64) string {
 	// Normalize clip to [0,1] range.
-	cx := clip.X / pageW
-	cy := clip.Y / pageH
-	cw := clip.Width / pageW
-	ch := clip.Height / pageH
+	clipBounds := [4]float64{
+		clip.X / pageW,
+		clip.Y / pageH,
+		clip.Width / pageW,
+		clip.Height / pageH,
+	}
 
 	lines := strings.Split(summary, "\n")
 	kept := make([]string, 0, len(lines))
@@ -212,34 +225,17 @@ func filterSummaryByClip(summary string, clip cdp.ScreenshotClip, pageW, pageH f
 		if line == "" {
 			continue
 		}
-		// Try to extract bounds from "Bounds: [x, y, w, h]".
-		var bx, by, bw, bh float64
-		n, _ := fmt.Sscanf(extractBoundsField(line), "[%f, %f, %f, %f]", &bx, &by, &bw, &bh)
-		if n != 4 {
+		elBounds, ok := mache.ParseBoundsFromLine(line)
+		if !ok {
 			// No parseable bounds — keep the line (could be a header or metadata).
 			kept = append(kept, line)
 			continue
 		}
-		// AABB intersection test.
-		if bx+bw > cx && bx < cx+cw && by+bh > cy && by < cy+ch {
+		if mache.BoundsOverlap(clipBounds, elBounds) {
 			kept = append(kept, line)
 		}
 	}
 	return strings.Join(kept, "\n")
-}
-
-// extractBoundsField finds the "Bounds: [...]" value in a summary line.
-func extractBoundsField(line string) string {
-	idx := strings.Index(line, "Bounds: [")
-	if idx < 0 {
-		return ""
-	}
-	start := idx + len("Bounds: ")
-	end := strings.Index(line[start:], "]")
-	if end < 0 {
-		return ""
-	}
-	return line[start : start+end+1]
 }
 
 // sendOverlayCleanup removes the machine overlay and draws the human-friendly overlay.

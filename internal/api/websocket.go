@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,8 +21,6 @@ import (
 	"github.com/gorilla/websocket"
 	"google.golang.org/genai"
 )
-
-var boundsRe = regexp.MustCompile(`Bounds: \[([\d.]+), ([\d.]+), ([\d.]+), ([\d.]+)\]`)
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
@@ -922,14 +919,5 @@ func (h *Handler) handleOverlayRemoved(msg InboundMessage) {
 
 // parseBounds extracts normalized [x, y, w, h] bounds from the DOM summary text.
 func parseBounds(summary string) [][4]float64 {
-	matches := boundsRe.FindAllStringSubmatch(summary, -1)
-	bounds := make([][4]float64, 0, len(matches))
-	for _, m := range matches {
-		x, _ := strconv.ParseFloat(m[1], 64)
-		y, _ := strconv.ParseFloat(m[2], 64)
-		w, _ := strconv.ParseFloat(m[3], 64)
-		h, _ := strconv.ParseFloat(m[4], 64)
-		bounds = append(bounds, [4]float64{x, y, w, h})
-	}
-	return bounds
+	return mache.ParseAllBounds(summary)
 }

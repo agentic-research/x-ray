@@ -157,7 +157,7 @@ func ValidateSchemaBounds(schemaJSON, summary string, threshold float64) map[str
 			id = rest[:idx]
 		}
 		// Extract bounds using the shared regex from filter.go.
-		m := boundsRe.FindStringSubmatch(line)
+		m := BoundsRe.FindStringSubmatch(line)
 		if m == nil {
 			continue
 		}
@@ -752,13 +752,16 @@ func (e *Engine) LoadChildren(summary string, resolvedItems map[string][]string)
 		// break the parent chain), claim orphaned elements whose center falls
 		// within this zone's bounding box.
 		if len(descendants) == 0 && m.Bounds != ([4]float64{}) {
-			// Guard: skip zones covering >80% of the viewport to prevent
-			// every element being claimed by a full-page zone.
-			zoneArea := m.Bounds[2] * m.Bounds[3]
-			if zoneArea <= 0.8 {
-				already := make(map[string]bool) // not needed here but future-proof
+			// Guard: skip zones that are essentially the full page (body/root).
+			// A zone starting near origin and covering nearly the full viewport
+			// would swallow every element. Real content zones (even large <main>
+			// containers at 85-95% of viewport) have some offset or don't span
+			// the full width+height simultaneously.
+			isFullPage := m.Bounds[0] < 0.02 && m.Bounds[1] < 0.02 &&
+				m.Bounds[2] > 0.96 && m.Bounds[3] > 0.96
+			if !isFullPage {
 				for _, el := range elements {
-					if el.ID == m.MacheID || already[el.ID] {
+					if el.ID == m.MacheID {
 						continue
 					}
 					elBounds, ok := parseBoundsString(el.Bounds)

@@ -6,7 +6,9 @@ import (
 	"strings"
 )
 
-var boundsRe = regexp.MustCompile(`Bounds: \[([\d.]+), ([\d.]+), ([\d.]+), ([\d.]+)\]`)
+// BoundsRe matches "Bounds: [x, y, w, h]" in a DOM summary line.
+// Exported so callers (api/capture, api/websocket) don't duplicate the regex.
+var BoundsRe = regexp.MustCompile(`Bounds: \[([\d.]+), ([\d.]+), ([\d.]+), ([\d.]+)\]`)
 
 // boundsOverlap checks if two [x, y, w, h] normalized bounding boxes overlap.
 // Touching edges (shared boundary) do not count as overlap.
@@ -53,7 +55,7 @@ func FilterSummaryByBounds(summary string, region [4]float64, margin float64) st
 		}
 
 		// Parse bounds from this line.
-		m := boundsRe.FindStringSubmatch(line)
+		m := BoundsRe.FindStringSubmatch(line)
 		if m == nil {
 			// No Bounds field — exclude.
 			continue
@@ -75,7 +77,13 @@ func FilterSummaryByBounds(summary string, region [4]float64, margin float64) st
 // parseBoundsString parses a bounds string like "[0.1, 0.2, 0.3, 0.4]" into [4]float64.
 // Returns zero value and false if parsing fails.
 func parseBoundsString(s string) ([4]float64, bool) {
-	m := boundsRe.FindStringSubmatch("Bounds: " + s)
+	return ParseBoundsFromLine("Bounds: " + s)
+}
+
+// ParseBoundsFromLine extracts [x, y, w, h] from a line containing "Bounds: [...]".
+// Returns zero value and false if the line has no parseable bounds.
+func ParseBoundsFromLine(line string) ([4]float64, bool) {
+	m := BoundsRe.FindStringSubmatch(line)
 	if m == nil {
 		return [4]float64{}, false
 	}
@@ -84,6 +92,26 @@ func parseBoundsString(s string) ([4]float64, bool) {
 	w, _ := strconv.ParseFloat(m[3], 64)
 	h, _ := strconv.ParseFloat(m[4], 64)
 	return [4]float64{x, y, w, h}, true
+}
+
+// ParseAllBounds extracts all [x, y, w, h] bounds from a multi-line DOM summary.
+func ParseAllBounds(summary string) [][4]float64 {
+	matches := BoundsRe.FindAllStringSubmatch(summary, -1)
+	bounds := make([][4]float64, 0, len(matches))
+	for _, m := range matches {
+		x, _ := strconv.ParseFloat(m[1], 64)
+		y, _ := strconv.ParseFloat(m[2], 64)
+		w, _ := strconv.ParseFloat(m[3], 64)
+		h, _ := strconv.ParseFloat(m[4], 64)
+		bounds = append(bounds, [4]float64{x, y, w, h})
+	}
+	return bounds
+}
+
+// BoundsOverlap checks if two [x, y, w, h] normalized bounding boxes overlap.
+// Exported for use by api/capture clip filtering.
+func BoundsOverlap(a, b [4]float64) bool {
+	return boundsOverlap(a, b)
 }
 
 // boundsContains checks if the center of inner falls within outer.
