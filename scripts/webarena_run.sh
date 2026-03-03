@@ -201,11 +201,15 @@ if [[ "$START_SERVER" == true ]]; then
   # Clear stale schemas.
   rm -f ~/.xray/schemas.db
 
+  # Build first so we run the binary directly (not go run, which spawns
+  # a child process that survives kill of the go-run wrapper).
+  go build -o bin/agentd ./cmd/agentd
+
   NAVIGATOR_ENDPOINT="" \
   NAVIGATOR_MODEL="$NAVIGATOR_MODEL" \
   NAVIGATOR_FORMAT="" \
   CARTOGRAPHER_MODE="$CARTOGRAPHER_MODE" \
-    go run ./cmd/agentd &
+    ./bin/agentd &
   AGENTD_PID=$!
   echo "  agentd pid: $AGENTD_PID"
 
