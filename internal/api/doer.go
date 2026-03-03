@@ -243,6 +243,8 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 				select {
 				case <-d.sess.GetSchemaReady():
 				case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
+					log.Printf("Doer [tab %d]: schema wait timed out after DOM mutation rescan", d.tabID)
+					lastSummary = "Warning: page DOM changed but rescan timed out. Filesystem may be stale."
 				case <-goalCtx.Done():
 					d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
 					return
@@ -263,7 +265,8 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 					case <-d.sess.GetSchemaReady():
 						// New tab loaded — continue loop.
 					case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
-						// Timed out waiting for new tab.
+						log.Printf("Doer [tab %d]: schema wait timed out on new tab", d.tabID)
+						lastSummary = "Warning: switched to new tab but page load timed out. Filesystem may be stale."
 					case <-goalCtx.Done():
 						d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
 						return
@@ -276,7 +279,8 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 					case <-d.sess.GetSchemaReady():
 						// Rescan complete — continue loop with fresh VFS.
 					case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
-						// Give up waiting for rescan.
+						log.Printf("Doer [tab %d]: schema wait timed out after settle rescan", d.tabID)
+						lastSummary = "Warning: rescan timed out after action. Filesystem may be stale."
 					case <-goalCtx.Done():
 						d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
 						return
