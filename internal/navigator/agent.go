@@ -362,7 +362,7 @@ func (a *Agent) buildTreeDump() string {
 	}
 
 	// ASCII layout first — gives spatial context before the tree.
-	if layout := a.buildASCIILayout(); layout != "" {
+	if layout := a.BuildASCIILayout(); layout != "" {
 		sb.WriteString(layout)
 		sb.WriteByte('\n')
 	}
@@ -431,7 +431,7 @@ type elemInfo struct {
 // with clickable ordinal IDs. Instead of empty zone boxes, the LLM sees
 // "[1] Home  [2] Electronics  [3] Cameras" painted at their real positions,
 // like a Lynx-style text rendering of the page.
-func (a *Agent) buildASCIILayout() string {
+func (a *Agent) BuildASCIILayout() string {
 	// Collect zones with bounds from the browser/ mount.
 	var zones []zoneInfo
 	a.collectZones("browser", &zones)

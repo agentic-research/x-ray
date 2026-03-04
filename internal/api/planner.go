@@ -106,7 +106,8 @@ STRATEGY — think like a human with Cmd+F:
    issue_command("save findings to scratchpad", read_only=false).
 
 6. PAGINATE: issue_command("click Next page", read_only=false).
-   After each page, repeat steps 3-5.
+   If there is no "Next" button or you are on the last page, STOP and go to COLLECT.
+   After each successful page navigation, repeat steps 3-5.
 
 COLLECT: issue_command("read scratchpad", read_only=true). Then DONE: <answer>.
 
@@ -659,16 +660,31 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 	sess := h.getSession(tabID)
 
 	// Wait for schema to be ready before running the Planner.
-	if !sess.GetEngine().HasSchema() {
-		select {
-		case <-sess.GetSchemaReady():
-			log.Printf("Planner: schema ready (tab %d)", tabID)
-		case <-time.After(30 * time.Second):
-			log.Printf("Planner: schema timeout (tab %d), proceeding anyway", tabID)
-		case <-ctx.Done():
-			writeJSON(w, PlannerResult{Status: "cancelled", Summary: "Request cancelled."})
-			return
+	// Guard against stale schemas: if the session URL doesn't match our target,
+	// a capture from the previous page may have signaled ready. Reset and wait
+	// for the correct page's capture to complete.
+	for attempt := 0; attempt < 2; attempt++ {
+		if !sess.GetEngine().HasSchema() {
+			select {
+			case <-sess.GetSchemaReady():
+				log.Printf("Planner: schema ready (tab %d)", tabID)
+			case <-time.After(30 * time.Second):
+				log.Printf("Planner: schema timeout (tab %d), proceeding anyway", tabID)
+			case <-ctx.Done():
+				writeJSON(w, PlannerResult{Status: "cancelled", Summary: "Request cancelled."})
+				return
+			}
 		}
+		// Verify the schema is for the correct page, not a stale capture.
+		if req.StartURL != "" && sess.GetCurrentURL() != "" {
+			if CacheKey(sess.GetCurrentURL()) != CacheKey(req.StartURL) {
+				log.Printf("Planner: stale schema detected (have %s, want %s) — resetting (tab %d)",
+					sess.GetCurrentURL(), req.StartURL, tabID)
+				sess.ResetSchema()
+				continue
+			}
+		}
+		break
 	}
 
 	log.Printf("Planner: starting task: %s", truncate(req.Intent, 100))
@@ -705,7 +721,12 @@ func (h *Handler) HandleAgentReset(w http.ResponseWriter, r *http.Request) {
 	sess := h.getSession(tabID)
 	sess.ResetSchema()
 
-	log.Printf("Reset: cleared schema for tab %d", tabID)
+	// Clear the scratchpad so findings from the previous task don't leak.
+	if sess.Tasks != nil {
+		sess.Tasks.ClearTask()
+	}
+
+	log.Printf("Reset: cleared schema + scratchpad for tab %d", tabID)
 	writeJSON(w, map[string]string{"status": "ok", "tab_id": fmt.Sprintf("%d", tabID)})
 }
 

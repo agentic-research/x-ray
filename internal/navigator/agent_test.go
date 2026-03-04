@@ -393,7 +393,7 @@ ID: mache-52 | Parent: mache-50 | Tag: a | Text: "Privacy" | Bounds: [0.10, 0.92
 
 func TestBuildASCIILayout(t *testing.T) {
 	agent := newLayoutTestAgent()
-	layout := agent.buildASCIILayout()
+	layout := agent.BuildASCIILayout()
 
 	if layout == "" {
 		t.Fatal("expected non-empty ASCII layout")
@@ -454,7 +454,7 @@ ID: mache-16 | Parent: mache-10 | Tag: a | Text: "Specifications" | Bounds: [0.4
 		t.Fatal(err)
 	}
 	agent := NewAgent(nil, "test", composite)
-	layout := agent.buildASCIILayout()
+	layout := agent.BuildASCIILayout()
 	t.Logf("Product page ASCII:\n%s", layout)
 
 	// Nav items should be in the top rows.
@@ -529,7 +529,7 @@ ID: mache-11 | Parent: mache-10 | Tag: a | Text: "BottomLink" | Bounds: [0.02, 0
 		t.Fatal(err)
 	}
 	agent := NewAgent(nil, "test", composite)
-	layout := agent.buildASCIILayout()
+	layout := agent.BuildASCIILayout()
 	t.Logf("Spatial order ASCII:\n%s", layout)
 
 	topIdx := strings.Index(layout, "TopNav")
@@ -575,7 +575,7 @@ ID: mache-4 | Parent: mache-1 | Tag: a | Text: "OffScreenLink" | Bounds: [0.55, 
 		t.Fatal(err)
 	}
 	agent := NewAgent(nil, "test", composite)
-	layout := agent.buildASCIILayout()
+	layout := agent.BuildASCIILayout()
 	t.Logf("Off-screen test:\n%s", layout)
 
 	// Visible zone element should be present.
