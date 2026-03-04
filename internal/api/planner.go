@@ -112,7 +112,7 @@ structure. SKIP step 1 and go directly to step 2 or 3.
    If there is no "Next" button or you are on the last page, STOP and go to COLLECT.
    After each successful page navigation, repeat steps 3-5.
 
-COLLECT: issue_command("read scratchpad", read_only=true). Then DONE: <answer>.
+COLLECT: issue_command("read scratchpad", read_only=true). Then call finish().
 
 COMPLETENESS — before answering, VERIFY:
 - If you already found the specific data requested, you may answer immediately.
@@ -122,10 +122,11 @@ COMPLETENESS — before answering, VERIFY:
 - Could results span multiple sections or tabs? Check each one.
 Semi-formal check: "I found N matches. The page says M total. N < M → INCOMPLETE."
 
-TERMINATION:
-- DONE: followed by the EXACT answer (number, name, price, list of names, etc.)
-- DONE: [] — when the task asks for a list but no matching items exist. Only use after thorough exploration.
-- FAILED: followed by the reason (only for technical failures, NOT for "content not found").
+TERMINATION — always use the finish() tool:
+- finish(answer=["Alice", "Bob"], success=true) — list of results
+- finish(answer=["42"], success=true) — single value (still wrap in array)
+- finish(answer=[], success=true) — no matching items found after thorough search
+- finish(answer=["technical failure reason"], success=false) — only for technical failures
 
 RULES:
 - If you have the page layout, skip ORIENT and go straight to REVEAL or SEARCH.
@@ -134,7 +135,7 @@ RULES:
 - ALWAYS persist before navigating. Scratchpad survives; memory does not.
 - NEVER say "search for X" — say "use grep to find X".
 - NEVER repeat a failed command. Try different keywords or cat page_text.
-- Every turn MUST include a tool call OR DONE/FAILED.`
+- Every turn MUST include a tool call (issue_command, open_url, or finish).`
 
 // plannerToolDefinitions returns a minimal tool set for the synchronous Planner.
 // Unlike the voice Talker, Planner blocks until each command completes, so
@@ -164,6 +165,25 @@ func plannerToolDefinitions() []*genai.Tool {
 						"url": {Type: genai.TypeString, Description: "URL to open"},
 					},
 					Required: []string{"url"},
+				},
+			},
+			{
+				Name:        "finish",
+				Description: "Complete the task with a structured answer. Use this instead of typing DONE.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"answer": {
+							Type:        genai.TypeArray,
+							Description: "The answer as a list of strings. Single answers: [\"42\"]. Multiple: [\"Alice\", \"Bob\"]. Not found: [].",
+							Items:       &genai.Schema{Type: genai.TypeString},
+						},
+						"success": {
+							Type:        genai.TypeBoolean,
+							Description: "True if the task was completed successfully, false if it failed.",
+						},
+					},
+					Required: []string{"answer", "success"},
 				},
 			},
 		},
@@ -394,6 +414,17 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 		// Execute function calls.
 		if len(functionCalls) > 0 {
 			malformedRetries = 0 // Reset on successful parse.
+
+			// Check for finish() tool — terminates the loop immediately.
+			for _, fc := range functionCalls {
+				if fc.Name == "finish" {
+					actions = append(actions, PlannerAction{
+						Turn: turn, Tool: "finish", Args: fc.Args,
+					})
+					return p.handleFinish(fc.Args, turn+1, actions)
+				}
+			}
+
 			var responseParts []*genai.Part
 			for _, fc := range functionCalls {
 				toolStart := time.Now()
@@ -429,6 +460,45 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 		Status:  "failed",
 		Summary: "Exhausted maximum turns without completing the task.",
 		Turns:   maxPlannerTurns,
+		Actions: actions,
+	}
+}
+
+// handleFinish extracts the structured answer from a finish() tool call.
+func (p *Planner) handleFinish(args map[string]any, turns int, actions []PlannerAction) PlannerResult {
+	success, _ := args["success"].(bool)
+
+	// Extract answer array — Gemini returns []any from function calling.
+	var answers []string
+	if rawAnswer, ok := args["answer"]; ok {
+		if arr, ok := rawAnswer.([]any); ok {
+			for _, v := range arr {
+				if s, ok := v.(string); ok {
+					answers = append(answers, s)
+				}
+			}
+		}
+	}
+
+	// Serialize as JSON array for clean downstream parsing.
+	summary := "[]"
+	if len(answers) > 0 {
+		if b, err := json.Marshal(answers); err == nil {
+			summary = string(b)
+		}
+	}
+
+	status := "done"
+	if !success {
+		status = "failed"
+	}
+
+	log.Printf("Planner: finish() after %d turns: success=%v answer=%s", turns, success, summary)
+	return PlannerResult{
+		Status:  status,
+		Summary: summary,
+		Success: success,
+		Turns:   turns,
 		Actions: actions,
 	}
 }
