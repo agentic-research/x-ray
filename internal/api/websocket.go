@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/agentic-research/mache/graph"
+	"github.com/agentic-research/mache/mount"
 	"github.com/agentic-research/x-ray/internal/cdp"
 	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/agentic-research/x-ray/internal/focus"
@@ -39,6 +40,7 @@ type Handler struct {
 	Timeouts       config.TimeoutsConfig      // configurable orchestration timeouts
 	CDPTargetWidth float64                    // screenshot width for scale computation
 	CDPMaxHeight   float64                    // max page height cap
+	EnableNFSMount bool                       // mount CompositeGraph as NFS per tab
 
 	mu             sync.Mutex
 	conn           *websocket.Conn
@@ -146,6 +148,23 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		OverlayRemovedCh:  make(chan struct{}, 1),
 		captureSem:        make(chan struct{}, 1),
 	}
+	// Optionally mount the CompositeGraph as a real NFS filesystem.
+	if h.EnableNFSMount {
+		mountPath := fmt.Sprintf("/tmp/xray-mache/tab-%d", tabID)
+		if err := os.MkdirAll(mountPath, 0o755); err != nil {
+			log.Printf("Session: NFS mkdir failed (tab %d): %v", tabID, err)
+		} else {
+			srv, err := mount.NFS(composite, mountPath)
+			if err != nil {
+				log.Printf("Session: NFS mount failed (non-fatal, tab %d): %v", tabID, err)
+			} else {
+				sess.NFSMount = srv
+				sess.NFSMountPath = mountPath
+				log.Printf("Session: NFS mounted at %s (port %d, tab %d)", mountPath, srv.Port(), tabID)
+			}
+		}
+	}
+
 	h.sessions[tabID] = sess
 	log.Printf("Session: created new session for tab %d", tabID)
 	return sess
@@ -404,6 +423,14 @@ func (h *Handler) handleTabClosed(msg InboundMessage) {
 		}
 		if sess.doerCancel != nil {
 			sess.doerCancel() // kills the Doer's Run goroutine (Bug #6 fix)
+		}
+		if sess.NFSMount != nil {
+			if err := mount.Unmount(sess.NFSMountPath); err != nil {
+				log.Printf("Session: NFS unmount failed (tab %d): %v", msg.TabID, err)
+			}
+			_ = sess.NFSMount.Close()
+			_ = os.RemoveAll(sess.NFSMountPath)
+			log.Printf("Session: NFS unmounted %s (tab %d)", sess.NFSMountPath, msg.TabID)
 		}
 		delete(h.sessions, msg.TabID)
 	}

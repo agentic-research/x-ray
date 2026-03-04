@@ -123,6 +123,7 @@ func main() {
 	handler.Timeouts = cfg.Timeouts
 	handler.CDPTargetWidth = float64(cfg.Cartographer.TargetWidth)
 	handler.CDPMaxHeight = float64(cfg.Cartographer.MaxHeight)
+	handler.EnableNFSMount = cfg.EnableNFSMount
 
 	handler.SetOpenBrowserFunc(func(url string) {
 		_ = exec.Command("open", "-a", "Google Chrome", url).Start()

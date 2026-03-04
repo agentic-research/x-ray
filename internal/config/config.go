@@ -13,13 +13,14 @@ import (
 
 // Config holds all agentd configuration.
 type Config struct {
-	Port         string             `yaml:"port"`
-	Gemini       GeminiConfig       `yaml:"gemini"`
-	Cartographer CartographerConfig `yaml:"cartographer"`
-	Navigator    NavigatorConfig    `yaml:"navigator"`
-	Ollama       OllamaConfig       `yaml:"ollama"`
-	Timeouts     TimeoutsConfig     `yaml:"timeouts"`
-	Database     DatabaseConfig     `yaml:"database"`
+	Port           string             `yaml:"port"`
+	Gemini         GeminiConfig       `yaml:"gemini"`
+	Cartographer   CartographerConfig `yaml:"cartographer"`
+	Navigator      NavigatorConfig    `yaml:"navigator"`
+	Ollama         OllamaConfig       `yaml:"ollama"`
+	Timeouts       TimeoutsConfig     `yaml:"timeouts"`
+	Database       DatabaseConfig     `yaml:"database"`
+	EnableNFSMount bool               `yaml:"nfs_mount"` // Mount page graph as NFS via mache
 }
 
 // GeminiConfig holds Gemini API settings.
@@ -260,6 +261,9 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv("XRAY_DB"); v != "" {
 		cfg.Database.Path = expandHome(v)
+	}
+	if os.Getenv("XRAY_NFS_MOUNT") == "true" || os.Getenv("XRAY_NFS_MOUNT") == "1" {
+		cfg.EnableNFSMount = true
 	}
 }
 

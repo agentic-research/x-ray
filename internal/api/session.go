@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/agentic-research/mache/graph"
+	"github.com/agentic-research/mache/mount"
 	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/agentic-research/x-ray/internal/tasks"
 )
@@ -51,6 +52,8 @@ type TabSession struct {
 	doerCancel        context.CancelFunc       // cancels the Doer's Run goroutine (not just the current goal)
 	TabsListedCh      chan []TabInfo           // receives tab list from LIST_TABS round-trip
 	CVRegions         []EdgeRegion             // canvas regions detected via edge analysis, used for CDP pixel-click
+	NFSMount          *mount.Server            // NFS server for this tab's CompositeGraph (nil if disabled)
+	NFSMountPath      string                   // e.g. "/tmp/xray-mache/tab-12345/"
 
 	// Go-driven capture channels.
 	SummaryCh        chan SummaryResponse // receives SUMMARY_RESPONSE from extension
