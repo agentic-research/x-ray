@@ -187,6 +187,94 @@ def verified_score(results: list[dict], results_dir: Path) -> dict | None:
         return None
 
 
+def write_run_summary(results: list[dict], results_dir: Path) -> Path:
+    """Write a compact markdown run summary (< 30 lines per task).
+
+    Data sources:
+      - results.jsonl (loaded as `results`)
+      - wa_eval/<id>/eval_result.json (per-task verified results, if they exist)
+    """
+    from datetime import datetime
+
+    # Aggregate stats.
+    total = len(results)
+    n_pass = sum(1 for r in results if r.get("success", False))
+    n_fail = 0
+    n_timeout = 0
+    for r in results:
+        st = r.get("status", "").lower()
+        if st in ("failed", "done") and not r.get("success", False):
+            n_fail += 1
+        elif st == "timeout":
+            n_timeout += 1
+    elapsed_list = [r.get("elapsed_ms", 0) / 1000.0 for r in results]
+    avg_elapsed = sum(elapsed_list) / len(elapsed_list) if elapsed_list else 0
+    pct = (n_pass / total * 100) if total > 0 else 0
+
+    ts = datetime.now().strftime("%Y%m%d %H%M%S")
+    lines = [
+        f"# X-Ray Run — {ts}",
+        f"**{n_pass}/{total} ({pct:.1f}%)** | {n_pass} pass, {n_fail} fail, {n_timeout} timeout | avg {avg_elapsed:.1f}s",
+        "---",
+    ]
+
+    for r in results:
+        task_id = r["task_id"]
+        status_raw = r.get("status", "unknown").upper()
+        elapsed_s = r.get("elapsed_ms", 0) / 1000.0
+        success = r.get("success", False)
+        verdict = "PASS" if success else "FAIL"
+
+        lines.append(f"### Task {task_id} — {status_raw} ({elapsed_s:.1f}s) {verdict}")
+        lines.append(f"**Intent:** {r.get('intent', 'N/A')}")
+
+        answer = r.get("summary", "N/A")
+        lines.append(f"**Answer:** {answer}")
+
+        # Try to load verified eval result for expected answer + reason.
+        eval_path = results_dir / "wa_eval" / str(task_id) / "eval_result.json"
+        if eval_path.exists():
+            try:
+                with open(eval_path) as f:
+                    ev = json.load(f)
+                expected = ev.get("expected", ev.get("reference_answer", ""))
+                if expected:
+                    lines.append(f"**Expected:** {expected}")
+                reason = ev.get("reason", ev.get("explanation", ""))
+                if reason:
+                    lines.append(f"**Reason:** {reason}")
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+        # Action trace from results.jsonl.
+        actions = r.get("actions", [])
+        if actions:
+            trace_parts = []
+            for a in actions:
+                tool = a.get("tool", a.get("action", "?"))
+                args_str = a.get("args", a.get("payload", ""))
+                if isinstance(args_str, dict):
+                    goal = args_str.get("goal", "")
+                    if len(goal) > 60:
+                        goal = goal[:57] + "..."
+                    trace_parts.append(f"{tool}({goal})")
+                else:
+                    s = str(args_str)
+                    if len(s) > 60:
+                        s = s[:57] + "..."
+                    trace_parts.append(f"{tool}({s})")
+            lines.append(f"**Trace:** {' → '.join(trace_parts)}")
+        else:
+            lines.append("**Trace:** _(no actions captured)_")
+
+        lines.append("")  # blank line between tasks
+
+    summary_path = results_dir / "run_summary.md"
+    summary_path.write_text("\n".join(lines) + "\n")
+    print(f"Run summary written to {summary_path}")
+    return summary_path
+
+
 def main():
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <results_dir> [--verified]", file=sys.stderr)
@@ -222,6 +310,9 @@ def main():
             f"{r['task_id']:<8} {r['status']:<10} {r.get('elapsed_ms', 0):<10} {intent}"
         )
     print()
+
+    # Compact markdown summary for sharing.
+    write_run_summary(results, results_dir)
 
     # WebArena-Verified official scoring (run once, reuse result).
     verified_result = None

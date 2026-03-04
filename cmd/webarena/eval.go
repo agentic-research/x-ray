@@ -24,13 +24,14 @@ type TaskResult struct {
 	ElapsedMs int64    `json:"elapsed_ms"`
 }
 
-// Action records a single step taken during task execution.
+// Action records a single Planner tool call during task execution.
 type Action struct {
-	Step    int    `json:"step"`
-	Action  string `json:"action"`
-	MacheID string `json:"mache_id,omitempty"`
-	Path    string `json:"path,omitempty"`
-	Payload string `json:"payload,omitempty"`
+	Turn      int            `json:"turn"`
+	Tool      string         `json:"tool"`
+	Args      map[string]any `json:"args,omitempty"`
+	Result    string         `json:"result,omitempty"`
+	ReadOnly  bool           `json:"read_only"`
+	ElapsedMs int64          `json:"elapsed_ms"`
 }
 
 // RunSummary aggregates results across all tasks.

@@ -143,14 +143,25 @@ func main() {
 	fmt.Printf("Results: %s\n", writer.Dir())
 }
 
+// plannerAction mirrors api.PlannerAction for JSON decoding.
+type plannerAction struct {
+	Turn      int            `json:"turn"`
+	Tool      string         `json:"tool"`
+	Args      map[string]any `json:"args"`
+	Result    string         `json:"result"`
+	ReadOnly  bool           `json:"read_only"`
+	ElapsedMs int64          `json:"elapsed_ms"`
+}
+
 // plannerResult mirrors api.PlannerResult for JSON decoding.
 type plannerResult struct {
-	Status   string `json:"status"`
-	Summary  string `json:"summary"`
-	Success  bool   `json:"success"`
-	Error    string `json:"error"`
-	Turns    int    `json:"turns"`
-	URLFinal string `json:"url_final"`
+	Status   string          `json:"status"`
+	Summary  string          `json:"summary"`
+	Success  bool            `json:"success"`
+	Error    string          `json:"error"`
+	Turns    int             `json:"turns"`
+	URLFinal string          `json:"url_final"`
+	Actions  []plannerAction `json:"actions"`
 }
 
 // runTask executes a single WebArena task via POST /agent/task.
@@ -168,10 +179,15 @@ func runTask(ctx context.Context, agentdURL string, task WATask, timeout time.Du
 		TaskType: task.TaskType,
 	}
 
+	siteHint := ""
+	if len(task.Sites) > 0 {
+		siteHint = task.Sites[0]
+	}
 	body, _ := json.Marshal(map[string]any{
 		"intent":    task.Intent,
 		"tab_id":    0,
 		"start_url": startURL,
+		"site_hint": siteHint,
 	})
 
 	req, err := http.NewRequestWithContext(taskCtx, http.MethodPost, agentdURL+"/agent/task", bytes.NewReader(body))
@@ -219,6 +235,16 @@ func runTask(ctx context.Context, agentdURL string, task WATask, timeout time.Du
 	result.URLFinal = pr.URLFinal
 	if pr.Error != "" {
 		result.Error = pr.Error
+	}
+	for _, a := range pr.Actions {
+		result.Actions = append(result.Actions, Action{
+			Turn:      a.Turn,
+			Tool:      a.Tool,
+			Args:      a.Args,
+			Result:    a.Result,
+			ReadOnly:  a.ReadOnly,
+			ElapsedMs: a.ElapsedMs,
+		})
 	}
 	result.ElapsedMs = time.Since(start).Milliseconds()
 	return result

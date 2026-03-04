@@ -205,7 +205,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 			Parts: []*genai.Part{{Text: NavigatorSystemPrompt}},
 		},
 		Tools:       tools,
-		Temperature: genai.Ptr(float32(0.1)),
+		Temperature: genai.Ptr(float32(1.0)),
 		SafetySettings: []*genai.SafetySetting{
 			{Category: genai.HarmCategoryHarassment, Threshold: genai.HarmBlockThresholdOff},
 			{Category: genai.HarmCategoryHateSpeech, Threshold: genai.HarmBlockThresholdOff},

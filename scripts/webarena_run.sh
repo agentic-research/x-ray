@@ -19,7 +19,7 @@ set -euo pipefail
 # Parse flags
 # ---------------------------------------------------------------------------
 START_SERVER=true
-SUBSET="full"
+SUBSET="${WEBARENA_SUBSET:-full}"
 SKIP_CONTAINERS=false
 SCORE_VERIFIED=false
 

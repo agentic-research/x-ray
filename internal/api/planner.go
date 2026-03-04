@@ -23,44 +23,92 @@ type Planner struct {
 	model   string
 }
 
+// PlannerAction records a single tool call made by the Planner.
+type PlannerAction struct {
+	Turn      int            `json:"turn"`
+	Tool      string         `json:"tool"`
+	Args      map[string]any `json:"args"`
+	Result    string         `json:"result"`
+	ReadOnly  bool           `json:"read_only"`
+	ElapsedMs int64          `json:"elapsed_ms"`
+}
+
 // PlannerResult is the JSON response from HandleAgentTask.
 type PlannerResult struct {
-	Status   string `json:"status"` // "done", "failed", "error", "cancelled"
-	Summary  string `json:"summary"`
-	Success  bool   `json:"success"`
-	Error    string `json:"error,omitempty"`
-	Turns    int    `json:"turns"`
-	URLFinal string `json:"url_final,omitempty"`
+	Status   string          `json:"status"` // "done", "failed", "error", "cancelled"
+	Summary  string          `json:"summary"`
+	Success  bool            `json:"success"`
+	Error    string          `json:"error,omitempty"`
+	Turns    int             `json:"turns"`
+	URLFinal string          `json:"url_final,omitempty"`
+	Actions  []PlannerAction `json:"actions,omitempty"`
+}
+
+// sitePrimers maps WebArena site names to short structural hints.
+// These give the agent the same "at a glance" awareness a human would have.
+var sitePrimers = map[string]string{
+	"shopping": `SITE: Magento e-commerce store.
+- Product pages have tabs: Details, More Info, Reviews. Click the tab to reveal content.
+- Reviews are paginated (10/page). Check "X Reviews" count vs what you've seen.
+- Category pages have sorting dropdowns and layered navigation filters on the left.
+- Search bar is at top; do NOT type into it unless the task says to.`,
+
+	"shopping_admin": `SITE: Magento Admin panel.
+- Left sidebar has main navigation: Sales, Catalog, Customers, Marketing, Reports.
+- Data grids have column sorting, filters, and pagination. Use "Filters" button to search.
+- Dashboard shows revenue, orders, top products at a glance.`,
+
+	"reddit": `SITE: Reddit forum (Postmill).
+- Content is organized by subreddits (/f/<name>). Posts have comments in nested threads.
+- Sort options: Hot, New, Top, Active. Comments can be collapsed.
+- User profiles show post/comment history.`,
+
+	"gitlab": `SITE: GitLab instance.
+- Projects have tabs: Repository, Issues, Merge Requests, CI/CD, Wiki.
+- Issues and MRs have labels, milestones, assignees. Use sidebar filters.
+- File browser shows repo contents. Use breadcrumb nav for directories.`,
+
+	"wikipedia": `SITE: Wikipedia.
+- Articles have a table of contents with section links at the top.
+- Content is in sections with headings. Use Cmd+F / grep for specific facts.
+- Infoboxes on the right side contain structured data (dates, stats, etc.).`,
+
+	"map": `SITE: OpenStreetMap instance.
+- Search bar at top for locations. Map is interactive (pan/zoom).
+- Search results appear in a sidebar list. Click to see details.
+- Directions between two points via the route button.`,
 }
 
 // plannerSystemPrompt adapts the Talker system prompt for autonomous benchmark execution.
 // Tool schemas are provided via the Tools parameter — do NOT re-describe syntax here.
-var plannerSystemPrompt = `You are an autonomous web agent. You dispatch commands to a browser navigator that can see and interact with web pages. The page is already loaded at the task's start URL.
+var plannerSystemPrompt = `You are an autonomous web agent. You dispatch commands to a browser navigator.
 
 TOOLS:
 - issue_command(goal, read_only): Send a goal to the navigator.
-  read_only=true: observe only (read text, check structure). No clicks or typing.
-  read_only=false: interact (click, type, scroll, navigate). Use this by default.
-- open_url(url): Open a completely different website.
+- open_url(url): Open a different website.
 
-WORKFLOW — Break every task into these steps:
-1. GREP FIRST: issue_command("use grep to find <keyword>", read_only=true). Use SHORT keywords (1-2 words) and regex OR for synonyms, e.g., "small|tiny" NOT "ear cups being small". The navigator has a grep tool that scans the DOM text — always grep for the answer directly before doing anything else.
-2. INTERACT (only if grep fails): issue_command("click the tab/link to reveal content", read_only=false). Click tabs, expand sections — never scroll blindly.
-3. READ: issue_command("read the specific content needed", read_only=true)
-4. ANSWER: Respond with DONE: or FAILED:
+STRATEGY — think like a human with Cmd+F:
 
-CRITICAL PATTERNS:
-- Content behind tabs (e.g., Reviews): grep first, then click the tab, then grep again.
-- Hidden content: click to reveal, never scroll hoping to find it.
-- NEVER say "search for X" — say "use grep to find X". The word "search" is ambiguous and the navigator may type into the website's search bar instead.
-- If read_only=true fails to find content, ALWAYS try read_only=false next to interact with the page.
-- When looking for a tab or button to click, tell the navigator: "cat the children of the main content zone to find the <tab name> link, then click it". Do NOT just say "click the Reviews tab" — the navigator needs to see the children list first.
+1. ORIENT: issue_command("cat page_text to see what is visible", read_only=true).
+   Read the result. Identify tabs, sections, pagination, counts.
 
-WORKING MEMORY — the navigator has a scratchpad at /tasks/active/scratch:
-- When collecting MULTIPLE items (names, prices, etc.) across pages, ALWAYS tell the navigator: "save your findings to the scratchpad before navigating to the next page."
-- Example: issue_command("grep for reviews mentioning 'small', then save each reviewer name to the scratchpad, then click Page Next", read_only=false)
-- Before answering DONE, issue_command("read the scratchpad to collect all findings", read_only=true).
-- This prevents losing findings when the page changes.
+2. REVEAL: If content is behind a tab or collapsed section:
+   issue_command("cat children of main zone, find <tab>, click it", read_only=false).
+
+3. SEARCH: Now grep for specific keywords:
+   issue_command("use grep to find <SHORT keyword|synonym>", read_only=true).
+   Use 1-2 word keywords. Regex OR for synonyms: "small|tiny".
+
+4. EXTRACT: Grep finds TEXT but not associated NAMES/metadata.
+   issue_command("cat page_text and find the reviewer name next to each review mentioning <keyword>, save all names to scratchpad", read_only=true).
+
+5. PERSIST: ALWAYS save before navigating away:
+   issue_command("save findings to scratchpad", read_only=false).
+
+6. PAGINATE: issue_command("click Next page", read_only=false).
+   After each page, repeat steps 3-5.
+
+COLLECT: issue_command("read scratchpad", read_only=true). Then DONE: <answer>.
 
 COMPLETENESS — before answering, VERIFY:
 - Does the page have pagination ("Next", "Page 1 of N", ">>")?  If so, check ALL pages.
@@ -71,14 +119,17 @@ Semi-formal check: "I found N matches. The page says M total. N < M → INCOMPLE
 
 TERMINATION:
 - DONE: followed by the EXACT answer (number, name, price, list of names, etc.)
-- DONE: N/A — when the task asks for information that genuinely does not exist (e.g., no reviews match, no matching product found). Only use after thorough exploration.
+- DONE: N/A — when the task asks for information that genuinely does not exist. Only use after thorough exploration.
 - FAILED: followed by the reason (only for technical failures, NOT for "content not found").
 
 RULES:
-- Every turn MUST include a tool call OR a DONE/FAILED response. No thinking aloud.
-- Never repeat a failed command. Try a different approach.
-- Never use read_only=true twice in a row if the first attempt failed to find what you need.
-- When collecting items (names, prices, counts), NEVER answer after checking only one page. Always verify there are no more pages.`
+- ALWAYS orient first. Never grep a cold page.
+- ALWAYS reveal before search. Click tabs before grepping.
+- ALWAYS extract in context. Grep finds text; you need associated names/data.
+- ALWAYS persist before navigating. Scratchpad survives; memory does not.
+- NEVER say "search for X" — say "use grep to find X".
+- NEVER repeat a failed command. Try different keywords or cat page_text.
+- Every turn MUST include a tool call OR DONE/FAILED.`
 
 // plannerToolDefinitions returns a minimal tool set for the synchronous Planner.
 // Unlike the voice Talker, Planner blocks until each command completes, so
@@ -116,9 +167,18 @@ func plannerToolDefinitions() []*genai.Tool {
 
 // RunTask executes a high-level task using the Planner→Doer loop.
 // Blocks until the task completes, fails, or the context is cancelled.
-func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) PlannerResult {
+// siteHint is an optional site type (e.g. "shopping", "reddit") used to
+// inject structural awareness into the system prompt.
+func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHint string) PlannerResult {
 	sess := p.handler.getSession(tabID)
 	doer := p.handler.getOrCreateDoer(tabID, sess)
+
+	// Build system prompt, optionally prepending a site primer.
+	sysPrompt := plannerSystemPrompt
+	if primer, ok := sitePrimers[siteHint]; ok {
+		sysPrompt = primer + "\n\n" + sysPrompt
+		log.Printf("Planner: injected site primer for %q", siteHint)
+	}
 
 	// Build initial conversation history.
 	history := []*genai.Content{
@@ -127,10 +187,10 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 
 	config := &genai.GenerateContentConfig{
 		SystemInstruction: &genai.Content{
-			Parts: []*genai.Part{{Text: plannerSystemPrompt}},
+			Parts: []*genai.Part{{Text: sysPrompt}},
 		},
 		Tools:       plannerToolDefinitions(),
-		Temperature: genai.Ptr(float32(0.1)),
+		Temperature: genai.Ptr(float32(1.0)),
 		SafetySettings: []*genai.SafetySetting{
 			{Category: genai.HarmCategoryHarassment, Threshold: genai.HarmBlockThresholdOff},
 			{Category: genai.HarmCategoryHateSpeech, Threshold: genai.HarmBlockThresholdOff},
@@ -141,18 +201,20 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 
 	malformedRetries := 0
 	const maxMalformedRetries = 5
+	var actions []PlannerAction
 
 	for turn := 0; turn < maxPlannerTurns; turn++ {
 		if ctx.Err() != nil {
-			return PlannerResult{Status: "cancelled", Summary: "Task cancelled.", Turns: turn}
+			return PlannerResult{Status: "cancelled", Summary: "Task cancelled.", Turns: turn, Actions: actions}
 		}
 
 		resp, err := p.client.Models.GenerateContent(ctx, p.model, history, config)
 		if err != nil {
 			return PlannerResult{
-				Status: "error",
-				Error:  fmt.Sprintf("Gemini API error: %v", err),
-				Turns:  turn,
+				Status:  "error",
+				Error:   fmt.Sprintf("Gemini API error: %v", err),
+				Turns:   turn,
+				Actions: actions,
 			}
 		}
 
@@ -191,9 +253,10 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 				log.Printf("Planner: malformed function call at turn %d (retry %d/%d)", turn, malformedRetries, maxMalformedRetries)
 				if malformedRetries > maxMalformedRetries {
 					return PlannerResult{
-						Status: "error",
-						Error:  fmt.Sprintf("Gemini produced %d consecutive malformed function calls", malformedRetries),
-						Turns:  turn,
+						Status:  "error",
+						Error:   fmt.Sprintf("Gemini produced %d consecutive malformed function calls", malformedRetries),
+						Turns:   turn,
+						Actions: actions,
 					}
 				}
 				// Maintain proper turn alternation: model placeholder, then user nudge.
@@ -240,9 +303,10 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 			}
 			log.Printf("Planner: empty response at turn %d: %s (model=%s)", turn, errMsg, p.model)
 			return PlannerResult{
-				Status: "error",
-				Error:  errMsg,
-				Turns:  turn,
+				Status:  "error",
+				Error:   errMsg,
+				Turns:   turn,
+				Actions: actions,
 			}
 		}
 
@@ -273,6 +337,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 					Summary: summary,
 					Success: true,
 					Turns:   turn + 1,
+					Actions: actions,
 				}
 			}
 			if after, ok := strings.CutPrefix(fullText, "FAILED:"); ok {
@@ -282,6 +347,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 					Status:  "failed",
 					Summary: reason,
 					Turns:   turn + 1,
+					Actions: actions,
 				}
 			}
 			// Non-terminal text — could be thinking aloud. Check for DONE/FAILED anywhere.
@@ -293,6 +359,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 					Summary: summary,
 					Success: true,
 					Turns:   turn + 1,
+					Actions: actions,
 				}
 			}
 			if idx := strings.Index(fullText, "FAILED:"); idx >= 0 {
@@ -302,6 +369,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 					Status:  "failed",
 					Summary: reason,
 					Turns:   turn + 1,
+					Actions: actions,
 				}
 			}
 			// Model produced text without terminal marker and no tools — treat as thinking.
@@ -313,8 +381,21 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 			malformedRetries = 0 // Reset on successful parse.
 			var responseParts []*genai.Part
 			for _, fc := range functionCalls {
+				toolStart := time.Now()
 				result := p.executeTool(ctx, fc, doer, tabID, sess, intent)
+				toolElapsed := time.Since(toolStart).Milliseconds()
 				log.Printf("Planner: tool %s → %s", fc.Name, truncate(result, 200))
+
+				readOnly := fmt.Sprintf("%v", fc.Args["read_only"]) == "true"
+				actions = append(actions, PlannerAction{
+					Turn:      turn,
+					Tool:      fc.Name,
+					Args:      fc.Args,
+					Result:    truncate(result, 500),
+					ReadOnly:  readOnly,
+					ElapsedMs: toolElapsed,
+				})
+
 				responseParts = append(responseParts, &genai.Part{
 					FunctionResponse: &genai.FunctionResponse{
 						Name:     fc.Name,
@@ -333,6 +414,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int) Planner
 		Status:  "failed",
 		Summary: "Exhausted maximum turns without completing the task.",
 		Turns:   maxPlannerTurns,
+		Actions: actions,
 	}
 }
 
@@ -547,6 +629,7 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 		Intent   string `json:"intent"`
 		TabID    int    `json:"tab_id"`
 		StartURL string `json:"start_url"`
+		SiteHint string `json:"site_hint"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
@@ -589,7 +672,7 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Planner: starting task: %s", truncate(req.Intent, 100))
-	result := h.planner.RunTask(ctx, req.Intent, tabID)
+	result := h.planner.RunTask(ctx, req.Intent, tabID, req.SiteHint)
 
 	// Capture the final URL for NAVIGATE-type task evaluation.
 	result.URLFinal = sess.GetCurrentURL()
