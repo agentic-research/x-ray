@@ -1005,6 +1005,14 @@ func computeZoneFeatures(z *zone, elements []element) {
 			z.rootIdx = idx
 		}
 	}
+	// Prefer a structural tag element over centroid-nearest, so
+	// inferCategory sees the semantic signal (nav, aside, etc.).
+	for _, idx := range z.elems {
+		if structuralTags[elements[idx].tag] {
+			z.rootIdx = idx
+			break
+		}
+	}
 
 	// Detect list zones
 	z.isList, z.listIdxs, z.selector = detectListZone(z.elems, elements)
@@ -1451,6 +1459,9 @@ func inferCategory(z zone, elements []element, lt layoutThresholds) string {
 	if z.rootIdx >= 0 && z.rootIdx < len(elements) {
 		switch elements[z.rootIdx].tag {
 		case "nav":
+			if z.centerY < lt.headerMaxY {
+				return "header"
+			}
 			return "sidebar"
 		case "aside":
 			return "sidebar"

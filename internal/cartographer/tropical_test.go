@@ -396,7 +396,8 @@ func TestInferCategory(t *testing.T) {
 		y, x    float64
 		want    string
 	}{
-		{0, 0.5, 0.5, "sidebar"}, // <nav> at center → sidebar (not main)
+		{0, 0.5, 0.5, "sidebar"}, // <nav> at center → sidebar
+		{0, 0.05, 0.5, "header"}, // <nav> at top → header (horizontal navbar)
 		{1, 0.5, 0.5, "sidebar"}, // <aside> at center → sidebar
 		{2, 0.1, 0.5, "footer"},  // <footer> at top → still footer
 		{3, 0.9, 0.1, "main"},    // <main> in sidebar position → still main

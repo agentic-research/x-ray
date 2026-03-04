@@ -103,7 +103,7 @@ func TestDecodeLeechTuryn_NoiseCorrection(t *testing.T) {
 	}
 	out := DecodeLeechTuryn(x)
 	dist := math.Sqrt(distSq24(x, out))
-	if dist > LeechCoveringRadius+0.5 {
+	if dist > LeechCoveringRadius+0.01 {
 		t.Errorf("Small noise should correct to nearby lattice point, dist=%f", dist)
 	}
 }
