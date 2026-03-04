@@ -371,6 +371,10 @@ func TestInferCategory(t *testing.T) {
 		{0.50, 0.1, "sidebar"},
 		{0.50, 0.9, "sidebar"},
 		{0.50, 0.5, "main"},
+		// Full-height sidebar: centerY in footer zone but centerX in sidebar zone.
+		// Sidebar should win (claude.ai conversation list bug).
+		{0.90, 0.1, "sidebar"},
+		{0.90, 0.95, "sidebar"},
 	}
 	for _, tt := range tests {
 		z := zone{centerY: tt.y, centerX: tt.x}

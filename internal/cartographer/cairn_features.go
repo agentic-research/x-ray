@@ -1,7 +1,10 @@
-// cairn_features.go — Extract 12D "optic nerve" feature vectors from screenshot grid cells.
+// cairn_features.go — Extract 24D fused feature vectors from screenshot grid cells + DOM.
 // Ported from cairn experiment (features.go). Adapted to accept image.Image directly.
 //
-// V3 native 12D vector — biologically motivated by retinal/V1 cortex processing:
+// Dimensions 0-11: visual (biologically motivated by retinal/V1 cortex processing).
+// Dimensions 12-23: semantic (DOM structure, interactivity, spatial position).
+//
+// Visual channels:
 //
 // Color processing (retina/LGN — opponent color channels):
 //
@@ -32,14 +35,14 @@ import (
 )
 
 // CairnNumDims is the dimensionality of the optic nerve feature vector.
-const CairnNumDims = 12
+const CairnNumDims = 24
 
 // CairnGridCell holds a cell's position and extracted features.
 type CairnGridCell struct {
 	Row, Col int                   // grid position
 	X, Y     int                   // pixel top-left
 	W, H     int                   // pixel dimensions
-	Features [CairnNumDims]float64 // 12D optic nerve vector
+	Features [CairnNumDims]float64 // 24D fused visual+semantic vector
 }
 
 // CairnFeatureDimNames maps dimension index to human-readable name.
@@ -47,10 +50,13 @@ var CairnFeatureDimNames = []string{
 	"luma", "rg", "by", "sat",
 	"edgeDens", "hEdge", "vEdge", "dEdge", "dirVar",
 	"contrast", "peakStr", "entropy",
+	"area", "depth", "interact", "hasText",
+	"container", "heading", "image", "xPos",
+	"yPos", "childCount", "textDens", "aspect",
 }
 
-// ExtractFeaturesFromImage extracts 12D features per grid cell from an already-decoded image.
-func ExtractFeaturesFromImage(img image.Image, gridSize int) []CairnGridCell {
+// ExtractFusedFeatures extracts 24D features per grid cell from an already-decoded image and DOM elements.
+func ExtractFusedFeatures(img image.Image, elements []element, gridSize int) []CairnGridCell {
 	bounds := img.Bounds()
 	imgW := bounds.Max.X - bounds.Min.X
 	imgH := bounds.Max.Y - bounds.Min.Y
@@ -68,6 +74,50 @@ func ExtractFeaturesFromImage(img image.Image, gridSize int) []CairnGridCell {
 	}
 
 	var cells []CairnGridCell
+
+	// Pre-compute depth for elements O(N)
+	idToIdx := make(map[string]int, len(elements))
+	for i, el := range elements {
+		idToIdx[el.id] = i
+	}
+	depths := make([]float64, len(elements))
+	for i, el := range elements {
+		d := 0.0
+		p := el.parentID
+		for p != "" && p != "none" && d < 50 {
+			d++
+			if pIdx, ok := idToIdx[p]; ok {
+				p = elements[pIdx].parentID
+			} else {
+				break
+			}
+		}
+		depths[i] = d
+	}
+
+	// Map elements to grid cells O(N)
+	cellElements := make([][]int, gridSize*gridSize)
+	for i, el := range elements {
+		if !el.hasBounds {
+			continue
+		}
+		col := int(el.centerX * float64(gridSize))
+		row := int(el.centerY * float64(gridSize))
+		if col >= gridSize {
+			col = gridSize - 1
+		}
+		if row >= gridSize {
+			row = gridSize - 1
+		}
+		if col < 0 {
+			col = 0
+		}
+		if row < 0 {
+			row = 0
+		}
+		idx := row*gridSize + col
+		cellElements[idx] = append(cellElements[idx], i)
+	}
 
 	for row := 0; row < gridSize; row++ {
 		for col := 0; col < gridSize; col++ {
@@ -104,6 +154,59 @@ func ExtractFeaturesFromImage(img image.Image, gridSize int) []CairnGridCell {
 			// FFT spectral features (reuses existing AnalyzeRegion from fft.go)
 			fft := AnalyzeRegion(gray, w, h)
 
+			// Semantic Features
+			var maxArea, maxDepth, interact, hasText float64
+			var container, heading, imageFlag float64
+			var sumTextDens, sumAspect float64
+
+			cellIdx := row*gridSize + col
+			els := cellElements[cellIdx]
+			childCount := float64(len(els))
+
+			for _, eIdx := range els {
+				el := elements[eIdx]
+				area := el.bounds[2] * el.bounds[3]
+				if area > maxArea {
+					maxArea = area
+				}
+				if depths[eIdx] > maxDepth {
+					maxDepth = depths[eIdx]
+				}
+
+				if el.tag == "button" || el.tag == "a" || el.tag == "input" || el.interactive {
+					interact = 1.0
+				}
+				if el.text != "" {
+					hasText = 1.0
+				}
+				if el.tag == "div" || el.tag == "nav" || el.tag == "main" || el.tag == "section" || el.tag == "article" || el.tag == "header" || el.tag == "footer" || el.tag == "ul" || el.tag == "ol" {
+					container = 1.0
+				}
+				if el.tag == "h1" || el.tag == "h2" || el.tag == "h3" || el.tag == "h4" || el.tag == "h5" || el.tag == "h6" {
+					heading = 1.0
+				}
+				if el.tag == "img" || el.tag == "svg" || el.tag == "picture" {
+					imageFlag = 1.0
+				}
+
+				sumTextDens += el.textDensity
+				aspect := 0.0
+				if el.bounds[3] > 0 {
+					aspect = el.bounds[2] / el.bounds[3]
+				}
+				sumAspect += aspect
+			}
+
+			avgTextDens := 0.0
+			avgAspect := 0.0
+			if childCount > 0 {
+				avgTextDens = sumTextDens / childCount
+				avgAspect = sumAspect / childCount
+			}
+
+			xPos := float64(col) / float64(gridSize)
+			yPos := float64(row) / float64(gridSize)
+
 			features := [CairnNumDims]float64{
 				luminance,        // 0
 				rgOpponent,       // 1
@@ -117,6 +220,18 @@ func ExtractFeaturesFromImage(img image.Image, gridSize int) []CairnGridCell {
 				contrast,         // 9
 				fft.PeakStrength, // 10
 				fft.Entropy,      // 11
+				maxArea,          // 12
+				maxDepth,         // 13
+				interact,         // 14
+				hasText,          // 15
+				container,        // 16
+				heading,          // 17
+				imageFlag,        // 18
+				xPos,             // 19
+				yPos,             // 20
+				childCount,       // 21
+				avgTextDens,      // 22
+				avgAspect,        // 23
 			}
 
 			cells = append(cells, CairnGridCell{

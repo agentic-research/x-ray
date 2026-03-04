@@ -53,7 +53,11 @@ func TestNormalizationTrap(t *testing.T) {
 func generateLargeDOMSummary(numNodes int) string {
 	var sb strings.Builder
 	for i := 0; i < numNodes; i++ {
-		sb.WriteString(fmt.Sprintf("ID: el-%d | Tag: div | Parent: el-1 | Path: body>div | Bounds: [0.1, 0.1, 0.8, 0.8] | Text: Node %d\n", i, i))
+		parentID := "none"
+		if i > 0 {
+			parentID = fmt.Sprintf("el-%d", i/2) // Create a binary tree structure for realistic depth
+		}
+		sb.WriteString(fmt.Sprintf("ID: el-%d | Tag: div | Parent: %s | Path: body>div | Bounds: [0.1, 0.1, 0.8, 0.8] | Text: Node %d\n", i, parentID, i))
 	}
 	return sb.String()
 }
@@ -100,15 +104,39 @@ func BenchmarkCartographer_24D_Fused(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		visualTypes := make(map[int]string, len(elements))
+
+		// Build map for real DOM walking (simulating the extraction cost)
+		idToIdx := make(map[string]int, len(elements))
+		for idx, el := range elements {
+			idToIdx[el.id] = idx
+		}
+
 		for j := 0; j < len(elements); j++ {
+			el := elements[j]
+
 			// Mock 24D semantic-visual extraction
 			var features [24]float64
 			// 12 Visual
 			features[0] = 0.8
-			// 12 Semantic (e.g. depth, width, is_button)
-			features[12] = 0.5 // Bounding Box Area
-			features[13] = 0.1 // Depth Normalized
-			features[23] = 1.0 // IsButton
+
+			// Actual DOM extraction work (measuring CPU cost)
+			depth := 0.0
+			parent := el.parentID
+			for parent != "" && parent != "none" && depth < 50 {
+				depth++
+				if pIdx, ok := idToIdx[parent]; ok {
+					parent = elements[pIdx].parentID
+				} else {
+					break
+				}
+			}
+
+			// 12 Semantic (e.g. depth, area, is_button)
+			features[12] = el.bounds[2] * el.bounds[3] // Bounding Box Area
+			features[13] = depth / 50.0                // Depth Normalized
+			if el.tag == "button" || el.tag == "a" || el.interactive {
+				features[23] = 1.0 // IsButton
+			}
 
 			// Direct 24D Scaling -> Leech
 			var scaled [24]float64

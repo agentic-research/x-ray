@@ -94,7 +94,7 @@ func (cc *CairnCartographer) GenerateSchema(
 		if err != nil {
 			log.Printf("CairnCartographer: screenshot decode failed: %v (falling back to DOM-only)", err)
 		} else {
-			cells := ExtractFeaturesFromImage(img, gridSize)
+			cells := ExtractFusedFeatures(img, elements, gridSize)
 			CairnNormalizeFeatures(cells)
 			cellProjections = projectCells(cells, gear, scale, img.Bounds())
 		}

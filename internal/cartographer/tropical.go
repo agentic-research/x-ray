@@ -1447,14 +1447,17 @@ func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropic
 }
 
 func inferCategory(z zone, lt layoutThresholds) string {
+	// Sidebar check BEFORE footer: a narrow strip on the side is a stronger
+	// signal than vertical position. Full-height sidebars (e.g., claude.ai
+	// conversation list) have centerY > footerMinY and were misclassified.
+	if z.centerX < lt.sidebarW || z.centerX > 1-lt.sidebarW {
+		return "sidebar"
+	}
 	if z.centerY < lt.headerMaxY {
 		return "header"
 	}
 	if z.centerY > lt.footerMinY {
 		return "footer"
-	}
-	if z.centerX < lt.sidebarW || z.centerX > 1-lt.sidebarW {
-		return "sidebar"
 	}
 	return "main"
 }

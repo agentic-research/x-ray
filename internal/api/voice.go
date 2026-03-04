@@ -636,7 +636,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				var responses []*genai.FunctionResponse
 				for _, fc := range tc.FunctionCalls {
 					switch fc.Name {
-					case "check_status", "issue_command", "cancel_task", "open_url":
+					case "check_status", "issue_command", "cancel_task", "open_url", "terminal_action":
 						result := h.executeTalkerTool(fc, resolveDoer())
 						log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
 						responses = append(responses, &genai.FunctionResponse{
@@ -963,7 +963,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				var responses []*genai.FunctionResponse
 				for _, fc := range tc.FunctionCalls {
 					switch fc.Name {
-					case "check_status", "issue_command", "cancel_task", "open_url":
+					case "check_status", "issue_command", "cancel_task", "open_url", "terminal_action":
 						result := h.executeTalkerTool(fc, resolveDoer())
 						log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
 						responses = append(responses, &genai.FunctionResponse{

@@ -38,8 +38,8 @@ func TestConstruct24D_Structure(t *testing.T) {
 func TestProjectToLeech_Zero(t *testing.T) {
 	var features [CairnNumDims]float64
 	result := ProjectToLeech(features, 1.0)
-	if result.E8Dist != 0 {
-		t.Errorf("Zero features should have zero E8 distance, got %f", result.E8Dist)
+	if result.LeechDist != 0 {
+		t.Errorf("Zero features should have zero Leech distance, got %f", result.LeechDist)
 	}
 }
 
