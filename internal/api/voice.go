@@ -97,6 +97,7 @@ func talkerToolDefinitions() []*genai.Tool {
 					Properties: map[string]*genai.Schema{
 						"goal":      {Type: genai.TypeString, Description: "Natural language navigation goal"},
 						"read_only": {Type: genai.TypeBoolean, Description: "Set true when the user asks a QUESTION about the page (what, which, list, describe, tell me). Leave false/omit when the user wants an ACTION (click, play, open, search, type)."},
+						"context":   {Type: genai.TypeString, Description: "Optional: the user's overarching intent behind this command, so the navigator can adapt if the direct approach fails."},
 					},
 					Required: []string{"goal"},
 				},
@@ -172,8 +173,9 @@ func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 			return "Error: goal is required."
 		}
 		readOnly, _ := fc.Args["read_only"].(bool)
+		taskContext, _ := fc.Args["context"].(string)
 		goalID := fmt.Sprintf("goal-%d", time.Now().UnixMilli())
-		doer.Submit(DoerGoal{ID: goalID, Text: goal, ReadOnly: readOnly})
+		doer.Submit(DoerGoal{ID: goalID, Text: goal, ReadOnly: readOnly, TaskContext: taskContext})
 		if readOnly {
 			log.Printf("Voice: issue_command (read_only=true): %q", goal)
 		}
@@ -200,14 +202,15 @@ YOUR TOOLS:
 - open_url(url): Open a URL in a NEW browser tab. Use when no tab exists or user explicitly says "open [website]".
 
 BEHAVIOR:
-1. When the user asks you to do something OR asks a question about their environment (browser or terminal), use issue_command() IMMEDIATELY. Do NOT add conversational filler like "Let me check" or "Working on it" — just execute the tool silently. Always set read_only appropriately.
-2. When a task is running, stay SILENT and wait for the system to notify you of completion — unless the user asks.
-3. If the user asks "what are you doing?" or "are you almost done?", call check_status() and report the current step briefly and directly, without filler.
-4. When the system notifies you a task completed, announce the result naturally.
+1. When the user asks you to do something OR asks a question about their environment (browser or terminal), call issue_command() IMMEDIATELY without speaking first. Do NOT say anything before the tool call — just call it silently.
+2. After the tool returns "Command accepted", say ONE short phrase like "Working on it." or "Checking now." and then STOP. Do NOT guess or predict the answer — the result is not ready yet.
+3. CRITICAL: You will receive "[SYSTEM: Background task completed. Result: ...]" when the real result is ready. ONLY THEN announce the result. Until that notification arrives, you do NOT know the answer. NEVER fabricate a response.
+4. If the user asks "what are you doing?" or "are you almost done?", call check_status() and report the current step briefly.
 5. If the user says "stop" or "cancel", use cancel_task() and confirm: "Cancelled."
 6. You can answer general knowledge questions directly using Google Search — no need to issue_command for those.
-7. Keep ALL responses to ONE short sentence. Never narrate your tool usage.
+7. Match verbosity to the request. Use one short sentence for simple actions ("Clicking the button"), but give structured multi-sentence responses when reading data back to the user.
 8. If you get "No active browser tab", use open_url() to open a website first, then issue_command() after it loads.
+9. SAFETY: For irreversible actions (buy, submit, delete, send, post, confirm, checkout, pay), ALWAYS confirm before dispatching: "I'll click 'Submit Order' — should I go ahead?"
 
 Your navigator can read the full environment structure (including terminals at /iterm/), so ALWAYS delegate environment questions to it — never say "I can't see the terminal."`
 
@@ -339,20 +342,52 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 		// Mutex protects concurrent writes to the Gemini Live session (Bug fix).
 		var sessionMu sync.Mutex
 
+		// State-aware result delivery: if the model is speaking, queue the
+		// result for delivery on TurnComplete. If idle, deliver immediately.
+		var modelSpeaking atomic.Bool
+		pendingResult := make(chan string, 1)
+
+		sendResultToSession := func(msg string) {
+			sessionMu.Lock()
+			err := session.SendClientContent(genai.LiveClientContentInput{
+				Turns: []*genai.Content{{
+					Role:  "user",
+					Parts: []*genai.Part{{Text: msg}},
+				}},
+			})
+			sessionMu.Unlock()
+			if err != nil {
+				log.Printf("Voice: result notify SendClientContent error: %v", err)
+			}
+		}
+
+		deliverPendingResult := func() {
+			select {
+			case notification := <-pendingResult:
+				sendResultToSession(notification)
+			default:
+			}
+		}
+
 		// Wire Doer result callback to this session.
 		resultNotifyFn := func(summary string) {
-			sessionMu.Lock()
-			defer sessionMu.Unlock()
-			if err := session.SendClientContent(genai.LiveClientContentInput{
-				Turns: []*genai.Content{{
-					Role: "user",
-					Parts: []*genai.Part{{Text: fmt.Sprintf(
-						"[SYSTEM: Background task completed. Result: %s. Announce this to the user briefly.]",
-						summary,
-					)}},
-				}},
-			}); err != nil {
-				log.Printf("Voice: result notify SendClientContent error: %v", err)
+			msg := fmt.Sprintf(
+				"[SYSTEM: Background task completed. Result: %s. Announce this to the user briefly.]",
+				summary,
+			)
+			if !modelSpeaking.Load() {
+				// Model is idle — deliver immediately.
+				sendResultToSession(msg)
+				return
+			}
+			// Model is speaking — queue for delivery on TurnComplete.
+			select {
+			case <-pendingResult:
+			default:
+			}
+			select {
+			case pendingResult <- msg:
+			default:
 			}
 		}
 
@@ -472,6 +507,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			if sc := msg.ServerContent; sc != nil {
 				// Always forward audio — browser handles its own buffer flush on interruption.
 				if sc.ModelTurn != nil {
+					modelSpeaking.Store(true)
 					for _, part := range sc.ModelTurn.Parts {
 						if part.InlineData != nil && len(part.InlineData.Data) > 0 {
 							wsMu.Lock()
@@ -512,6 +548,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				}
 				// Flush buffered transcriptions on turn boundary.
 				if sc.TurnComplete || sc.Interrupted {
+					modelSpeaking.Store(false)
 					if inputBuf.Len() > 0 {
 						log.Printf("Voice [tab %d] User: %s", tabID, strings.TrimSpace(inputBuf.String()))
 						inputBuf.Reset()
@@ -520,6 +557,12 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 						log.Printf("Voice [tab %d] Talker: %s", tabID, strings.TrimSpace(outputBuf.String()))
 						outputBuf.Reset()
 					}
+				}
+				// Only deliver pending results on TurnComplete (model finished naturally).
+				// On Interrupted (user spoke), keep the result queued — it'll deliver
+				// after the model responds to the user. User can also check_status().
+				if sc.TurnComplete {
+					deliverPendingResult()
 				}
 				continue
 			}
@@ -640,20 +683,50 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 		// Mutex protects concurrent writes to the Gemini Live session (Bug fix).
 		var sessionMu sync.Mutex
 
-		// resultNotifyFn injects a synthetic message so Gemini speaks the Doer's result.
-		resultNotifyFn := func(summary string) {
+		// State-aware result delivery (native mode): if the model is speaking,
+		// queue the result for delivery on TurnComplete. If idle, deliver immediately.
+		var modelSpeakingNative atomic.Bool
+		pendingResultNative := make(chan string, 1)
+
+		sendResultToSessionNative := func(msg string) {
 			sessionMu.Lock()
-			defer sessionMu.Unlock()
-			if err := session.SendClientContent(genai.LiveClientContentInput{
+			err := session.SendClientContent(genai.LiveClientContentInput{
 				Turns: []*genai.Content{{
-					Role: "user",
-					Parts: []*genai.Part{{Text: fmt.Sprintf(
-						"[SYSTEM: Background task completed. Result: %s. Announce this to the user briefly.]",
-						summary,
-					)}},
+					Role:  "user",
+					Parts: []*genai.Part{{Text: msg}},
 				}},
-			}); err != nil {
+			})
+			sessionMu.Unlock()
+			if err != nil {
 				log.Printf("Voice: result notify SendClientContent error: %v", err)
+			}
+		}
+
+		deliverPendingResultNative := func() {
+			select {
+			case notification := <-pendingResultNative:
+				sendResultToSessionNative(notification)
+			default:
+			}
+		}
+
+		// Wire Doer result callback — queue if speaking, deliver if idle.
+		resultNotifyFn := func(summary string) {
+			msg := fmt.Sprintf(
+				"[SYSTEM: Background task completed. Result: %s. Announce this to the user briefly.]",
+				summary,
+			)
+			if !modelSpeakingNative.Load() {
+				sendResultToSessionNative(msg)
+				return
+			}
+			select {
+			case <-pendingResultNative:
+			default:
+			}
+			select {
+			case pendingResultNative <- msg:
+			default:
 			}
 		}
 
@@ -770,6 +843,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				}
 
 				if sc.ModelTurn != nil {
+					modelSpeakingNative.Store(true)
 					for _, part := range sc.ModelTurn.Parts {
 						if part.InlineData != nil && len(part.InlineData.Data) > 0 {
 							if interrupted.Load() {
@@ -796,6 +870,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				}
 				// Flush buffered transcriptions on turn boundary.
 				if sc.TurnComplete || sc.Interrupted {
+					modelSpeakingNative.Store(false)
 					if inputBuf.Len() > 0 {
 						log.Printf("Voice User: %s", strings.TrimSpace(inputBuf.String()))
 						inputBuf.Reset()
@@ -804,6 +879,12 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 						log.Printf("Voice Talker: %s", strings.TrimSpace(outputBuf.String()))
 						outputBuf.Reset()
 					}
+				}
+				// Only deliver pending results on TurnComplete (model finished naturally).
+				// On Interrupted (user spoke), keep the result queued — it'll deliver
+				// after the model responds to the user. User can also check_status().
+				if sc.TurnComplete {
+					deliverPendingResultNative()
 				}
 
 				continue

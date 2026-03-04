@@ -313,7 +313,13 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 			pfn := a.progressFn
 			a.mu.RUnlock()
 			if pfn != nil {
-				pfn(fc.Name, fc.Args)
+				// Shallow copy to avoid mutating fc.Args (race + unexpected keys in tools).
+				argsCopy := make(map[string]any, len(fc.Args)+1)
+				for k, v := range fc.Args {
+					argsCopy[k] = v
+				}
+				argsCopy["_iter"] = fmt.Sprintf("%d/%d", i+1, maxToolIterations)
+				pfn(fc.Name, argsCopy)
 			}
 			result, action := a.registry.Execute(ctx, fc)
 			log.Printf("Navigator: tool=%s args=%v result=%q", fc.Name, fc.Args, result)
@@ -334,7 +340,15 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 			continue
 		}
 
-		return nil, "", fmt.Errorf("unexpected response part type at iteration %d", i)
+		// Model returned parts with no function call and no text (e.g., thinking-only).
+		// Instead of crashing, nudge it to continue.
+		log.Printf("Navigator: no actionable parts at iteration %d, nudging model", i+1)
+		history = append(history, candidate.Content)
+		history = append(history, &genai.Content{
+			Role:  "user",
+			Parts: []*genai.Part{{Text: "Please provide a function call or a text answer."}},
+		})
+		continue
 	}
 
 	return nil, "", fmt.Errorf("tool-use loop exceeded %d iterations without resolution", maxToolIterations)

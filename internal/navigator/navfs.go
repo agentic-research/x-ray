@@ -26,7 +26,7 @@ func (f *NavFS) ListDir(dirPath string) ([]string, error) {
 
 	childIDs, err := f.g.ListChildren(p)
 	if err != nil {
-		return nil, fmt.Errorf("not found: %s", dirPath)
+		return nil, fmt.Errorf("not found: %s. %s", dirPath, f.suggestPaths(p))
 	}
 
 	names := make([]string, 0, len(childIDs))
@@ -50,10 +50,10 @@ func (f *NavFS) ReadFile(filePath string) (string, error) {
 	p := f.resolvePath(filePath)
 	node, err := f.g.GetNode(p)
 	if err != nil {
-		return "", fmt.Errorf("not found: %s", filePath)
+		return "", fmt.Errorf("not found: %s. %s", filePath, f.suggestPaths(p))
 	}
 	if node.Mode.IsDir() {
-		return "", fmt.Errorf("%s is a directory", filePath)
+		return "", fmt.Errorf("%s is a directory. Try: cat %s/children", filePath, filePath)
 	}
 	return string(node.Data), nil
 }
@@ -127,6 +127,31 @@ func (f *NavFS) Act(nodePath, action, payload string) (*graph.ActionResult, erro
 func (f *NavFS) HasContent() bool {
 	children, err := f.g.ListChildren("")
 	return err == nil && len(children) > 0
+}
+
+// suggestPaths returns a hint string with valid sibling paths when a path is not found.
+// For "/browser/main/content/feed/children", it checks if "/browser/main/content" exists
+// and lists its siblings, or if "/browser/main" exists and lists its children.
+func (f *NavFS) suggestPaths(p string) string {
+	// Walk up the path until we find a valid parent.
+	parts := strings.Split(p, "/")
+	for i := len(parts) - 1; i >= 1; i-- {
+		parent := strings.Join(parts[:i], "/")
+		children, err := f.g.ListChildren(parent)
+		if err != nil {
+			continue
+		}
+		var names []string
+		for _, childID := range children {
+			names = append(names, path.Base(childID))
+		}
+		sort.Strings(names)
+		if len(names) > 8 {
+			names = names[:8]
+		}
+		return fmt.Sprintf("Valid paths under /%s: %s", parent, strings.Join(names, ", "))
+	}
+	return ""
 }
 
 func cleanPath(p string) string {

@@ -188,6 +188,22 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 		d.sess.Navigator.SetListTabsFunc(nil)
 	}()
 
+	// Wait for schema to be ready before first Navigator call.
+	// Without this, Navigator sees an empty filesystem on fresh page loads.
+	if !d.sess.GetEngine().HasSchema() {
+		d.updateStep("waiting for page to load")
+		log.Printf("Doer [tab %d]: waiting for schema before starting", d.tabID)
+		select {
+		case <-d.sess.GetSchemaReady():
+			log.Printf("Doer [tab %d]: schema ready, proceeding", d.tabID)
+		case <-time.After(15 * time.Second):
+			log.Printf("Doer [tab %d]: schema wait timed out, proceeding anyway", d.tabID)
+		case <-goalCtx.Done():
+			d.finishGoal(goal.ID, false, "Cancelled while waiting for page.", "cancelled")
+			return
+		}
+	}
+
 	// Multi-step loop: dispatch action, wait for page settle, feed result back.
 	// Always include TaskContext so the Navigator knows the overall goal,
 	// not just the Planner's 1-sentence sub-command ("contextual amnesia" fix).
@@ -224,8 +240,25 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 			return
 		}
 
-		// Text response — the navigator answered rather than acted. Done.
+		// Text response — the navigator answered rather than acted.
+		// Validate: reject empty, apologetic, or error responses and retry.
+		// But allow explicit "not found" conclusions — the navigator searched and
+		// genuinely determined the information doesn't exist.
 		if textResponse != "" {
+			trimmed := strings.TrimSpace(textResponse)
+			isWeak := strings.HasPrefix(trimmed, "I couldn't") ||
+				strings.HasPrefix(trimmed, "I could not") ||
+				strings.HasPrefix(trimmed, "Error:") ||
+				strings.HasPrefix(trimmed, "I was unable") ||
+				len(trimmed) < 5
+			isDefinitive := strings.Contains(trimmed, "DONE:") ||
+				strings.Contains(trimmed, "does not exist") ||
+				strings.Contains(trimmed, "not present on")
+			if isWeak && !isDefinitive && step < maxGoalSteps-1 {
+				log.Printf("Doer [tab %d]: Navigator returned weak response %q, retrying", d.tabID, trimmed)
+				enrichedIntent = "Previous attempt failed with: " + trimmed + "\nTry a different approach: " + goal.Text + "\nIf you are certain the information does not exist on this page, say so clearly."
+				continue
+			}
 			d.finishGoal(goal.ID, true, textResponse, "")
 			return
 		}
@@ -457,10 +490,15 @@ func (d *Doer) wireNavigatorCallbacks() {
 	})
 	d.sess.Navigator.SetProgressFunc(func(toolName string, args map[string]any) {
 		p, _ := args["path"].(string)
+		iter, _ := args["_iter"].(string)
+		prefix := toolName
+		if iter != "" {
+			prefix = fmt.Sprintf("[%s] %s", iter, toolName)
+		}
 		if p != "" {
-			d.updateStep(fmt.Sprintf("%s %s", toolName, p))
+			d.updateStep(fmt.Sprintf("%s %s", prefix, p))
 		} else {
-			d.updateStep(toolName)
+			d.updateStep(prefix)
 		}
 	})
 	d.sess.Navigator.SetListTabsFunc(func(ltCtx context.Context) ([]navigator.TabInfo, error) {
