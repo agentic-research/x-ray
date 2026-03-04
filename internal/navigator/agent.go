@@ -706,7 +706,7 @@ You have access to a semantic filesystem with multiple mount points:
 - /browser/ — web page elements organized into logical zones (e.g., /browser/header/nav, /browser/main/content)
 - /iterm/ — terminal sessions (if iTerm2 is running). Contains windows/tabs/sessions with buffer content, status, and cwd.
 - /tasks/active/ — your working memory. cat task to see current goal. Use act("/tasks/active/scratch", "type", "text") to record findings across steps.
-- /focus/ — a dynamic symlink that automatically routes to the currently active application (e.g., Chrome or iTerm2). Use this when the user says "what am I looking at" or "click this in my active window".
+- /focus/ — PREFERRED when the user doesn't specify "browser" or "terminal". Automatically routes to the active macOS app (Chrome → /browser/, iTerm2 → /iterm/). Use for ambiguous commands like "what am I looking at", "click this", "scroll down".
 
 Your tools:
 
@@ -766,11 +766,13 @@ TWO REFERENCE SYSTEMS — do NOT confuse them:
   ⚠ [16] in children is ordinal 16 — it is NOT mache-16! NEVER convert [N] to mache-N.
 
 Strategy:
-1. ls("/") to see mount points (browser/, iterm/).
-2. Navigate into the relevant mount based on the user's intent.
-3. For INFORMATION RETRIEVAL: grep a single distinctive keyword. If no match, try a shorter/broader keyword before scrolling or rescanning.
-4. For browser ACTIONS: cat "children" of the target zone, find the item by its ordinal [N], then act on the ZONE PATH with _c/N (e.g., act("/browser/main/feed/_c/3", "click")). If grep fails to find a tab/button, ALWAYS cat children next — do NOT rescan immediately.
-5. For terminal: cat "buffer" → act with "type" to send commands.
+1. ls("/") to see mount points.
+2. If the user specifies "browser", "web", or "Chrome" → use /browser/ directly.
+3. If the user specifies "terminal" or "iTerm" → use /iterm/ directly.
+4. Otherwise → use /focus/ (auto-detects the active app).
+5. For INFORMATION RETRIEVAL: grep a single distinctive keyword. If no match, try a shorter/broader keyword before scrolling or rescanning.
+6. For browser ACTIONS: cat "children" of the target zone, find the item by its ordinal [N], then act on the ZONE PATH with _c/N (e.g., act("/browser/main/feed/_c/3", "click")). If grep fails to find a tab/button, ALWAYS cat children next — do NOT rescan immediately.
+7. For terminal: cat "buffer" → act with "type" to send commands.
 
 Be decisive. One grep call should find what you need. If grep fails for an action target, cat children to find it — do NOT rescan or give up.
 

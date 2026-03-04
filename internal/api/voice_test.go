@@ -3,8 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"sync/atomic"
 	"testing"
+
+	"github.com/agentic-research/mache/graph"
+	"google.golang.org/genai"
 )
 
 func TestVoiceMessageSerialization(t *testing.T) {
@@ -247,6 +251,140 @@ func TestLiveReconnectState_ResetsOnSuccess(t *testing.T) {
 	}
 	if rs.ResumeHandle != "handle-abc" {
 		t.Fatal("ResumeHandle should be preserved on success reset")
+	}
+}
+
+// mockTermBridge records Act calls for terminal_action tests.
+type mockTermBridge struct {
+	graph.Graph // embed to satisfy interface (other methods panic if called)
+	actCalls    []mockActCall
+}
+
+type mockActCall struct {
+	ID, Action, Payload string
+}
+
+func (m *mockTermBridge) Act(id, action, payload string) (*graph.ActionResult, error) {
+	m.actCalls = append(m.actCalls, mockActCall{id, action, payload})
+	return &graph.ActionResult{Action: action}, nil
+}
+
+func TestExecuteTerminalAction(t *testing.T) {
+	tests := []struct {
+		name       string
+		action     string
+		text       string
+		wantAct    mockActCall
+		wantSubstr string // substring expected in result
+	}{
+		{
+			name:       "new_window",
+			action:     "new_window",
+			wantAct:    mockActCall{"", "new_window", ""},
+			wantSubstr: "new terminal window",
+		},
+		{
+			name:       "new_tab",
+			action:     "new_tab",
+			wantAct:    mockActCall{"", "new_tab", ""},
+			wantSubstr: "new tab",
+		},
+		{
+			name:       "type text",
+			action:     "type",
+			text:       "hello world\n",
+			wantAct:    mockActCall{"active_session", "type", "hello world\n"},
+			wantSubstr: "Typed",
+		},
+		{
+			name:       "send ctrl-c",
+			action:     "enter",
+			text:       "ctrl-c",
+			wantAct:    mockActCall{"active_session", "enter", "ctrl-c"},
+			wantSubstr: "Sent",
+		},
+		{
+			name:       "focus",
+			action:     "focus",
+			wantAct:    mockActCall{"active_session", "focus", ""},
+			wantSubstr: "Focused",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bridge := &mockTermBridge{}
+			h := newTestHandler()
+			h.termBridge = bridge
+
+			fc := &genai.FunctionCall{
+				Name: "terminal_action",
+				Args: map[string]any{"action": tt.action},
+			}
+			if tt.text != "" {
+				fc.Args["text"] = tt.text
+			}
+
+			result := h.executeTerminalAction(fc)
+
+			if len(bridge.actCalls) != 1 {
+				t.Fatalf("expected 1 Act call, got %d", len(bridge.actCalls))
+			}
+			got := bridge.actCalls[0]
+			if got != tt.wantAct {
+				t.Errorf("Act call = %+v, want %+v", got, tt.wantAct)
+			}
+			if !strings.Contains(strings.ToLower(result), strings.ToLower(tt.wantSubstr)) {
+				t.Errorf("result %q missing substring %q", result, tt.wantSubstr)
+			}
+		})
+	}
+}
+
+func TestExecuteTerminalActionNoBridge(t *testing.T) {
+	h := newTestHandler()
+	// h.termBridge is nil
+
+	fc := &genai.FunctionCall{
+		Name: "terminal_action",
+		Args: map[string]any{"action": "new_window"},
+	}
+	result := h.executeTerminalAction(fc)
+	if !strings.Contains(result, "No terminal") {
+		t.Errorf("expected 'No terminal' error, got %q", result)
+	}
+}
+
+func TestExecuteTerminalActionUnknown(t *testing.T) {
+	bridge := &mockTermBridge{}
+	h := newTestHandler()
+	h.termBridge = bridge
+
+	fc := &genai.FunctionCall{
+		Name: "terminal_action",
+		Args: map[string]any{"action": "delete_everything"},
+	}
+	result := h.executeTerminalAction(fc)
+	if !strings.Contains(result, "Unknown") {
+		t.Errorf("expected 'Unknown' error, got %q", result)
+	}
+	if len(bridge.actCalls) != 0 {
+		t.Error("should not call Act for unknown action")
+	}
+}
+
+func TestTalkerToolDefinitionsIncludesTerminalAction(t *testing.T) {
+	tools := talkerToolDefinitions()
+	found := false
+	for _, tool := range tools {
+		for _, fd := range tool.FunctionDeclarations {
+			if fd.Name == "terminal_action" {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Error("expected terminal_action in talkerToolDefinitions")
 	}
 }
 

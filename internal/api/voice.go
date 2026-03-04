@@ -121,6 +121,18 @@ func talkerToolDefinitions() []*genai.Tool {
 					Required: []string{"url"},
 				},
 			},
+			{
+				Name:        "terminal_action",
+				Description: "Execute a simple terminal command INSTANTLY (bypasses the background queue). Use for: opening windows/tabs, typing short commands, sending special keys. For complex multi-step terminal tasks that need filesystem navigation, use issue_command instead.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"action": {Type: genai.TypeString, Description: "One of: new_window, new_tab, type, enter, focus"},
+						"text":   {Type: genai.TypeString, Description: "For 'type': the text to send (include \\n for Enter). For 'enter': special key name (e.g. ctrl-c, ctrl-d)."},
+					},
+					Required: []string{"action"},
+				},
+			},
 		},
 	}}
 }
@@ -138,10 +150,58 @@ func (h *Handler) executeOpenURL(fc *genai.FunctionCall) string {
 	return fmt.Sprintf("Opening %s in a new tab. The page will load in a few seconds.", url)
 }
 
+// executeTerminalAction handles the terminal_action tool — direct bridge calls
+// that bypass the Doer queue entirely for instant terminal operations.
+func (h *Handler) executeTerminalAction(fc *genai.FunctionCall) string {
+	if h.termBridge == nil {
+		return "No terminal available. iTerm2 is not connected."
+	}
+	action, _ := fc.Args["action"].(string)
+	text, _ := fc.Args["text"].(string)
+
+	switch action {
+	case "new_window":
+		_, err := h.termBridge.Act("", "new_window", "")
+		if err != nil {
+			return fmt.Sprintf("Error opening window: %v", err)
+		}
+		return "Opened a new terminal window. It is now the active session."
+	case "new_tab":
+		_, err := h.termBridge.Act("", "new_tab", "")
+		if err != nil {
+			return fmt.Sprintf("Error opening tab: %v", err)
+		}
+		return "Opened a new tab. It is now the active session."
+	case "type":
+		_, err := h.termBridge.Act("active_session", "type", text)
+		if err != nil {
+			return fmt.Sprintf("Error typing: %v", err)
+		}
+		return fmt.Sprintf("Typed %q in the active terminal.", text)
+	case "enter":
+		_, err := h.termBridge.Act("active_session", "enter", text)
+		if err != nil {
+			return fmt.Sprintf("Error sending key: %v", err)
+		}
+		return fmt.Sprintf("Sent %s to the active terminal.", text)
+	case "focus":
+		_, err := h.termBridge.Act("active_session", "focus", "")
+		if err != nil {
+			return fmt.Sprintf("Error focusing: %v", err)
+		}
+		return "Focused the active terminal window."
+	default:
+		return fmt.Sprintf("Unknown terminal action: %s", action)
+	}
+}
+
 // executeTalkerTool dispatches a Talker tool call. All tools return instantly.
 func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 	if fc.Name == "open_url" {
 		return h.executeOpenURL(fc)
+	}
+	if fc.Name == "terminal_action" {
+		return h.executeTerminalAction(fc)
 	}
 	if doer == nil {
 		return "No active browser tab or terminal session. Use open_url to open a website first."
@@ -200,6 +260,9 @@ YOUR TOOLS:
 - check_status(): Check what the navigator is currently doing. Returns goal, current step, and result if finished.
 - cancel_task(): Cancel the current background task.
 - open_url(url): Open a URL in a NEW browser tab. Use when no tab exists or user explicitly says "open [website]".
+- terminal_action(action, text?): Execute a simple terminal command INSTANTLY — no background queue.
+  Actions: "new_window" (open terminal), "new_tab", "type" (send text, include \n for Enter), "enter" (special keys like ctrl-c), "focus" (bring terminal to front).
+  Use this for quick terminal operations. For complex multi-step terminal tasks (e.g., "find the process and kill it"), use issue_command instead.
 
 BEHAVIOR:
 1. When the user asks you to do something OR asks a question about their environment (browser or terminal), call issue_command() IMMEDIATELY without speaking first. Do NOT say anything before the tool call — just call it silently.

@@ -545,6 +545,47 @@ func TestDoerMultiStepClickNoNav(t *testing.T) {
 	}
 }
 
+func TestDoerTargetedRescanOnDOMMutation(t *testing.T) {
+	// When a click's action path contains /_c/ (zone path), the DOM mutation
+	// branch should call SetRescanPath with the zone, enabling targeted rescan
+	// instead of full-page rescan.
+	mock := &mockIntentHandler{
+		responses: []mockResponse{
+			{action: &navigator.ActionResult{Action: "click", MacheID: "mache-42", Path: "/main/feed/_c/5"}},
+			{textResp: "Item expanded."},
+		},
+	}
+	_, sess, doer := newDoerTestHarness(mock)
+	sess.SignalSchemaReady()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-targeted", Text: "expand the fifth item"})
+
+	// Simulate: DOM mutation fires (in-page change near the clicked element),
+	// then rescan completes.
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		sess.DOMMutatedCh <- struct{}{}
+		time.Sleep(100 * time.Millisecond)
+		sess.SignalSchemaReady()
+	}()
+
+	result := waitForDone(t, doer, 5*time.Second)
+	if !result.Success {
+		t.Errorf("expected success, got error: %s", result.Error)
+	}
+
+	// Verify SetRescanPath was called with the zone path.
+	// In production, handleDOMSnapshot consumes it; in tests, no consumer runs.
+	rescanPath := sess.ConsumeRescanPath()
+	if rescanPath != "/main/feed" {
+		t.Errorf("expected rescan path /main/feed, got %q", rescanPath)
+	}
+}
+
 func TestDoerMultiStepClickNoNavFallbackTimeout(t *testing.T) {
 	// Verify the 2s fallback still works when no DOMMutatedCh signal arrives.
 	mock := &mockIntentHandler{

@@ -298,9 +298,15 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 				// Same-tab navigation (URL change → auto-snapshot) — continue loop.
 			case <-d.sess.DOMMutatedCh:
 				// In-page DOM mutation detected via MutationObserver.
-				// Trigger rescan for fresh VFS.
+				// Trigger targeted rescan if the action path identifies a zone.
 				d.sess.ResetSchema()
-				d.handler.sendRescan(d.tabID, "")
+				zonePath, _ := parseActionPath(action.Path)
+				if zonePath != "" && action.MacheID != "" {
+					d.sess.SetRescanPath(zonePath)
+					d.handler.sendRescan(d.tabID, action.MacheID)
+				} else {
+					d.handler.sendRescan(d.tabID, "")
+				}
 				select {
 				case <-d.sess.GetSchemaReady():
 				case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
