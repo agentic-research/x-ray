@@ -61,6 +61,10 @@ func ExtractFusedFeatures(img image.Image, elements []element, gridSize int) []C
 	imgW := bounds.Max.X - bounds.Min.X
 	imgH := bounds.Max.Y - bounds.Min.Y
 
+	if gridSize < 1 {
+		gridSize = 1
+	}
+
 	cellW := imgW / gridSize
 	cellH := imgH / gridSize
 

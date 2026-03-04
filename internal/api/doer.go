@@ -278,7 +278,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 		activeTab := d.handler.activeVoiceTab
 		d.handler.mu.Unlock()
 
-		if activeTab != 0 && activeTab != d.tabID {
+		if d.tabID == 0 && activeTab != 0 {
 			log.Printf("Doer [tab %d]: tab promoted to %d, rebinding", d.tabID, activeTab)
 			d.tabID = activeTab
 			d.sess = d.handler.getSession(activeTab)

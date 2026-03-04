@@ -1506,16 +1506,16 @@ func inferSubcategory(z zone, elements []element, lt layoutThresholds) string {
 	if hasInput {
 		return "search"
 	}
-	if z.centerY < lt.headerMaxY && tagCounts["a"] > len(z.elems)/2 {
+	if z.centerY < lt.headerMaxY && tagCounts["a"]*2 > len(z.elems) {
 		return "nav"
 	}
 	if z.isList {
 		return "feed"
 	}
-	if colorCounts["ORANGE"]+colorCounts["YELLOW"] > len(z.elems)/3 {
+	if (colorCounts["ORANGE"]+colorCounts["YELLOW"])*3 > len(z.elems) {
 		return "actions"
 	}
-	if tagCounts["a"] > len(z.elems)*2/3 {
+	if tagCounts["a"]*3 > len(z.elems)*2 {
 		return "links"
 	}
 	return "content"

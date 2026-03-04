@@ -190,17 +190,20 @@ func elementVisualTypes(elements []element, cellProjections map[string]string) m
 	}
 
 	// Determine grid dimensions from the projection keys
-	maxRow := 0
+	maxDim := 0
 	for key := range cellProjections {
 		var r, c int
 		if _, err := fmt.Sscanf(key, "%d,%d", &r, &c); err != nil {
 			continue
 		}
-		if r > maxRow {
-			maxRow = r
+		if r > maxDim {
+			maxDim = r
+		}
+		if c > maxDim {
+			maxDim = c
 		}
 	}
-	gridSize := maxRow + 1
+	gridSize := maxDim + 1
 	if gridSize == 0 {
 		return result
 	}
