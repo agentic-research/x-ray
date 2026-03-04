@@ -362,7 +362,8 @@ func TestDetectListZoneByPath(t *testing.T) {
 func TestInferCategory(t *testing.T) {
 	lt := layoutThresholds{headerMaxY: 0.15, footerMinY: 0.85, sidebarW: 0.2}
 
-	tests := []struct {
+	// Spatial heuristic tests (rootIdx=-1 means no DOM tag, pure position).
+	spatialTests := []struct {
 		y, x float64
 		want string
 	}{
@@ -371,16 +372,41 @@ func TestInferCategory(t *testing.T) {
 		{0.50, 0.1, "sidebar"},
 		{0.50, 0.9, "sidebar"},
 		{0.50, 0.5, "main"},
-		// Full-height sidebar: centerY in footer zone but centerX in sidebar zone.
-		// Sidebar should win (claude.ai conversation list bug).
 		{0.90, 0.1, "sidebar"},
 		{0.90, 0.95, "sidebar"},
 	}
-	for _, tt := range tests {
-		z := zone{centerY: tt.y, centerX: tt.x}
-		got := inferCategory(z, lt)
+	for _, tt := range spatialTests {
+		z := zone{centerY: tt.y, centerX: tt.x, rootIdx: -1}
+		got := inferCategory(z, nil, lt)
 		if got != tt.want {
 			t.Errorf("inferCategory(y=%f, x=%f) = %q, want %q", tt.y, tt.x, got, tt.want)
+		}
+	}
+
+	// DOM tag tests: structural tag overrides position.
+	elements := []element{
+		{tag: "nav"},
+		{tag: "aside"},
+		{tag: "footer"},
+		{tag: "main"},
+		{tag: "div"}, // non-structural, falls back to spatial
+	}
+	tagTests := []struct {
+		rootIdx int
+		y, x    float64
+		want    string
+	}{
+		{0, 0.5, 0.5, "sidebar"}, // <nav> at center → sidebar (not main)
+		{1, 0.5, 0.5, "sidebar"}, // <aside> at center → sidebar
+		{2, 0.1, 0.5, "footer"},  // <footer> at top → still footer
+		{3, 0.9, 0.1, "main"},    // <main> in sidebar position → still main
+		{4, 0.5, 0.5, "main"},    // <div> at center → spatial fallback → main
+	}
+	for _, tt := range tagTests {
+		z := zone{centerY: tt.y, centerX: tt.x, rootIdx: tt.rootIdx}
+		got := inferCategory(z, elements, lt)
+		if got != tt.want {
+			t.Errorf("inferCategory(rootIdx=%d, tag=%s) = %q, want %q", tt.rootIdx, elements[tt.rootIdx].tag, got, tt.want)
 		}
 	}
 }

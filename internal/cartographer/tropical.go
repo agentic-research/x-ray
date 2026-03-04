@@ -1395,7 +1395,7 @@ func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropic
 			}
 		}
 
-		cat := inferCategory(z, lt)
+		cat := inferCategory(z, elements, lt)
 		subcat := inferSubcategory(z, elements, lt)
 		vpath := "/" + cat + "/" + subcat
 		if usedPaths[vpath] {
@@ -1446,10 +1446,24 @@ func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropic
 	return mounts
 }
 
-func inferCategory(z zone, lt layoutThresholds) string {
-	// Sidebar check BEFORE footer: a narrow strip on the side is a stronger
-	// signal than vertical position. Full-height sidebars (e.g., claude.ai
-	// conversation list) have centerY > footerMinY and were misclassified.
+func inferCategory(z zone, elements []element, lt layoutThresholds) string {
+	// Prefer semantic signal from the zone's structural ancestor tag.
+	if z.rootIdx >= 0 && z.rootIdx < len(elements) {
+		switch elements[z.rootIdx].tag {
+		case "nav":
+			return "sidebar"
+		case "aside":
+			return "sidebar"
+		case "header":
+			return "header"
+		case "footer":
+			return "footer"
+		case "main", "article":
+			return "main"
+		}
+	}
+	// Fall back to spatial heuristics.
+	// Sidebar before footer: a narrow strip is a stronger signal than Y position.
 	if z.centerX < lt.sidebarW || z.centerX > 1-lt.sidebarW {
 		return "sidebar"
 	}
@@ -1497,7 +1511,7 @@ func inferSubcategory(z zone, elements []element, lt layoutThresholds) string {
 }
 
 func inferDescription(z zone, elements []element, lt layoutThresholds) string {
-	cat := inferCategory(z, lt)
+	cat := inferCategory(z, elements, lt)
 	subcat := inferSubcategory(z, elements, lt)
 
 	n := len(z.elems)
