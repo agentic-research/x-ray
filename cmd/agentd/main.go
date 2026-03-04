@@ -124,6 +124,13 @@ func main() {
 	handler.CDPTargetWidth = float64(cfg.Cartographer.TargetWidth)
 	handler.CDPMaxHeight = float64(cfg.Cartographer.MaxHeight)
 	handler.EnableNFSMount = cfg.EnableNFSMount
+	if cfg.EnableNFSMount {
+		if err := handler.StartNFS(); err != nil {
+			log.Printf("NFS mount failed (non-fatal): %v", err)
+		} else {
+			defer handler.StopNFS()
+		}
+	}
 
 	handler.SetOpenBrowserFunc(func(url string) {
 		_ = exec.Command("open", "-a", "Google Chrome", url).Start()

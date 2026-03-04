@@ -46,12 +46,15 @@ type Handler struct {
 	conn           *websocket.Conn
 	pending        []pendingAction
 	sessions       map[int]*TabSession
-	schemas        *SchemaCache     // domain+path → schema JSON
-	activeVoiceTab int              // tab ID for native voice mode (set by TAB_ACTIVATED)
-	openBrowserFn  func(url string) // fallback when no WS connection; nil = no-op (tests)
-	termBridge     graph.Graph      // global iTerm2 bridge (nil if iTerm not available)
-	planner        *Planner         // Planner for /agent/task (non-voice Talker)
-	cdpProxy       *cdp.Proxy       // CDP proxy for Dumb Pipe architecture
+	schemas        *SchemaCache          // domain+path → schema JSON
+	activeVoiceTab int                   // tab ID for native voice mode (set by TAB_ACTIVATED)
+	openBrowserFn  func(url string)      // fallback when no WS connection; nil = no-op (tests)
+	termBridge     graph.Graph           // global iTerm2 bridge (nil if iTerm not available)
+	planner        *Planner              // Planner for /agent/task (non-voice Talker)
+	cdpProxy       *cdp.Proxy            // CDP proxy for Dumb Pipe architecture
+	nfsRoot        *graph.CompositeGraph // top-level NFS graph: tab-{id} → per-tab CompositeGraph
+	nfsServer      *mount.Server         // single NFS server (nil if disabled)
+	nfsMountPath   string                // e.g. "/tmp/xray-mache/"
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client, liveClient *genai.Client, navModel, liveModel, plannerModel, dbPath string) *Handler {
@@ -71,6 +74,37 @@ func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client,
 		h.planner = &Planner{handler: h, client: client, model: plannerModel}
 	}
 	return h
+}
+
+// StartNFS initializes the shared NFS server and mounts it once.
+// Call this after NewHandler if EnableNFSMount is true.
+// Tabs are registered/unregistered as subdirectories dynamically.
+func (h *Handler) StartNFS() error {
+	h.nfsRoot = graph.NewCompositeGraph()
+	h.nfsMountPath = "/tmp/xray-mache"
+	if err := os.MkdirAll(h.nfsMountPath, 0o755); err != nil {
+		return fmt.Errorf("NFS mkdir: %w", err)
+	}
+	srv, err := mount.NFS(h.nfsRoot, h.nfsMountPath)
+	if err != nil {
+		return fmt.Errorf("NFS mount: %w", err)
+	}
+	h.nfsServer = srv
+	log.Printf("NFS: mounted at %s (port %d)", h.nfsMountPath, srv.Port())
+	return nil
+}
+
+// StopNFS unmounts and stops the shared NFS server.
+func (h *Handler) StopNFS() {
+	if h.nfsServer == nil {
+		return
+	}
+	if err := mount.Unmount(h.nfsMountPath); err != nil {
+		log.Printf("NFS: unmount failed: %v", err)
+	}
+	_ = h.nfsServer.Close()
+	_ = os.RemoveAll(h.nfsMountPath)
+	log.Printf("NFS: stopped")
 }
 
 // SetOpenBrowserFunc injects the logic for opening a browser when no extension is connected.
@@ -148,20 +182,11 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		OverlayRemovedCh:  make(chan struct{}, 1),
 		captureSem:        make(chan struct{}, 1),
 	}
-	// Optionally mount the CompositeGraph as a real NFS filesystem.
-	if h.EnableNFSMount {
-		mountPath := fmt.Sprintf("/tmp/xray-mache/tab-%d", tabID)
-		if err := os.MkdirAll(mountPath, 0o755); err != nil {
-			log.Printf("Session: NFS mkdir failed (tab %d): %v", tabID, err)
-		} else {
-			srv, err := mount.NFS(composite, mountPath)
-			if err != nil {
-				log.Printf("Session: NFS mount failed (non-fatal, tab %d): %v", tabID, err)
-			} else {
-				sess.NFSMount = srv
-				sess.NFSMountPath = mountPath
-				log.Printf("Session: NFS mounted at %s (port %d, tab %d)", mountPath, srv.Port(), tabID)
-			}
+	// Register tab's CompositeGraph in the shared NFS root (if enabled).
+	if h.nfsRoot != nil {
+		tabPrefix := fmt.Sprintf("tab-%d", tabID)
+		if err := h.nfsRoot.Mount(tabPrefix, composite); err != nil {
+			log.Printf("Session: NFS register failed (tab %d): %v", tabID, err)
 		}
 	}
 
@@ -424,13 +449,8 @@ func (h *Handler) handleTabClosed(msg InboundMessage) {
 		if sess.doerCancel != nil {
 			sess.doerCancel() // kills the Doer's Run goroutine (Bug #6 fix)
 		}
-		if sess.NFSMount != nil {
-			if err := mount.Unmount(sess.NFSMountPath); err != nil {
-				log.Printf("Session: NFS unmount failed (tab %d): %v", msg.TabID, err)
-			}
-			_ = sess.NFSMount.Close()
-			_ = os.RemoveAll(sess.NFSMountPath)
-			log.Printf("Session: NFS unmounted %s (tab %d)", sess.NFSMountPath, msg.TabID)
+		if h.nfsRoot != nil {
+			_ = h.nfsRoot.Unmount(fmt.Sprintf("tab-%d", msg.TabID))
 		}
 		delete(h.sessions, msg.TabID)
 	}
