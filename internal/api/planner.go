@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/agentic-research/x-ray/internal/navigator"
 	"google.golang.org/genai"
 )
 
@@ -181,9 +182,19 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 		log.Printf("Planner: injected site primer for %q", siteHint)
 	}
 
+	// Pre-fill page layout so the Planner can skip the ORIENT turn.
+	// Type-assert to *navigator.Agent to access BuildASCIILayout().
+	intentWithLayout := intent
+	if agent, ok := sess.Navigator.(*navigator.Agent); ok {
+		if layout := agent.BuildASCIILayout(); layout != "" {
+			intentWithLayout = intent + "\n\nCurrent page layout (element IDs match _c/ paths):\n" + layout
+			log.Printf("Planner: injected ASCII layout (%d chars) into first turn", len(layout))
+		}
+	}
+
 	// Build initial conversation history.
 	history := []*genai.Content{
-		{Role: "user", Parts: []*genai.Part{{Text: intent}}},
+		{Role: "user", Parts: []*genai.Part{{Text: intentWithLayout}}},
 	}
 
 	config := &genai.GenerateContentConfig{
