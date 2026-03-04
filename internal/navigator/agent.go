@@ -195,6 +195,11 @@ const maxToolIterations = 20
 func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) (*ActionResult, string, error) {
 	log.Printf("Navigator: Handling intent (readOnly=%v): %s", readOnly, intent)
 
+	// Tear down Live session after each intent (GeminiLiveGenerator only).
+	if closer, ok := a.generator.(interface{ Close() }); ok {
+		defer closer.Close()
+	}
+
 	tools := a.registry.Definitions()
 	if readOnly {
 		tools = a.registry.DefinitionsExcluding("act")

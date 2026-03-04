@@ -46,6 +46,7 @@ type NavigatorConfig struct {
 	Model    string `yaml:"model"`
 	Format   string `yaml:"format"`
 	CLI      bool   `yaml:"cli"`
+	Mode     string `yaml:"mode"` // "gemini-live" to use Live API WebSocket; default is REST
 }
 
 // OllamaConfig holds Ollama-specific request defaults shared by
@@ -219,6 +220,9 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv("NAVIGATOR_CLI"); v != "" {
 		cfg.Navigator.CLI = v == "1"
 	}
+	if v := os.Getenv("NAVIGATOR_MODE"); v != "" {
+		cfg.Navigator.Mode = v
+	}
 	if v := os.Getenv("OLLAMA_KEEP_ALIVE"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.Ollama.KeepAlive = n
@@ -305,6 +309,8 @@ cartographer:
   max_height: ` + strconv.Itoa(cfg.Cartographer.MaxHeight) + `
 
 navigator:
+  # Mode: "" (Gemini REST, default), "gemini-live" (Live API WebSocket).
+  mode: ""
   # Local LLM endpoint (Ollama / llama.cpp). Set to enable local navigator.
   endpoint: ""
   # Local LLM model name.

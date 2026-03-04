@@ -77,11 +77,14 @@ func main() {
 		}
 	}
 
-	// Navigator model: default to Gemini, override with navigator.endpoint for local SLM.
+	// Navigator model: default to Gemini REST, override with navigator.mode or endpoint.
 	var navGen navigator.ContentGenerator = &navigator.GeminiGenerator{Client: client}
 	navModel := cfg.Gemini.Model
 
-	if cfg.Navigator.Endpoint != "" {
+	if cfg.Navigator.Mode == "gemini-live" {
+		navGen = &navigator.GeminiLiveGenerator{Client: liveClient, Model: navModel}
+		log.Printf("Navigator: using Gemini Live API (model %s)", navModel)
+	} else if cfg.Navigator.Endpoint != "" {
 		navModel = cfg.Navigator.Model
 		if navModel == "" {
 			navModel = cfg.Gemini.Model
