@@ -13,6 +13,7 @@ Usage:
     uv run scripts/webarena_eval.py results/webarena_latest/ --verified
 """
 
+import ast
 import json
 import os
 import re
@@ -98,7 +99,16 @@ def _normalize_answer(raw: str, task_status: str) -> tuple:
                     return ("not_found_error", None)
                 return ("success", items)
         except (json.JSONDecodeError, ValueError):
-            pass
+            # Handle Python-style single-quote lists: "['Alice', 'Bob']"
+            try:
+                parsed = ast.literal_eval(raw)
+                if isinstance(parsed, list):
+                    items = [str(x).strip() for x in parsed if str(x).strip()]
+                    if not items:
+                        return ("not_found_error", None)
+                    return ("success", items)
+            except (ValueError, SyntaxError):
+                pass
 
     # Markdown bullet list: "* Alice\n* Bob" or "- Alice\n- Bob".
     if re.search(r"^[\*\-]\s+", raw, re.MULTILINE):
@@ -112,8 +122,14 @@ def _normalize_answer(raw: str, task_status: str) -> tuple:
 
     # Comma-separated: "Alice, Bob, Charlie".
     if "," in raw:
-        items = [item.strip() for item in raw.split(",") if item.strip()]
+        items = [item.strip().rstrip(".") for item in raw.split(",") if item.strip()]
         if items:
+            return ("success", items)
+
+    # "and"-separated: "Rachel and T. Gannon."
+    if re.search(r"\band\b", raw):
+        items = [item.strip().rstrip(".") for item in re.split(r"\band\b", raw) if item.strip()]
+        if len(items) > 1:
             return ("success", items)
 
     # Newline-separated (multiple lines without bullets).
