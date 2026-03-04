@@ -41,14 +41,15 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 	myGen := sess.schemaGen
 	sess.schemaMu.Unlock()
 
-	// --- Schema cache lookup (bypassed on rescan) ---
+	// --- Schema cache lookup ---
+	// Rescans (after interactive actions) now try the cache first. If zone IDs
+	// and bounds still match the fresh capture, the page structure didn't change
+	// and we skip the ~2.5s Cartographer rebuild. Only truly stale pages rebuild.
 	key := CacheKey(msg.URL)
 	var schemaJSON string
 	var fromCache bool
 
-	if msg.IsRescan {
-		log.Printf("Schema CACHE BYPASS (rescan) for %q (tab %d)", key, msg.TabID)
-	} else if key != "" {
+	if key != "" {
 		if cached, ok := h.schemas.Get(key); ok {
 			staleZones := mache.ValidateSchemaZones(cached, msg.Summary)
 			forceFull := false
@@ -58,10 +59,6 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 				boundsStale := mache.ValidateSchemaBounds(cached, msg.Summary, 0.10)
 				if len(boundsStale) > 0 {
 					// Bounds-only mismatches trigger FULL regen, not partial.
-					// Partial regen crops screenshots to old bounds, but those regions
-					// may overlap with valid zones. The Cartographer then produces zones
-					// at conflicting paths, causing valid zones (like sidebar/content
-					// with reviews) to be lost during merge.
 					forceFull = true
 					log.Printf("Schema CACHE BOUNDS MISMATCH for %q (tab %d) — %d zones displaced: %v — full regen",
 						key, msg.TabID, len(boundsStale), boundsStale)
@@ -70,16 +67,18 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 			if len(staleZones) == 0 && !forceFull {
 				schemaJSON = cached
 				fromCache = true
-				log.Printf("Schema CACHE HIT for %q (tab %d) — skipping Cartographer", key, msg.TabID)
+				if msg.IsRescan {
+					log.Printf("Schema RESCAN CACHE HIT for %q (tab %d) — structure unchanged", key, msg.TabID)
+				} else {
+					log.Printf("Schema CACHE HIT for %q (tab %d) — skipping Cartographer", key, msg.TabID)
+				}
 				h.sendMessage(conn, OutboundMessage{
 					Type: MsgStatus, TabID: msg.TabID, Message: "Using cached schema", Stage: "cartographer",
 				})
 			} else if !forceFull {
-				// Count total zones in the cached schema.
+				// Some zones stale — try partial regen (works for both rescans and normal loads).
+				// This is the "magnifying glass" path: only rebuild changed zones.
 				totalZones := countCachedZones(cached)
-
-				// Partial regen: only some zones are stale (mache-IDs missing from DOM).
-				// Note: bounds-only mismatches always do full regen (staleZones stays empty above).
 				if totalZones > 0 && len(staleZones) < totalZones {
 					log.Printf("Schema cache PARTIAL STALE for %q (tab %d) — %d/%d zones stale: %v",
 						key, msg.TabID, len(staleZones), totalZones, staleZones)
@@ -96,7 +95,11 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 				}
 			}
 		} else {
-			log.Printf("Schema CACHE MISS for %q (tab %d)", key, msg.TabID)
+			if msg.IsRescan {
+				log.Printf("Schema RESCAN CACHE MISS for %q (tab %d)", key, msg.TabID)
+			} else {
+				log.Printf("Schema CACHE MISS for %q (tab %d)", key, msg.TabID)
+			}
 		}
 	}
 

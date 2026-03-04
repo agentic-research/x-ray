@@ -115,10 +115,11 @@ structure. SKIP step 1 and go directly to step 2 or 3.
 COLLECT: issue_command("read scratchpad", read_only=true). Then DONE: <answer>.
 
 COMPLETENESS — before answering, VERIFY:
-- Does the page have pagination ("Next", "Page 1 of N", ">>")?  If so, check ALL pages.
+- If you already found the specific data requested, you may answer immediately.
+- Only paginate if: (a) you haven't found the target, or (b) the goal explicitly asks for ALL items.
+- When paginating: tell the Doer which pages to visit. NEVER revisit a page already checked.
 - Does a review count (e.g., "12 Reviews") exceed what you've seen? Keep looking.
 - Could results span multiple sections or tabs? Check each one.
-- Accumulate ALL matching items across pages before answering.
 Semi-formal check: "I found N matches. The page says M total. N < M → INCOMPLETE."
 
 TERMINATION:

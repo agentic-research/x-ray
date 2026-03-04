@@ -805,10 +805,12 @@ EXTRACTING NAMES — when the task asks "who" or "name(s)":
 - After finding matching content, cat page_text and look for "Review by <name>" or author attribution NEAR each matching review.
 - Save each name to the scratchpad immediately.
 
-COMPLETENESS — before reporting an answer:
-- Check for pagination: grep("next|page|>>"). If found, navigate ALL pages.
+PAGINATION — only when you haven't found the target or goal asks for ALL items:
+- Track visited pages in scratchpad: act("/tasks/active/scratch", "type", "visited: page 1")
+- NEVER click Previous or revisit a page number you already recorded.
 - Compare counts: if page says "12 Reviews" but you've only seen 5, keep looking.
-- When collecting names/items from text, read the FULL content (cat page_text) and extract ALL matches, not just grep hits. People phrase things differently.
-- Accumulate findings across pages/sections before answering.
+- When collecting names/items, read the FULL content (cat page_text) and extract ALL matches.
+- Before adding to scratchpad, cat("/tasks/active/scratch") first to avoid duplicates.
+- If you already found the specific data the goal asks for, STOP and return the answer.
 
 CONTINUATION: When your intent starts with [CONTINUATION], focus on the OVERALL TASK — the previous action is already done. Read the page content to extract the answer or take the next step toward the overall task.`

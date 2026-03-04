@@ -667,8 +667,9 @@ func buildContinuation(goal, taskContext string, step int, action *navigator.Act
 		"The page has updated. Focus on the OVERALL TASK, not the completed action. "+
 		"If the answer is in the page content, use grep or cat to find it and provide a text answer. "+
 		"If more actions are needed, take the next step.\n\n"+
-		"COMPLETENESS CHECK: Before answering, verify you have ALL the data. "+
-		"Look for pagination (Next/>>), review counts, or page indicators. "+
-		"If the task asks for a list (names, items), confirm no more pages exist before reporting results.",
+		"COMPLETENESS CHECK: If you have found the specific data requested, you may stop and return the answer. "+
+		"Only check pagination if: (a) you haven't found the target yet, or (b) the goal explicitly asks for ALL items. "+
+		"When paginating: track visited pages in scratchpad (e.g. 'visited: page 1, 2'). NEVER click Previous or revisit a page you already checked. "+
+		"Before answering, cat /tasks/active/scratch to collect findings and avoid duplicates.",
 		step+1, goal, action.Action, action.Path, summary, context)
 }
