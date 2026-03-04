@@ -323,10 +323,15 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("new_window failed: %w", err)
 		}
-		// iTerm2 API is async; it takes a moment to physically create the tab and update its layout state.
-		// Wait briefly before forcing sync reconcile so the next `ls` sees the new window.
+		// iTerm2 API is async; wait briefly before reconciling so the new session is visible.
 		time.Sleep(500 * time.Millisecond)
 		_ = b.reconcileSessions(ctx)
+		// Force the new session as active — iTerm may not report focus change yet,
+		// and GetFocusedSession might return the selfSession (blind spot) → active="".
+		b.mu.Lock()
+		b.active = newSession
+		b.mu.Unlock()
+		b.rebuildGraph()
 		return &graph.ActionResult{
 			NodeID:  "iterm:" + newSession,
 			Action:  action,
@@ -341,9 +346,14 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("new_tab failed: %w", err)
 		}
-		// iTerm2 API is async; wait briefly before forcing sync reconcile so the next `ls` sees the new tab.
+		// iTerm2 API is async; wait briefly before reconciling so the new session is visible.
 		time.Sleep(500 * time.Millisecond)
 		_ = b.reconcileSessions(ctx)
+		// Force the new session as active (same blind spot fix as new_window).
+		b.mu.Lock()
+		b.active = newSession
+		b.mu.Unlock()
+		b.rebuildGraph()
 		return &graph.ActionResult{
 			NodeID:  "iterm:" + newSession,
 			Action:  action,

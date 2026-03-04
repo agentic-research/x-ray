@@ -461,7 +461,7 @@ func (t *NewWindowTool) Execute(_ context.Context, _ map[string]any) (string, *A
 	if err != nil {
 		return fmt.Sprintf("Error: %v", err), nil
 	}
-	return "Opened a new terminal window.", nil
+	return "Opened a new terminal window. It is now the active session — use /iterm/active_session to interact with it.", nil
 }
 
 // --- iterm.new_tab ---
@@ -490,5 +490,5 @@ func (t *NewTabTool) Execute(_ context.Context, args map[string]any) (string, *A
 	if err != nil {
 		return fmt.Sprintf("Error: %v", err), nil
 	}
-	return fmt.Sprintf("Opened a new tab in %s.", p), nil
+	return fmt.Sprintf("Opened a new tab in %s. It is now the active session — use /iterm/active_session to interact with it.", p), nil
 }
