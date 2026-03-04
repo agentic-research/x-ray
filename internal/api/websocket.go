@@ -187,6 +187,8 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		tabPrefix := fmt.Sprintf("tab-%d", tabID)
 		if err := h.nfsRoot.Mount(tabPrefix, composite); err != nil {
 			log.Printf("Session: NFS register failed (tab %d): %v", tabID, err)
+		} else {
+			log.Printf("Session: NFS registered %s → %s/tab-%d/", tabPrefix, h.nfsMountPath, tabID)
 		}
 	}
 
