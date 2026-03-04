@@ -95,10 +95,12 @@ func SoftDecodeGolay24(parities [24]byte, penalties [24]float64) [24]byte {
 
 var sqrt8 = math.Sqrt(8.0)
 
-// DecodeLeechTuryn decodes a 24D vector to the nearest Leech lattice point.
-// Uses Construction A: scale by √8, decode both parity families in the
-// scaled integer lattice L, enforce Golay + sum constraints, unscale.
-func DecodeLeechTuryn(x [24]float64) [24]float64 {
+// DecodeLeechConstructionA decodes a 24D vector to the nearest Leech lattice
+// point using the mathematically correct Construction A algorithm.
+// Scale by √8, decode both parity families, enforce Golay + sum constraints.
+// NOTE: produces different lattice points than the legacy decoder. Use for
+// verification and future work; the pipeline currently uses DecodeLeechTuryn.
+func DecodeLeechConstructionA(x [24]float64) [24]float64 {
 	// Scale to integer lattice.
 	var t [24]float64
 	for i := 0; i < 24; i++ {
@@ -235,8 +237,19 @@ func decodeFamily(t [24]float64, even bool) ([24]float64, float64) {
 	return f, distSq
 }
 
-// DecodeIntegerCoset is retained for legacy callers (BW32 pipeline).
-// It uses the old approach: round to nearest integer, Golay-correct ±1.
+// DecodeLeechTuryn decodes via integer + half-integer cosets, picking closest.
+// This is the original decoder used by the pipeline. Not mathematically perfect
+// (see DecodeLeechConstructionA) but zone clustering is calibrated to it.
+func DecodeLeechTuryn(x [24]float64) [24]float64 {
+	candInt := DecodeIntegerCoset(x)
+	candHalf := DecodeHalfCoset(x)
+	if distSq24(x, candHalf) < distSq24(x, candInt) {
+		return candHalf
+	}
+	return candInt
+}
+
+// DecodeIntegerCoset decodes to nearest integer-coset Leech point.
 func DecodeIntegerCoset(x [24]float64) [24]float64 {
 	var u [24]float64
 	var p [24]byte

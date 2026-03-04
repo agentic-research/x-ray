@@ -31,7 +31,7 @@ func TestSoftVsHardDecoder(t *testing.T) {
 	// Current correct decoder (Construction A with scaling + sum constraint)
 	soft := stats{name: "Soft-decision"}
 	for _, v := range vecs {
-		decoded := DecodeLeechTuryn(v.input)
+		decoded := DecodeLeechConstructionA(v.input)
 		dist := math.Sqrt(distSq24(v.input, decoded))
 		soft.totalDist += dist
 		if dist <= LeechCoveringRadius+1e-6 {
@@ -85,7 +85,7 @@ func TestVerifyLeechPoints(t *testing.T) {
 		for j := 0; j < 24; j++ {
 			v[j] = rng.Float64()*20 - 10 // range [-10, 10]
 		}
-		decoded := DecodeLeechTuryn(v)
+		decoded := DecodeLeechConstructionA(v)
 		ok, reason := VerifyLeechPoint(decoded)
 		if !ok {
 			invalid++
@@ -107,8 +107,8 @@ func TestDecodeLeech_Determinism(t *testing.T) {
 	for i := range v {
 		v[i] = float64(i) * 0.37
 	}
-	r1 := DecodeLeechTuryn(v)
-	r2 := DecodeLeechTuryn(v)
+	r1 := DecodeLeechConstructionA(v)
+	r2 := DecodeLeechConstructionA(v)
 	if r1 != r2 {
 		t.Error("Decoder must be deterministic")
 	}
@@ -116,7 +116,7 @@ func TestDecodeLeech_Determinism(t *testing.T) {
 
 func TestDecodeLeech_Zero(t *testing.T) {
 	var v [24]float64
-	decoded := DecodeLeechTuryn(v)
+	decoded := DecodeLeechConstructionA(v)
 	// Zero is in the Leech lattice (even family, all zeros).
 	dist := math.Sqrt(distSq24(v, decoded))
 	if dist > 1e-10 {
