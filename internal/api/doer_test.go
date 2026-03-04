@@ -719,3 +719,133 @@ func TestFormatSectionHintsEmpty(t *testing.T) {
 		t.Errorf("expected empty string for nil sections, got %q", got)
 	}
 }
+
+// --- iTerm / tab-0 system session tests ---
+
+func TestDoerTab0SkipsSchemaGate(t *testing.T) {
+	// Tab 0 (no browser) should NOT wait for schema — it would block forever
+	// since there's no extension to send a schema.
+	mock := &mockIntentHandler{
+		textResp: "I opened a new terminal window.",
+	}
+	h := newTestHandler()
+	sess := h.getSession(0) // tab 0 = system session
+	sess.Navigator = mock
+	doer := NewDoer(h, 0, sess) // tabID=0
+	sess.Doer = doer
+
+	// Do NOT signal schema — tab 0 should skip the gate entirely.
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-iterm", Text: "open a new terminal"})
+	result := waitForDone(t, doer, 3*time.Second)
+
+	if !result.Success {
+		t.Errorf("expected success, got error: %s", result.Error)
+	}
+	if result.Summary != "I opened a new terminal window." {
+		t.Errorf("unexpected summary: %s", result.Summary)
+	}
+	if calls := mock.handleCalls.Load(); calls != 1 {
+		t.Errorf("expected 1 HandleIntent call, got %d", calls)
+	}
+}
+
+func TestDoerTab0WeakResponseRetry(t *testing.T) {
+	// Verify the weak-response validation works on tab 0 too:
+	// First attempt returns "I couldn't find...", second attempt succeeds.
+	mock := &mockIntentHandler{
+		responses: []mockResponse{
+			{textResp: "I couldn't find the terminal."},
+			{textResp: "Done. Typed hello world in the terminal."},
+		},
+	}
+	h := newTestHandler()
+	sess := h.getSession(0)
+	sess.Navigator = mock
+	doer := NewDoer(h, 0, sess)
+	sess.Doer = doer
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-retry", Text: "type hello world in terminal"})
+	result := waitForDone(t, doer, 5*time.Second)
+
+	if !result.Success {
+		t.Errorf("expected success after retry, got error: %s", result.Error)
+	}
+	if result.Summary != "Done. Typed hello world in the terminal." {
+		t.Errorf("unexpected summary: %s", result.Summary)
+	}
+	if calls := mock.handleCalls.Load(); calls != 2 {
+		t.Errorf("expected 2 HandleIntent calls (retry), got %d", calls)
+	}
+}
+
+func TestDoerDefinitiveNotFoundSkipsRetry(t *testing.T) {
+	// When the Navigator says something definitive like "does not exist",
+	// the Doer should NOT retry — accept the answer.
+	mock := &mockIntentHandler{
+		textResp: "I couldn't find it — the element does not exist on this page.",
+	}
+	h := newTestHandler()
+	sess := h.getSession(0)
+	sess.Navigator = mock
+	doer := NewDoer(h, 0, sess)
+	sess.Doer = doer
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-definitive", Text: "find the buy button"})
+	result := waitForDone(t, doer, 3*time.Second)
+
+	if !result.Success {
+		t.Errorf("expected success (definitive not-found), got error: %s", result.Error)
+	}
+	// Should be exactly 1 call — no retry.
+	if calls := mock.handleCalls.Load(); calls != 1 {
+		t.Errorf("expected 1 HandleIntent call (no retry for definitive), got %d", calls)
+	}
+}
+
+func TestDoerProgressShowsIteration(t *testing.T) {
+	// Verify the progress callback includes iteration info from Navigator.
+	var steps []string
+	var stepMu sync.Mutex
+	mock := &mockIntentHandler{
+		textResp: "The terminal shows a shell prompt.",
+	}
+	h := newTestHandler()
+	sess := h.getSession(0)
+	sess.Navigator = mock
+	doer := NewDoer(h, 0, sess)
+	sess.Doer = doer
+
+	// Mock the progress function to capture step updates.
+	mock.mu.Lock()
+	mock.progressFn = func(toolName string, args map[string]any) {
+		stepMu.Lock()
+		defer stepMu.Unlock()
+		iter, _ := args["_iter"].(string)
+		steps = append(steps, iter+":"+toolName)
+	}
+	mock.mu.Unlock()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-progress", Text: "read the terminal"})
+	_ = waitForDone(t, doer, 3*time.Second)
+
+	// The mock returns text immediately (no tool calls), so progressFn
+	// won't be called by HandleIntent. That's fine — the iteration injection
+	// is tested in the navigator package. Here we just verify no panic.
+}

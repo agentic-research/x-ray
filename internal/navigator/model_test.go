@@ -506,6 +506,169 @@ func TestGemmaGeneratorMultiTurnHistory(t *testing.T) {
 	}
 }
 
+// --- JSON function call parsing tests ---
+// These test the struct-based JSON parsing that replaced the brittle regex approach.
+
+func TestGemmaGeneratorParsesNoParamFunctionCall(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
+		content := `{"name":"iterm.new_window"}`
+		resp := map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{"role": "assistant", "content": content},
+			}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	gen := &GemmaGenerator{Endpoint: server.URL, Model: "test", HTTPClient: server.Client()}
+	resp, err := gen.GenerateContent(context.Background(), "", []*genai.Content{
+		{Role: "user", Parts: []*genai.Part{{Text: "open new terminal"}}},
+	}, &genai.GenerateContentConfig{Tools: testToolDefs()})
+	if err != nil {
+		t.Fatalf("GenerateContent: %v", err)
+	}
+	part := resp.Candidates[0].Content.Parts[0]
+	if part.FunctionCall == nil {
+		t.Fatalf("expected FunctionCall, got text: %q", part.Text)
+	}
+	if part.FunctionCall.Name != "iterm.new_window" {
+		t.Errorf("expected iterm.new_window, got %q", part.FunctionCall.Name)
+	}
+}
+
+func TestGemmaGeneratorParsesEmptyParamsFunctionCall(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
+		content := `{"name": "iterm.new_window", "arguments": {}}`
+		resp := map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{"role": "assistant", "content": content},
+			}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	gen := &GemmaGenerator{Endpoint: server.URL, Model: "test", HTTPClient: server.Client()}
+	resp, err := gen.GenerateContent(context.Background(), "", []*genai.Content{
+		{Role: "user", Parts: []*genai.Part{{Text: "new window"}}},
+	}, &genai.GenerateContentConfig{Tools: testToolDefs()})
+	if err != nil {
+		t.Fatalf("GenerateContent: %v", err)
+	}
+	part := resp.Candidates[0].Content.Parts[0]
+	if part.FunctionCall == nil {
+		t.Fatalf("expected FunctionCall, got text: %q", part.Text)
+	}
+	if part.FunctionCall.Name != "iterm.new_window" {
+		t.Errorf("expected iterm.new_window, got %q", part.FunctionCall.Name)
+	}
+}
+
+func TestGemmaGeneratorParsesNestedJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
+		// Nested JSON that would break the old [^}]* regex
+		content := `{"name": "act", "parameters": {"action": "type", "path": "/iterm/active", "payload": "{\"key\": \"value\"}"}}`
+		resp := map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{"role": "assistant", "content": content},
+			}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	gen := &GemmaGenerator{Endpoint: server.URL, Model: "test", HTTPClient: server.Client()}
+	resp, err := gen.GenerateContent(context.Background(), "", []*genai.Content{
+		{Role: "user", Parts: []*genai.Part{{Text: "type json"}}},
+	}, &genai.GenerateContentConfig{Tools: testToolDefs()})
+	if err != nil {
+		t.Fatalf("GenerateContent: %v", err)
+	}
+	part := resp.Candidates[0].Content.Parts[0]
+	if part.FunctionCall == nil {
+		t.Fatalf("expected FunctionCall, got text: %q", part.Text)
+	}
+	if part.FunctionCall.Name != "act" {
+		t.Errorf("expected act, got %q", part.FunctionCall.Name)
+	}
+	if part.FunctionCall.Args["action"] != "type" {
+		t.Errorf("expected action=type, got %v", part.FunctionCall.Args["action"])
+	}
+}
+
+func TestGemmaGeneratorParsesQwenArguments(t *testing.T) {
+	// Qwen uses "arguments" instead of "parameters"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
+		content := `{"name": "cat", "arguments": {"path": "/iterm/active_session/buffer"}}`
+		resp := map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{"role": "assistant", "content": content},
+			}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	gen := &GemmaGenerator{Endpoint: server.URL, Model: "test", HTTPClient: server.Client()}
+	resp, err := gen.GenerateContent(context.Background(), "", []*genai.Content{
+		{Role: "user", Parts: []*genai.Part{{Text: "read buffer"}}},
+	}, &genai.GenerateContentConfig{Tools: testToolDefs()})
+	if err != nil {
+		t.Fatalf("GenerateContent: %v", err)
+	}
+	part := resp.Candidates[0].Content.Parts[0]
+	if part.FunctionCall == nil {
+		t.Fatalf("expected FunctionCall, got text: %q", part.Text)
+	}
+	if part.FunctionCall.Name != "cat" {
+		t.Errorf("expected cat, got %q", part.FunctionCall.Name)
+	}
+	path, _ := part.FunctionCall.Args["path"].(string)
+	if path != "/iterm/active_session/buffer" {
+		t.Errorf("expected /iterm/active_session/buffer, got %q", path)
+	}
+}
+
+func TestGemmaGeneratorParsesMarkdownWrappedJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
+		// Model wraps JSON in markdown code block
+		content := "```json\n{\"name\": \"ls\", \"parameters\": {\"path\": \"/iterm\"}}\n```"
+		resp := map[string]any{
+			"choices": []map[string]any{{
+				"message": map[string]any{"role": "assistant", "content": content},
+			}},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	gen := &GemmaGenerator{Endpoint: server.URL, Model: "test", HTTPClient: server.Client()}
+	resp, err := gen.GenerateContent(context.Background(), "", []*genai.Content{
+		{Role: "user", Parts: []*genai.Part{{Text: "list iterm"}}},
+	}, &genai.GenerateContentConfig{Tools: testToolDefs()})
+	if err != nil {
+		t.Fatalf("GenerateContent: %v", err)
+	}
+	part := resp.Candidates[0].Content.Parts[0]
+	if part.FunctionCall == nil {
+		t.Fatalf("expected FunctionCall, got text: %q", part.Text)
+	}
+	if part.FunctionCall.Name != "ls" {
+		t.Errorf("expected ls, got %q", part.FunctionCall.Name)
+	}
+}
+
 // --- Live Ollama integration tests ---
 // Skipped unless OLLAMA_TEST=1 is set. Requires `ollama serve` running locally.
 //

@@ -190,7 +190,9 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 
 	// Wait for schema to be ready before first Navigator call.
 	// Without this, Navigator sees an empty filesystem on fresh page loads.
-	if !d.sess.GetEngine().HasSchema() {
+	// Skip for tab 0 (system session) — there's no browser to wait for.
+	// The Navigator can still use /iterm/ and /tasks/ paths without browser schema.
+	if d.tabID != 0 && !d.sess.GetEngine().HasSchema() {
 		d.updateStep("waiting for page to load")
 		log.Printf("Doer [tab %d]: waiting for schema before starting", d.tabID)
 		select {

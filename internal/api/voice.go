@@ -144,7 +144,7 @@ func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 		return h.executeOpenURL(fc)
 	}
 	if doer == nil {
-		return "No active browser tab. Use open_url to open a website first."
+		return "No active browser tab or terminal session. Use open_url to open a website first."
 	}
 	switch fc.Name {
 	case "check_status":
@@ -392,14 +392,15 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// resolveDoer dynamically resolves the Doer for the active voice tab.
-		// Returns nil if no voice tab is active (open_url can still work).
+		// Falls back to tab 0 ("system" session) when no browser tab is open
+		// but iTerm is available — allows terminal-only voice commands.
 		resolveDoer := func() *Doer {
 			tid := h.getVoiceTabID()
 			if tid == 0 {
 				// Fall back to the original tab ID from the query param.
 				tid = tabID
 			}
-			if tid == 0 {
+			if tid == 0 && h.termBridge == nil {
 				return nil
 			}
 			sess := h.getSession(tid)
@@ -731,15 +732,19 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 		}
 
 		// resolveDoer returns the Doer for the currently active voice tab.
-		// Returns nil if no voice tab is active (tab 0 = no browser tab open).
+		// Falls back to tab 0 ("system" session) when no browser tab is open
+		// but iTerm is available — allows terminal-only voice commands.
 		resolveDoer := func() *Doer {
 			tabID := h.getVoiceTabID()
-			if tabID == 0 {
+			if tabID == 0 && h.termBridge == nil {
 				return nil
 			}
-			sess := h.getVoiceSession()
+			var sess *TabSession
+			if tabID != 0 {
+				sess = h.getVoiceSession()
+			}
 			if sess == nil {
-				return nil
+				sess = h.getSession(tabID) // creates tab-0 system session
 			}
 			doer := h.getOrCreateDoer(tabID, sess)
 			doer.SetResultNotifyFn(resultNotifyFn)

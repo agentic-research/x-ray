@@ -270,9 +270,28 @@ type GemmaGenerator struct {
 	Grammar    string // GBNF grammar for constrained decoding (optional, set per-call)
 }
 
-// gemmaFnCallRe matches JSON function call objects in model output.
-// Accepts both "parameters" (Gemma) and "arguments" (Qwen) keys.
-var gemmaFnCallRe = regexp.MustCompile(`\{\s*"name"\s*:\s*"([\w.]+)"\s*,\s*"(?:parameters|arguments)"\s*:\s*(\{[^}]*\})\s*\}`)
+// jsonBlockRe extracts the outermost {...} block from LLM text output.
+// We use regex only for extraction, then json.Unmarshal for actual parsing.
+var jsonBlockRe = regexp.MustCompile(`\{[\s\S]*\}`)
+
+// llmFunctionCall is the struct for JSON-based function calls from local models.
+// Supports both "parameters" (Gemma) and "arguments" (Qwen) keys.
+type llmFunctionCall struct {
+	Name       string         `json:"name"`
+	Parameters map[string]any `json:"parameters,omitempty"`
+	Arguments  map[string]any `json:"arguments,omitempty"`
+}
+
+// args returns the merged parameters, preferring "arguments" (Qwen) over "parameters" (Gemma).
+func (fc *llmFunctionCall) args() map[string]any {
+	if len(fc.Arguments) > 0 {
+		return fc.Arguments
+	}
+	if len(fc.Parameters) > 0 {
+		return fc.Parameters
+	}
+	return map[string]any{}
+}
 
 // cliCommands is the set of valid CLI command prefixes.
 var cliCommands = map[string]bool{
@@ -512,15 +531,14 @@ func (g *GemmaGenerator) parseResponse(body []byte) (*genai.GenerateContentRespo
 		return functionCallResponse(fc), nil
 	}
 
-	// Fall back to JSON regex (original Gemma format).
-	if match := gemmaFnCallRe.FindStringSubmatch(content); len(match) == 3 {
-		name := match[1]
-		var args map[string]any
-		if err := json.Unmarshal([]byte(match[2]), &args); err != nil {
-			args = map[string]any{}
+	// Fall back to JSON struct unmarshaling — handles all formatting quirks,
+	// empty parameters, nested objects, and both "parameters"/"arguments" keys.
+	if block := jsonBlockRe.FindString(content); block != "" {
+		var fc llmFunctionCall
+		if err := json.Unmarshal([]byte(block), &fc); err == nil && fc.Name != "" {
+			log.Printf("GemmaGenerator: parsed JSON function call %s(%v)", fc.Name, fc.args())
+			return functionCallResponse(&genai.FunctionCall{Name: fc.Name, Args: fc.args()}), nil
 		}
-		log.Printf("GemmaGenerator: parsed JSON function call %s(%v)", name, args)
-		return functionCallResponse(&genai.FunctionCall{Name: name, Args: args}), nil
 	}
 
 	// No function call found — treat as plain text response.
