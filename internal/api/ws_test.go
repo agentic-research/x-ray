@@ -343,7 +343,8 @@ func TestWSSchemaCacheHit(t *testing.T) {
 		}
 	}
 
-	// Second snapshot: same domain+path, different query → cache hit.
+	// Second snapshot: same domain+path, different query → cache MISS
+	// (query params change DOM content, e.g. pagination).
 	sendJSON(t, conn, InboundMessage{
 		Type:    MsgDOMSnapshot,
 		TabID:   2,
@@ -356,9 +357,27 @@ func TestWSSchemaCacheHit(t *testing.T) {
 		}
 	}
 
-	// Cartographer should have been called exactly once.
-	if got := cart.callCount.Load(); got != 1 {
-		t.Errorf("expected 1 Cartographer call, got %d", got)
+	// Different query params = different pages → 2 Cartographer calls.
+	if got := cart.callCount.Load(); got != 2 {
+		t.Errorf("expected 2 Cartographer calls, got %d", got)
+	}
+
+	// Third snapshot: exact same URL as first → cache HIT.
+	sendJSON(t, conn, InboundMessage{
+		Type:    MsgDOMSnapshot,
+		TabID:   1,
+		URL:     "https://news.ycombinator.com/news?p=1",
+		Summary: summary,
+	})
+	for i := 0; i < 5; i++ {
+		if readMessage(t, conn).Type == MsgSchemaReady {
+			break
+		}
+	}
+
+	// Same URL as first → still 2 Cartographer calls (cache hit).
+	if got := cart.callCount.Load(); got != 2 {
+		t.Errorf("expected 2 Cartographer calls after cache hit, got %d", got)
 	}
 }
 

@@ -70,9 +70,9 @@ func main() {
 	agentdURL := envOr("AGENTD_URL", "http://localhost:8080")
 	tasksPath := envOr("WEBARENA_TASKS", "testdata/webarena_tasks.json")
 	subset := envOr("WEBARENA_SUBSET", "hard")
-	timeoutSec, _ := strconv.Atoi(envOr("WEBARENA_TIMEOUT", "120"))
+	timeoutSec, _ := strconv.Atoi(envOr("WEBARENA_TIMEOUT", "300"))
 	if timeoutSec <= 0 {
-		timeoutSec = 120
+		timeoutSec = 300
 	}
 
 	tasks, err := loadTasks(tasksPath, subset)
@@ -237,14 +237,7 @@ func runTask(ctx context.Context, agentdURL string, task WATask, timeout time.Du
 		result.Error = pr.Error
 	}
 	for _, a := range pr.Actions {
-		result.Actions = append(result.Actions, Action{
-			Turn:      a.Turn,
-			Tool:      a.Tool,
-			Args:      a.Args,
-			Result:    a.Result,
-			ReadOnly:  a.ReadOnly,
-			ElapsedMs: a.ElapsedMs,
-		})
+		result.Actions = append(result.Actions, Action(a))
 	}
 	result.ElapsedMs = time.Since(start).Milliseconds()
 	return result

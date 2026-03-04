@@ -15,6 +15,7 @@ Usage:
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -66,6 +67,65 @@ def basic_score(results: list[dict]) -> dict:
     }
 
 
+def _normalize_answer(raw: str, task_status: str) -> tuple:
+    """Normalize an agent answer into (status, retrieved_data) for webarena-verified.
+
+    Handles the many formats the Planner might produce:
+      - "N/A", "[]", "none", ""  → ("not_found_error", None)
+      - '["Alice", "Bob"]'       → ("success", ["Alice", "Bob"])
+      - "* Alice\\n* Bob"         → ("success", ["Alice", "Bob"])
+      - "Alice, Bob, Charlie"    → ("success", ["Alice", "Bob", "Charlie"])
+      - "Alice\\nBob\\nCharlie"   → ("success", ["Alice", "Bob", "Charlie"])
+      - "42" / "some answer"     → ("success", "42")
+    """
+    raw = raw.strip()
+
+    # Non-success task statuses.
+    if task_status.lower() not in ("done", "success", "completed", "failed", ""):
+        return ("error", raw or None)
+
+    # Empty / not-found answers.
+    if raw in ("", "N/A", "n/a", "None", "none", "[]", "[ ]"):
+        return ("not_found_error", None)
+
+    # Try JSON array parse: '["Alice", "Bob"]' or "['Alice', 'Bob']".
+    if raw.startswith("["):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                items = [str(x).strip() for x in parsed if str(x).strip()]
+                if not items:
+                    return ("not_found_error", None)
+                return ("success", items)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    # Markdown bullet list: "* Alice\n* Bob" or "- Alice\n- Bob".
+    if re.search(r"^[\*\-]\s+", raw, re.MULTILINE):
+        items = []
+        for line in raw.split("\n"):
+            line = re.sub(r"^[\*\-]\s+", "", line).strip()
+            if line:
+                items.append(line)
+        if items:
+            return ("success", items)
+
+    # Comma-separated: "Alice, Bob, Charlie".
+    if "," in raw:
+        items = [item.strip() for item in raw.split(",") if item.strip()]
+        if items:
+            return ("success", items)
+
+    # Newline-separated (multiple lines without bullets).
+    if "\n" in raw:
+        items = [line.strip() for line in raw.split("\n") if line.strip()]
+        if len(items) > 1:
+            return ("success", items)
+
+    # Single value — return as string (not wrapped in list).
+    return ("success", raw)
+
+
 def prepare_eval_dir(results: list[dict], eval_dir: Path) -> None:
     """Convert x-ray results into webarena-verified's expected directory structure.
 
@@ -81,21 +141,10 @@ def prepare_eval_dir(results: list[dict], eval_dir: Path) -> None:
 
         # Map x-ray result to webarena-verified agent_response format.
         task_type = r.get("task_type", "RETRIEVE") or "RETRIEVE"
-
-        status = "success"
-        if r.get("summary") == "N/A":
-            status = "not_found_error"
-        elif r.get("status", "").lower() not in ("done", "success", "completed", "failed"):
-            status = "error"
-
-        # Split comma-separated retrieved data into a list for the evaluator.
-        # The agent returns "Alice, Bob, Charlie" but webarena-verified expects
-        # ["alice", "bob", "charlie"] for array-valued RETRIEVE tasks.
         raw_data = r.get("summary", "")
-        if "," in raw_data:
-            retrieved_data = [item.strip() for item in raw_data.split(",") if item.strip()]
-        else:
-            retrieved_data = raw_data
+
+        # Determine status and normalize retrieved_data.
+        status, retrieved_data = _normalize_answer(raw_data, r.get("status", ""))
 
         agent_response = {
             "task_type": task_type,

@@ -109,8 +109,10 @@ func NewSchemaCache(dbPath string) *SchemaCache {
 	return c
 }
 
-// CacheKey extracts "host/path" from a raw URL, stripping query params
-// and fragments. Returns empty string if the URL is unparseable or empty.
+// CacheKey extracts "host/path?query" from a raw URL, stripping only fragments.
+// Query parameters are preserved because paginated pages (e.g. ?p=2) have
+// different DOM content and must not share a cache entry.
+// Returns empty string if the URL is unparseable or empty.
 func CacheKey(rawURL string) string {
 	if rawURL == "" {
 		return ""
@@ -123,7 +125,11 @@ func CacheKey(rawURL string) string {
 	if p == "" {
 		p = "/"
 	}
-	return u.Host + p
+	key := u.Host + p
+	if u.RawQuery != "" {
+		key += "?" + u.RawQuery
+	}
+	return key
 }
 
 // Get returns the cached schema for the given URL key, or ("", false).

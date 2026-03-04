@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -90,13 +89,16 @@ TOOLS:
 
 STRATEGY — think like a human with Cmd+F:
 
-1. ORIENT: issue_command("cat page_text to see what is visible", read_only=true).
+NOTE: If a "Current page layout" is included with the task, you ALREADY have the page
+structure. SKIP step 1 and go directly to step 2 or 3.
+
+1. ORIENT (only if no layout provided): issue_command("cat children of main zone", read_only=true).
    Read the result. Identify tabs, sections, pagination, counts.
 
-2. REVEAL: If content is behind a tab or collapsed section:
-   issue_command("cat children of main zone, find <tab>, click it", read_only=false).
+2. REVEAL: If content is behind a tab or collapsed section (e.g. "Reviews" tab):
+   issue_command("click the Reviews tab", read_only=false).
 
-3. SEARCH: Now grep for specific keywords:
+3. SEARCH: Grep for specific keywords:
    issue_command("use grep to find <SHORT keyword|synonym>", read_only=true).
    Use 1-2 word keywords. Regex OR for synonyms: "small|tiny".
 
@@ -121,11 +123,11 @@ Semi-formal check: "I found N matches. The page says M total. N < M → INCOMPLE
 
 TERMINATION:
 - DONE: followed by the EXACT answer (number, name, price, list of names, etc.)
-- DONE: N/A — when the task asks for information that genuinely does not exist. Only use after thorough exploration.
+- DONE: [] — when the task asks for a list but no matching items exist. Only use after thorough exploration.
 - FAILED: followed by the reason (only for technical failures, NOT for "content not found").
 
 RULES:
-- ALWAYS orient first. Never grep a cold page.
+- If you have the page layout, skip ORIENT and go straight to REVEAL or SEARCH.
 - ALWAYS reveal before search. Click tabs before grepping.
 - ALWAYS extract in context. Grep finds text; you need associated names/data.
 - ALWAYS persist before navigating. Scratchpad survives; memory does not.
@@ -511,9 +513,8 @@ func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer 
 // resolveTab figures out which Chrome tab to use for a task.
 //
 // Strategy:
-//  1. If startURL is provided, ask the extension for all open tabs.
-//     If an existing tab matches the same host, navigate it to startURL.
-//     Otherwise, create a new tab.
+//  1. If startURL is provided, always create a fresh tab. Tab reuse causes
+//     CDP chrome-extension:// crashes when Chrome gets into a bad state.
 //  2. If no startURL, use the active voice tab (or the requested tabID).
 //  3. Returns the real Chrome tab ID (never 0 in the happy path).
 func (h *Handler) resolveTab(ctx context.Context, requestedTabID int, startURL string) int {
@@ -528,45 +529,9 @@ func (h *Handler) resolveTab(ctx context.Context, requestedTabID int, startURL s
 		return requestedTabID
 	}
 
-	// Parse the target host for matching.
-	targetHost := ""
-	if u, err := url.Parse(startURL); err == nil {
-		targetHost = u.Host
-	}
-
-	// Ask extension for current tab inventory.
-	tabs := h.listTabsSync(ctx, 5*time.Second)
-
-	// Look for an existing tab on the same host.
-	if targetHost != "" {
-		for _, tab := range tabs {
-			if u, err := url.Parse(tab.URL); err == nil && u.Host == targetHost {
-				log.Printf("Planner: reusing tab %d (%s) for %s", tab.ID, tab.URL, startURL)
-				if tab.URL != startURL {
-					// Same host, different path — navigate to the new URL and
-					// wait for a fresh schema before returning. Without this wait,
-					// the planner would see HasSchema()=true from the OLD page
-					// and skip the schema-ready gate, running against stale data.
-					sess := h.getSession(tab.ID)
-					sess.ResetSchema()
-					h.sendGoto(tab.ID, startURL)
-					log.Printf("Planner: navigating reused tab %d to %s, waiting for schema", tab.ID, startURL)
-					select {
-					case <-sess.GetSchemaReady():
-						log.Printf("Planner: schema ready after tab reuse (tab %d)", tab.ID)
-					case <-time.After(30 * time.Second):
-						log.Printf("Planner: schema timeout after tab reuse (tab %d), proceeding", tab.ID)
-					case <-ctx.Done():
-						return 0
-					}
-				}
-				return tab.ID
-			}
-		}
-	}
-
-	// No matching tab — create a new one and wait for its ID.
-	log.Printf("Planner: no existing tab for %s, creating new tab", startURL)
+	// Always create a fresh tab to avoid CDP chrome-extension:// crashes
+	// that happen when reusing tabs across different product pages.
+	log.Printf("Planner: creating fresh tab for %s", startURL)
 	h.sendCreateTab(startURL)
 
 	// Wait for TAB_ACTIVATED to give us the real tab ID.
@@ -596,36 +561,6 @@ func (h *Handler) resolveTab(ctx context.Context, requestedTabID int, startURL s
 		case <-ctx.Done():
 			return 0
 		}
-	}
-}
-
-// listTabsSync asks the extension for all open tabs and blocks until the response.
-func (h *Handler) listTabsSync(ctx context.Context, timeout time.Duration) []TabInfo {
-	// Use a temporary session to receive the response. We use tab 0 since
-	// handleTabsListed delivers to the voice session.
-	h.mu.Lock()
-	voiceTab := h.activeVoiceTab
-	h.mu.Unlock()
-
-	sess := h.getSession(voiceTab)
-
-	// Drain stale response.
-	select {
-	case <-sess.TabsListedCh:
-	default:
-	}
-
-	h.sendListTabs()
-
-	select {
-	case tabs := <-sess.TabsListedCh:
-		log.Printf("Planner: got tab inventory: %d tabs", len(tabs))
-		return tabs
-	case <-time.After(timeout):
-		log.Printf("Planner: LIST_TABS timed out")
-		return nil
-	case <-ctx.Done():
-		return nil
 	}
 }
 

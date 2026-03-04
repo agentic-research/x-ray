@@ -186,7 +186,7 @@ func (a *Agent) SetListTabsFunc(fn func(ctx context.Context) ([]TabInfo, error))
 	a.listTabs.listTabsFn = fn
 }
 
-const maxToolIterations = 8
+const maxToolIterations = 20
 
 // HandleIntent processes a user intent by navigating the semantic FS.
 // Returns an ActionResult if the agent acts, or a text response otherwise.

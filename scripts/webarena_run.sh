@@ -37,7 +37,7 @@ done
 # Defaults
 # ---------------------------------------------------------------------------
 NAVIGATOR_MODEL="${NAVIGATOR_MODEL:-gemini-3.1-flash}"
-WEBARENA_TIMEOUT="${WEBARENA_TIMEOUT:-120}"
+WEBARENA_TIMEOUT="${WEBARENA_TIMEOUT:-300}"
 CARTOGRAPHER_MODE="${CARTOGRAPHER_MODE:-cairn}"
 DATA_DIR="docker/webarena-data"
 CONFIG="docker/webarena-config.json"

@@ -15,13 +15,15 @@ func TestCacheKey(t *testing.T) {
 		url  string
 		want string
 	}{
-		{"https://news.ycombinator.com/news?p=2", "news.ycombinator.com/news"},
-		{"https://news.ycombinator.com/news?p=3", "news.ycombinator.com/news"},
+		// Query params are preserved — different pages must not share cache.
+		{"https://news.ycombinator.com/news?p=2", "news.ycombinator.com/news?p=2"},
+		{"https://news.ycombinator.com/news?p=3", "news.ycombinator.com/news?p=3"},
 		{"https://news.ycombinator.com/news", "news.ycombinator.com/news"},
 		{"https://www.reddit.com/r/programming", "www.reddit.com/r/programming"},
-		{"https://www.reddit.com/r/programming?sort=new", "www.reddit.com/r/programming"},
+		{"https://www.reddit.com/r/programming?sort=new", "www.reddit.com/r/programming?sort=new"},
 		{"https://example.com", "example.com/"},
 		{"https://example.com/", "example.com/"},
+		// Fragments are still stripped (same DOM).
 		{"https://example.com/path/to/page#section", "example.com/path/to/page"},
 		{"", ""},
 		{"not-a-url", ""},
