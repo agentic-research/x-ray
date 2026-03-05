@@ -27,6 +27,37 @@
 **Symptom:** Some subtle or low-contrast UI elements inside a `<canvas>` are not detected by the Canny edge pipeline, or a very noisy canvas generates too many false positive regions.
 **Root Cause:** The server-side Canny edge detection uses fixed thresholds (low=50, high=150) and a fixed minimum region area (400px²). These were tuned for standard web UI contrasts but are not adaptive to the image's overall contrast, brightness, or DPI.
 
+## 7. Doer Settle Detection Cascade (70 LOC Nested Temporal Branching)
+**Symptom:** After every interactive action, the Doer enters a 4-branch `select` (`doer.go:330-401`) to determine what happened: same-tab navigation, DOM mutation, timeout fallback, or cancel. Two branches contain *nested* 3-branch selects (SchemaReady / timeout / cancel). Total: ~70 lines of mutually exclusive timing-dependent paths, each with side effects (ResetSchema, sendRescan, session rebinding).
+**Root Cause:** The settle logic was built incrementally — first navigation detection, then DOM mutation, then new-tab detection, then fallback rescan. Each was added as a new branch rather than refactored into a unified state machine.
+**Evidence of fragility:** Integration tests cannot precisely simulate extension behavior. They use goroutines that flood `SignalSchemaReady()` in a loop to ensure a signal arrives in time. A change to timeout values or signal ordering can break tests without any code change.
+**Fix required:** Extract settle detection into a `settleAfterAction(ctx, action) (outcome, summary, error)` method returning an enum. Each outcome becomes independently testable.
+
+## 8. SchemaReady Signal Lost Between Dispatch and ResetSchema
+**Symptom:** Fast DOM responses cause unnecessary 2s delays. Production logs show "schema wait timed out after settle rescan" on pages that loaded instantly.
+**Root Cause:** `ResetSchema()` creates a new channel (`session.go:78-83`). If the extension responds *between* action dispatch and `ResetSchema()`, `SignalSchemaReady()` closes the old channel that nobody is listening to. The new channel blocks until the 2s `actionSettleTimeout` fires a fallback rescan. Sequence: dispatch → extension responds → SignalSchemaReady (old chan) → ResetSchema (new chan) → `<-GetSchemaReady()` blocks → 2s timeout.
+**Fix required:** Use a monotonic generation counter. `ResetSchema()` bumps generation. `SignalSchemaReady(gen)` only closes the channel if generation matches. Prevents stale signals and lost signals.
+
+## 9. Tab Rebinding Leaves Guardrails Bound to Wrong Session
+**Symptom:** After a click opens a new tab, dedup and ref validation silently stop working. The `defer` cleanup targets the wrong session.
+**Root Cause:** Two code paths mutate `d.tabID` and `d.sess` mid-goal (`doer.go:322-327`, `doer.go:367-382`). Guardrails are wired to the *original* session at goal start: `d.sess.Tasks.SetDedupFunc(gs.IsDuplicate)` (line 189), `d.sess.Navigator.SetRefValidateFunc(gs.ValidateActPath)` (line 196). After rebind, `d.sess` points to a new session whose Tasks/Navigator were never wired. The `defer` cleanup clears the *new* session (which was never set), leaving the original session's callbacks permanently installed.
+**Fix required:** Track the "bound session" explicitly. Re-wire guardrails on rebind. Ensure defer cleans up the correct session.
+
+## 10. Step Budget Not Designed for Guardrail Retries
+**Symptom:** Multi-page extraction tasks fail to find all items despite having enough pages to check.
+**Root Cause:** `maxGoalSteps = 5` (`doer.go:29`). Two retry mechanisms consume steps from this same budget: weak response retry (`doer.go:277`) and completeness retry (`doer.go:284`). A 3-page task: click page 1 (step 0), click page 2 (step 1), text response triggers completeness retry (step 2, retry burns step 3), retry response (step 3, last step — completeness check skipped even if still incomplete). Only 3 productive actions out of 5 steps.
+**Fix required:** Either don't count retries against the step budget (separate retry counter), or increase `maxGoalSteps` to account for expected retries.
+
+## 11. Stringly-Typed LLM Response Classification
+**Symptom:** Weak responses slip through retry detection; completeness counter reports 0 items when items exist but are differently formatted.
+**Root Cause:** Weak response detection (`doer.go:269-273`) checks 4 string prefixes ("I couldn't", "I could not", "Error:", "I was unable"). LLM responses like "Unfortunately, I wasn't able to..." bypass all checks. Completeness counting (`completeness.go:64-66`) only counts lines starting with "Found:", "- ", or "* ". If the Navigator writes `"Alice (reviewer)"` instead of `"Found: Alice"`, the counter misses it — causing infinite retries until the step budget runs out.
+**Fix required:** For weak responses: classify as "actionable answer" vs "not" rather than matching failure phrases. For completeness: enforce scratch format in the Navigator's system prompt, or count all non-empty lines.
+
+## 12. `dispatchAction` Monolith (120 LOC, 4 Action Types)
+**Symptom:** Low immediate risk, but highest-friction code for adding new browser capabilities.
+**Root Cause:** `dispatchAction` (`doer.go:414-535`) handles goto, rescan, switch_tab, and interactive actions in a single switch statement. The goto and full-rescan paths both do unmount→create→mount→SetGraph→wait with slightly different logic. Adding `browser.back` or `browser.close_tab` requires understanding all 4 paths.
+**Fix required:** Extract "reset engine and wait for schema" lifecycle into a helper. Each action case shrinks to dispatch + lifecycle call.
+
 ---
 
 ## Resolved Issues (As of March 2026)
