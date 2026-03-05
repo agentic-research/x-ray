@@ -112,7 +112,7 @@ func defaults() *Config {
 		Ollama: OllamaConfig{
 			KeepAlive: -1,
 			NumGPU:    99,
-			NumCtx:    8192,
+			NumCtx:    32768,
 		},
 		Timeouts: TimeoutsConfig{
 			SchemaWait: 30,

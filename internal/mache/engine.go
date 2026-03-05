@@ -591,9 +591,9 @@ const maxChildrenPerZone = 200
 
 // selectChildItems determines which descendants appear in the children listing
 // and _c/ directory. Primary items are listed first (preserving order), then
-// supplemented with other text-bearing descendants so the Navigator can see
-// all meaningful content in the zone (e.g., "Reviews 12" tab labels that
-// don't match the zone's CSS item_selector).
+// supplementary text-bearing descendants are appended (needed for scanning
+// tasks like WebArena where Navigator must read all page text). Supplementary
+// items are capped to avoid flooding the list when zones are too broad.
 func selectChildItems(descendants []SummaryElement, primaryItems []string) []SummaryElement {
 	if len(primaryItems) > 0 {
 		byID := make(map[string]SummaryElement, len(descendants))
@@ -609,9 +609,16 @@ func selectChildItems(descendants []SummaryElement, primaryItems []string) []Sum
 			}
 		}
 		// Supplement with other text-bearing descendants not in primary items.
+		// Cap supplementary items so they don't overwhelm the primary list.
+		maxSupp := len(items) // at most 1:1 ratio with primary items
+		if maxSupp < 10 {
+			maxSupp = 10
+		}
+		suppCount := 0
 		for _, d := range descendants {
-			if d.Text != "" && !seen[d.ID] {
+			if d.Text != "" && !seen[d.ID] && suppCount < maxSupp {
 				items = append(items, d)
+				suppCount++
 			}
 		}
 		return items
@@ -625,17 +632,44 @@ func selectChildItems(descendants []SummaryElement, primaryItems []string) []Sum
 	return items
 }
 
-// formatOrdinalChildren formats items as a simple ordinal list: [N] "text".
-// The model uses N to reference items via _c/N paths.
+// truncText truncates s to max characters with "..." suffix.
+func truncText(s string, max int) string {
+	if len(s) > max {
+		return s[:max-3] + "..."
+	}
+	return s
+}
+
+// formatOrdinalChildren formats items as a hierarchical ordinal list.
+// Items whose parent is also in the list are indented under their parent.
+// Each line includes the tag name for semantic disambiguation:
+//
+//	[1] article: Post title
+//	  [2] a: r/funny
+//	  [3] span: 2 hours ago
+//	[4] article: Another post
 func formatOrdinalChildren(items []SummaryElement) string {
+	// Build lookup: which items' parents are also in the list
+	idToOrdinal := make(map[string]int, len(items))
+	for i, d := range items {
+		idToOrdinal[d.ID] = i + 1
+	}
+
 	var sb strings.Builder
 	for i, d := range items {
-		marker := lynxMarker(d.Tag, d.AXRole)
-		text := d.Text
-		if len(text) > 80 {
-			text = text[:77] + "..."
+		// Skip items whose parent is also in the list — shown nested below
+		if _, parentInList := idToOrdinal[d.ParentID]; parentInList {
+			continue
 		}
-		fmt.Fprintf(&sb, "%s[%d] %s\n", marker, i+1, text)
+		marker := lynxMarker(d.Tag, d.AXRole)
+		fmt.Fprintf(&sb, "%s[%d] %s: %s\n", marker, i+1, d.Tag, truncText(d.Text, 80))
+		// Show direct children indented
+		for j, child := range items {
+			if child.ParentID == d.ID {
+				cm := lynxMarker(child.Tag, child.AXRole)
+				fmt.Fprintf(&sb, "  %s[%d] %s: %s\n", cm, j+1, child.Tag, truncText(child.Text, 70))
+			}
+		}
 	}
 	return strings.TrimRight(sb.String(), "\n")
 }

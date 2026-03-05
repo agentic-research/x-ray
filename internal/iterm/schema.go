@@ -45,16 +45,44 @@ func ProjectToGraph(sessions []SessionInfo, buffers, statuses map[string]string,
 
 	// Track which window/tab dirs we've already created.
 	createdDirs := make(map[string]bool)
+	// Collect session titles per tab dir for tab-level descriptions.
+	tabTitles := make(map[string][]string)
+	// Collect session titles per window dir for window-level descriptions.
+	windowTitles := make(map[string][]string)
+
+	// Map raw iTerm2 UUIDs to sequential indices for readable paths.
+	windowSeq := make(map[string]string) // raw UUID → "w0", "w1", ...
+	tabSeq := make(map[string]string)    // raw UUID → "t0", "t1", ...
+	windowCounter := 0
+	tabCounter := make(map[string]int) // per-window tab counter
 
 	for _, s := range sessions {
-		wid := s.WindowID
-		if wid == "" {
-			wid = "w0"
+		rawWID := s.WindowID
+		if rawWID == "" {
+			rawWID = "_default_window"
 		}
-		tid := s.TabID
-		if tid == "" {
-			tid = "t0"
+		rawTID := s.TabID
+		if rawTID == "" {
+			rawTID = "_default_tab"
 		}
+
+		// Assign sequential window ID.
+		wid, ok := windowSeq[rawWID]
+		if !ok {
+			wid = fmt.Sprintf("w%d", windowCounter)
+			windowSeq[rawWID] = wid
+			windowCounter++
+		}
+
+		// Assign sequential tab ID (per-window).
+		tabKey := rawWID + "/" + rawTID
+		tid, ok := tabSeq[tabKey]
+		if !ok {
+			tid = fmt.Sprintf("t%d", tabCounter[rawWID])
+			tabSeq[tabKey] = tid
+			tabCounter[rawWID]++
+		}
+
 		sid := s.SessionID
 
 		// windows/{wid}/
@@ -158,6 +186,10 @@ func ProjectToGraph(sessions []SessionInfo, buffers, statuses map[string]string,
 		store.AddNode(&graph.Node{ID: sDirID + "/cwd", Data: []byte(cwd)})
 		store.AddNode(&graph.Node{ID: sDirID + "/status", Data: []byte(status)})
 
+		// Track session title for tab and window level descriptions.
+		tabTitles[tDirID] = append(tabTitles[tDirID], buildTabLabel(s.Title, cwd))
+		windowTitles[wDirID] = append(windowTitles[wDirID], buildTabLabel(s.Title, cwd))
+
 		// If this is the active session, alias its children into /active_session/
 		if sid == activeSession {
 			activeDir.Children = []string{
@@ -178,7 +210,39 @@ func ProjectToGraph(sessions []SessionInfo, buffers, statuses map[string]string,
 		}
 	}
 
+	// Second pass: add description files to tab and window directories.
+	for tDirID, titles := range tabTitles {
+		descID := tDirID + "/description"
+		desc := strings.Join(titles, ", ")
+		store.AddNode(&graph.Node{ID: descID, Data: []byte(desc)})
+		if tDir, err := store.GetNode(tDirID); err == nil {
+			tDir.Children = appendUnique(tDir.Children, descID)
+		}
+	}
+	for wDirID, titles := range windowTitles {
+		descID := wDirID + "/description"
+		desc := strings.Join(titles, ", ")
+		store.AddNode(&graph.Node{ID: descID, Data: []byte(desc)})
+		if wDir, err := store.GetNode(wDirID); err == nil {
+			wDir.Children = appendUnique(wDir.Children, descID)
+		}
+	}
+
 	return store
+}
+
+// buildTabLabel creates a short label for a session within a tab.
+func buildTabLabel(title, cwd string) string {
+	if title != "" && cwd != "" && cwd != "(unknown)" {
+		return title + " — " + cwd
+	}
+	if title != "" {
+		return title
+	}
+	if cwd != "" && cwd != "(unknown)" {
+		return cwd
+	}
+	return "(unnamed)"
 }
 
 func buildDescription(title, cwd, status string) string {

@@ -215,7 +215,7 @@ func TestLoadChildren(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile children failed: %v", err)
 	}
-	if !strings.Contains(content, `[1] First Story Title`) {
+	if !strings.Contains(content, `[1] a: First Story Title`) {
 		t.Errorf("children file missing first story: %q", content)
 	}
 
@@ -334,7 +334,7 @@ func TestFormatOrdinalChildren(t *testing.T) {
 		{ID: "m-5", Tag: "a", Text: "Story Two"},
 	}
 	got := formatOrdinalChildren(items)
-	want := "[1] Story One\n[2] Story Two"
+	want := "[1] a: Story One\n[2] a: Story Two"
 	if got != want {
 		t.Errorf("expected:\n%s\ngot:\n%s", want, got)
 	}
@@ -381,7 +381,7 @@ func TestFormatOrdinalChildrenWithMarkers(t *testing.T) {
 		{ID: "m-4", Tag: "h2", Text: "Products"},
 	}
 	got := formatOrdinalChildren(items)
-	want := "[1] Home\n(btn) [2] Submit\n[___] [3] Search\n# [4] Products"
+	want := "[1] a: Home\n(btn) [2] button: Submit\n[___] [3] input: Search\n# [4] h2: Products"
 	if got != want {
 		t.Errorf("expected:\n%s\ngot:\n%s", want, got)
 	}
@@ -418,11 +418,11 @@ ID: mache-14 | Parent: mache-10 | Tag: span | Text: "(other.com)"
 	}
 
 	// 2 primary items in ordinal format (no quotes in Lynx-style)
-	if !strings.Contains(content, `[1] First Story`) {
-		t.Errorf("missing [1] First Story in output:\n%s", content)
+	if !strings.Contains(content, `[1] a: First Story`) {
+		t.Errorf("missing [1] a: First Story in output:\n%s", content)
 	}
-	if !strings.Contains(content, `[2] Second Story`) {
-		t.Errorf("missing [2] Second Story in output:\n%s", content)
+	if !strings.Contains(content, `[2] a: Second Story`) {
+		t.Errorf("missing [2] a: Second Story in output:\n%s", content)
 	}
 	// At least 2 items present
 	if strings.Count(content, "] ") < 2 {
@@ -595,14 +595,14 @@ ID: mache-15 | Parent: mache-10 | Tag: a | Text: "Fourth Story (new after scroll
 	}
 
 	// All 4 resolved items should appear in ordinal format (no quotes)
-	if !strings.Contains(content, `[1] First Story`) {
-		t.Errorf("missing [1] First Story:\n%s", content)
+	if !strings.Contains(content, `[1] a: First Story`) {
+		t.Errorf("missing [1] a: First Story:\n%s", content)
 	}
-	if !strings.Contains(content, `[3] Third Story (new after scroll)`) {
-		t.Errorf("missing [3] Third Story (resolved item):\n%s", content)
+	if !strings.Contains(content, `[3] a: Third Story (new after scroll)`) {
+		t.Errorf("missing [3] a: Third Story (resolved item):\n%s", content)
 	}
-	if !strings.Contains(content, `[4] Fourth Story (new after scroll)`) {
-		t.Errorf("missing [4] Fourth Story (resolved item):\n%s", content)
+	if !strings.Contains(content, `[4] a: Fourth Story (new after scroll)`) {
+		t.Errorf("missing [4] a: Fourth Story (resolved item):\n%s", content)
 	}
 	// At least 4 items present
 	if strings.Count(content, "] ") < 4 {
@@ -739,14 +739,14 @@ ID: mache-27 | Parent: mache-25 | Tag: a | Text: "Third Story"
 	}
 
 	// All 3 primary items should appear in ordinal format (no quotes)
-	if !strings.Contains(content, `[1] First Story`) {
-		t.Errorf("missing [1] First Story:\n%s", content)
+	if !strings.Contains(content, `[1] a: First Story`) {
+		t.Errorf("missing [1] a: First Story:\n%s", content)
 	}
-	if !strings.Contains(content, `[2] Second Story`) {
-		t.Errorf("missing [2] Second Story:\n%s", content)
+	if !strings.Contains(content, `[2] a: Second Story`) {
+		t.Errorf("missing [2] a: Second Story:\n%s", content)
 	}
-	if !strings.Contains(content, `[3] Third Story`) {
-		t.Errorf("missing [3] Third Story:\n%s", content)
+	if !strings.Contains(content, `[3] a: Third Story`) {
+		t.Errorf("missing [3] a: Third Story:\n%s", content)
 	}
 	if strings.Count(content, "\n") != 2 {
 		t.Errorf("expected 3 items (2 newlines), got:\n%s", content)
@@ -1040,7 +1040,7 @@ func TestMergeSchemaPreservesChildren(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile children before merge failed: %v", err)
 	}
-	if !strings.Contains(content, `[1] First Story Title`) {
+	if !strings.Contains(content, `[1] a: First Story Title`) {
 		t.Errorf("missing children content before merge: %q", content)
 	}
 
@@ -1055,7 +1055,7 @@ func TestMergeSchemaPreservesChildren(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile children after merge failed: %v", err)
 	}
-	if !strings.Contains(content, `[1] First Story Title`) {
+	if !strings.Contains(content, `[1] a: First Story Title`) {
 		t.Errorf("children lost after merge: %q", content)
 	}
 }
