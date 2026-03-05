@@ -222,6 +222,9 @@ func ProjectToGraph(sessions []SessionInfo, buffers, statuses map[string]string,
 	for wDirID, titles := range windowTitles {
 		descID := wDirID + "/description"
 		desc := strings.Join(titles, ", ")
+		if len(desc) > 80 {
+			desc = desc[:77] + "..."
+		}
 		store.AddNode(&graph.Node{ID: descID, Data: []byte(desc)})
 		if wDir, err := store.GetNode(wDirID); err == nil {
 			wDir.Children = appendUnique(wDir.Children, descID)
@@ -232,11 +235,22 @@ func ProjectToGraph(sessions []SessionInfo, buffers, statuses map[string]string,
 }
 
 // buildTabLabel creates a short label for a session within a tab.
+// Strips common iTerm2 title prefixes ("Default: ") and truncates.
 func buildTabLabel(title, cwd string) string {
+	title = strings.TrimPrefix(title, "Default: ")
+	// Strip emoji prefixes (common in iTerm2 profile titles)
+	title = strings.TrimLeft(title, " \t")
 	if title != "" && cwd != "" && cwd != "(unknown)" {
-		return title + " — " + cwd
+		label := title + " — " + cwd
+		if len(label) > 50 {
+			label = label[:47] + "..."
+		}
+		return label
 	}
 	if title != "" {
+		if len(title) > 50 {
+			return title[:47] + "..."
+		}
 		return title
 	}
 	if cwd != "" && cwd != "(unknown)" {
