@@ -74,7 +74,11 @@ func (t *CatTool) Execute(_ context.Context, args map[string]any) (string, *Acti
 
 // --- act ---
 
-type ActTool struct{ fs *NavFS }
+type ActTool struct {
+	fs            *NavFS
+	refMu         sync.RWMutex
+	refValidateFn func(path string) string // optional guardrail
+}
 
 func (t *ActTool) Declaration() *genai.FunctionDeclaration {
 	return &genai.FunctionDeclaration{
@@ -98,6 +102,16 @@ func (t *ActTool) Execute(_ context.Context, args map[string]any) (string, *Acti
 	payload, _ := args["payload"].(string)
 	if action == "" {
 		action = "click"
+	}
+
+	// Reference validation guardrail: catch mache-N after cat(children).
+	t.refMu.RLock()
+	fn := t.refValidateFn
+	t.refMu.RUnlock()
+	if fn != nil {
+		if errMsg := fn(p); errMsg != "" {
+			return errMsg, nil
+		}
 	}
 
 	// Try graph-level Act() first. Interactive graphs (terminal, future AX)

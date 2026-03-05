@@ -19,11 +19,17 @@ import (
 	"github.com/agentic-research/mache/graph"
 )
 
+// DedupFunc checks if text is a duplicate of existing scratchpad content.
+// Returns true if the write should be silently blocked.
+type DedupFunc func(scratchpad, text string) bool
+
 // Graph implements graph.Graph for the /tasks/ mount point.
 type Graph struct {
 	mu      sync.RWMutex
 	task    string // current goal text
 	scratch string // Navigator-writable scratchpad
+
+	dedupFn DedupFunc // optional guardrail (set by Doer)
 }
 
 // New creates an empty task graph.
@@ -129,12 +135,36 @@ func (g *Graph) ReadContent(id string, buf []byte, offset int64) (int, error) {
 	return n, nil
 }
 
+// SetDedupFunc installs a deduplication guardrail for scratchpad writes.
+func (g *Graph) SetDedupFunc(fn DedupFunc) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.dedupFn = fn
+}
+
 // Act supports writing to the scratch pad.
 // act("active/scratch", "type", "some text") appends to scratch.
 func (g *Graph) Act(id, action, payload string) (*graph.ActionResult, error) {
 	id = strings.TrimPrefix(id, "/")
 	if id == nodeActiveScratch && action == "type" {
-		g.AppendScratch(payload)
+		// Atomic dedup check + write under the same lock to prevent TOCTOU.
+		g.mu.Lock()
+		fn := g.dedupFn
+		if fn != nil && fn(g.scratch, payload) {
+			g.mu.Unlock()
+			// Silently accept — LLM thinks it wrote successfully.
+			return &graph.ActionResult{
+				NodeID: id,
+				Action: action,
+				Path:   id,
+			}, nil
+		}
+		// Append inline (can't call AppendScratch which also locks).
+		if g.scratch != "" {
+			g.scratch += "\n"
+		}
+		g.scratch += payload
+		g.mu.Unlock()
 		return &graph.ActionResult{
 			NodeID: id,
 			Action: action,

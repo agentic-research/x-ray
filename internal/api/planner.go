@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/agentic-research/x-ray/internal/guardrails"
 	"github.com/agentic-research/x-ray/internal/navigator"
 	"google.golang.org/genai"
 )
@@ -365,7 +366,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 		fullText := strings.Join(textParts, "\n")
 		if fullText != "" && len(functionCalls) == 0 {
 			if after, ok := strings.CutPrefix(fullText, "DONE:"); ok {
-				summary := strings.TrimSpace(after)
+				summary := guardrails.NormalizeAnswer(strings.TrimSpace(after), guardrails.GuardrailsEnabled())
 				log.Printf("Planner: DONE after %d turns: %s", turn+1, summary)
 				return PlannerResult{
 					Status:  "done",
@@ -387,7 +388,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 			}
 			// Non-terminal text — could be thinking aloud. Check for DONE/FAILED anywhere.
 			if idx := strings.Index(fullText, "DONE:"); idx >= 0 {
-				summary := strings.TrimSpace(fullText[idx+5:])
+				summary := guardrails.NormalizeAnswer(strings.TrimSpace(fullText[idx+5:]), guardrails.GuardrailsEnabled())
 				log.Printf("Planner: DONE (embedded) after %d turns: %s", turn+1, summary)
 				return PlannerResult{
 					Status:  "done",

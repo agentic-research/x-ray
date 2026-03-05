@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/agentic-research/x-ray/internal/config"
+	"github.com/agentic-research/x-ray/internal/guardrails"
 	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/agentic-research/x-ray/internal/navigator"
 )
@@ -180,8 +181,24 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 		d.sess.Tasks.SetTask(taskText)
 	}
 
+	// Initialize guardrails for this goal.
+	gs := guardrails.New(d.tabID)
+	if gs.Enabled {
+		gs.Log("init", fmt.Sprintf("guardrails enabled for goal %q", goal.Text))
+	}
+	if d.sess.Tasks != nil {
+		d.sess.Tasks.SetDedupFunc(gs.IsDuplicate)
+		defer d.sess.Tasks.SetDedupFunc(nil)
+	}
+
+	// Wire ref validation guardrail.
+	if gs.Enabled {
+		d.sess.Navigator.SetRefValidateFunc(gs.ValidateActPath)
+	}
+	defer d.sess.Navigator.SetRefValidateFunc(nil)
+
 	// Wire navigator callbacks (scroll, progress, list_tabs).
-	d.wireNavigatorCallbacks()
+	d.wireNavigatorCallbacks(gs)
 	defer func() {
 		d.sess.Navigator.SetScrollFunc(nil)
 		d.sess.Navigator.SetProgressFunc(nil)
@@ -261,6 +278,16 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 				enrichedIntent = "Previous attempt failed with: " + trimmed + "\nTry a different approach: " + goal.Text + "\nIf you are certain the information does not exist on this page, say so clearly."
 				continue
 			}
+
+			// Completeness guardrail: check if we have all expected items.
+			if gs.Enabled && step < maxGoalSteps-1 && d.sess.Tasks != nil {
+				if warning := gs.CheckCompleteness(d.sess.Tasks.Scratch()); warning != "" {
+					log.Printf("Doer [tab %d]: completeness check failed, retrying: %s", d.tabID, warning)
+					enrichedIntent = warning + "\n\nOriginal task: " + goal.Text
+					continue
+				}
+			}
+
 			d.finishGoal(goal.ID, true, textResponse, "")
 			return
 		}
@@ -272,6 +299,20 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 
 		lastSummary = d.dispatchAction(goalCtx, action)
 
+		// Record page visit and scan for item counts.
+		// NOTE: Navigator-level tool calls (cat, grep, ls) are already tracked
+		// via the progress callback in wireNavigatorCallbacks. We only record
+		// page visits and item count extraction here — NOT RecordAction, to
+		// avoid double-recording that would corrupt the lookback window for
+		// ref validation.
+		if gs.Enabled {
+			if url := d.sess.GetCurrentURL(); url != "" {
+				startPct, endPct := d.sess.Navigator.GetViewport()
+				gs.RecordPageVisit(url, startPct, endPct)
+			}
+			gs.UpdateItemCount(lastSummary)
+		}
+
 		// If we started on Tab 0 (disconnected), the goto woke up the extension
 		// which reported its real tab ID. Rebind the Doer to the new session.
 		d.handler.mu.Lock()
@@ -282,7 +323,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 			log.Printf("Doer [tab %d]: tab promoted to %d, rebinding", d.tabID, activeTab)
 			d.tabID = activeTab
 			d.sess = d.handler.getSession(activeTab)
-			d.wireNavigatorCallbacks()
+			d.wireNavigatorCallbacks(gs)
 		}
 
 		// For interactive actions (click/type/enter/focus), detect if the page navigated.
@@ -327,7 +368,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 					log.Printf("Doer [tab %d]: tab changed to %d, rebinding", d.tabID, newTabID)
 					d.tabID = newTabID
 					d.sess = d.handler.getSession(newTabID)
-					d.wireNavigatorCallbacks()
+					d.wireNavigatorCallbacks(gs)
 					select {
 					case <-d.sess.GetSchemaReady():
 						// New tab loaded — continue loop.
@@ -363,7 +404,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 		// Record successful interactive actions as NavSections for future reuse.
 		d.recordNavSection(goal, action)
 
-		enrichedIntent = buildContinuation(goal.Text, goal.TaskContext, step, action, lastSummary)
+		enrichedIntent = buildContinuation(goal.Text, goal.TaskContext, step, action, lastSummary, gs)
 	}
 
 	// Exhausted steps — return whatever we have.
@@ -491,7 +532,7 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 
 // wireNavigatorCallbacks sets scroll, progress, and list_tabs callbacks on the
 // current session's Navigator. Called at goal start and after cross-tab rebind.
-func (d *Doer) wireNavigatorCallbacks() {
+func (d *Doer) wireNavigatorCallbacks(gs *guardrails.GoalState) {
 	d.sess.Navigator.SetScrollFunc(func(scrollCtx context.Context, direction string) error {
 		d.updateStep(fmt.Sprintf("scrolling %s", direction))
 		return d.handler.scrollVoice(scrollCtx, d.sess, d.tabID, direction)
@@ -507,6 +548,10 @@ func (d *Doer) wireNavigatorCallbacks() {
 			d.updateStep(fmt.Sprintf("%s %s", prefix, p))
 		} else {
 			d.updateStep(prefix)
+		}
+		// Track tool calls for ref validation guardrail.
+		if gs != nil && gs.Enabled {
+			gs.RecordAction(0, toolName, p, "")
 		}
 	})
 	d.sess.Navigator.SetListTabsFunc(func(ltCtx context.Context) ([]navigator.TabInfo, error) {
@@ -662,12 +707,12 @@ func formatSectionHints(sections []NavSection) string {
 
 // buildContinuation creates an enriched intent for the next step in the loop.
 // It tells the Navigator what happened and asks it to continue toward the overall task.
-func buildContinuation(goal, taskContext string, step int, action *navigator.ActionResult, summary string) string {
+func buildContinuation(goal, taskContext string, step int, action *navigator.ActionResult, summary string, gs *guardrails.GoalState) string {
 	context := goal
 	if taskContext != "" {
 		context = taskContext
 	}
-	return fmt.Sprintf("[CONTINUATION — Step %d completed]\n"+
+	base := fmt.Sprintf("[CONTINUATION — Step %d completed]\n"+
 		"Completed action: %s (last: %s on %s → %s)\n"+
 		"Overall task: %s\n\n"+
 		"The page has updated. Focus on the OVERALL TASK, not the completed action. "+
@@ -678,4 +723,13 @@ func buildContinuation(goal, taskContext string, step int, action *navigator.Act
 		"When paginating: track visited pages in scratchpad (e.g. 'visited: page 1, 2'). NEVER click Previous or revisit a page you already checked. "+
 		"Before answering, cat /tasks/active/scratch to collect findings and avoid duplicates.",
 		step+1, goal, action.Action, action.Path, summary, context)
+
+	// Inject guardrail pagination data if available.
+	if gs != nil && gs.Enabled {
+		if visited := gs.VisitedSummary(); visited != "" {
+			base += "\n\n" + visited
+		}
+	}
+
+	return base
 }

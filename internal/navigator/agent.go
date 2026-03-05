@@ -148,6 +148,22 @@ func (a *Agent) SetViewport(scrollY, scrollHeight, viewportHeight float64) {
 	a.viewportHeight = viewportHeight
 }
 
+// GetViewport returns the current viewport as (startPct, endPct) in 0-100 range.
+// Returns (0, 0) if no viewport has been set.
+func (a *Agent) GetViewport() (startPct, endPct int) {
+	a.viewportMu.RLock()
+	defer a.viewportMu.RUnlock()
+	if a.viewportPageH <= 0 {
+		return 0, 0
+	}
+	startPct = int(a.viewportScrollY / a.viewportPageH * 100)
+	endPct = int((a.viewportScrollY + a.viewportHeight) / a.viewportPageH * 100)
+	if endPct > 100 {
+		endPct = 100
+	}
+	return startPct, endPct
+}
+
 // viewportString returns a human-readable viewport position, e.g. "Viewport: 0-45% of page".
 func (a *Agent) viewportString() string {
 	a.viewportMu.RLock()
@@ -169,6 +185,15 @@ func (a *Agent) SetProgressFunc(fn func(toolName string, args map[string]any)) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.progressFn = fn
+}
+
+// SetRefValidateFunc installs a guardrail that validates act() paths before
+// execution. The function should return an error message to block the action,
+// or "" to allow it.
+func (a *Agent) SetRefValidateFunc(fn func(path string) string) {
+	a.actTool.refMu.Lock()
+	defer a.actTool.refMu.Unlock()
+	a.actTool.refValidateFn = fn
 }
 
 // SetSectionHints stores pre-computed section hints to be injected into the

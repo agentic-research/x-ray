@@ -79,6 +79,10 @@ func (m *mockIntentHandler) SetListTabsFunc(_ func(ctx context.Context) ([]navig
 
 func (m *mockIntentHandler) SetViewport(_, _, _ float64) {}
 
+func (m *mockIntentHandler) GetViewport() (int, int) { return 0, 100 }
+
+func (m *mockIntentHandler) SetRefValidateFunc(_ func(string) string) {}
+
 func (m *mockIntentHandler) SetSectionHints(_ string) {}
 
 // waitForDone blocks until the Doer finishes (DoerDone or DoerFailed) or times out.
