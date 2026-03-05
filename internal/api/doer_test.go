@@ -10,14 +10,16 @@ import (
 
 	"github.com/agentic-research/mache/graph"
 	"github.com/agentic-research/x-ray/internal/navigator"
+	"github.com/agentic-research/x-ray/internal/tasks"
 	"google.golang.org/genai"
 )
 
 // mockResponse holds one response for the sequencing mock.
 type mockResponse struct {
-	action   *navigator.ActionResult
-	textResp string
-	err      error
+	action       *navigator.ActionResult
+	textResp     string
+	err          error
+	scratchWrite string // if set, write to graph via Act() before returning
 }
 
 // mockIntentHandler is a configurable IntentHandler for Doer tests.
@@ -33,12 +35,23 @@ type mockIntentHandler struct {
 
 	mu         sync.Mutex
 	responses  []mockResponse
+	intentLog  []string // captures each intent string passed to HandleIntent
+	onEnter    func()   // called at start of HandleIntent (under no lock)
 	scrollFn   func(ctx context.Context, direction string) error
 	progressFn func(toolName string, args map[string]any)
 }
 
 func (m *mockIntentHandler) HandleIntent(ctx context.Context, intent string, _ bool) (*navigator.ActionResult, string, error) {
 	idx := int(m.handleCalls.Add(1)) - 1
+
+	// Call onEnter callback if set (outside lock).
+	m.mu.Lock()
+	enterFn := m.onEnter
+	m.mu.Unlock()
+	if enterFn != nil {
+		enterFn()
+	}
+
 	if m.delay > 0 {
 		select {
 		case <-time.After(m.delay):
@@ -47,13 +60,28 @@ func (m *mockIntentHandler) HandleIntent(ctx context.Context, intent string, _ b
 		}
 	}
 	m.mu.Lock()
+	m.intentLog = append(m.intentLog, intent)
 	if idx < len(m.responses) {
 		r := m.responses[idx]
+		g := m.graph
 		m.mu.Unlock()
+		// Side-effect: write to graph scratch if configured.
+		if r.scratchWrite != "" && g != nil {
+			_, _ = g.Act("active/scratch", "type", r.scratchWrite)
+		}
 		return r.action, r.textResp, r.err
 	}
 	m.mu.Unlock()
 	return m.action, m.textResp, m.err
+}
+
+// getIntentLog returns a copy of the intent log (thread-safe).
+func (m *mockIntentHandler) getIntentLog() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]string, len(m.intentLog))
+	copy(out, m.intentLog)
+	return out
 }
 
 func (m *mockIntentHandler) ExecuteTool(_ context.Context, _ *genai.FunctionCall) (string, *navigator.ActionResult) {
@@ -893,4 +921,283 @@ func TestDoerProgressShowsIteration(t *testing.T) {
 	// The mock returns text immediately (no tool calls), so progressFn
 	// won't be called by HandleIntent. That's fine — the iteration injection
 	// is tested in the navigator package. Here we just verify no panic.
+}
+
+// --- Guardrails integration tests ---
+
+func TestGuardrailsPaginationTracking(t *testing.T) {
+	t.Setenv("XRAY_GUARDRAILS", "1")
+
+	mock := &mockIntentHandler{
+		responses: []mockResponse{
+			{action: &navigator.ActionResult{Action: "browser.goto", Path: "https://example.com/page1"}},
+			{action: &navigator.ActionResult{Action: "browser.goto", Path: "https://example.com/page2"}},
+			{textResp: "Found: Alice, Bob"},
+		},
+	}
+	_, sess, doer := newDoerTestHarness(mock)
+	sess.SignalSchemaReady()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-pag", Text: "find all users across pages"})
+
+	// Signal SchemaReady for each goto navigation.
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		sess.SignalSchemaReady() // page1 loaded
+		time.Sleep(100 * time.Millisecond)
+		sess.SignalSchemaReady() // page2 loaded
+	}()
+
+	result := waitForDone(t, doer, 5*time.Second)
+	if !result.Success {
+		t.Fatalf("expected success, got error: %s", result.Error)
+	}
+
+	if calls := mock.handleCalls.Load(); calls != 3 {
+		t.Errorf("expected 3 HandleIntent calls, got %d", calls)
+	}
+
+	// After the first goto, the continuation should contain PAGES VISITED.
+	log := mock.getIntentLog()
+	found := false
+	for _, intent := range log {
+		if strings.Contains(intent, "PAGES VISITED") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected PAGES VISITED in continuation intents")
+		for i, intent := range log {
+			t.Logf("  intentLog[%d]: %.200s", i, intent)
+		}
+	}
+}
+
+func TestGuardrailsCompletenessRetry(t *testing.T) {
+	t.Setenv("XRAY_GUARDRAILS", "1")
+
+	mock := &mockIntentHandler{
+		responses: []mockResponse{
+			// Step 0: click action — dispatch returns "Reviews (2)" via override.
+			{
+				action:       &navigator.ActionResult{Action: "click", MacheID: "mache-1", Path: "/main/reviews/_c/1"},
+				scratchWrite: "Found: Alice",
+			},
+			// Step 1: text response with partial results → completeness triggers retry.
+			{textResp: "partial results"},
+			// Step 2: text response after retry — now scratch has 2 items → pass.
+			{textResp: "all found", scratchWrite: "Found: Bob"},
+		},
+	}
+	_, sess, doer := newDoerTestHarness(mock)
+	sess.SignalSchemaReady()
+
+	// Override dispatch to return a summary containing an item count pattern.
+	doer.dispatchOverrideFn = func(a *navigator.ActionResult) string {
+		return "Reviews (2)"
+	}
+
+	// Wire mock's graph so scratchWrite can call Act().
+	mock.mu.Lock()
+	mock.graph = sess.Tasks
+	mock.mu.Unlock()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-complete", Text: "find all reviewers"})
+
+	// After each click, the Doer resets schema and waits for settle.
+	// Signal SchemaReady repeatedly to unblock the post-dispatch wait.
+	go func() {
+		for i := 0; i < 5; i++ {
+			time.Sleep(100 * time.Millisecond)
+			sess.SignalSchemaReady()
+		}
+	}()
+
+	result := waitForDone(t, doer, 10*time.Second)
+	if !result.Success {
+		t.Fatalf("expected success, got error: %s", result.Error)
+	}
+
+	if calls := mock.handleCalls.Load(); calls != 3 {
+		t.Errorf("expected 3 HandleIntent calls (click + text + retry), got %d", calls)
+	}
+
+	// The retry intent should contain the completeness warning.
+	log := mock.getIntentLog()
+	found := false
+	for _, intent := range log {
+		if strings.Contains(intent, "WARNING: Found 1 of 2 items") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected completeness warning in retry intent")
+		for i, intent := range log {
+			t.Logf("  intentLog[%d]: %.200s", i, intent)
+		}
+	}
+}
+
+func TestGuardrailsDedupFunctional(t *testing.T) {
+	t.Setenv("XRAY_GUARDRAILS", "1")
+
+	mock := &mockIntentHandler{
+		responses: []mockResponse{
+			{
+				action:       &navigator.ActionResult{Action: "click", MacheID: "mache-1", Path: "/main/list/_c/1"},
+				scratchWrite: "Found: Alice",
+			},
+			{
+				action:       &navigator.ActionResult{Action: "click", MacheID: "mache-2", Path: "/main/list/_c/2"},
+				scratchWrite: "Found: Alice", // duplicate!
+			},
+			{
+				action:       &navigator.ActionResult{Action: "click", MacheID: "mache-3", Path: "/main/list/_c/3"},
+				scratchWrite: "Found: Bob",
+			},
+			{textResp: "Alice and Bob"},
+		},
+	}
+	_, sess, doer := newDoerTestHarness(mock)
+	sess.SignalSchemaReady()
+
+	// Override dispatch so clicks don't wait on real extension.
+	doer.dispatchOverrideFn = func(a *navigator.ActionResult) string {
+		return "Done."
+	}
+
+	// Wire mock's graph for scratchWrite side-effects.
+	mock.mu.Lock()
+	mock.graph = sess.Tasks
+	mock.mu.Unlock()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-dedup", Text: "list all people"})
+
+	// After each click, the Doer resets schema and waits for settle.
+	// Signal SchemaReady repeatedly to unblock the post-dispatch wait.
+	go func() {
+		for i := 0; i < 10; i++ {
+			time.Sleep(100 * time.Millisecond)
+			sess.SignalSchemaReady()
+		}
+	}()
+
+	result := waitForDone(t, doer, 10*time.Second)
+	if !result.Success {
+		t.Fatalf("expected success, got error: %s", result.Error)
+	}
+
+	// Verify dedup blocked the duplicate Alice.
+	scratch := sess.Tasks.Scratch()
+	if scratch != "Found: Alice\nFound: Bob" {
+		t.Errorf("expected deduplicated scratch, got %q", scratch)
+	}
+}
+
+func TestGuardrailsDisabledByDefault(t *testing.T) {
+	// Do NOT set XRAY_GUARDRAILS — guardrails should be off.
+	mock := &mockIntentHandler{
+		textResp: "Here is the answer.",
+	}
+	_, sess, doer := newDoerTestHarness(mock)
+	sess.SignalSchemaReady()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-disabled", Text: "find info"})
+	result := waitForDone(t, doer, 3*time.Second)
+
+	if !result.Success {
+		t.Fatalf("expected success, got error: %s", result.Error)
+	}
+	if calls := mock.handleCalls.Load(); calls != 1 {
+		t.Errorf("expected 1 HandleIntent call, got %d", calls)
+	}
+
+	// Verify no pagination data injected (intentLog should not contain PAGES VISITED).
+	log := mock.getIntentLog()
+	for _, intent := range log {
+		if strings.Contains(intent, "PAGES VISITED") {
+			t.Error("PAGES VISITED should not appear when guardrails are disabled")
+		}
+	}
+}
+
+func TestGuardrailsCleanupOnCancel(t *testing.T) {
+	t.Setenv("XRAY_GUARDRAILS", "1")
+
+	started := make(chan struct{})
+	mock := &mockIntentHandler{
+		delay:    10 * time.Second, // long delay — will be cancelled
+		textResp: "never reached",
+	}
+	mock.mu.Lock()
+	mock.onEnter = func() {
+		select {
+		case <-started:
+		default:
+			close(started)
+		}
+	}
+	mock.mu.Unlock()
+
+	_, sess, doer := newDoerTestHarness(mock)
+	sess.SignalSchemaReady()
+
+	// Ensure tasks graph exists for dedup wiring.
+	if sess.Tasks == nil {
+		sess.Tasks = tasks.New()
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go doer.Run(ctx)
+
+	doer.Submit(DoerGoal{ID: "g-cleanup", Text: "do something"})
+
+	// Wait until HandleIntent is running.
+	select {
+	case <-started:
+	case <-time.After(3 * time.Second):
+		t.Fatal("HandleIntent never entered")
+	}
+
+	// Cancel the goal.
+	doer.Cancel()
+	// Give defer cleanup in executeGoal a moment to run.
+	time.Sleep(200 * time.Millisecond)
+
+	// Clear scratch from goal execution so we test fresh dedup state.
+	sess.Tasks.SetTask("test")
+
+	// Verify dedup was cleared: writing the same value twice should both succeed
+	// (no guardrail blocking duplicates after cleanup).
+	_, _ = sess.Tasks.Act("active/scratch", "type", "X")
+	_, _ = sess.Tasks.Act("active/scratch", "type", "X")
+	scratch := sess.Tasks.Scratch()
+	if scratch != "X\nX" {
+		t.Errorf("expected dedup cleared (both writes succeed), got scratch=%q", scratch)
+	}
+
+	// After cancel + executeGoal's finishGoal, state should not be Executing.
+	status, _, _, _ := doer.State().Snapshot()
+	if status == DoerExecuting {
+		t.Errorf("expected non-Executing state after cancel, got DoerExecuting")
+	}
 }

@@ -72,8 +72,9 @@ type Doer struct {
 	mu       sync.Mutex
 	cancelFn context.CancelFunc
 
-	resultNotifyFn func(summary string)                  // called when goal completes
-	actionNotifyFn func(macheID, action, payload string) // called when action dispatched
+	resultNotifyFn     func(summary string)                  // called when goal completes
+	actionNotifyFn     func(macheID, action, payload string) // called when action dispatched
+	dispatchOverrideFn func(*navigator.ActionResult) string  // test-only hook; do not use in production
 }
 
 // NewDoer creates a Doer for the given tab session.
@@ -412,6 +413,11 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 }
 
 func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResult) string {
+	// test-only hook — allows tests to control dispatch summaries without real extension
+	if d.dispatchOverrideFn != nil {
+		return d.dispatchOverrideFn(action)
+	}
+
 	switch action.Action {
 	case "browser.goto":
 		// Idempotent: skip reset if already on this URL.
