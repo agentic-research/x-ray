@@ -84,16 +84,15 @@ func (r *Router) ReadContent(id string, buf []byte, offset int64) (int, error) {
 }
 
 func (r *Router) GetCallers(token string) ([]*graph.Node, error) {
-	// Callers/Callees typically use full tokens anyway, but we just pass it through
-	return r.composite.GetCallers(token)
+	// Return nil — the focus router is a convenience proxy, not a source of
+	// cross-references. Delegating to r.composite causes infinite recursion
+	// because CompositeGraph.GetCallers iterates all mounts including this one.
+	return nil, nil
 }
 
 func (r *Router) GetCallees(id string) ([]*graph.Node, error) {
-	fullPath, err := r.resolvePath(id)
-	if err != nil {
-		return nil, err
-	}
-	return r.composite.GetCallees(fullPath)
+	// Same as GetCallers — avoid infinite recursion via CompositeGraph.
+	return nil, nil
 }
 
 func (r *Router) Invalidate(id string) {
