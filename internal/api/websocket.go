@@ -46,15 +46,16 @@ type Handler struct {
 	conn           *websocket.Conn
 	pending        []pendingAction
 	sessions       map[int]*TabSession
-	schemas        *SchemaCache          // domain+path → schema JSON
-	activeVoiceTab int                   // tab ID for native voice mode (set by TAB_ACTIVATED)
-	openBrowserFn  func(url string)      // fallback when no WS connection; nil = no-op (tests)
-	termBridge     graph.Graph           // global iTerm2 bridge (nil if iTerm not available)
-	planner        *Planner              // Planner for /agent/task (non-voice Talker)
-	cdpProxy       *cdp.Proxy            // CDP proxy for Dumb Pipe architecture
-	nfsRoot        *graph.CompositeGraph // top-level NFS graph: tab-{id} → per-tab CompositeGraph
-	nfsServer      *mount.Server         // single NFS server (nil if disabled)
-	nfsMountPath   string                // e.g. "/tmp/xray-mache/"
+	schemas        *SchemaCache        // domain+path → schema JSON
+	activeVoiceTab int                 // tab ID for native voice mode (set by TAB_ACTIVATED)
+	openBrowserFn  func(url string)    // fallback when no WS connection; nil = no-op (tests)
+	termBridge     graph.Graph         // global iTerm2 bridge (nil if iTerm not available)
+	planner        *Planner            // Planner for /agent/task (non-voice Talker)
+	cdpProxy       *cdp.Proxy          // CDP proxy for Dumb Pipe architecture
+	nfsRoot        *graph.HotSwapGraph // NFS root → active tab's CompositeGraph (flat: browser/, iterm/, ...)
+	nfsServer      *mount.Server       // single NFS server (nil if disabled)
+	nfsMountPath   string              // e.g. "/tmp/xray-mache/"
+	nfsActiveTab   int                 // tab ID currently exposed via NFS
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client, liveClient *genai.Client, navModel, liveModel, plannerModel, dbPath string) *Handler {
@@ -80,7 +81,8 @@ func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client,
 // Call this after NewHandler if EnableNFSMount is true.
 // Tabs are registered/unregistered as subdirectories dynamically.
 func (h *Handler) StartNFS() error {
-	h.nfsRoot = graph.NewCompositeGraph()
+	// Start with an empty graph; swapped to active tab's CompositeGraph on first connect.
+	h.nfsRoot = graph.NewHotSwapGraph(graph.NewMemoryStore())
 	h.nfsMountPath = "/tmp/xray-mache"
 	if err := os.MkdirAll(h.nfsMountPath, 0o755); err != nil {
 		return fmt.Errorf("NFS mkdir: %w", err)
@@ -182,14 +184,11 @@ func (h *Handler) getSession(tabID int) *TabSession {
 		OverlayRemovedCh:  make(chan struct{}, 1),
 		captureSem:        make(chan struct{}, 1),
 	}
-	// Register tab's CompositeGraph in the shared NFS root (if enabled).
-	if h.nfsRoot != nil {
-		tabPrefix := fmt.Sprintf("tab-%d", tabID)
-		if err := h.nfsRoot.Mount(tabPrefix, composite); err != nil {
-			log.Printf("Session: NFS register failed (tab %d): %v", tabID, err)
-		} else {
-			log.Printf("Session: NFS registered %s → %s/tab-%d/", tabPrefix, h.nfsMountPath, tabID)
-		}
+	// If NFS is enabled and no tab is active yet, swap to this tab's graph.
+	if h.nfsRoot != nil && h.nfsActiveTab == 0 {
+		h.nfsRoot.Swap(composite)
+		h.nfsActiveTab = tabID
+		log.Printf("Session: NFS showing tab %d at %s", tabID, h.nfsMountPath)
 	}
 
 	h.sessions[tabID] = sess
@@ -327,8 +326,15 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		case MsgTabActivated:
 			h.mu.Lock()
 			h.activeVoiceTab = msg.TabID
+			// Swap NFS root to the newly activated tab's CompositeGraph.
+			if h.nfsRoot != nil {
+				if sess, ok := h.sessions[msg.TabID]; ok {
+					h.nfsRoot.Swap(sess.Composite)
+					h.nfsActiveTab = msg.TabID
+				}
+			}
 			h.mu.Unlock()
-			log.Printf("WebSocket: active voice tab set to %d", msg.TabID)
+			log.Printf("WebSocket: active tab set to %d", msg.TabID)
 		case MsgTabClosed:
 			h.handleTabClosed(msg)
 		case MsgDOMMutated:
@@ -451,9 +457,6 @@ func (h *Handler) handleTabClosed(msg InboundMessage) {
 		if sess.doerCancel != nil {
 			sess.doerCancel() // kills the Doer's Run goroutine (Bug #6 fix)
 		}
-		if h.nfsRoot != nil {
-			_ = h.nfsRoot.Unmount(fmt.Sprintf("tab-%d", msg.TabID))
-		}
 		delete(h.sessions, msg.TabID)
 	}
 	if h.activeVoiceTab == msg.TabID {
@@ -464,6 +467,20 @@ func (h *Handler) handleTabClosed(msg InboundMessage) {
 				h.activeVoiceTab = tabID
 				break
 			}
+		}
+	}
+	// If closed tab was NFS-active, swap to another tab or empty.
+	if h.nfsRoot != nil && h.nfsActiveTab == msg.TabID {
+		h.nfsActiveTab = 0
+		for tabID, sess := range h.sessions {
+			if tabID != 0 {
+				h.nfsRoot.Swap(sess.Composite)
+				h.nfsActiveTab = tabID
+				break
+			}
+		}
+		if h.nfsActiveTab == 0 {
+			h.nfsRoot.Swap(graph.NewMemoryStore())
 		}
 	}
 	h.mu.Unlock()
