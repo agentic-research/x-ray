@@ -562,7 +562,7 @@ func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, pctx 
 		// Domain jail: if the task provided a start URL, only allow the same hostname.
 		if pctx.allowedHost != "" {
 			u, err := url.Parse(rawURL)
-			if err != nil || u.Hostname() != pctx.allowedHost {
+			if err != nil || u.Host != pctx.allowedHost {
 				log.Printf("Planner: BLOCKED open_url %s (allowed host: %s)", rawURL, pctx.allowedHost)
 				return fmt.Sprintf("Blocked: %s — only %s URLs are allowed. Use the correct localhost port.", rawURL, pctx.allowedHost)
 			}
@@ -852,7 +852,7 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 	allowedHost := ""
 	if req.StartURL != "" {
 		if u, err := url.Parse(req.StartURL); err == nil {
-			allowedHost = u.Hostname()
+			allowedHost = u.Host // includes port — prevents hallucinated ports
 		}
 	}
 

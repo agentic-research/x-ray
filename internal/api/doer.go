@@ -251,6 +251,7 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 		enrichedIntent = fmt.Sprintf("OVERALL TASK: %s\n\nCurrent step: %s", ix.Context, ix.Intent)
 	}
 	var lastSummary string
+	var consecutiveRescanTimeouts int
 
 	for step := 0; step < maxGoalSteps; step++ {
 		if step > 0 {
@@ -315,6 +316,18 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 		}
 
 		lastSummary = d.dispatchAction(ixCtx, action)
+
+		// Circuit breaker: if rescan keeps timing out (empty tab), bail.
+		if action.Action == "browser.rescan" && strings.Contains(lastSummary, "timed out") {
+			consecutiveRescanTimeouts++
+			if consecutiveRescanTimeouts >= 3 {
+				log.Printf("Doer [tab %d]: %d consecutive rescan timeouts — tab appears empty, aborting", d.tabID, consecutiveRescanTimeouts)
+				d.finishInteraction(ix.ID, StatusFailed, "Page failed to load after multiple attempts.", "consecutive rescan timeouts")
+				return
+			}
+		} else {
+			consecutiveRescanTimeouts = 0
+		}
 
 		// Record step in the interaction graph's audit trail.
 		if d.sess.Tasks != nil {
