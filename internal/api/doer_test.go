@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/agentic-research/mache/graph"
+	"github.com/agentic-research/x-ray/internal/interactions"
 	"github.com/agentic-research/x-ray/internal/navigator"
-	"github.com/agentic-research/x-ray/internal/tasks"
 	"google.golang.org/genai"
 )
 
@@ -827,14 +827,11 @@ func TestDoerTab0SkipsSchemaGate(t *testing.T) {
 	}
 }
 
-func TestDoerTab0WeakResponseRetry(t *testing.T) {
-	// Verify the weak-response validation works on tab 0 too:
-	// First attempt returns "I couldn't find...", second attempt succeeds.
+func TestDoerTab0AcceptsResponseWithoutStringRetry(t *testing.T) {
+	// After removing string-matching weak response detection, any text response
+	// without an explicit "failed:" status signal is accepted as completed.
 	mock := &mockIntentHandler{
-		responses: []mockResponse{
-			{textResp: "I couldn't find the terminal."},
-			{textResp: "Done. Typed hello world in the terminal."},
-		},
+		textResp: "I couldn't find the terminal.",
 	}
 	h := newTestHandler()
 	sess := h.getSession(0)
@@ -846,17 +843,17 @@ func TestDoerTab0WeakResponseRetry(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(Interaction{ID: "g-retry", Intent: "type hello world in terminal"})
+	doer.Submit(Interaction{ID: "g-noretr", Intent: "type hello world in terminal"})
 	result := waitForDone(t, doer, 5*time.Second)
 
 	if result.Status != StatusCompleted {
-		t.Errorf("expected success after retry, got error: %s", result.Error)
+		t.Errorf("expected completed (no string-match retry), got: %s", result.Error)
 	}
-	if result.Summary != "Done. Typed hello world in the terminal." {
+	if result.Summary != "I couldn't find the terminal." {
 		t.Errorf("unexpected summary: %s", result.Summary)
 	}
-	if calls := mock.handleCalls.Load(); calls != 2 {
-		t.Errorf("expected 2 HandleIntent calls (retry), got %d", calls)
+	if calls := mock.handleCalls.Load(); calls != 1 {
+		t.Errorf("expected 1 HandleIntent call (no retry), got %d", calls)
 	}
 }
 
@@ -1162,7 +1159,7 @@ func TestGuardrailsCleanupOnCancel(t *testing.T) {
 
 	// Ensure tasks graph exists for dedup wiring.
 	if sess.Tasks == nil {
-		sess.Tasks = tasks.New()
+		sess.Tasks = interactions.New()
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1184,7 +1181,7 @@ func TestGuardrailsCleanupOnCancel(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// Clear scratch from goal execution so we test fresh dedup state.
-	sess.Tasks.SetTask("test")
+	sess.Tasks.StartInteraction("test-ix", "test")
 
 	// Verify dedup was cleared: writing the same value twice should both succeed
 	// (no guardrail blocking duplicates after cleanup).

@@ -175,13 +175,13 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 
 	log.Printf("Doer [tab %d]: executing interaction %q", d.tabID, ix.Intent)
 
-	// Populate /tasks/active/task so Navigator can cat it.
+	// Populate /interactions/active/ so Navigator can cat intent and write status.
 	taskText := ix.Intent
 	if ix.Context != "" {
 		taskText = ix.Context + "\n\nCurrent sub-goal: " + ix.Intent
 	}
 	if d.sess.Tasks != nil {
-		d.sess.Tasks.SetTask(taskText)
+		d.sess.Tasks.StartInteraction(ix.ID, taskText)
 	}
 
 	// Initialize guardrails for this interaction.
@@ -211,7 +211,7 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 	// Wait for schema to be ready before first Navigator call.
 	// Without this, Navigator sees an empty filesystem on fresh page loads.
 	// Skip for tab 0 (system session) — there's no browser to wait for.
-	// The Navigator can still use /iterm/ and /tasks/ paths without browser schema.
+	// The Navigator can still use /iterm/ and /interactions/ paths without browser schema.
 	if d.tabID != 0 && !d.sess.GetEngine().HasSchema() {
 		d.updateStep("waiting for page to load")
 		log.Printf("Doer [tab %d]: waiting for schema before starting", d.tabID)
@@ -263,29 +263,26 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 		}
 
 		// Text response — the navigator answered rather than acted.
-		// Validate: reject empty, apologetic, or error responses and retry.
-		// But allow explicit "not found" conclusions — the navigator searched and
-		// genuinely determined the information doesn't exist.
+		// Read structured status from the interaction graph instead of
+		// string-matching the response text.
 		if textResponse != "" {
-			trimmed := strings.TrimSpace(textResponse)
-			isWeak := strings.HasPrefix(trimmed, "I couldn't") ||
-				strings.HasPrefix(trimmed, "I could not") ||
-				strings.HasPrefix(trimmed, "Error:") ||
-				strings.HasPrefix(trimmed, "I was unable") ||
-				len(trimmed) < 5
-			isDefinitive := strings.Contains(trimmed, "DONE:") ||
-				strings.Contains(trimmed, "does not exist") ||
-				strings.Contains(trimmed, "not present on")
-			if isWeak && !isDefinitive && step < maxGoalSteps-1 {
-				log.Printf("Doer [tab %d]: Navigator returned weak response %q, retrying", d.tabID, trimmed)
-				enrichedIntent = "Previous attempt failed with: " + trimmed + "\nTry a different approach: " + ix.Intent + "\nIf you are certain the information does not exist on this page, say so clearly."
-				continue
+			ixStatus := ""
+			if d.sess.Tasks != nil {
+				ixStatus = d.sess.Tasks.Status()
+			}
+
+			// Navigator explicitly signaled failure — do NOT retry.
+			if strings.HasPrefix(ixStatus, "failed:") {
+				reason := strings.TrimPrefix(ixStatus, "failed:")
+				log.Printf("Doer [tab %d]: Navigator signaled failure: %s", d.tabID, reason)
+				d.finishInteraction(ix.ID, StatusFailed, "Not found: "+reason, reason)
+				return
 			}
 
 			// Completeness guardrail: check if we have all expected items.
 			if gs.Enabled && step < maxGoalSteps-1 && d.sess.Tasks != nil {
 				if warning := gs.CheckCompleteness(d.sess.Tasks.Scratch()); warning != "" {
-					log.Printf("Doer [tab %d]: completeness check failed, retrying: %s", d.tabID, warning)
+					log.Printf("Doer [tab %d]: completeness check, continuing: %s", d.tabID, warning)
 					enrichedIntent = warning + "\n\nOriginal task: " + ix.Intent
 					continue
 				}
@@ -301,6 +298,11 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 		}
 
 		lastSummary = d.dispatchAction(ixCtx, action)
+
+		// Record step in the interaction graph's audit trail.
+		if d.sess.Tasks != nil {
+			d.sess.Tasks.RecordStep(fmt.Sprintf("%s %s", action.Action, action.Path))
+		}
 
 		// Record page visit and scan for item counts.
 		// NOTE: Navigator-level tool calls (cat, grep, ls) are already tracked
@@ -598,6 +600,11 @@ func (d *Doer) finishInteraction(ixID string, status InteractionStatus, summary,
 	}
 	d.state.mu.Unlock()
 
+	// Move the interaction record to history in the graph.
+	if d.sess.Tasks != nil {
+		d.sess.Tasks.FinishInteraction(summary)
+	}
+
 	log.Printf("Doer [tab %d]: interaction %s finished (status=%s): %s", d.tabID, ixID, status, summary)
 
 	// Notify the Talker so it can announce the result.
@@ -725,7 +732,7 @@ func buildContinuation(intent, taskContext string, step int, action *navigator.A
 		"COMPLETENESS CHECK: If you have found the specific data requested, you may stop and return the answer. "+
 		"Only check pagination if: (a) you haven't found the target yet, or (b) the goal explicitly asks for ALL items. "+
 		"When paginating: track visited pages in scratchpad (e.g. 'visited: page 1, 2'). NEVER click Previous or revisit a page you already checked. "+
-		"Before answering, cat /tasks/active/scratch to collect findings and avoid duplicates.",
+		"Before answering, cat /interactions/active/scratch to collect findings and avoid duplicates.",
 		step+1, intent, action.Action, action.Path, summary, context)
 
 	// Inject guardrail pagination data if available.

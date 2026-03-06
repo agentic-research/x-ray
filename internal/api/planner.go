@@ -747,9 +747,9 @@ func (h *Handler) HandleAgentReset(w http.ResponseWriter, r *http.Request) {
 	sess := h.getSession(tabID)
 	sess.ResetSchema()
 
-	// Clear the scratchpad so findings from the previous task don't leak.
+	// Clear interaction state so findings from the previous task don't leak.
 	if sess.Tasks != nil {
-		sess.Tasks.ClearTask()
+		sess.Tasks.Reset()
 	}
 
 	log.Printf("Reset: cleared schema + scratchpad for tab %d", tabID)
