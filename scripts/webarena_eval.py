@@ -261,7 +261,7 @@ def prepare_eval_dir(results: list[dict], eval_dir: Path) -> None:
         # actually visited the target URL, so we synthesize entries from
         # open_url actions and the final URL.
         har_entries = []
-        for a in r.get("actions", []):
+        for a in (r.get("actions") or []):
             tool = a.get("tool", "")
             args = a.get("args", {})
             if tool == "open_url" and isinstance(args.get("url"), str):
