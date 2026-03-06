@@ -33,13 +33,14 @@ type WATask struct {
 }
 
 // URL template placeholders → default local ports.
+// Override with env vars: WEBARENA_SHOPPING_URL, WEBARENA_SHOPPING_ADMIN_URL, etc.
 var siteURLDefaults = map[string]string{
-	"__SHOPPING__":       "http://localhost:7770",
-	"__SHOPPING_ADMIN__": "http://localhost:7780/admin",
-	"__REDDIT__":         "http://localhost:9999",
-	"__GITLAB__":         "http://localhost:8023",
-	"__WIKIPEDIA__":      "http://localhost:8888",
-	"__MAP__":            "http://localhost:3000",
+	"__SHOPPING__":       envOr("WEBARENA_SHOPPING_URL", "http://localhost:7770"),
+	"__SHOPPING_ADMIN__": envOr("WEBARENA_SHOPPING_ADMIN_URL", "http://localhost:7780") + "/admin",
+	"__REDDIT__":         envOr("WEBARENA_REDDIT_URL", "http://localhost:9999"),
+	"__GITLAB__":         envOr("WEBARENA_GITLAB_URL", "http://localhost:8023"),
+	"__WIKIPEDIA__":      envOr("WEBARENA_WIKIPEDIA_URL", "http://localhost:8888"),
+	"__MAP__":            envOr("WEBARENA_MAP_URL", "http://localhost:3000"),
 }
 
 // siteCredentials maps site names to login credentials.
@@ -60,7 +61,7 @@ type siteCreds struct {
 
 var siteCredentials = map[string]siteCreds{
 	"shopping_admin": {
-		LoginURL:      "http://localhost:7780/admin",
+		LoginURL:      envOr("WEBARENA_SHOPPING_ADMIN_URL", "http://localhost:7780") + "/admin",
 		Username:      "admin",
 		Password:      "admin1234",
 		UsernameField: "login[username]",
@@ -69,10 +70,10 @@ var siteCredentials = map[string]siteCreds{
 		FormKeyRegex:  `name="form_key"[^/]*value="([^"]*)"`,
 		CookieName:    "admin",
 		CookiePath:    "/admin",
-		CookieDomain:  "localhost",
+		CookieDomain:  envOrHost("WEBARENA_SHOPPING_ADMIN_URL", "localhost"),
 	},
 	"shopping": {
-		LoginURL:      "http://localhost:7770/customer/account/login/",
+		LoginURL:      envOr("WEBARENA_SHOPPING_URL", "http://localhost:7770") + "/customer/account/login/",
 		Username:      "emma.lopez@gmail.com",
 		Password:      "Password.123",
 		UsernameField: "login[username]",
@@ -81,10 +82,10 @@ var siteCredentials = map[string]siteCreds{
 		FormKeyRegex:  `name="form_key"[^/]*value="([^"]*)"`,
 		CookieName:    "PHPSESSID",
 		CookiePath:    "/",
-		CookieDomain:  "localhost",
+		CookieDomain:  envOrHost("WEBARENA_SHOPPING_URL", "localhost"),
 	},
 	"gitlab": {
-		LoginURL:      "http://localhost:8023/users/sign_in",
+		LoginURL:      envOr("WEBARENA_GITLAB_URL", "http://localhost:8023") + "/users/sign_in",
 		Username:      "byteblaze",
 		Password:      "hello1234",
 		UsernameField: "user[login]",
@@ -93,10 +94,10 @@ var siteCredentials = map[string]siteCreds{
 		FormKeyRegex:  `name="authenticity_token"[^/]*value="([^"]*)"`,
 		CookieName:    "_gitlab_session",
 		CookiePath:    "/",
-		CookieDomain:  "localhost",
+		CookieDomain:  envOrHost("WEBARENA_GITLAB_URL", "localhost"),
 	},
 	"reddit": {
-		LoginURL:      "http://localhost:9999/login",
+		LoginURL:      envOr("WEBARENA_REDDIT_URL", "http://localhost:9999") + "/login",
 		Username:      "MarvelsGrantMan136",
 		Password:      "test1234",
 		UsernameField: "username",
@@ -104,7 +105,7 @@ var siteCredentials = map[string]siteCreds{
 		FormKeyField:  "",
 		CookieName:    "session",
 		CookiePath:    "/",
-		CookieDomain:  "localhost",
+		CookieDomain:  envOrHost("WEBARENA_REDDIT_URL", "localhost"),
 	},
 }
 
@@ -521,6 +522,17 @@ func resetBrowser(ctx context.Context, agentdURL string) {
 func envOr(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+// envOrHost returns the hostname from the env var URL, or the fallback.
+// Used for cookie domains that must match the site hostname.
+func envOrHost(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		if u, err := url.Parse(v); err == nil && u.Hostname() != "" {
+			return u.Hostname()
+		}
 	}
 	return fallback
 }

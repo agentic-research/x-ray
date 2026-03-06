@@ -292,6 +292,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 
 		resp, err := p.client.Models.GenerateContent(ctx, p.model, history, config)
 		if err != nil {
+			log.Printf("Planner: Gemini API error at turn %d: %v", turn, err)
 			return PlannerResult{
 				Status:  "failed",
 				Error:   fmt.Sprintf("Gemini API error: %v", err),
@@ -719,6 +720,51 @@ func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, pctx 
 	}
 }
 
+// createBackendSession creates a CF Browser Rendering session for a task.
+// It calls backend.CreateSession with the URL and cookies, generates a
+// synthetic tab ID, maps it to the CF session, and sets activeVoiceTab.
+func (h *Handler) createBackendSession(ctx context.Context, backend BrowserBackend, startURL string, cookies []struct {
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	Domain string `json:"domain"`
+	Path   string `json:"path"`
+},
+) (int, error) {
+	// Convert cookies to api.CookieMsg.
+	var apiCookies []CookieMsg
+	for _, c := range cookies {
+		apiCookies = append(apiCookies, CookieMsg{
+			Name:   c.Name,
+			Value:  c.Value,
+			Domain: c.Domain,
+			Path:   c.Path,
+		})
+	}
+
+	sessionID, err := backend.CreateSession(ctx, startURL, apiCookies)
+	if err != nil {
+		return 0, fmt.Errorf("create session: %w", err)
+	}
+
+	// Generate a synthetic tab ID and map it to the CF session.
+	tabID := int(time.Now().UnixMilli())
+
+	type sessionSetter interface {
+		SetSessionForTab(int, string)
+	}
+	if ss, ok := backend.(sessionSetter); ok {
+		ss.SetSessionForTab(tabID, sessionID)
+	}
+
+	// Register as active voice tab so the Doer/Navigator can find it.
+	h.mu.Lock()
+	h.activeVoiceTab = tabID
+	h.mu.Unlock()
+
+	log.Printf("Planner: created CF session %s for tab %d (url=%s)", sessionID, tabID, startURL)
+	return tabID, nil
+}
+
 // resolveTab figures out which Chrome tab to use for a task.
 //
 // Strategy:
@@ -840,64 +886,80 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	tabID := req.TabID
 
-	// When pre-auth cookies are present, open about:blank first so the browser
-	// doesn't fire an unauthenticated GET to the start URL (which would 302 to
-	// the login page before cookies are injected). After cookies are set, we
-	// navigate to the real URL.
-	resolveURL := req.StartURL
-	if len(req.Cookies) > 0 && req.StartURL != "" {
-		resolveURL = "about:blank"
-	}
-
-	// Resolve a real tab: use existing inventory or create a new one.
-	tabID = h.resolveTab(ctx, tabID, resolveURL)
-	if tabID == 0 && ctx.Err() != nil {
-		writeJSON(w, PlannerResult{Status: "cancelled", Summary: "Request cancelled."})
-		return
-	}
-
-	sess := h.getSession(tabID)
-
-	// Inject pre-auth cookies, then navigate to the real start URL.
-	if len(req.Cookies) > 0 {
-		h.injectCookies(ctx, tabID, req.Cookies, req.StartURL)
-	}
-
-	// Wait for schema to be ready before running the Planner.
-	// Guard against stale schemas: if the session URL doesn't match our target,
-	// a capture from the previous page may have signaled ready. Reset and wait
-	// for the correct page's capture to complete.
-	for attempt := 0; attempt < 2; attempt++ {
-		if !sess.GetEngine().HasSchema() {
-			select {
-			case <-sess.GetSchemaReady():
-				log.Printf("Planner: schema ready (tab %d)", tabID)
-			case <-time.After(30 * time.Second):
-				log.Printf("Planner: schema timeout (tab %d), proceeding anyway", tabID)
-			case <-ctx.Done():
-				writeJSON(w, PlannerResult{Status: "cancelled", Summary: "Request cancelled."})
-				return
-			}
+	if backend := h.GetBrowserBackend(); backend != nil {
+		// ---------------------------------------------------------------
+		// Backend mode: create a CF browser session directly (no extension).
+		// ---------------------------------------------------------------
+		var err error
+		tabID, err = h.createBackendSession(ctx, backend, req.StartURL, req.Cookies)
+		if err != nil {
+			log.Printf("Planner: backend session creation failed: %v", err)
+			writeJSON(w, PlannerResult{Status: "error", Summary: fmt.Sprintf("Backend session failed: %v", err)})
+			return
 		}
-		// Verify the schema is for the correct page, not a stale capture.
-		if req.StartURL != "" && sess.GetCurrentURL() != "" {
-			if CacheKey(sess.GetCurrentURL()) != CacheKey(req.StartURL) {
-				log.Printf("Planner: stale schema detected (have %s, want %s) — resetting (tab %d)",
-					sess.GetCurrentURL(), req.StartURL, tabID)
-				sess.ResetSchema()
-				continue
-			}
+
+		// Trigger initial capture so the Planner has a schema to work with.
+		go h.captureGo(ctx, tabID, false, "")
+
+		sess := h.getSession(tabID)
+		select {
+		case <-sess.GetSchemaReady():
+			log.Printf("Planner: schema ready (tab %d)", tabID)
+		case <-time.After(30 * time.Second):
+			log.Printf("Planner: schema timeout (tab %d), proceeding anyway", tabID)
+		case <-ctx.Done():
+			writeJSON(w, PlannerResult{Status: "cancelled", Summary: "Request cancelled."})
+			return
 		}
-		break
+	} else {
+		// ---------------------------------------------------------------
+		// Extension mode: create tab via WebSocket + inject cookies.
+		// ---------------------------------------------------------------
+		resolveURL := req.StartURL
+		if len(req.Cookies) > 0 && req.StartURL != "" {
+			resolveURL = "about:blank"
+		}
+
+		tabID = h.resolveTab(ctx, tabID, resolveURL)
+		if tabID == 0 && ctx.Err() != nil {
+			writeJSON(w, PlannerResult{Status: "cancelled", Summary: "Request cancelled."})
+			return
+		}
+
+		if len(req.Cookies) > 0 {
+			h.injectCookies(ctx, tabID, req.Cookies, req.StartURL)
+		}
+
+		sess := h.getSession(tabID)
+		for attempt := 0; attempt < 2; attempt++ {
+			if !sess.GetEngine().HasSchema() {
+				select {
+				case <-sess.GetSchemaReady():
+					log.Printf("Planner: schema ready (tab %d)", tabID)
+				case <-time.After(30 * time.Second):
+					log.Printf("Planner: schema timeout (tab %d), proceeding anyway", tabID)
+				case <-ctx.Done():
+					writeJSON(w, PlannerResult{Status: "cancelled", Summary: "Request cancelled."})
+					return
+				}
+			}
+			if req.StartURL != "" && sess.GetCurrentURL() != "" {
+				if CacheKey(sess.GetCurrentURL()) != CacheKey(req.StartURL) {
+					log.Printf("Planner: stale schema detected (have %s, want %s) — resetting (tab %d)",
+						sess.GetCurrentURL(), req.StartURL, tabID)
+					sess.ResetSchema()
+					continue
+				}
+			}
+			break
+		}
 	}
 
 	// Extract allowed hostname from start_url for domain jail.
-	// In eval mode this prevents the agent from escaping to the live internet.
-	// In interactive mode (no start_url), no restriction is applied.
 	allowedHost := ""
 	if req.StartURL != "" {
 		if u, err := url.Parse(req.StartURL); err == nil {
-			allowedHost = u.Host // includes port — prevents hallucinated ports
+			allowedHost = u.Host
 		}
 	}
 
@@ -907,7 +969,7 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 	elapsed := time.Since(taskStart)
 
 	// Capture the final URL for NAVIGATE-type task evaluation.
-	// Use the active tab (may have changed if open_url switched tabs).
+	sess := h.getSession(tabID)
 	if activeSess := h.getVoiceSession(); activeSess != nil {
 		result.URLFinal = activeSess.GetCurrentURL()
 	} else {

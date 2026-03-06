@@ -17,6 +17,14 @@ import (
 // Serialized per-tab via captureMu to prevent concurrent goroutines from racing on shared channels
 // (wrong summary paired with wrong screenshot).
 func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool, targetMacheID string) {
+	// Backend mode: route through BrowserBackend (CF Worker) instead of extension.
+	h.mu.Lock()
+	backend := h.backend
+	h.mu.Unlock()
+	if backend != nil {
+		h.captureViaBackend(parentCtx, tabID, isRescan, backend)
+		return
+	}
 	h.captureGoRetry(parentCtx, tabID, isRescan, targetMacheID, 0)
 }
 
@@ -293,6 +301,101 @@ func filterSummaryByClip(summary string, clip cdp.ScreenshotClip, pageW, pageH f
 		}
 	}
 	return strings.Join(kept, "\n")
+}
+
+// captureViaBackend implements the capture pipeline using a BrowserBackend (e.g., CF Worker).
+// It replaces the extension WebSocket orchestration with HTTP calls to the backend.
+func (h *Handler) captureViaBackend(parentCtx context.Context, tabID int, isRescan bool, backend BrowserBackend) {
+	sess := h.getSession(tabID)
+
+	select {
+	case sess.captureSem <- struct{}{}:
+		defer func() { <-sess.captureSem }()
+	case <-parentCtx.Done():
+		return
+	}
+
+	captureOK := false
+	defer func() {
+		if !captureOK {
+			sess.SignalSchemaReady()
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(parentCtx, config.Dur(h.Timeouts.Capture))
+	defer cancel()
+
+	// Resolve CF session ID for this tab.
+	type sessionMapper interface {
+		SessionForTab(int) string
+	}
+	var sessionID string
+	if sm, ok := backend.(sessionMapper); ok {
+		sessionID = sm.SessionForTab(tabID)
+	}
+	if sessionID == "" {
+		log.Printf("captureViaBackend: no session for tab %d", tabID)
+		return
+	}
+
+	// 1. Request summary from backend.
+	summaryResp, err := backend.RequestSummary(ctx, sessionID)
+	if err != nil {
+		log.Printf("captureViaBackend: summary failed (tab %d): %v", tabID, err)
+		return
+	}
+	if summaryResp.Summary == "" {
+		log.Printf("captureViaBackend: empty summary (tab %d)", tabID)
+		return
+	}
+
+	// 2. Layout metrics.
+	pageWidth, pageHeight, err := backend.LayoutMetrics(ctx, sessionID)
+	if err != nil {
+		log.Printf("captureViaBackend: layout metrics failed (tab %d): %v", tabID, err)
+		return
+	}
+
+	// 3. Screenshot.
+	screenshot, err := backend.CaptureScreenshot(ctx, sessionID, pageWidth, pageHeight)
+	if err != nil {
+		log.Printf("captureViaBackend: screenshot failed (tab %d): %v", tabID, err)
+		screenshot = ""
+	}
+
+	// 4. AX tree enrichment (backend joins AX to mache IDs and returns enriched summary).
+	enrichedSummary := summaryResp.Summary
+	axEnriched, axErr := backend.FullAXTree(ctx, sessionID)
+	if axErr != nil {
+		log.Printf("captureViaBackend: AX tree failed (tab %d): %v — proceeding without", tabID, axErr)
+	} else if axEnriched != "" {
+		enrichedSummary = axEnriched
+	}
+
+	// 5. Page text.
+	pageText, ptErr := backend.PageText(ctx, sessionID)
+	if ptErr != nil {
+		log.Printf("captureViaBackend: page text failed (tab %d): %v", tabID, ptErr)
+	}
+
+	log.Printf("captureViaBackend: captured tab %d — screenshot=%d chars, summary=%d lines",
+		tabID, len(screenshot), strings.Count(enrichedSummary, "\n"))
+
+	// 6. Feed into existing handleDOMSnapshot pipeline.
+	captureOK = true
+	h.mu.Lock()
+	conn := h.conn
+	h.mu.Unlock()
+	syntheticMsg := InboundMessage{
+		Type:       MsgDOMSnapshot,
+		TabID:      tabID,
+		URL:        summaryResp.URL,
+		Summary:    enrichedSummary,
+		Screenshot: screenshot,
+		IsRescan:   isRescan,
+		PageText:   pageText,
+	}
+	h.handleDOMSnapshot(parentCtx, conn, syntheticMsg)
 }
 
 // sendOverlayCleanup removes the machine overlay and draws the human-friendly overlay.

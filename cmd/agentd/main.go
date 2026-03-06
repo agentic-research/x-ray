@@ -18,6 +18,7 @@ import (
 	"github.com/agentic-research/x-ray/internal/api"
 	"github.com/agentic-research/x-ray/internal/audio"
 	"github.com/agentic-research/x-ray/internal/cartographer"
+	"github.com/agentic-research/x-ray/internal/cfbrowser"
 	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/agentic-research/x-ray/internal/iterm"
 	"github.com/agentic-research/x-ray/internal/navigator"
@@ -130,6 +131,14 @@ func main() {
 		} else {
 			defer handler.StopNFS()
 		}
+	}
+
+	// Cloudflare Browser Rendering: when CF_BROWSER_URL is set, use headless
+	// Chromium on CF edge instead of the Chrome extension.
+	if cfg.CFBrowser.URL != "" {
+		cfClient := cfbrowser.NewClient(cfg.CFBrowser.URL, cfg.CFBrowser.Token)
+		handler.SetBrowserBackend(cfClient)
+		log.Printf("Browser backend: Cloudflare Worker at %s", cfg.CFBrowser.URL)
 	}
 
 	handler.SetOpenBrowserFunc(func(url string) {

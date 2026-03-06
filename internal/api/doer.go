@@ -487,6 +487,12 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 			log.Printf("Doer [tab %d]: mount browser: %v", d.tabID, err)
 		}
 		d.sess.Navigator.SetGraph(d.sess.Composite)
+
+		// Backend mode: navigate + capture via BrowserBackend.
+		if backend := d.handler.GetBrowserBackend(); backend != nil {
+			return d.dispatchGotoViaBackend(ctx, backend, action.Path)
+		}
+
 		d.handler.sendGoto(d.tabID, action.Path)
 		d.updateStep(fmt.Sprintf("navigating to %s", action.Path))
 		log.Printf("Doer [tab %d]: goto %s", d.tabID, action.Path)
@@ -501,6 +507,11 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		}
 
 	case "browser.rescan":
+		// Backend mode: trigger capture directly.
+		if backend := d.handler.GetBrowserBackend(); backend != nil {
+			return d.dispatchRescanViaBackend(ctx, backend, action.Path)
+		}
+
 		if action.Path != "" {
 			// Targeted rescan: keep existing engine, zoom into zone.
 			d.sess.ResetSchema()
@@ -564,8 +575,13 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		}
 
 	default:
-		// Click/focus/type/enter — dispatch to extension.
+		// Click/focus/type/enter — dispatch to extension or backend.
 		d.updateStep(fmt.Sprintf("performing %s on %s", action.Action, action.Path))
+
+		if backend := d.handler.GetBrowserBackend(); backend != nil {
+			return d.dispatchActionViaBackend(ctx, backend, action)
+		}
+
 		d.handler.SendActionToExtension(d.tabID, action.MacheID, action.Action, action.Payload)
 		d.mu.Lock()
 		actionNotify := d.actionNotifyFn
@@ -580,13 +596,158 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 	}
 }
 
+// dispatchGotoViaBackend navigates via BrowserBackend and triggers capture.
+func (d *Doer) dispatchGotoViaBackend(ctx context.Context, backend BrowserBackend, url string) string {
+	type sessionMapper interface {
+		SessionForTab(int) string
+	}
+	var sessionID string
+	if sm, ok := backend.(sessionMapper); ok {
+		sessionID = sm.SessionForTab(d.tabID)
+	}
+	if sessionID == "" {
+		return "No browser session for this tab."
+	}
+
+	d.updateStep(fmt.Sprintf("navigating to %s", url))
+	log.Printf("Doer [tab %d]: backend goto %s", d.tabID, url)
+
+	if err := backend.Navigate(ctx, sessionID, url); err != nil {
+		log.Printf("Doer [tab %d]: backend navigate failed: %v", d.tabID, err)
+		return fmt.Sprintf("Navigation failed: %v", err)
+	}
+
+	// Trigger capture via backend path.
+	go d.handler.captureGo(ctx, d.tabID, false, "")
+
+	select {
+	case <-d.sess.GetSchemaReady():
+		return fmt.Sprintf("Navigated to %s. Page is loaded.", url)
+	case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
+		return fmt.Sprintf("Navigated to %s but page load timed out.", url)
+	case <-ctx.Done():
+		return "Navigation cancelled."
+	}
+}
+
+// dispatchRescanViaBackend triggers a capture via BrowserBackend.
+func (d *Doer) dispatchRescanViaBackend(ctx context.Context, backend BrowserBackend, zonePath string) string {
+	if zonePath == "" {
+		// Full rescan: reset engine.
+		d.sess.ResetSchema()
+		newEngine := mache.NewEngine()
+		d.sess.SwapEngine(newEngine)
+		if err := d.sess.Composite.Unmount("browser"); err != nil {
+			log.Printf("Doer [tab %d]: unmount browser: %v", d.tabID, err)
+		}
+		if err := d.sess.Composite.Mount("browser", newEngine); err != nil {
+			log.Printf("Doer [tab %d]: mount browser: %v", d.tabID, err)
+		}
+		d.sess.Navigator.SetGraph(d.sess.Composite)
+		d.updateStep("rescanning full page")
+		log.Printf("Doer [tab %d]: backend full rescan", d.tabID)
+	} else {
+		d.sess.ResetSchema()
+		d.sess.SetRescanPath(zonePath)
+		d.updateStep(fmt.Sprintf("zooming into %s", zonePath))
+		log.Printf("Doer [tab %d]: backend targeted rescan %q", d.tabID, zonePath)
+	}
+
+	go d.handler.captureGo(ctx, d.tabID, true, "")
+
+	select {
+	case <-d.sess.GetSchemaReady():
+		if zonePath != "" {
+			return fmt.Sprintf("Zoomed into %s for more detail.", zonePath)
+		}
+		return "Page rescanned."
+	case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
+		return "Rescan timed out."
+	case <-ctx.Done():
+		return "Rescan cancelled."
+	}
+}
+
+// dispatchActionViaBackend dispatches click/type/enter/focus via BrowserBackend.
+func (d *Doer) dispatchActionViaBackend(ctx context.Context, backend BrowserBackend, action *navigator.ActionResult) string {
+	type sessionMapper interface {
+		SessionForTab(int) string
+	}
+	var sessionID string
+	if sm, ok := backend.(sessionMapper); ok {
+		sessionID = sm.SessionForTab(d.tabID)
+	}
+	if sessionID == "" {
+		return "No browser session for this tab."
+	}
+
+	if err := backend.ExecuteAction(ctx, sessionID, action.MacheID, action.Action, action.Payload); err != nil {
+		log.Printf("Doer [tab %d]: backend action failed: %v", d.tabID, err)
+		return fmt.Sprintf("Action failed: %v", err)
+	}
+
+	d.mu.Lock()
+	actionNotify := d.actionNotifyFn
+	d.mu.Unlock()
+	if actionNotify != nil {
+		actionNotify(action.MacheID, action.Action, action.Payload)
+	}
+
+	if action.Payload != "" {
+		return fmt.Sprintf("Typed %q into %s.", action.Payload, action.Path)
+	}
+	return fmt.Sprintf("Done. Performed %s on %s.", action.Action, action.Path)
+}
+
+// scrollViaBackend scrolls the page using the BrowserBackend and updates the engine.
+func (d *Doer) scrollViaBackend(ctx context.Context, backend BrowserBackend, direction string) error {
+	type sessionMapper interface {
+		SessionForTab(int) string
+	}
+	var sessionID string
+	if sm, ok := backend.(sessionMapper); ok {
+		sessionID = sm.SessionForTab(d.tabID)
+	}
+	if sessionID == "" {
+		return fmt.Errorf("no browser session for tab %d", d.tabID)
+	}
+
+	update, err := backend.Scroll(ctx, sessionID, direction)
+	if err != nil {
+		return fmt.Errorf("scroll failed: %w", err)
+	}
+
+	d.sess.Engine.LoadChildren(update.Summary, update.ResolvedItems)
+	d.sess.Navigator.SetViewport(update.ScrollY, update.ScrollHeight, update.ViewportHeight)
+	log.Printf("Scroll [backend]: tab %d scroll %s (viewport %.0f/%.0f)",
+		d.tabID, direction, update.ScrollY, update.ScrollHeight)
+
+	if !update.ScrollMoved || (direction == "down" && update.AtBottom) {
+		if update.AtBottom {
+			return navigator.ErrAtBottom
+		}
+		if update.AtTop {
+			return navigator.ErrAtTop
+		}
+	}
+	return nil
+}
+
 // wireNavigatorCallbacks sets scroll, progress, and list_tabs callbacks on the
 // current session's Navigator. Called at goal start and after cross-tab rebind.
 func (d *Doer) wireNavigatorCallbacks(gs *guardrails.GoalState) {
-	d.sess.Navigator.SetScrollFunc(func(scrollCtx context.Context, direction string) error {
-		d.updateStep(fmt.Sprintf("scrolling %s", direction))
-		return d.handler.scrollVoice(scrollCtx, d.sess, d.tabID, direction)
-	})
+	// Backend mode: scroll via BrowserBackend HTTP instead of extension WebSocket.
+	if backend := d.handler.GetBrowserBackend(); backend != nil {
+		d.sess.Navigator.SetScrollFunc(func(scrollCtx context.Context, direction string) error {
+			d.updateStep(fmt.Sprintf("scrolling %s", direction))
+			return d.scrollViaBackend(scrollCtx, backend, direction)
+		})
+	} else {
+		d.sess.Navigator.SetScrollFunc(func(scrollCtx context.Context, direction string) error {
+			d.updateStep(fmt.Sprintf("scrolling %s", direction))
+			return d.handler.scrollVoice(scrollCtx, d.sess, d.tabID, direction)
+		})
+	}
 	d.sess.Navigator.SetProgressFunc(func(toolName string, args map[string]any) {
 		p, _ := args["path"].(string)
 		iter, _ := args["_iter"].(string)

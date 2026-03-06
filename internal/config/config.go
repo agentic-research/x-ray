@@ -20,7 +20,14 @@ type Config struct {
 	Ollama         OllamaConfig       `yaml:"ollama"`
 	Timeouts       TimeoutsConfig     `yaml:"timeouts"`
 	Database       DatabaseConfig     `yaml:"database"`
-	EnableNFSMount bool               `yaml:"nfs_mount"` // Mount page graph as NFS via mache
+	EnableNFSMount bool               `yaml:"nfs_mount"`  // Mount page graph as NFS via mache
+	CFBrowser      CFBrowserConfig    `yaml:"cf_browser"` // Cloudflare Browser Rendering
+}
+
+// CFBrowserConfig holds Cloudflare Browser Rendering settings.
+type CFBrowserConfig struct {
+	URL   string `yaml:"url"`   // CF Worker URL (e.g., https://xray-browser.your-account.workers.dev)
+	Token string `yaml:"token"` // Bearer token for worker auth
 }
 
 // GeminiConfig holds Gemini API settings.
@@ -264,6 +271,12 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if os.Getenv("XRAY_NFS_MOUNT") == "true" || os.Getenv("XRAY_NFS_MOUNT") == "1" {
 		cfg.EnableNFSMount = true
+	}
+	if v := os.Getenv("CF_BROWSER_URL"); v != "" {
+		cfg.CFBrowser.URL = v
+	}
+	if v := os.Getenv("CF_BROWSER_TOKEN"); v != "" {
+		cfg.CFBrowser.Token = v
 	}
 }
 

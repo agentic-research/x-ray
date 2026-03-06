@@ -292,6 +292,134 @@ tasks:
     cmds:
       - go mod tidy
 
+  # ---------------------------------------------------------------------------
+  # CF Browser Rendering
+  # ---------------------------------------------------------------------------
+
+  cf-install:
+    desc: Install CF Worker dependencies
+    dir: deploy/cf-worker
+    cmds:
+      - npm install
+
+  cf-dev:
+    desc: Run CF Browser Worker remotely (wrangler dev --remote)
+    dir: deploy/cf-worker
+    cmds:
+      - npx wrangler dev --remote
+
+  cf-deploy:
+    desc: Deploy CF Browser Worker to Cloudflare
+    dir: deploy/cf-worker
+    cmds:
+      - npx wrangler deploy
+
+  cf-secret:
+    desc: Set the API_TOKEN secret on the deployed CF Worker
+    dir: deploy/cf-worker
+    cmds:
+      - npx wrangler secret put API_TOKEN
+
+  cf-smoke:
+    desc: Smoke-test the CF Worker (create session → summary → close)
+    vars:
+      CF_URL: '{{.CF_BROWSER_URL | default "http://localhost:8787"}}'
+      CF_TOKEN: '{{.CF_BROWSER_TOKEN}}'
+    cmds:
+      - |
+        set -euo pipefail
+        URL="{{.CF_URL}}"
+        TOKEN="{{.CF_TOKEN}}"
+        CURL_ARGS=(-s --max-time 30)
+        if [ -n "$TOKEN" ]; then
+          CURL_ARGS+=(-H "Authorization: Bearer $TOKEN")
+        fi
+
+        echo "==> Creating session on $URL..."
+        RESP=$(curl "${CURL_ARGS[@]}" -X POST "$URL/session" \
+          -H "Content-Type: application/json" \
+          -d '{"url":"https://example.com"}')
+        echo "    Response: $RESP"
+        if [ -z "$RESP" ]; then echo "    ERROR: empty response"; exit 1; fi
+
+        SID=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+        echo "    Session ID: $SID"
+
+        echo "==> Requesting summary..."
+        SUMMARY=$(curl "${CURL_ARGS[@]}" -X POST "$URL/session/$SID/summary" \
+          -H "Content-Type: application/json" \
+          -d '{}')
+        echo "    ${SUMMARY:0:200}..."
+
+        echo "==> Requesting screenshot..."
+        SHOT=$(curl "${CURL_ARGS[@]}" -X POST "$URL/session/$SID/screenshot" \
+          -H "Content-Type: application/json" \
+          -d '{}')
+        B64_LEN=$(echo "$SHOT" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('base64','')))")
+        echo "    Screenshot base64 length: $B64_LEN"
+
+        echo "==> Closing session..."
+        curl "${CURL_ARGS[@]}" -X DELETE "$URL/session/$SID" | python3 -m json.tool
+        echo "    Done."
+
+  cf-run:
+    desc: Run agentd with CF Browser backend
+    deps: [build]
+    env:
+      CF_BROWSER_URL: '{{.CF_BROWSER_URL | default "http://localhost:8787"}}'
+      CF_BROWSER_TOKEN: '{{.CF_BROWSER_TOKEN}}'
+      WEBARENA_MODE: "1"
+    cmds:
+      - ./{{.BINARY_NAME}}
+
+  cf-tunnel:
+    desc: Start cloudflared quick tunnels for WebArena Docker services
+    cmds:
+      - bash scripts/cf_tunnel.sh
+
+  cf-tunnel-stop:
+    desc: Stop cloudflared tunnels
+    cmds:
+      - bash scripts/cf_tunnel.sh --stop
+
+  cf-webarena:
+    desc: Run WebArena eval via CF Browser backend (with tunnels)
+    deps: [check-fuse-t]
+    env:
+      CF_BROWSER_URL: '{{.CF_BROWSER_URL | default "http://localhost:8787"}}'
+      CF_BROWSER_TOKEN: '{{.CF_BROWSER_TOKEN}}'
+      WEBARENA_MODE: "1"
+    cmds:
+      - |
+        set -euo pipefail
+
+        # Start tunnels and capture env vars.
+        echo "==> Starting cloudflared tunnels..."
+        eval "$(bash scripts/cf_tunnel.sh --env-only)"
+
+        # Start agentd in background with tunnel URLs.
+        go build -o bin/agentd ./cmd/agentd
+        CF_BROWSER_URL="{{.CF_BROWSER_URL | default "http://localhost:8787"}}" \
+        CF_BROWSER_TOKEN="{{.CF_BROWSER_TOKEN}}" \
+        WEBARENA_MODE=1 \
+          ./bin/agentd &
+        AGENTD_PID=$!
+        sleep 3
+
+        # Run eval with tunnel URLs so start_urls point to tunnel.
+        WEBARENA_SUBSET="${WEBARENA_SUBSET:-124}" \
+          go run ./cmd/webarena || true
+
+        # Cleanup
+        kill "$AGENTD_PID" 2>/dev/null || true
+        wait "$AGENTD_PID" 2>/dev/null || true
+        bash scripts/cf_tunnel.sh --stop
+
+  cf-compare:
+    desc: Compare extension vs CF backend on same tasks
+    cmds:
+      - bash scripts/compare_backends.sh {{.CLI_ARGS | default "124"}}
+
   clean:
     desc: Clean build artifacts
     cmds:

@@ -57,6 +57,7 @@ type Handler struct {
 	nfsMountPath   string              // e.g. "/tmp/xray-mache/"
 	nfsActiveTab   int                 // tab ID currently exposed via NFS
 	cookiesSetCh   chan struct{}       // signaled when COOKIES_SET ack received
+	backend        BrowserBackend      // nil = extension mode (default); set for CF Browser Rendering
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client, liveClient *genai.Client, navModel, liveModel, plannerModel, dbPath string) *Handler {
@@ -109,6 +110,21 @@ func (h *Handler) StopNFS() {
 	_ = h.nfsServer.Close()
 	_ = os.RemoveAll(h.nfsMountPath)
 	log.Printf("NFS: stopped")
+}
+
+// SetBrowserBackend sets the BrowserBackend for headless browser mode (e.g., CF Browser Rendering).
+// When set, captureGo and dispatchAction route through the backend instead of the extension WebSocket.
+func (h *Handler) SetBrowserBackend(b BrowserBackend) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.backend = b
+}
+
+// GetBrowserBackend returns the current BrowserBackend (nil if extension mode).
+func (h *Handler) GetBrowserBackend() BrowserBackend {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.backend
 }
 
 // SetOpenBrowserFunc injects the logic for opening a browser when no extension is connected.

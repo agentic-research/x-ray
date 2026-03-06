@@ -1,0 +1,19 @@
+name = "xray-browser"
+main = "src/index.ts"
+compatibility_date = "2025-09-15"
+compatibility_flags = ["nodejs_compat"]
+
+[browser]
+binding = "BROWSER"
+
+[durable_objects]
+bindings = [
+  { name = "BROWSER_SESSION", class_name = "BrowserSession" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BrowserSession"]
+
+[vars]
+API_TOKEN = ""

@@ -56,17 +56,24 @@ type ResultWriter struct {
 }
 
 // NewResultWriter creates a results directory and opens the JSONL file.
+// If WEBARENA_RESULTS_DIR is set, uses that directory instead of generating one.
 func NewResultWriter() (*ResultWriter, error) {
-	ts := time.Now().Format("20060102_150405")
-	dir := filepath.Join("results", "webarena_"+ts)
+	dir := os.Getenv("WEBARENA_RESULTS_DIR")
+	var ts string
+	if dir == "" {
+		ts = time.Now().Format("20060102_150405")
+		dir = filepath.Join("results", "webarena_"+ts)
+	}
 	if err := os.MkdirAll(filepath.Join(dir, "traces"), 0o755); err != nil {
 		return nil, fmt.Errorf("create results dir: %w", err)
 	}
 
-	// Create a "latest" symlink for convenience.
-	latestLink := filepath.Join("results", "webarena_latest")
-	_ = os.Remove(latestLink)
-	_ = os.Symlink("webarena_"+ts, latestLink)
+	// Create a "latest" symlink for convenience (only for auto-generated dirs).
+	if ts != "" {
+		latestLink := filepath.Join("results", "webarena_latest")
+		_ = os.Remove(latestLink)
+		_ = os.Symlink("webarena_"+ts, latestLink)
+	}
 
 	f, err := os.Create(filepath.Join(dir, "results.jsonl"))
 	if err != nil {
