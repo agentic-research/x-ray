@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -39,11 +40,29 @@ type benchResult struct {
 }
 
 func main() {
+	dumpFlag := flag.Bool("dump", false, "Dump Navigator input (zone tree + children) without calling LLM")
+	siteFlag := flag.String("site", "", "Only run bench cases for this site (e.g. hackernews)")
+	flag.Parse()
+
 	config.LoadEnv()
 
 	cases, err := loadCases("testdata/bench_cases.json")
 	if err != nil {
 		log.Fatalf("Failed to load bench cases: %v", err)
+	}
+
+	// Filter by site if requested.
+	if *siteFlag != "" {
+		var filtered []benchCase
+		for _, tc := range cases {
+			if tc.Site == *siteFlag {
+				filtered = append(filtered, tc)
+			}
+		}
+		if len(filtered) == 0 {
+			log.Fatalf("No bench cases for site %q", *siteFlag)
+		}
+		cases = filtered
 	}
 
 	ctx := context.Background()
@@ -63,7 +82,9 @@ func main() {
 	// Only create Gemini client if the cartographer or navigator needs it.
 	var client *genai.Client
 	navEndpoint := os.Getenv("NAVIGATOR_ENDPOINT")
-	if needsGemini || navEndpoint == "" {
+	navMode := os.Getenv("NAVIGATOR_MODE")
+	needsGeminiClient := needsGemini || (navEndpoint == "" && navMode != "gemini-live")
+	if needsGeminiClient {
 		var err error
 		client, err = genai.NewClient(ctx, nil)
 		if err != nil {
@@ -76,9 +97,16 @@ func main() {
 		cart = cartographer.NewAgent(client, model)
 	}
 
+	schemaCache := map[string]string{} // site → schemaJSON
+
+	// Dump mode: show what Navigator sees without calling LLM.
+	if *dumpFlag {
+		runDump(ctx, cart, cases, schemaCache, cartMode)
+		return
+	}
+
 	navGen, navModel := buildNavGenerator(client, model)
 
-	schemaCache := map[string]string{} // site → schemaJSON
 	var results []benchResult
 
 	fmt.Println("=== X-Ray Navigation Benchmark ===")
@@ -151,6 +179,20 @@ func loadCases(path string) ([]benchCase, error) {
 }
 
 func buildNavGenerator(client *genai.Client, defaultModel string) (navigator.ContentGenerator, string) {
+	// Gemini Live API mode.
+	if os.Getenv("NAVIGATOR_MODE") == "gemini-live" {
+		liveClient, err := genai.NewClient(context.Background(), &genai.ClientConfig{
+			HTTPOptions: genai.HTTPOptions{APIVersion: "v1alpha"},
+		})
+		if err != nil {
+			log.Fatalf("Failed to create Gemini Live client: %v", err)
+		}
+		navModel := defaultModel
+		log.Printf("Navigator: using Gemini Live API (model %s)", navModel)
+		return &navigator.GeminiLiveGenerator{Client: liveClient, Model: navModel}, navModel
+	}
+
+	// Local SLM (Ollama/Gemma).
 	if ep := os.Getenv("NAVIGATOR_ENDPOINT"); ep != "" {
 		navModel := os.Getenv("NAVIGATOR_MODEL")
 		if navModel == "" {
@@ -164,7 +206,100 @@ func buildNavGenerator(client *genai.Client, defaultModel string) (navigator.Con
 		log.Printf("Navigator: using local model %s at %s (OpenAI format)", navModel, ep)
 		return &navigator.OllamaGenerator{Endpoint: ep, Model: navModel}, navModel
 	}
+
+	// Gemini REST fallback.
 	return &navigator.GeminiGenerator{Client: client}, defaultModel
+}
+
+// runDump prints what the Navigator would see for each site without calling any LLM.
+func runDump(ctx context.Context, cart schemaGenerator, cases []benchCase, schemaCache map[string]string, cartMode string) {
+	// Deduplicate sites.
+	seen := map[string]bool{}
+	var sites []string
+	for _, tc := range cases {
+		if !seen[tc.Site] {
+			seen[tc.Site] = true
+			sites = append(sites, tc.Site)
+		}
+	}
+
+	for _, site := range sites {
+		schema, err := getOrGenerateSchema(ctx, cart, site, schemaCache, cartMode == "gemini")
+		if err != nil {
+			fmt.Printf("=== %s === ERROR: %v\n\n", site, err)
+			continue
+		}
+
+		engine := mache.NewEngine()
+		if err := engine.ApplySchema(schema); err != nil {
+			fmt.Printf("=== %s === ERROR: ApplySchema: %v\n\n", site, err)
+			continue
+		}
+
+		summary := loadSummary(site)
+		engine.LoadChildren(summary, nil)
+
+		fmt.Printf("=== %s ===\n", site)
+
+		// Show root listing (what Navigator sees from ls("/")).
+		entries, err := engine.ListDir("/")
+		if err != nil {
+			fmt.Printf("  ls(\"/\"): ERROR: %v\n\n", err)
+			continue
+		}
+
+		fmt.Println("ls(\"/\"):")
+		for _, entry := range entries {
+			desc, _ := engine.ReadFile(entry + "/description")
+			if desc != "" && len(desc) > 80 {
+				desc = desc[:77] + "..."
+			}
+			fmt.Printf("  %-30s %s\n", entry+"/", desc)
+		}
+		fmt.Println()
+
+		// Show formatted children for each zone.
+		dumpZoneChildren(engine, "", entries)
+	}
+}
+
+// dumpZoneChildren walks zone paths and prints any "children" files found.
+// parentPath is the parent directory's full path (empty string for root).
+// entries are the base names returned by ListDir (e.g., "main/", "search/").
+func dumpZoneChildren(engine *mache.Engine, parentPath string, entries []string) {
+	for _, entry := range entries {
+		// Build full path: parent + entry (strip trailing slash for path joining).
+		name := strings.TrimSuffix(entry, "/")
+		fullPath := name
+		if parentPath != "" {
+			fullPath = parentPath + "/" + name
+		}
+
+		// Check if this path has a "children" file (meaning it's a populated zone).
+		children, _ := engine.ReadFile(fullPath + "/children")
+		if children != "" {
+			desc, _ := engine.ReadFile(fullPath + "/description")
+			fmt.Printf("Zone: %s/\n", fullPath)
+			if desc != "" {
+				fmt.Printf("  Description: %s\n", desc)
+			}
+			fmt.Println("  Children:")
+			for _, line := range strings.Split(children, "\n") {
+				if line != "" {
+					fmt.Printf("    %s\n", line)
+				}
+			}
+			fmt.Println()
+		}
+
+		// Recurse into subdirectories.
+		if strings.HasSuffix(entry, "/") {
+			subEntries, err := engine.ListDir(fullPath)
+			if err == nil && len(subEntries) > 0 {
+				dumpZoneChildren(engine, fullPath, subEntries)
+			}
+		}
+	}
 }
 
 func buildCartographer(defaultModel string) (schemaGenerator, bool) {

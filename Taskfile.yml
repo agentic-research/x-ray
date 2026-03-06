@@ -192,6 +192,31 @@ tasks:
     cmds:
       - go run ./cmd/bench
 
+  nav-dump:
+    desc: Dump what Navigator sees for each testdata site (no LLM needed, instant)
+    env:
+      CARTOGRAPHER_MODE: cairn
+    cmds:
+      - go run ./cmd/bench --dump {{.CLI_ARGS}}
+
+  nav-test:
+    desc: Run Navigator accuracy test with local Ollama SLM
+    env:
+      CARTOGRAPHER_MODE: cairn
+      NAVIGATOR_ENDPOINT: http://localhost:11434/v1
+      NAVIGATOR_MODEL: '{{.NAVIGATOR_MODEL | default "qwen3.5:9b"}}'
+      NAVIGATOR_FORMAT: gemma
+    cmds:
+      - go run ./cmd/bench {{.CLI_ARGS}}
+
+  nav-test-gemini:
+    desc: Run Navigator accuracy test with Gemini Live API (requires GEMINI_API_KEY)
+    env:
+      CARTOGRAPHER_MODE: cairn
+      NAVIGATOR_MODE: gemini-live
+    cmds:
+      - go run ./cmd/bench {{.CLI_ARGS}}
+
   gate:
     desc: Run the 48-hour gate test on the mock dummy page
     cmds:

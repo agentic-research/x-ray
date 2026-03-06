@@ -28,5 +28,41 @@
     "intent": "click the second story",
     "expect_mache_id": "mache-16",
     "expect_text": "You are not left behind"
+  },
+  {
+    "site": "github",
+    "intent": "click GitHub Copilot",
+    "expect_mache_id": "mache-7",
+    "expect_text": "GitHub Copilot"
+  },
+  {
+    "site": "github",
+    "intent": "click the Actions link",
+    "expect_mache_id": "mache-11",
+    "expect_text": "Actions"
+  },
+  {
+    "site": "ecommerce",
+    "intent": "click Daily Deals",
+    "expect_mache_id": "mache-3",
+    "expect_text": "Daily Deals"
+  },
+  {
+    "site": "ecommerce",
+    "intent": "click Sign in",
+    "expect_mache_id": "mache-1",
+    "expect_text": "Sign in"
+  },
+  {
+    "site": "wikipedia",
+    "intent": "click the search box",
+    "expect_mache_id": "mache-1",
+    "expect_text": "input"
+  },
+  {
+    "site": "wikipedia",
+    "intent": "click the Donkey Kong link",
+    "expect_mache_id": "mache-88",
+    "expect_text": "Donkey Kong"
   }
 ]
