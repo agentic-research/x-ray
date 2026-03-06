@@ -122,11 +122,11 @@ function connectWebSocket() {
           payload: msg.payload || ''
         };
         if (targetTab != null) {
-          chrome.tabs.sendMessage(targetTab, actionMsg);
+          chrome.tabs.sendMessage(targetTab, actionMsg).catch(() => {});
         } else {
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
-              chrome.tabs.sendMessage(tabs[0].id, actionMsg);
+              chrome.tabs.sendMessage(tabs[0].id, actionMsg).catch(() => {});
             }
           });
         }
@@ -415,7 +415,7 @@ function connectWebSocket() {
           chrome.tabs.sendMessage(tabId, {
             type: 'DRAW_ZONES',
             zones: msg.schema.mounts
-          });
+          }).catch(() => {});
         }
 
         sendAgentLog(tabId, 'R', `schema ready -- ${(msg.schema?.mounts?.length || 0)} zones`);
