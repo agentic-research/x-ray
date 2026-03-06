@@ -282,6 +282,8 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 	malformedRetries := 0
 	const maxMalformedRetries = 5
 	var actions []PlannerAction
+	consecutiveEmptyTurns := 0
+	consecutiveNavFailures := 0
 
 	for turn := 0; turn < maxPlannerTurns; turn++ {
 		if ctx.Err() != nil {
@@ -455,9 +457,36 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 					Actions: actions,
 				}
 			}
+			// Model refused or can't proceed — treat as failure.
+			lower := strings.ToLower(fullText)
+			if strings.Contains(lower, "i cannot") || strings.Contains(lower, "i am sorry") || strings.Contains(lower, "i'm sorry") || strings.Contains(lower, "i can't") {
+				log.Printf("Planner: model refusal at turn %d: %s", turn+1, truncate(fullText, 200))
+				return PlannerResult{
+					Status:  "failed",
+					Summary: fullText,
+					Turns:   turn + 1,
+					Actions: actions,
+				}
+			}
 			// Model produced text without terminal marker and no tools — treat as thinking.
 			log.Printf("Planner: non-terminal text at turn %d: %s", turn+1, truncate(fullText, 100))
 		}
+
+		// Empty response (no text, no function calls) — model has nothing to say.
+		if fullText == "" && len(functionCalls) == 0 {
+			consecutiveEmptyTurns++
+			if consecutiveEmptyTurns >= 3 {
+				log.Printf("Planner: %d consecutive empty turns — model stuck, aborting", consecutiveEmptyTurns)
+				return PlannerResult{
+					Status:  "failed",
+					Summary: "Model produced no actions or responses.",
+					Turns:   turn + 1,
+					Actions: actions,
+				}
+			}
+			continue
+		}
+		consecutiveEmptyTurns = 0
 
 		// Execute function calls.
 		if len(functionCalls) > 0 {
@@ -497,9 +526,25 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 					},
 				})
 
-				// Navigator "not found" — let the Planner decide what to do next.
-				// It may need to navigate elsewhere, click a tab, or sort differently
-				// before the data becomes visible. Don't auto-finish.
+				// Track consecutive Navigator failures. A single "Not found" is
+				// fine — the Planner may need to navigate elsewhere first. But 3+
+				// in a row means the data genuinely doesn't exist.
+				if fc.Name == "create_interaction" {
+					if strings.HasPrefix(result, "Not found:") || strings.HasPrefix(result, "Failed:") || strings.HasPrefix(result, "Page failed to load") {
+						consecutiveNavFailures++
+						if consecutiveNavFailures >= 3 {
+							log.Printf("Planner: %d consecutive Navigator failures — giving up", consecutiveNavFailures)
+							return PlannerResult{
+								Status:  "failed",
+								Summary: result,
+								Turns:   turn + 1,
+								Actions: actions,
+							}
+						}
+					} else {
+						consecutiveNavFailures = 0
+					}
+				}
 			}
 			history = append(history, &genai.Content{
 				Role:  "user",
