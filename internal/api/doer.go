@@ -441,6 +441,12 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 
 	switch action.Action {
 	case "browser.goto":
+		// Fix protocol mismatch: Navigator sometimes upgrades http→https for
+		// localhost URLs. Local containers don't have TLS, so downgrade.
+		if strings.HasPrefix(action.Path, "https://localhost") {
+			action.Path = "http" + action.Path[5:]
+			log.Printf("Doer [tab %d]: downgraded https→http for localhost: %s", d.tabID, action.Path)
+		}
 		if !sameOrigin(d.sess.GetCurrentURL(), action.Path) {
 			log.Printf("Doer [tab %d]: BLOCKED goto %s (different origin from %s)", d.tabID, action.Path, d.sess.GetCurrentURL())
 			return fmt.Sprintf("Blocked: %s is a different site. Stay on the current site.", action.Path)
