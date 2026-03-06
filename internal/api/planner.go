@@ -59,8 +59,13 @@ var sitePrimers = map[string]string{
 - You are on the ADMIN dashboard, not the storefront. If the page looks like a store, navigate to /admin.
 - Left sidebar has main navigation: Sales, Catalog, Customers, Marketing, Reports.
 - Data grids have column sorting, filters, and pagination. Use "Filters" button to search.
-- Dashboard shows revenue, orders, top products at a glance.
-- For "best-selling" queries: Reports → Products → Bestsellers, then set date filters.`,
+- Dashboard shows revenue, orders, top products at a glance — but these are ALL-TIME data, NOT filtered by date.
+- For "best-selling" queries: Reports → Products → Bestsellers.
+- CRITICAL: If the task mentions a YEAR or DATE RANGE (e.g. "in 2022", "last year"):
+  1. First navigate to Reports → Products → Bestsellers
+  2. Set date period using the year from the task: From = 01/01/[YEAR], To = 12/31/[YEAR]
+  3. Click "Show Report" to reload data with the filter applied
+  4. ONLY THEN read the results. The dashboard bestseller widget does NOT filter by date.`,
 
 	"reddit": `SITE: Reddit forum (Postmill).
 - Content is organized by subreddits (/f/<name>). Posts have comments in nested threads.
@@ -88,9 +93,20 @@ var sitePrimers = map[string]string{
 // Tool schemas are provided via the Tools parameter — do NOT re-describe syntax here.
 var plannerSystemPrompt = `You are an autonomous web agent. You dispatch commands to a browser navigator.
 
+IMPORTANT: All sites are LOCAL instances at localhost ports. NEVER navigate to public websites
+(reddit.com, gitlab.com, amazon.com, etc.). Navigate within the current site using
+create_interaction with clicks and links. Use open_url ONLY for localhost URLs.
+
 TOOLS:
 - create_interaction(intent, read_only): Send a goal to the navigator.
-- open_url(url): Open a different website.
+- open_url(url): Open a DIFFERENT localhost site (never a public URL).
+
+TASK TYPES — recognize what kind of task this is:
+- NAVIGATE ("Open...", "Go to...", "Show me..."): Navigate to the correct page.
+  Use create_interaction to click links/menus. Once on the target page, call
+  finish(answer=[], success=true). The final URL is what matters, not the answer.
+- RETRIEVE: Find and return specific data from the page(s). Follow the STRATEGY below.
+- ACTION: Perform a change (edit, submit, create, delete). Use create_interaction steps.
 
 STRATEGY — think like a human with Cmd+F:
 
@@ -140,7 +156,8 @@ NOT FOUND — think before giving up:
 TERMINATION — always use the finish() tool:
 - finish(answer=["Alice", "Bob"], success=true) — list of results
 - finish(answer=["42"], success=true) — single value (still wrap in array)
-- finish(answer=[], success=true) — no matching items found after thorough search
+- finish(answer=[{"key":"val","count":3}], success=true) — structured objects when task asks for them
+- finish(answer=[], success=true) — NAVIGATE tasks, or no matching items after thorough search
 - finish(answer=["technical failure reason"], success=false) — only for technical failures
 
 RULES:
@@ -503,22 +520,13 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 func (p *Planner) handleFinish(args map[string]any, turns int, actions []PlannerAction) PlannerResult {
 	success, _ := args["success"].(bool)
 
-	// Extract answer array — Gemini returns []any from function calling.
-	var answers []string
-	if rawAnswer, ok := args["answer"]; ok {
-		if arr, ok := rawAnswer.([]any); ok {
-			for _, v := range arr {
-				if s, ok := v.(string); ok {
-					answers = append(answers, s)
-				}
-			}
-		}
-	}
-
-	// Serialize as JSON array for clean downstream parsing.
+	// Serialize the raw answer directly — Gemini may return strings, objects,
+	// or a mix. Preserving structure lets the eval pipeline parse it correctly.
+	// Previous code only extracted strings, silently dropping structured objects
+	// (e.g. [{"username":"Alice","count":3}] → [] → "not_found_error").
 	summary := "[]"
-	if len(answers) > 0 {
-		if b, err := json.Marshal(answers); err == nil {
+	if rawAnswer, ok := args["answer"]; ok {
+		if b, err := json.Marshal(rawAnswer); err == nil {
 			summary = string(b)
 		}
 	}
@@ -693,6 +701,8 @@ func (h *Handler) resolveTab(ctx context.Context, requestedTabID int, startURL s
 	// If agentd starts before Chrome, sendCreateTab would silently fail
 	// and we'd grab whatever stale tab the extension reports.
 	extDeadline := time.After(30 * time.Second)
+	extTicker := time.NewTicker(200 * time.Millisecond)
+	defer extTicker.Stop()
 	for {
 		h.mu.Lock()
 		connected := h.conn != nil
@@ -701,7 +711,7 @@ func (h *Handler) resolveTab(ctx context.Context, requestedTabID int, startURL s
 			break
 		}
 		select {
-		case <-time.After(200 * time.Millisecond):
+		case <-extTicker.C:
 		case <-extDeadline:
 			log.Printf("Planner: timed out waiting for extension connection")
 			return requestedTabID
@@ -785,8 +795,17 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	tabID := req.TabID
 
+	// When pre-auth cookies are present, open about:blank first so the browser
+	// doesn't fire an unauthenticated GET to the start URL (which would 302 to
+	// the login page before cookies are injected). After cookies are set, we
+	// navigate to the real URL.
+	resolveURL := req.StartURL
+	if len(req.Cookies) > 0 && req.StartURL != "" {
+		resolveURL = "about:blank"
+	}
+
 	// Resolve a real tab: use existing inventory or create a new one.
-	tabID = h.resolveTab(ctx, tabID, req.StartURL)
+	tabID = h.resolveTab(ctx, tabID, resolveURL)
 	if tabID == 0 && ctx.Err() != nil {
 		writeJSON(w, PlannerResult{Status: "cancelled", Summary: "Request cancelled."})
 		return
@@ -794,7 +813,7 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 
 	sess := h.getSession(tabID)
 
-	// Inject pre-auth cookies via CDP before the page finishes loading.
+	// Inject pre-auth cookies, then navigate to the real start URL.
 	if len(req.Cookies) > 0 {
 		h.injectCookies(ctx, tabID, req.Cookies, req.StartURL)
 	}
