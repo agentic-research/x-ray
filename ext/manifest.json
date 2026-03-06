@@ -5,6 +5,7 @@
   "description": "Injects IDs and syncs DOM with X-Ray Agentd.",
   "permissions": [
     "activeTab",
+    "cookies",
     "debugger",
     "downloads",
     "nativeMessaging",

@@ -23,8 +23,9 @@ type Mount struct {
 	CSSSelector  string     `json:"css_selector,omitempty"`
 	PrimaryItems []string   `json:"primary_items"`
 	ItemSelector string     `json:"item_selector,omitempty"`
-	Bounds       [4]float64 `json:"bounds,omitempty"`      // zone AABB [x,y,w,h] normalized
-	Fingerprint  string     `json:"fingerprint,omitempty"` // content hash for sheaf cache staleness
+	Bounds       [4]float64 `json:"bounds,omitempty"`        // zone AABB [x,y,w,h] normalized
+	Fingerprint  string     `json:"fingerprint,omitempty"`   // content hash for sheaf cache staleness
+	StructuralFP string     `json:"structural_fp,omitempty"` // tag-shape hash — stable across same-layout pages
 }
 
 // CartographerOutput is the top-level JSON from the Cartographer.

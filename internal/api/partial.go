@@ -47,7 +47,12 @@ func RegenerateStaleZones(
 		if zone.Bounds != [4]float64{} {
 			cropped, err := mache.CropScreenshot(screenshot, zone.Bounds)
 			if err != nil {
-				log.Printf("Partial regen: crop failed for %s: %v (using full screenshot)", zone.ZonePath, err)
+				// Degenerate crop (e.g. 0-width zone) — skip this zone entirely.
+				// Falling back to the full screenshot would make the Cartographer
+				// generate zones for the entire page, overlapping with fresh zones.
+				log.Printf("Partial regen: crop failed for %s: %v — skipping zone", zone.ZonePath, err)
+				invalidated = append(invalidated, zone.ZonePath)
+				continue
 			} else if cropped != nil {
 				zoneScreenshot = cropped
 			}

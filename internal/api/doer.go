@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -14,6 +15,22 @@ import (
 	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/agentic-research/x-ray/internal/navigator"
 )
+
+// sameOrigin returns true if targetURL shares the same host as the session's
+// current URL. If no current URL is set (e.g., tests or fresh sessions), allows
+// anything. This prevents the Navigator from escaping to a different site via
+// browser.goto — cross-site navigation should use open_url instead.
+func sameOrigin(currentURL, targetURL string) bool {
+	if currentURL == "" {
+		return true
+	}
+	cur, err1 := url.Parse(currentURL)
+	tgt, err2 := url.Parse(targetURL)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+	return cur.Host == tgt.Host
+}
 
 // InteractionStatus represents the current state of a background interaction.
 type InteractionStatus string
@@ -424,6 +441,10 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 
 	switch action.Action {
 	case "browser.goto":
+		if !sameOrigin(d.sess.GetCurrentURL(), action.Path) {
+			log.Printf("Doer [tab %d]: BLOCKED goto %s (different origin from %s)", d.tabID, action.Path, d.sess.GetCurrentURL())
+			return fmt.Sprintf("Blocked: %s is a different site. Stay on the current site.", action.Path)
+		}
 		// Idempotent: skip reset if already on this URL.
 		if d.sess.GetCurrentURL() == action.Path {
 			d.updateStep(fmt.Sprintf("already on %s, waiting for schema", action.Path))
@@ -675,19 +696,21 @@ func (d *Doer) recordNavSection(ix Interaction, action *navigator.ActionResult) 
 	if fp == "" {
 		return
 	}
+	sfp := d.handler.schemas.GetZoneStructuralFP(key, zonePath)
 
 	elemText := d.extractElementText(action)
 	goalHash := NormalizeGoalHash(ix.Intent)
 
 	section := NavSection{
-		GoalHash:    goalHash,
-		ZonePath:    zonePath,
-		Fingerprint: fp,
-		Ordinal:     ordinal,
-		ElementText: elemText,
-		Action:      action.Action,
-		Payload:     action.Payload,
-		RecordedAt:  time.Now().Unix(),
+		GoalHash:     goalHash,
+		ZonePath:     zonePath,
+		Fingerprint:  fp,
+		StructuralFP: sfp,
+		Ordinal:      ordinal,
+		ElementText:  elemText,
+		Action:       action.Action,
+		Payload:      action.Payload,
+		RecordedAt:   time.Now().Unix(),
 	}
 
 	d.handler.schemas.PutSection(key, section)

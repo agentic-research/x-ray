@@ -40,6 +40,10 @@ const (
 	MsgDrawHumanOverlay  = "DRAW_HUMAN_OVERLAY_CMD" // server → ext: draw human-friendly overlay
 	MsgHumanOverlayDrawn = "HUMAN_OVERLAY_DRAWN"    // ext → server: human overlay drawn ack
 
+	// Pre-auth cookie injection.
+	MsgSetCookies = "SET_COOKIES" // server → ext: inject session cookies
+	MsgCookiesSet = "COOKIES_SET" // ext → server: cookies injected ack
+
 	// CDP proxy message types (Dumb Pipe architecture).
 	MsgCDPAttach       = "CDP_ATTACH"
 	MsgCDPAttached     = "CDP_ATTACHED"
@@ -99,4 +103,14 @@ type OutboundMessage struct {
 	Selectors map[string]string `json:"selectors,omitempty"` // zone mache-id → CSS selector
 	PixelX    int               `json:"pixel_x,omitempty"`   // viewport-relative X for CDP pixel click (cv-N)
 	PixelY    int               `json:"pixel_y,omitempty"`   // viewport-relative Y for CDP pixel click (cv-N)
+	Cookies   []CookieMsg       `json:"cookies,omitempty"`   // SET_COOKIES: session cookies to inject
+}
+
+// CookieMsg is a cookie for SET_COOKIES messages.
+type CookieMsg struct {
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	Domain string `json:"domain"`
+	Path   string `json:"path"`
+	URL    string `json:"url,omitempty"`
 }

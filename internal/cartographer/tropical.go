@@ -113,8 +113,9 @@ type tropicalMount struct {
 	Description  string     `json:"description"`
 	PrimaryItems []string   `json:"primary_items"`
 	ItemSelector string     `json:"item_selector,omitempty"`
-	Bounds       [4]float64 `json:"bounds,omitempty"`      // zone AABB [x,y,w,h] normalized
-	Fingerprint  string     `json:"fingerprint,omitempty"` // content hash for cache staleness
+	Bounds       [4]float64 `json:"bounds,omitempty"`        // zone AABB [x,y,w,h] normalized
+	Fingerprint  string     `json:"fingerprint,omitempty"`   // content hash for cache staleness
+	StructuralFP string     `json:"structural_fp,omitempty"` // tag-shape hash — stable across same-layout pages
 }
 
 // GenerateSchema implements api.SchemaGenerator.
@@ -1367,6 +1368,43 @@ func computeZoneFingerprint(z zone, elements []element) string {
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
+// computeStructuralFingerprint hashes the tag-shape of a zone (tag names +
+// interactive flag), ignoring text content. Two zones with the same DOM
+// structure but different link labels/post titles produce the same hash.
+// This enables NavSection transfer across pages on the same site.
+func computeStructuralFingerprint(z zone, elements []element) string {
+	// Count (tag, interactive) pairs — order-independent.
+	type key struct {
+		tag         string
+		interactive bool
+	}
+	counts := map[key]int{}
+	for _, idx := range z.elems {
+		el := elements[idx]
+		counts[key{el.tag, el.interactive}]++
+	}
+	// Sort keys for determinism.
+	type kv struct {
+		k key
+		n int
+	}
+	sorted := make([]kv, 0, len(counts))
+	for k, n := range counts {
+		sorted = append(sorted, kv{k, n})
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].k.tag != sorted[j].k.tag {
+			return sorted[i].k.tag < sorted[j].k.tag
+		}
+		return sorted[i].k.interactive && !sorted[j].k.interactive
+	})
+	h := sha256.New()
+	for _, s := range sorted {
+		_, _ = fmt.Fprintf(h, "%s:%v:%d\x00", s.k.tag, s.k.interactive, s.n)
+	}
+	return hex.EncodeToString(h.Sum(nil))[:16]
+}
+
 func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropicalMount {
 	// Sort zones by position: top-to-bottom, then left-to-right
 	sort.Slice(zones, func(i, j int) bool {
@@ -1418,6 +1456,7 @@ func buildMounts(zones []zone, elements []element, lt layoutThresholds) []tropic
 			PrimaryItems: []string{},
 			Bounds:       computeZoneBounds(z, elements),
 			Fingerprint:  computeZoneFingerprint(z, elements),
+			StructuralFP: computeStructuralFingerprint(z, elements),
 		}
 
 		if z.isList && len(z.listIdxs) > 0 {

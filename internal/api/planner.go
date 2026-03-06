@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -54,15 +55,18 @@ var sitePrimers = map[string]string{
 - Category pages have sorting dropdowns and layered navigation filters on the left.
 - Search bar is at top; do NOT type into it unless the task says to.`,
 
-	"shopping_admin": `SITE: Magento Admin panel.
+	"shopping_admin": `SITE: Magento Admin panel (URL ends in /admin).
+- You are on the ADMIN dashboard, not the storefront. If the page looks like a store, navigate to /admin.
 - Left sidebar has main navigation: Sales, Catalog, Customers, Marketing, Reports.
 - Data grids have column sorting, filters, and pagination. Use "Filters" button to search.
-- Dashboard shows revenue, orders, top products at a glance.`,
+- Dashboard shows revenue, orders, top products at a glance.
+- For "best-selling" queries: Reports → Products → Bestsellers, then set date filters.`,
 
 	"reddit": `SITE: Reddit forum (Postmill).
 - Content is organized by subreddits (/f/<name>). Posts have comments in nested threads.
-- Sort options: Hot, New, Top, Active. Comments can be collapsed.
-- User profiles show post/comment history.`,
+- Sort options: Hot, New, Top, Active. Default sort is "Hot" (most upvoted).
+- IMPORTANT: "most recent" means sort by "New" FIRST. Click the "New" sort link before reading posts.
+- Comments can be collapsed. User profiles show post/comment history.`,
 
 	"gitlab": `SITE: GitLab instance.
 - Projects have tabs: Repository, Issues, Merge Requests, CI/CD, Wiki.
@@ -122,6 +126,16 @@ COMPLETENESS — before answering, VERIFY:
 - Does a review count (e.g., "12 Reviews") exceed what you've seen? Keep looking.
 - Could results span multiple sections or tabs? Check each one.
 Semi-formal check: "I found N matches. The page says M total. N < M → INCOMPLETE."
+
+NOT FOUND — think before giving up:
+- If the Navigator reports "Not found", ask yourself: am I on the RIGHT page?
+  - Did I navigate to the correct section/tab/sort order first?
+  - For admin panels: am I on /admin, not the storefront?
+  - For reddit: did I sort by "New" if looking for "most recent"?
+- If you haven't set up the page correctly, do that FIRST, then retry.
+- Only accept "not found" and call finish(answer=[], success=true) after you have:
+  (1) navigated to the correct page/section, (2) revealed relevant tabs/content, and
+  (3) tried at least one search. Three strikes = give up.
 
 TERMINATION — always use the finish() tool:
 - finish(answer=["Alice", "Bob"], success=true) — list of results
@@ -191,13 +205,26 @@ func plannerToolDefinitions() []*genai.Tool {
 	}}
 }
 
+// plannerCtx holds mutable state for a Planner task execution.
+// open_url updates these when creating a new tab.
+type plannerCtx struct {
+	tabID       int
+	sess        *TabSession
+	doer        *Doer
+	allowedHost string // hostname from start_url; empty = no restriction
+}
+
 // RunTask executes a high-level task using the Planner→Doer loop.
 // Blocks until the task completes, fails, or the context is cancelled.
 // siteHint is an optional site type (e.g. "shopping", "reddit") used to
 // inject structural awareness into the system prompt.
-func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHint string) PlannerResult {
-	sess := p.handler.getSession(tabID)
-	doer := p.handler.getOrCreateDoer(tabID, sess)
+func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHint, allowedHost string) PlannerResult {
+	pctx := &plannerCtx{
+		tabID:       tabID,
+		sess:        p.handler.getSession(tabID),
+		doer:        p.handler.getOrCreateDoer(tabID, p.handler.getSession(tabID)),
+		allowedHost: allowedHost,
+	}
 
 	// Build system prompt, optionally prepending a site primer.
 	sysPrompt := plannerSystemPrompt
@@ -209,7 +236,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 	// Pre-fill page layout so the Planner can skip the ORIENT turn.
 	// Type-assert to *navigator.Agent to access BuildASCIILayout().
 	intentWithLayout := intent
-	if agent, ok := sess.Navigator.(*navigator.Agent); ok {
+	if agent, ok := pctx.sess.Navigator.(*navigator.Agent); ok {
 		if layout := agent.BuildASCIILayout(); layout != "" {
 			intentWithLayout = intent + "\n\nCurrent page layout (element IDs match _c/ paths):\n" + layout
 			log.Printf("Planner: injected ASCII layout (%d chars) into first turn", len(layout))
@@ -432,7 +459,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 			var responseParts []*genai.Part
 			for _, fc := range functionCalls {
 				toolStart := time.Now()
-				result := p.executeTool(ctx, fc, doer, tabID, sess, intent)
+				result := p.executeTool(ctx, fc, pctx, intent)
 				toolElapsed := time.Since(toolStart).Milliseconds()
 				log.Printf("Planner: tool %s → %s", fc.Name, truncate(result, 200))
 
@@ -452,6 +479,10 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 						Response: map[string]any{"output": result},
 					},
 				})
+
+				// Navigator "not found" — let the Planner decide what to do next.
+				// It may need to navigate elsewhere, click a tab, or sort differently
+				// before the data becomes visible. Don't auto-finish.
 			}
 			history = append(history, &genai.Content{
 				Role:  "user",
@@ -509,23 +540,68 @@ func (p *Planner) handleFinish(args map[string]any, turns int, actions []Planner
 
 // executeTool dispatches a single Planner tool call.
 // For create_interaction, it blocks until the Doer completes (unlike the voice Talker which is async).
-func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer *Doer, tabID int, sess *TabSession, taskContext string) string {
+// open_url mutates pctx to point at the newly created tab's session and doer.
+func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, pctx *plannerCtx, taskContext string) string {
 	switch fc.Name {
 	case "open_url":
-		url, _ := fc.Args["url"].(string)
-		if url == "" {
+		rawURL, _ := fc.Args["url"].(string)
+		if rawURL == "" {
 			return "Error: url is required."
 		}
-		if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-			url = "https://" + url
+		if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+			rawURL = "https://" + rawURL
 		}
-		p.handler.sendCreateTab(url)
-		// Wait for the new tab's schema to be ready.
+		// Domain jail: if the task provided a start URL, only allow the same hostname.
+		if pctx.allowedHost != "" {
+			u, err := url.Parse(rawURL)
+			if err != nil || u.Hostname() != pctx.allowedHost {
+				log.Printf("Planner: BLOCKED open_url %s (allowed host: %s)", rawURL, pctx.allowedHost)
+				return fmt.Sprintf("Blocked: %s — only %s URLs are allowed. Use the correct localhost port.", rawURL, pctx.allowedHost)
+			}
+		}
+
+		// Remember old tab ID so we can detect the new one.
+		oldTabID := pctx.tabID
+		p.handler.sendCreateTab(rawURL)
+
+		// Poll for the new tab ID (activeVoiceTab changes when TAB_ACTIVATED arrives).
+		newTabID := oldTabID
+		deadline := time.After(15 * time.Second)
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+	pollLoop:
+		for {
+			select {
+			case <-ticker.C:
+				p.handler.mu.Lock()
+				candidate := p.handler.activeVoiceTab
+				p.handler.mu.Unlock()
+				if candidate != 0 && candidate != oldTabID {
+					newTabID = candidate
+					break pollLoop
+				}
+			case <-deadline:
+				log.Printf("Planner: open_url timed out waiting for new tab ID")
+				break pollLoop
+			case <-ctx.Done():
+				return "Cancelled."
+			}
+		}
+
+		// Switch context to the new tab.
+		if newTabID != oldTabID {
+			pctx.tabID = newTabID
+			pctx.sess = p.handler.getSession(newTabID)
+			pctx.doer = p.handler.getOrCreateDoer(newTabID, pctx.sess)
+			log.Printf("Planner: open_url switched to tab %d", newTabID)
+		}
+
+		// Wait for the NEW tab's schema to be ready.
 		select {
-		case <-sess.GetSchemaReady():
-			return fmt.Sprintf("Opened %s. Page is loaded.", url)
+		case <-pctx.sess.GetSchemaReady():
+			return fmt.Sprintf("Opened %s in tab %d. Page is loaded.", rawURL, newTabID)
 		case <-time.After(30 * time.Second):
-			return fmt.Sprintf("Opened %s but page load timed out.", url)
+			return fmt.Sprintf("Opened %s in tab %d but page load timed out.", rawURL, newTabID)
 		case <-ctx.Done():
 			return "Cancelled."
 		}
@@ -540,24 +616,24 @@ func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer 
 
 		// Set up blocking channel to wait for Doer completion.
 		resultCh := make(chan string, 1)
-		doer.SetResultNotifyFn(func(summary string) {
+		pctx.doer.SetResultNotifyFn(func(summary string) {
 			resultCh <- summary
 		})
 
-		doer.Submit(Interaction{ID: ixID, Intent: intent, ReadOnly: readOnly, Context: taskContext})
-		log.Printf("Planner: create_interaction %q (read_only=%v)", intent, readOnly)
+		pctx.doer.Submit(Interaction{ID: ixID, Intent: intent, ReadOnly: readOnly, Context: taskContext})
+		log.Printf("Planner: create_interaction %q (read_only=%v) on tab %d", intent, readOnly, pctx.tabID)
 
 		select {
 		case summary := <-resultCh:
 			return summary
 		case <-ctx.Done():
-			doer.Cancel()
-			doer.SetResultNotifyFn(nil)
+			pctx.doer.Cancel()
+			pctx.doer.SetResultNotifyFn(nil)
 			return "Cancelled."
 		}
 
 	case "check_interaction":
-		status, intent, step, result := doer.State().Snapshot()
+		status, intent, step, result := pctx.doer.State().Snapshot()
 		switch status {
 		case StatusIdle:
 			return "No task in progress. Ready for a new command."
@@ -582,7 +658,7 @@ func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer 
 		return "Unknown status."
 
 	case "cancel_interaction":
-		doer.Cancel()
+		pctx.doer.Cancel()
 		return "Task cancelled."
 
 	default:
@@ -612,6 +688,33 @@ func (h *Handler) resolveTab(ctx context.Context, requestedTabID int, startURL s
 	// Always create a fresh tab to avoid CDP chrome-extension:// crashes
 	// that happen when reusing tabs across different product pages.
 	log.Printf("Planner: creating fresh tab for %s", startURL)
+
+	// Wait for the extension to connect before sending CREATE_TAB.
+	// If agentd starts before Chrome, sendCreateTab would silently fail
+	// and we'd grab whatever stale tab the extension reports.
+	extDeadline := time.After(30 * time.Second)
+	for {
+		h.mu.Lock()
+		connected := h.conn != nil
+		h.mu.Unlock()
+		if connected {
+			break
+		}
+		select {
+		case <-time.After(200 * time.Millisecond):
+		case <-extDeadline:
+			log.Printf("Planner: timed out waiting for extension connection")
+			return requestedTabID
+		case <-ctx.Done():
+			return 0
+		}
+	}
+
+	// Record the current activeVoiceTab so we can detect the NEW one.
+	h.mu.Lock()
+	prevTab := h.activeVoiceTab
+	h.mu.Unlock()
+
 	h.sendCreateTab(startURL)
 
 	// Wait for TAB_ACTIVATED to give us the real tab ID.
@@ -624,7 +727,7 @@ func (h *Handler) resolveTab(ctx context.Context, requestedTabID int, startURL s
 			h.mu.Lock()
 			candidate := h.activeVoiceTab
 			h.mu.Unlock()
-			if candidate != 0 && candidate != requestedTabID {
+			if candidate != 0 && candidate != prevTab {
 				log.Printf("Planner: new tab created with ID %d", candidate)
 				return candidate
 			}
@@ -657,6 +760,12 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 		TabID    int    `json:"tab_id"`
 		StartURL string `json:"start_url"`
 		SiteHint string `json:"site_hint"`
+		Cookies  []struct {
+			Name   string `json:"name"`
+			Value  string `json:"value"`
+			Domain string `json:"domain"`
+			Path   string `json:"path"`
+		} `json:"cookies"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
@@ -684,6 +793,11 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sess := h.getSession(tabID)
+
+	// Inject pre-auth cookies via CDP before the page finishes loading.
+	if len(req.Cookies) > 0 {
+		h.injectCookies(ctx, tabID, req.Cookies, req.StartURL)
+	}
 
 	// Wait for schema to be ready before running the Planner.
 	// Guard against stale schemas: if the session URL doesn't match our target,
@@ -713,14 +827,31 @@ func (h *Handler) HandleAgentTask(w http.ResponseWriter, r *http.Request) {
 		break
 	}
 
-	log.Printf("Planner: starting task: %s", truncate(req.Intent, 100))
-	result := h.planner.RunTask(ctx, req.Intent, tabID, req.SiteHint)
+	// Extract allowed hostname from start_url for domain jail.
+	// In eval mode this prevents the agent from escaping to the live internet.
+	// In interactive mode (no start_url), no restriction is applied.
+	allowedHost := ""
+	if req.StartURL != "" {
+		if u, err := url.Parse(req.StartURL); err == nil {
+			allowedHost = u.Hostname()
+		}
+	}
+
+	log.Printf("Planner: starting task: %s (allowed_host=%q)", truncate(req.Intent, 100), allowedHost)
+	taskStart := time.Now()
+	result := h.planner.RunTask(ctx, req.Intent, tabID, req.SiteHint, allowedHost)
+	elapsed := time.Since(taskStart)
 
 	// Capture the final URL for NAVIGATE-type task evaluation.
-	result.URLFinal = sess.GetCurrentURL()
+	// Use the active tab (may have changed if open_url switched tabs).
+	if activeSess := h.getVoiceSession(); activeSess != nil {
+		result.URLFinal = activeSess.GetCurrentURL()
+	} else {
+		result.URLFinal = sess.GetCurrentURL()
+	}
 
-	log.Printf("Planner: task finished: status=%s turns=%d summary=%s",
-		result.Status, result.Turns, truncate(result.Summary, 100))
+	log.Printf("Planner: task finished: status=%s turns=%d elapsed=%s summary=%s",
+		result.Status, result.Turns, elapsed.Round(time.Millisecond), truncate(result.Summary, 100))
 
 	writeJSON(w, result)
 }

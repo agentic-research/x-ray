@@ -56,6 +56,7 @@ type Handler struct {
 	nfsServer      *mount.Server       // single NFS server (nil if disabled)
 	nfsMountPath   string              // e.g. "/tmp/xray-mache/"
 	nfsActiveTab   int                 // tab ID currently exposed via NFS
+	cookiesSetCh   chan struct{}       // signaled when COOKIES_SET ack received
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client, liveClient *genai.Client, navModel, liveModel, plannerModel, dbPath string) *Handler {
@@ -70,6 +71,7 @@ func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client,
 		sessions:      make(map[int]*TabSession),
 		schemas:       NewSchemaCache(dbPath),
 		cdpProxy:      cdp.New(nil),
+		cookiesSetCh:  make(chan struct{}, 1),
 	}
 	if client != nil && plannerModel != "" {
 		h.planner = &Planner{handler: h, client: client, model: plannerModel}
@@ -145,7 +147,7 @@ func (h *Handler) getSession(tabID int) *TabSession {
 	if err := composite.Mount("browser", engine); err != nil {
 		log.Printf("Session: mount browser (tab %d): %v", tabID, err)
 	}
-	if h.termBridge != nil {
+	if h.termBridge != nil && os.Getenv("WEBARENA_MODE") == "" {
 		if err := composite.Mount("iterm", h.termBridge); err != nil {
 			log.Printf("Session: mount iterm (tab %d): %v", tabID, err)
 		}
@@ -357,6 +359,8 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			h.handleOverlayRemoved(msg)
 		case MsgHumanOverlayDrawn:
 			// Ack only — no action needed.
+		case MsgCookiesSet:
+			h.handleCookiesSet(msg)
 
 		// CDP proxy messages (Dumb Pipe architecture).
 		case MsgCDPAttached:
@@ -676,6 +680,66 @@ func (h *Handler) sendCreateTab(url string) {
 		return
 	}
 	h.sendMessage(conn, OutboundMessage{Type: MsgCreateTab, URL: url})
+}
+
+// handleCookiesSet processes the COOKIES_SET ack from the extension.
+func (h *Handler) handleCookiesSet(msg InboundMessage) {
+	select {
+	case h.cookiesSetCh <- struct{}{}:
+	default:
+	}
+}
+
+// injectCookies sends session cookies to the extension for injection via chrome.cookies API,
+// then reloads the tab so the page loads with the authenticated session.
+func (h *Handler) injectCookies(ctx context.Context, tabID int, cookies []struct {
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	Domain string `json:"domain"`
+	Path   string `json:"path"`
+}, startURL string,
+) {
+	h.mu.Lock()
+	conn := h.conn
+	h.mu.Unlock()
+	if conn == nil {
+		log.Printf("Planner: no extension connected, cannot inject cookies")
+		return
+	}
+
+	// Drain stale ack.
+	select {
+	case <-h.cookiesSetCh:
+	default:
+	}
+
+	var msgs []CookieMsg
+	for _, c := range cookies {
+		msgs = append(msgs, CookieMsg{
+			Name:   c.Name,
+			Value:  c.Value,
+			Domain: c.Domain,
+			Path:   c.Path,
+			URL:    fmt.Sprintf("http://%s%s", c.Domain, c.Path),
+		})
+	}
+	h.sendMessage(conn, OutboundMessage{Type: MsgSetCookies, TabID: tabID, Cookies: msgs})
+
+	// Wait for ack.
+	select {
+	case <-h.cookiesSetCh:
+		log.Printf("Planner: injected %d cookies for tab %d", len(msgs), tabID)
+	case <-time.After(5 * time.Second):
+		log.Printf("Planner: cookie injection timed out for tab %d", tabID)
+	case <-ctx.Done():
+		return
+	}
+
+	// Reload the tab so it picks up the cookies.
+	// Reset schema so we wait for the post-reload capture.
+	sess := h.getSession(tabID)
+	sess.ResetSchema()
+	h.sendMessage(conn, OutboundMessage{Type: MsgGotoURL, TabID: tabID, URL: startURL})
 }
 
 // scrollVoice scrolls the page via the extension WebSocket. Used by voice mode

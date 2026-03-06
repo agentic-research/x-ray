@@ -8,8 +8,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -32,11 +35,77 @@ type WATask struct {
 // URL template placeholders → default local ports.
 var siteURLDefaults = map[string]string{
 	"__SHOPPING__":       "http://localhost:7770",
-	"__SHOPPING_ADMIN__": "http://localhost:7780",
+	"__SHOPPING_ADMIN__": "http://localhost:7780/admin",
 	"__REDDIT__":         "http://localhost:9999",
 	"__GITLAB__":         "http://localhost:8023",
 	"__WIKIPEDIA__":      "http://localhost:8888",
 	"__MAP__":            "http://localhost:3000",
+}
+
+// siteCredentials maps site names to login credentials.
+// From webarena browser_env/env_config.py ACCOUNTS dict.
+type siteCreds struct {
+	LoginURL string // URL to POST login form to
+	Username string
+	Password string
+	// FormFields: map form field names to username/password values.
+	UsernameField string // e.g. "login[username]"
+	PasswordField string // e.g. "login[password]"
+	FormKeyField  string // CSRF token field name (empty = none)
+	FormKeyRegex  string // regex to extract CSRF token from login page
+	CookieName    string // session cookie name to extract
+	CookiePath    string // cookie path
+	CookieDomain  string // cookie domain
+}
+
+var siteCredentials = map[string]siteCreds{
+	"shopping_admin": {
+		LoginURL:      "http://localhost:7780/admin",
+		Username:      "admin",
+		Password:      "admin1234",
+		UsernameField: "login[username]",
+		PasswordField: "login[password]",
+		FormKeyField:  "form_key",
+		FormKeyRegex:  `name="form_key"[^/]*value="([^"]*)"`,
+		CookieName:    "admin",
+		CookiePath:    "/admin",
+		CookieDomain:  "localhost",
+	},
+	"shopping": {
+		LoginURL:      "http://localhost:7770/customer/account/login/",
+		Username:      "emma.lopez@gmail.com",
+		Password:      "Password.123",
+		UsernameField: "login[username]",
+		PasswordField: "login[password]",
+		FormKeyField:  "form_key",
+		FormKeyRegex:  `name="form_key"[^/]*value="([^"]*)"`,
+		CookieName:    "PHPSESSID",
+		CookiePath:    "/",
+		CookieDomain:  "localhost",
+	},
+	"gitlab": {
+		LoginURL:      "http://localhost:8023/users/sign_in",
+		Username:      "byteblaze",
+		Password:      "hello1234",
+		UsernameField: "user[login]",
+		PasswordField: "user[password]",
+		FormKeyField:  "authenticity_token",
+		FormKeyRegex:  `name="authenticity_token"[^/]*value="([^"]*)"`,
+		CookieName:    "_gitlab_session",
+		CookiePath:    "/",
+		CookieDomain:  "localhost",
+	},
+	"reddit": {
+		LoginURL:      "http://localhost:9999/login",
+		Username:      "MarvelsGrantMan136",
+		Password:      "test1234",
+		UsernameField: "username",
+		PasswordField: "password",
+		FormKeyField:  "",
+		CookieName:    "session",
+		CookiePath:    "/",
+		CookieDomain:  "localhost",
+	},
 }
 
 // resolveStartURL picks the first start URL and resolves any __SITE__ templates.
@@ -164,6 +233,92 @@ type plannerResult struct {
 	Actions  []plannerAction `json:"actions"`
 }
 
+// authCookie holds a session cookie obtained via pre-authentication.
+type authCookie struct {
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	Domain string `json:"domain"`
+	Path   string `json:"path"`
+}
+
+// preAuth logs into a site via HTTP and returns the session cookie.
+// Returns nil if no credentials are configured for the site.
+func preAuth(ctx context.Context, site string) *authCookie {
+	creds, ok := siteCredentials[site]
+	if !ok {
+		return nil
+	}
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		log.Printf("PreAuth [%s]: cookie jar: %v", site, err)
+		return nil
+	}
+	client := &http.Client{Jar: jar, Timeout: 15 * time.Second}
+
+	// Step 1: GET login page to obtain session cookie + CSRF token.
+	getReq, err := http.NewRequestWithContext(ctx, http.MethodGet, creds.LoginURL, nil)
+	if err != nil {
+		log.Printf("PreAuth [%s]: create GET: %v", site, err)
+		return nil
+	}
+	getResp, err := client.Do(getReq)
+	if err != nil {
+		log.Printf("PreAuth [%s]: GET login page: %v", site, err)
+		return nil
+	}
+	pageBody, _ := io.ReadAll(getResp.Body)
+	_ = getResp.Body.Close()
+
+	// Step 2: Extract CSRF token if needed.
+	formData := url.Values{}
+	formData.Set(creds.UsernameField, creds.Username)
+	formData.Set(creds.PasswordField, creds.Password)
+
+	if creds.FormKeyField != "" && creds.FormKeyRegex != "" {
+		re := regexp.MustCompile(creds.FormKeyRegex)
+		m := re.FindSubmatch(pageBody)
+		if len(m) < 2 {
+			log.Printf("PreAuth [%s]: CSRF token not found in login page", site)
+			return nil
+		}
+		formData.Set(creds.FormKeyField, string(m[1]))
+	}
+
+	// Step 3: POST login.
+	postReq, err := http.NewRequestWithContext(ctx, http.MethodPost, creds.LoginURL, strings.NewReader(formData.Encode()))
+	if err != nil {
+		log.Printf("PreAuth [%s]: create POST: %v", site, err)
+		return nil
+	}
+	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	postResp, err := client.Do(postReq)
+	if err != nil {
+		log.Printf("PreAuth [%s]: POST login: %v", site, err)
+		return nil
+	}
+	_, _ = io.Copy(io.Discard, postResp.Body)
+	_ = postResp.Body.Close()
+
+	// Step 4: Extract the session cookie from the jar.
+	loginURL, _ := url.Parse(creds.LoginURL)
+	for _, c := range jar.Cookies(loginURL) {
+		if c.Name == creds.CookieName {
+			log.Printf("PreAuth [%s]: authenticated (cookie %s=%s...)", site, c.Name, c.Value[:min(8, len(c.Value))])
+			return &authCookie{
+				Name:   c.Name,
+				Value:  c.Value,
+				Domain: creds.CookieDomain,
+				Path:   creds.CookiePath,
+			}
+		}
+	}
+
+	log.Printf("PreAuth [%s]: login succeeded but cookie %q not found", site, creds.CookieName)
+	return nil
+}
+
 // runTask executes a single WebArena task via POST /agent/task.
 // The Planner inside agentd handles navigation, multi-step execution, and answer extraction.
 func runTask(ctx context.Context, agentdURL string, task WATask, timeout time.Duration) TaskResult {
@@ -183,11 +338,21 @@ func runTask(ctx context.Context, agentdURL string, task WATask, timeout time.Du
 	if len(task.Sites) > 0 {
 		siteHint = task.Sites[0]
 	}
+
+	// Pre-authenticate: get session cookie via HTTP login.
+	var cookies []authCookie
+	if siteHint != "" {
+		if c := preAuth(taskCtx, siteHint); c != nil {
+			cookies = append(cookies, *c)
+		}
+	}
+
 	body, _ := json.Marshal(map[string]any{
 		"intent":    task.Intent,
 		"tab_id":    0,
 		"start_url": startURL,
 		"site_hint": siteHint,
+		"cookies":   cookies,
 	})
 
 	req, err := http.NewRequestWithContext(taskCtx, http.MethodPost, agentdURL+"/agent/task", bytes.NewReader(body))

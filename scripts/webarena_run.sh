@@ -39,7 +39,7 @@ done
 NAVIGATOR_MODEL="${NAVIGATOR_MODEL:-gemini-3.1-flash}"
 WEBARENA_TIMEOUT="${WEBARENA_TIMEOUT:-300}"
 CARTOGRAPHER_MODE="${CARTOGRAPHER_MODE:-cairn}"
-DATA_DIR="docker/webarena-data"
+DATA_DIR="$(cd "$(dirname "$0")/.." && pwd)/docker/webarena-data"
 CONFIG="docker/webarena-config.json"
 TASKS="testdata/webarena_tasks.json"
 WA="uvx webarena-verified"
@@ -209,6 +209,7 @@ if [[ "$START_SERVER" == true ]]; then
   NAVIGATOR_MODEL="$NAVIGATOR_MODEL" \
   NAVIGATOR_FORMAT="" \
   CARTOGRAPHER_MODE="$CARTOGRAPHER_MODE" \
+  WEBARENA_MODE=1 \
     ./bin/agentd &
   AGENTD_PID=$!
   echo "  agentd pid: $AGENTD_PID"

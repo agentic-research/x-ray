@@ -39,15 +39,16 @@ type SchemaCache struct {
 // NavSection records a navigation action taken within a specific zone,
 // keyed by a goal hash so that similar goals map to the same slot.
 type NavSection struct {
-	GoalHash    string
-	ZonePath    string
-	Fingerprint string
-	Ordinal     string
-	ElementText string
-	Action      string
-	Payload     string // for type actions (e.g., search queries)
-	Outcome     string
-	RecordedAt  int64
+	GoalHash     string
+	ZonePath     string
+	Fingerprint  string // content fingerprint (legacy, still stored)
+	StructuralFP string // tag-shape fingerprint — used for cross-page matching
+	Ordinal      string
+	ElementText  string
+	Action       string
+	Payload      string // for type actions (e.g., search queries)
+	Outcome      string
+	RecordedAt   int64
 }
 
 // urlPattern matches http/https URLs for stripping from goal text.
@@ -234,14 +235,15 @@ func (c *SchemaCache) PutZones(key string, mounts []mache.Mount) {
 	// Backup sections from old zones before clearing.
 	// Key: escaped zone path, Value: slice of section backups.
 	type sectionBackup struct {
-		goalHash    string
-		ordinal     string
-		elementText string
-		action      string
-		payload     string
-		fingerprint string
-		outcome     string
-		recordedAt  string
+		goalHash     string
+		ordinal      string
+		elementText  string
+		action       string
+		payload      string
+		fingerprint  string
+		structuralFP string
+		outcome      string
+		recordedAt   string
 	}
 	savedSections := map[string][]sectionBackup{}
 	if zonesNode, err := c.store.GetNode(zonesDir); err == nil {
@@ -271,6 +273,9 @@ func (c *SchemaCache) PutZones(key string, mounts []mache.Mount) {
 				if n, err := c.store.GetNode(secID + "/fingerprint"); err == nil {
 					sb.fingerprint = string(n.Data)
 				}
+				if n, err := c.store.GetNode(secID + "/structural_fp"); err == nil {
+					sb.structuralFP = string(n.Data)
+				}
 				if n, err := c.store.GetNode(secID + "/outcome"); err == nil {
 					sb.outcome = string(n.Data)
 				}
@@ -293,10 +298,11 @@ func (c *SchemaCache) PutZones(key string, mounts []mache.Mount) {
 		c.store.AddNode(&graph.Node{
 			ID:       zoneID,
 			Mode:     fs.ModeDir,
-			Children: []string{zoneID + "/mount_json", zoneID + "/fingerprint", zoneID + "/cached_at"},
+			Children: []string{zoneID + "/mount_json", zoneID + "/fingerprint", zoneID + "/structural_fp", zoneID + "/cached_at"},
 		})
 		c.store.AddNode(&graph.Node{ID: zoneID + "/mount_json", Data: mountJSON, ModTime: now})
 		c.store.AddNode(&graph.Node{ID: zoneID + "/fingerprint", Data: []byte(m.Fingerprint), ModTime: now})
+		c.store.AddNode(&graph.Node{ID: zoneID + "/structural_fp", Data: []byte(m.StructuralFP), ModTime: now})
 		c.store.AddNode(&graph.Node{ID: zoneID + "/cached_at", Data: []byte(nowStr), ModTime: now})
 
 		if zonesNode, err := c.store.GetNode(zonesDir); err == nil {
@@ -315,7 +321,14 @@ func (c *SchemaCache) PutZones(key string, mounts []mache.Mount) {
 				zoneNode.Children = appendUniqueStr(zoneNode.Children, sectionsDir)
 			}
 			for _, sb := range backups {
-				if sb.fingerprint != m.Fingerprint {
+				// Match on structural FP if available, else fall back to content fingerprint.
+				matched := false
+				if sb.structuralFP != "" && m.StructuralFP != "" {
+					matched = sb.structuralFP == m.StructuralFP
+				} else {
+					matched = sb.fingerprint == m.Fingerprint
+				}
+				if !matched {
 					continue
 				}
 				secID := sectionsDir + "/" + sb.goalHash
@@ -328,6 +341,7 @@ func (c *SchemaCache) PutZones(key string, mounts []mache.Mount) {
 						secID + "/action",
 						secID + "/payload",
 						secID + "/fingerprint",
+						secID + "/structural_fp",
 						secID + "/outcome",
 						secID + "/recorded_at",
 					},
@@ -337,6 +351,7 @@ func (c *SchemaCache) PutZones(key string, mounts []mache.Mount) {
 				c.store.AddNode(&graph.Node{ID: secID + "/action", Data: []byte(sb.action), ModTime: now})
 				c.store.AddNode(&graph.Node{ID: secID + "/payload", Data: []byte(sb.payload), ModTime: now})
 				c.store.AddNode(&graph.Node{ID: secID + "/fingerprint", Data: []byte(sb.fingerprint), ModTime: now})
+				c.store.AddNode(&graph.Node{ID: secID + "/structural_fp", Data: []byte(sb.structuralFP), ModTime: now})
 				c.store.AddNode(&graph.Node{ID: secID + "/outcome", Data: []byte(sb.outcome), ModTime: now})
 				c.store.AddNode(&graph.Node{ID: secID + "/recorded_at", Data: []byte(sb.recordedAt), ModTime: now})
 				if sdNode, err := c.store.GetNode(sectionsDir); err == nil {
@@ -471,10 +486,11 @@ func (c *SchemaCache) PutZone(key string, m mache.Mount) {
 	c.store.AddNode(&graph.Node{
 		ID:       zoneID,
 		Mode:     fs.ModeDir,
-		Children: []string{zoneID + "/mount_json", zoneID + "/fingerprint", zoneID + "/cached_at"},
+		Children: []string{zoneID + "/mount_json", zoneID + "/fingerprint", zoneID + "/structural_fp", zoneID + "/cached_at"},
 	})
 	c.store.AddNode(&graph.Node{ID: zoneID + "/mount_json", Data: mountJSON, ModTime: now})
 	c.store.AddNode(&graph.Node{ID: zoneID + "/fingerprint", Data: []byte(m.Fingerprint), ModTime: now})
+	c.store.AddNode(&graph.Node{ID: zoneID + "/structural_fp", Data: []byte(m.StructuralFP), ModTime: now})
 	c.store.AddNode(&graph.Node{ID: zoneID + "/cached_at", Data: []byte(nowStr), ModTime: now})
 
 	if zonesNode, err := c.store.GetNode(zonesDir); err == nil {
@@ -490,6 +506,19 @@ func (c *SchemaCache) GetZoneFingerprint(key, zonePath string) string {
 	defer c.mu.RUnlock()
 
 	fpID := key + "/zones/" + escapeZonePath(zonePath) + "/fingerprint"
+	node, err := c.store.GetNode(fpID)
+	if err != nil {
+		return ""
+	}
+	return string(node.Data)
+}
+
+// GetZoneStructuralFP returns the structural fingerprint for a zone, or "" if not found.
+func (c *SchemaCache) GetZoneStructuralFP(key, zonePath string) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	fpID := key + "/zones/" + escapeZonePath(zonePath) + "/structural_fp"
 	node, err := c.store.GetNode(fpID)
 	if err != nil {
 		return ""
@@ -536,6 +565,7 @@ func (c *SchemaCache) PutSection(key string, section NavSection) {
 			secID + "/action",
 			secID + "/payload",
 			secID + "/fingerprint",
+			secID + "/structural_fp",
 			secID + "/outcome",
 			secID + "/recorded_at",
 		},
@@ -545,6 +575,7 @@ func (c *SchemaCache) PutSection(key string, section NavSection) {
 	c.store.AddNode(&graph.Node{ID: secID + "/action", Data: []byte(section.Action), ModTime: now})
 	c.store.AddNode(&graph.Node{ID: secID + "/payload", Data: []byte(section.Payload), ModTime: now})
 	c.store.AddNode(&graph.Node{ID: secID + "/fingerprint", Data: []byte(section.Fingerprint), ModTime: now})
+	c.store.AddNode(&graph.Node{ID: secID + "/structural_fp", Data: []byte(section.StructuralFP), ModTime: now})
 	c.store.AddNode(&graph.Node{ID: secID + "/outcome", Data: []byte(section.Outcome), ModTime: now})
 	c.store.AddNode(&graph.Node{ID: secID + "/recorded_at", Data: []byte(strconv.FormatInt(section.RecordedAt, 10)), ModTime: now})
 
@@ -574,19 +605,27 @@ func (c *SchemaCache) PutSection(key string, section NavSection) {
 	c.persistLocked()
 }
 
-// GetSections returns NavSections for a zone whose fingerprint matches
-// currentFingerprint. Stale sections (fingerprint mismatch) are GC'd.
-// Uses a full Lock because it may mutate the graph during GC.
+// GetSections returns NavSections for a zone whose structure matches.
+// Matches on structural fingerprint (tag-shape) first, falling back to
+// content fingerprint for legacy sections that lack a structural FP.
+// Sections that match neither are GC'd.
 func (c *SchemaCache) GetSections(key, zonePath, currentFingerprint string) []NavSection {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	return c.getSectionsLocked(key, zonePath, currentFingerprint, true)
+	// Read the zone's structural FP from the cache.
+	currentStructuralFP := ""
+	zoneID := key + "/zones/" + escapeZonePath(zonePath)
+	if n, err := c.store.GetNode(zoneID + "/structural_fp"); err == nil {
+		currentStructuralFP = string(n.Data)
+	}
+
+	return c.getSectionsLocked(key, zonePath, currentFingerprint, currentStructuralFP, true)
 }
 
 // getSectionsLocked is the inner implementation shared by GetSections and
 // GetAllSectionsForURL. If gcPersist is true it calls persistLocked after GC.
-func (c *SchemaCache) getSectionsLocked(key, zonePath, currentFingerprint string, gcPersist bool) []NavSection {
+func (c *SchemaCache) getSectionsLocked(key, zonePath, currentFingerprint, currentStructuralFP string, gcPersist bool) []NavSection {
 	escaped := escapeZonePath(zonePath)
 	sectionsDir := key + "/zones/" + escaped + "/sections"
 	sdNode, err := c.store.GetNode(sectionsDir)
@@ -604,7 +643,17 @@ func (c *SchemaCache) getSectionsLocked(key, zonePath, currentFingerprint string
 			continue
 		}
 		sec.ZonePath = zonePath
-		if sec.Fingerprint == currentFingerprint {
+
+		// Match on structural FP if both sides have one (cross-page transfer).
+		// Fall back to content fingerprint for legacy sections without structural FP.
+		matched := false
+		if currentStructuralFP != "" && sec.StructuralFP != "" {
+			matched = sec.StructuralFP == currentStructuralFP
+		} else {
+			matched = sec.Fingerprint == currentFingerprint
+		}
+
+		if matched {
 			result = append(result, *sec)
 			keep = append(keep, childID)
 		} else {
@@ -655,6 +704,9 @@ func (c *SchemaCache) readSectionNode(secID string) *NavSection {
 	if n, err := c.store.GetNode(secID + "/fingerprint"); err == nil {
 		sec.Fingerprint = string(n.Data)
 	}
+	if n, err := c.store.GetNode(secID + "/structural_fp"); err == nil {
+		sec.StructuralFP = string(n.Data)
+	}
 	if n, err := c.store.GetNode(secID + "/outcome"); err == nil {
 		sec.Outcome = string(n.Data)
 	}
@@ -685,10 +737,14 @@ func (c *SchemaCache) GetAllSectionsForURL(key string) []NavSection {
 		escaped := strings.TrimPrefix(zoneID, zonesDir+"/")
 		zonePath := "/" + strings.ReplaceAll(escaped, "~", "/")
 
-		// Read the zone's fingerprint.
+		// Read the zone's fingerprints.
 		fp := ""
 		if fpNode, err := c.store.GetNode(zoneID + "/fingerprint"); err == nil {
 			fp = string(fpNode.Data)
+		}
+		sfp := ""
+		if sfpNode, err := c.store.GetNode(zoneID + "/structural_fp"); err == nil {
+			sfp = string(sfpNode.Data)
 		}
 
 		sectionsDir := zoneID + "/sections"
@@ -704,7 +760,15 @@ func (c *SchemaCache) GetAllSectionsForURL(key string) []NavSection {
 				continue
 			}
 			sec.ZonePath = zonePath
-			if sec.Fingerprint == fp {
+
+			matched := false
+			if sfp != "" && sec.StructuralFP != "" {
+				matched = sec.StructuralFP == sfp
+			} else {
+				matched = sec.Fingerprint == fp
+			}
+
+			if matched {
 				all = append(all, *sec)
 				keep = append(keep, childID)
 			} else {

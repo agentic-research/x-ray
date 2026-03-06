@@ -17,6 +17,12 @@ import (
 // Serialized per-tab via captureMu to prevent concurrent goroutines from racing on shared channels
 // (wrong summary paired with wrong screenshot).
 func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool, targetMacheID string) {
+	h.captureGoRetry(parentCtx, tabID, isRescan, targetMacheID, 0)
+}
+
+const maxCaptureRetries = 3
+
+func (h *Handler) captureGoRetry(parentCtx context.Context, tabID int, isRescan bool, targetMacheID string, attempt int) {
 	sess := h.getSession(tabID)
 
 	// Serialize captures per tab. If a second PAGE_READY arrives while we're mid-capture,
@@ -34,9 +40,12 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 	// On any early-return failure, unblock Planner/Doer waiters so they don't
 	// hang for 30s on GetSchemaReady(). The Planner already handles the "no
 	// schema" case gracefully ("proceeding anyway").
+	// Exception: chrome-extension:// failures are transient (new-tab page) —
+	// don't signal ready, schedule a retry instead.
 	captureOK := false
+	transientFailure := false
 	defer func() {
-		if !captureOK {
+		if !captureOK && !transientFailure {
 			sess.SignalSchemaReady()
 		}
 	}()
@@ -79,6 +88,25 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 		return
 	}
 
+	// Skip capture for non-http pages (e.g., chrome-extension:// briefly shown on new tabs).
+	// Treat as transient — schedule retry instead of signaling schema ready with empty tree.
+	if summaryResp.URL != "" && !strings.HasPrefix(summaryResp.URL, "http://") && !strings.HasPrefix(summaryResp.URL, "https://") {
+		log.Printf("captureGo: skipping non-http URL %q (tab %d)", summaryResp.URL, tabID)
+		if attempt < maxCaptureRetries {
+			transientFailure = true
+			log.Printf("captureGo: non-http URL — retry %d/%d in 2s (tab %d)", attempt+1, maxCaptureRetries, tabID)
+			go func() {
+				select {
+				case <-time.After(2 * time.Second):
+				case <-parentCtx.Done():
+					return
+				}
+				h.captureGoRetry(parentCtx, tabID, isRescan, targetMacheID, attempt+1)
+			}()
+		}
+		return
+	}
+
 	// 2. DRAW_OVERLAY_CMD → wait for OVERLAY_DRAWN.
 	select {
 	case <-sess.OverlayDrawnCh:
@@ -103,6 +131,28 @@ func (h *Handler) captureGo(parentCtx context.Context, tabID int, isRescan bool,
 		})
 		// Still remove overlay and draw human overlay.
 		h.sendOverlayCleanup(conn, tabID, sess)
+
+		// chrome-extension:// failures are transient — Chrome briefly shows its
+		// new-tab page before navigating to the real URL. Don't signal schema
+		// ready (which would let Planner/Doer proceed with an empty tree).
+		// Instead, schedule a retry: the real page will load shortly.
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "chrome-extension://") || strings.Contains(errMsg, "chrome://") {
+			if attempt < maxCaptureRetries {
+				transientFailure = true
+				log.Printf("captureGo: transient extension URL failure — retry %d/%d in 2s (tab %d)", attempt+1, maxCaptureRetries, tabID)
+				go func() {
+					select {
+					case <-time.After(2 * time.Second):
+					case <-parentCtx.Done():
+						return
+					}
+					h.captureGoRetry(parentCtx, tabID, isRescan, targetMacheID, attempt+1)
+				}()
+			} else {
+				log.Printf("captureGo: exhausted %d retries for transient URL (tab %d) — signaling ready with empty tree", maxCaptureRetries, tabID)
+			}
+		}
 		return
 	}
 	defer func() {

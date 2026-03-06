@@ -204,18 +204,18 @@ function connectWebSocket() {
               chrome.tabs.onUpdated.removeListener(listener);
               gotoInFlight.delete(targetTab);
             };
-            const listener = (tabId, changeInfo) => {
-              if (tabId === targetTab && changeInfo.status === 'complete') {
-                cleanup();
-                lastKnownUrls.set(targetTab, url); // Sync tracked URL
-                console.log('X-Ray: Page loaded, waiting for layout to stabilize (tab', targetTab, ')');
-                // Wait for SPA layout shifts to settle before snapshot (Bug #9 fix).
-                waitForLayoutStable(targetTab).then(() => {
-                  console.log('X-Ray: Layout stable, auto-capturing snapshot for tab', targetTab);
-                  pendingSnapshots.add(targetTab);
-                  captureAndSend(targetTab);
-                });
-              }
+            const listener = (tabId, changeInfo, updatedTab) => {
+              if (tabId !== targetTab || changeInfo.status !== 'complete') return;
+              const currentUrl = updatedTab?.url || '';
+              if (/^(chrome(-extension)?|about|edge|brave):\/\//.test(currentUrl)) return;
+              cleanup();
+              lastKnownUrls.set(targetTab, currentUrl);
+              console.log('X-Ray: Page loaded, waiting for layout to stabilize (tab', targetTab, ')');
+              waitForLayoutStable(targetTab).then(() => {
+                console.log('X-Ray: Layout stable, auto-capturing snapshot for tab', targetTab);
+                pendingSnapshots.add(targetTab);
+                captureAndSend(targetTab);
+              });
             };
             chrome.tabs.onUpdated.addListener(listener);
             setTimeout(() => {
@@ -263,7 +263,7 @@ function connectWebSocket() {
       case 'LIST_TABS': {
         chrome.tabs.query({}, (tabs) => {
           const tabList = tabs
-            .filter(t => t.url && !/^(chrome|about|edge|brave):\/\//.test(t.url))
+            .filter(t => t.url && !/^(chrome(-extension)?|about|edge|brave):\/\//.test(t.url))
             .map(t => ({ id: t.id, title: t.title || '', url: t.url }));
           if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'TABS_LISTED', tabs: tabList }));
@@ -294,16 +294,23 @@ function connectWebSocket() {
             ws.send(JSON.stringify({ type: 'TAB_ACTIVATED', tab_id: tab.id }));
           }
           // Wait for page load, then snapshot.
-          const listener = (tabId, changeInfo) => {
-            if (tabId === tab.id && changeInfo.status === 'complete') {
-              chrome.tabs.onUpdated.removeListener(listener);
-              gotoInFlight.delete(tab.id);
-              lastKnownUrls.set(tab.id, url); // Sync tracked URL
-              waitForLayoutStable(tab.id).then(() => {
-                pendingSnapshots.add(tab.id);
-                captureAndSend(tab.id);
-              });
+          // IMPORTANT: Check the actual tab URL, not just status === 'complete'.
+          // Chrome fires 'complete' for the transient chrome-extension:// new-tab page
+          // BEFORE navigating to the target URL. We must wait for the real URL.
+          const listener = (tabId, changeInfo, updatedTab) => {
+            if (tabId !== tab.id || changeInfo.status !== 'complete') return;
+            const currentUrl = updatedTab?.url || '';
+            if (/^(chrome(-extension)?|about|edge|brave):\/\//.test(currentUrl)) {
+              console.log('X-Ray: CREATE_TAB ignoring transient URL:', currentUrl);
+              return; // Keep listening — real URL hasn't loaded yet.
             }
+            chrome.tabs.onUpdated.removeListener(listener);
+            gotoInFlight.delete(tab.id);
+            lastKnownUrls.set(tab.id, currentUrl);
+            waitForLayoutStable(tab.id).then(() => {
+              pendingSnapshots.add(tab.id);
+              captureAndSend(tab.id);
+            });
           };
           chrome.tabs.onUpdated.addListener(listener);
           setTimeout(() => {
@@ -311,6 +318,32 @@ function connectWebSocket() {
             gotoInFlight.delete(tab.id);
           }, 30000);
         });
+        break;
+      }
+
+      case 'SET_COOKIES': {
+        // Inject pre-auth session cookies from the eval harness.
+        const cookies = msg.cookies || [];
+        for (const c of cookies) {
+          try {
+            await chrome.cookies.set({
+              url: c.url || `http://${c.domain}${c.path || '/'}`,
+              name: c.name,
+              value: c.value,
+              domain: c.domain,
+              path: c.path || '/',
+              httpOnly: true,
+              sameSite: 'lax',
+            });
+            console.log('X-Ray: Set cookie', c.name, 'for', c.domain);
+          } catch (e) {
+            console.error('X-Ray: Failed to set cookie', c.name, e);
+          }
+        }
+        // Ack back so the server knows cookies are set.
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'COOKIES_SET', tab_id: msg.tab_id }));
+        }
         break;
       }
 
@@ -479,6 +512,18 @@ function connectWebSocket() {
       case 'CDP_ATTACH': {
         const tabId = msg.tab_id;
         try {
+          // Pre-check: don't attempt debugger.attach on non-http tabs.
+          // Chrome briefly shows a chrome-extension:// new-tab page when
+          // chrome.tabs.create() runs — attaching there always fails.
+          const tabInfo = await chrome.tabs.get(tabId);
+          const tabUrl = tabInfo?.url || '';
+          if (tabUrl && !tabUrl.startsWith('http://') && !tabUrl.startsWith('https://')) {
+            ws.send(JSON.stringify({
+              type: 'CDP_ATTACH_FAILED', tab_id: tabId,
+              cdp_error: `Tab URL is ${tabUrl} (not http) — skipping attach`
+            }));
+            break;
+          }
           await chrome.debugger.attach({ tabId }, '1.3');
           ws.send(JSON.stringify({ type: 'CDP_ATTACHED', tab_id: tabId }));
         } catch (e) {
@@ -691,7 +736,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) {
           const url = tabs[0].url || '';
-          if (/^(chrome|about|edge|brave):\/\//.test(url)) {
+          if (/^(chrome(-extension)?|about|edge|brave):\/\//.test(url)) {
             sendResponse({ ok: false, error: 'Cannot snapshot restricted page — use goto to navigate first' });
             return;
           }
@@ -723,7 +768,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         // On restricted URLs (chrome://, about://), there's no schema and never will be.
         const url = tabs[0].url || '';
-        const restricted = /^(chrome|about|edge|brave):\/\//.test(url);
+        const restricted = /^(chrome(-extension)?|about|edge|brave):\/\//.test(url);
         if (restricted && !schemaReadyTabs.has(tabId)) {
           sendResponse({ ok: false, error: 'Navigate to a website first' });
           return;
@@ -837,9 +882,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // Skip if GOTO_URL is handling this tab (it has its own one-time listener).
   if (gotoInFlight.has(tabId)) return;
 
-  // Skip restricted URLs.
+  // Skip restricted URLs (including chrome-extension:// which briefly appears on new tabs).
   const url = tab.url || '';
-  if (/^(chrome|about|edge|brave):\/\//.test(url)) return;
+  if (/^(chrome(-extension)?|about|edge|brave):\/\//.test(url)) return;
 
   // Skip if URL hasn't actually changed (e.g., in-page anchor, reload).
   const prev = lastKnownUrls.get(tabId);
