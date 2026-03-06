@@ -85,7 +85,7 @@ var sitePrimers = map[string]string{
 var plannerSystemPrompt = `You are an autonomous web agent. You dispatch commands to a browser navigator.
 
 TOOLS:
-- issue_command(goal, read_only): Send a goal to the navigator.
+- create_interaction(intent, read_only): Send a goal to the navigator.
 - open_url(url): Open a different website.
 
 STRATEGY — think like a human with Cmd+F:
@@ -93,27 +93,27 @@ STRATEGY — think like a human with Cmd+F:
 NOTE: If a "Current page layout" is included with the task, you ALREADY have the page
 structure. SKIP step 1 and go directly to step 2 or 3.
 
-1. ORIENT (only if no layout provided): issue_command("cat children of main zone", read_only=true).
+1. ORIENT (only if no layout provided): create_interaction("cat children of main zone", read_only=true).
    Read the result. Identify tabs, sections, pagination, counts.
 
 2. REVEAL: If content is behind a tab or collapsed section (e.g. "Reviews" tab):
-   issue_command("click the Reviews tab", read_only=false).
+   create_interaction("click the Reviews tab", read_only=false).
 
 3. SEARCH: Grep for specific keywords:
-   issue_command("use grep to find <SHORT keyword|synonym>", read_only=true).
+   create_interaction("use grep to find <SHORT keyword|synonym>", read_only=true).
    Use 1-2 word keywords. Regex OR for synonyms: "small|tiny".
 
 4. EXTRACT: Grep finds TEXT but not associated NAMES/metadata.
-   issue_command("cat page_text and find the reviewer name next to each review mentioning <keyword>, save all names to scratchpad", read_only=true).
+   create_interaction("cat page_text and find the reviewer name next to each review mentioning <keyword>, save all names to scratchpad", read_only=true).
 
 5. PERSIST: ALWAYS save before navigating away:
-   issue_command("save findings to scratchpad", read_only=false).
+   create_interaction("save findings to scratchpad", read_only=false).
 
-6. PAGINATE: issue_command("click Next page", read_only=false).
+6. PAGINATE: create_interaction("click Next page", read_only=false).
    If there is no "Next" button or you are on the last page, STOP and go to COLLECT.
    After each successful page navigation, repeat steps 3-5.
 
-COLLECT: issue_command("read scratchpad", read_only=true). Then call finish().
+COLLECT: create_interaction("read scratchpad", read_only=true). Then call finish().
 
 COMPLETENESS — before answering, VERIFY:
 - If you already found the specific data requested, you may answer immediately.
@@ -136,25 +136,25 @@ RULES:
 - ALWAYS persist before navigating. Scratchpad survives; memory does not.
 - NEVER say "search for X" — say "use grep to find X".
 - NEVER repeat a failed command. Try different keywords or cat page_text.
-- Every turn MUST include a tool call (issue_command, open_url, or finish).`
+- Every turn MUST include a tool call (create_interaction, open_url, or finish).`
 
 // plannerToolDefinitions returns a minimal tool set for the synchronous Planner.
 // Unlike the voice Talker, Planner blocks until each command completes, so
-// check_status and cancel_task are unnecessary. Fewer tools = simpler JSON
+// check_interaction and cancel_interaction are unnecessary. Fewer tools = simpler JSON
 // schema = fewer MALFORMED_FUNCTION_CALL errors from Gemini.
 func plannerToolDefinitions() []*genai.Tool {
 	return []*genai.Tool{{
 		FunctionDeclarations: []*genai.FunctionDeclaration{
 			{
-				Name:        "issue_command",
+				Name:        "create_interaction",
 				Description: "Send a goal to the browser navigator. Returns a summary when done.",
 				Parameters: &genai.Schema{
 					Type: genai.TypeObject,
 					Properties: map[string]*genai.Schema{
-						"goal":      {Type: genai.TypeString, Description: "What to do in the browser"},
+						"intent":    {Type: genai.TypeString, Description: "What to do in the browser"},
 						"read_only": {Type: genai.TypeString, Description: "Set to 'true' to just observe the page, or 'false' to interact (click, type, scroll)", Enum: []string{"true", "false"}},
 					},
-					Required: []string{"goal"},
+					Required: []string{"intent"},
 				},
 			},
 			{
@@ -247,7 +247,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 		resp, err := p.client.Models.GenerateContent(ctx, p.model, history, config)
 		if err != nil {
 			return PlannerResult{
-				Status:  "error",
+				Status:  "failed",
 				Error:   fmt.Sprintf("Gemini API error: %v", err),
 				Turns:   turn,
 				Actions: actions,
@@ -289,20 +289,23 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 				log.Printf("Planner: malformed function call at turn %d (retry %d/%d)", turn, malformedRetries, maxMalformedRetries)
 				if malformedRetries > maxMalformedRetries {
 					return PlannerResult{
-						Status:  "error",
+						Status:  "failed",
 						Error:   fmt.Sprintf("Gemini produced %d consecutive malformed function calls", malformedRetries),
 						Turns:   turn,
 						Actions: actions,
 					}
 				}
 				// Maintain proper turn alternation: model placeholder, then user nudge.
+				// IMPORTANT: Tell the model to retry the SAME tool call, not start over.
+				// Without this, the model re-issues create_interaction from scratch when
+				// finish() had a JSON syntax error, wasting minutes of runtime.
 				history = append(history, &genai.Content{
 					Role:  "model",
 					Parts: []*genai.Part{{Text: "Let me try that again."}},
 				})
 				history = append(history, &genai.Content{
 					Role:  "user",
-					Parts: []*genai.Part{{Text: "Your previous function call had invalid JSON. Call the issue_command tool with {\"goal\": \"your goal here\", \"read_only\": true} or {\"goal\": \"your goal here\"}."}},
+					Parts: []*genai.Part{{Text: "Your previous function call had invalid JSON syntax. Do NOT start over or re-gather data. Re-call the SAME tool you just tried (e.g. finish) with corrected JSON."}},
 				})
 				continue
 			}
@@ -319,7 +322,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 					})
 					history = append(history, &genai.Content{
 						Role:  "user",
-						Parts: []*genai.Part{{Text: "Please proceed with the task. Call issue_command with the appropriate goal."}},
+						Parts: []*genai.Part{{Text: "Please proceed with the task. Call create_interaction with the appropriate intent."}},
 					})
 					continue
 				}
@@ -339,7 +342,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 			}
 			log.Printf("Planner: empty response at turn %d: %s (model=%s)", turn, errMsg, p.model)
 			return PlannerResult{
-				Status:  "error",
+				Status:  "failed",
 				Error:   errMsg,
 				Turns:   turn,
 				Actions: actions,
@@ -369,7 +372,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 				summary := guardrails.NormalizeAnswer(strings.TrimSpace(after), guardrails.GuardrailsEnabled())
 				log.Printf("Planner: DONE after %d turns: %s", turn+1, summary)
 				return PlannerResult{
-					Status:  "done",
+					Status:  "completed",
 					Summary: summary,
 					Success: true,
 					Turns:   turn + 1,
@@ -391,7 +394,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 				summary := guardrails.NormalizeAnswer(strings.TrimSpace(fullText[idx+5:]), guardrails.GuardrailsEnabled())
 				log.Printf("Planner: DONE (embedded) after %d turns: %s", turn+1, summary)
 				return PlannerResult{
-					Status:  "done",
+					Status:  "completed",
 					Summary: summary,
 					Success: true,
 					Turns:   turn + 1,
@@ -489,7 +492,7 @@ func (p *Planner) handleFinish(args map[string]any, turns int, actions []Planner
 		}
 	}
 
-	status := "done"
+	status := "completed"
 	if !success {
 		status = "failed"
 	}
@@ -505,7 +508,7 @@ func (p *Planner) handleFinish(args map[string]any, turns int, actions []Planner
 }
 
 // executeTool dispatches a single Planner tool call.
-// For issue_command, it blocks until the Doer completes (unlike the voice Talker which is async).
+// For create_interaction, it blocks until the Doer completes (unlike the voice Talker which is async).
 func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer *Doer, tabID int, sess *TabSession, taskContext string) string {
 	switch fc.Name {
 	case "open_url":
@@ -527,13 +530,13 @@ func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer 
 			return "Cancelled."
 		}
 
-	case "issue_command":
-		goal, _ := fc.Args["goal"].(string)
-		if goal == "" {
-			return "Error: goal is required."
+	case "create_interaction":
+		intent, _ := fc.Args["intent"].(string)
+		if intent == "" {
+			return "Error: intent is required."
 		}
 		readOnly := fmt.Sprintf("%v", fc.Args["read_only"]) == "true"
-		goalID := fmt.Sprintf("plan-%d", time.Now().UnixMilli())
+		ixID := fmt.Sprintf("plan-%d", time.Now().UnixMilli())
 
 		// Set up blocking channel to wait for Doer completion.
 		resultCh := make(chan string, 1)
@@ -541,8 +544,8 @@ func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer 
 			resultCh <- summary
 		})
 
-		doer.Submit(DoerGoal{ID: goalID, Text: goal, ReadOnly: readOnly, TaskContext: taskContext})
-		log.Printf("Planner: issue_command %q (read_only=%v)", goal, readOnly)
+		doer.Submit(Interaction{ID: ixID, Intent: intent, ReadOnly: readOnly, Context: taskContext})
+		log.Printf("Planner: create_interaction %q (read_only=%v)", intent, readOnly)
 
 		select {
 		case summary := <-resultCh:
@@ -553,27 +556,32 @@ func (p *Planner) executeTool(ctx context.Context, fc *genai.FunctionCall, doer 
 			return "Cancelled."
 		}
 
-	case "check_status":
-		status, goalText, step, result := doer.State().Snapshot()
+	case "check_interaction":
+		status, intent, step, result := doer.State().Snapshot()
 		switch status {
-		case DoerIdle:
+		case StatusIdle:
 			return "No task in progress. Ready for a new command."
-		case DoerExecuting:
-			return fmt.Sprintf("Working on: %q. Current step: %s", goalText, step)
-		case DoerDone:
+		case StatusInProgress:
+			return fmt.Sprintf("Working on: %q. Current step: %s", intent, step)
+		case StatusCompleted:
 			if result != nil {
 				return fmt.Sprintf("Completed: %s", result.Summary)
 			}
 			return "Task completed."
-		case DoerFailed:
+		case StatusFailed:
 			if result != nil {
 				return fmt.Sprintf("Failed: %s", result.Summary)
 			}
 			return "Task failed."
+		case StatusCancelled:
+			if result != nil {
+				return fmt.Sprintf("Cancelled: %s", result.Summary)
+			}
+			return "Task was cancelled."
 		}
 		return "Unknown status."
 
-	case "cancel_task":
+	case "cancel_interaction":
 		doer.Cancel()
 		return "Task cancelled."
 

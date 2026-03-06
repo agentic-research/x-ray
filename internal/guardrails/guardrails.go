@@ -11,8 +11,8 @@ import (
 	"sync"
 )
 
-// GoalState tracks per-goal guardrail state. Created fresh for each
-// executeGoal() call in the Doer and passed to subsystems that need it.
+// GoalState tracks per-interaction guardrail state. Created fresh for each
+// executeInteraction() call in the Doer and passed to subsystems that need it.
 type GoalState struct {
 	mu            sync.RWMutex
 	Enabled       bool

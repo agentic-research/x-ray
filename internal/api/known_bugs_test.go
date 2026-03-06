@@ -143,7 +143,7 @@ func TestBug_DoerTeleportationTab0(t *testing.T) {
 	})
 
 	// Start a goto command on Tab 0 (simulating disconnected extension start)
-	doer.Submit(DoerGoal{ID: "g-teleport", Text: "go to example.com"})
+	doer.Submit(Interaction{ID: "g-teleport", Intent: "go to example.com"})
 
 	// Simulate the extension waking up and reporting its real ID (Tab 99)
 	time.Sleep(50 * time.Millisecond)
@@ -161,11 +161,11 @@ func TestBug_DoerTeleportationTab0(t *testing.T) {
 	case <-done:
 	case <-time.After(5 * time.Second):
 		status, _, step, _ := doer.State().Snapshot()
-		t.Fatalf("Doer did not complete within 5s (status=%d, step=%q)", status, step)
+		t.Fatalf("Doer did not complete within 5s (status=%s, step=%q)", status, step)
 	}
 	_, _, _, result := doer.State().Snapshot()
 
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected Doer to complete, got error: %s", result.Error)
 	}
 
@@ -190,8 +190,8 @@ func TestBug_DoerGoroutineLeakOnTabClose(t *testing.T) {
 	// Use getOrCreateDoer (the fixed path) which stores doerCancel.
 	doer := h.getOrCreateDoer(1, sess)
 
-	// Fill the buffered goalCh so the goroutine must drain it to accept more.
-	doer.goalCh <- DoerGoal{ID: "fill-buffer", Text: "fill"}
+	// Fill the buffered interactionCh so the goroutine must drain it to accept more.
+	doer.interactionCh <- Interaction{ID: "fill-buffer", Intent: "fill"}
 
 	// Simulate the extension closing the tab via handleTabClosed.
 	h.handleTabClosed(InboundMessage{Type: MsgTabClosed, TabID: 1})
@@ -201,17 +201,17 @@ func TestBug_DoerGoroutineLeakOnTabClose(t *testing.T) {
 
 	// Drain the buffer (the goroutine may or may not have consumed it).
 	select {
-	case <-doer.goalCh:
+	case <-doer.interactionCh:
 	default:
 	}
 
 	// Now the buffer is empty. If the goroutine is dead, a second send
 	// will block (nobody is reading). If alive, it will be consumed.
 	select {
-	case doer.goalCh <- DoerGoal{ID: "orphaned-goal", Text: "I shouldn't execute"}:
+	case doer.interactionCh <- Interaction{ID: "orphaned-goal", Intent: "I shouldn't execute"}:
 		// Send went into the buffer (size 1). Try a third send to truly block.
 		select {
-		case doer.goalCh <- DoerGoal{ID: "orphaned-goal-2", Text: "I also shouldn't execute"}:
+		case doer.interactionCh <- Interaction{ID: "orphaned-goal-2", Intent: "I also shouldn't execute"}:
 			t.Errorf("BUG NOT FIXED: The Doer goroutine is still alive and accepting goals after tab close.")
 		case <-time.After(100 * time.Millisecond):
 			// Blocked — goroutine is dead. The buffer accepted one but no reader drained it.

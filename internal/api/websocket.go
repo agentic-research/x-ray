@@ -87,7 +87,7 @@ func (h *Handler) StartNFS() error {
 	if err := os.MkdirAll(h.nfsMountPath, 0o755); err != nil {
 		return fmt.Errorf("NFS mkdir: %w", err)
 	}
-	srv, err := mount.NFS(h.nfsRoot, h.nfsMountPath)
+	srv, err := mount.NFS(h.nfsRoot, h.nfsMountPath, nil)
 	if err != nil {
 		return fmt.Errorf("NFS mount: %w", err)
 	}
@@ -822,7 +822,7 @@ func (h *Handler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 
 	resp := map[string]any{
 		"status": "no_session",
-		"goal":   "",
+		"intent": "",
 		"step":   "",
 		"url":    "",
 	}
@@ -831,22 +831,13 @@ func (h *Handler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 		resp["url"] = sess.GetCurrentURL()
 
 		if sess.Doer != nil {
-			status, goal, step, result := sess.Doer.State().Snapshot()
-			switch status {
-			case DoerIdle:
-				resp["status"] = "idle"
-			case DoerExecuting:
-				resp["status"] = "executing"
-			case DoerDone:
-				resp["status"] = "done"
-			case DoerFailed:
-				resp["status"] = "failed"
-			}
-			resp["goal"] = goal
+			status, intent, step, result := sess.Doer.State().Snapshot()
+			resp["status"] = string(status)
+			resp["intent"] = intent
 			resp["step"] = step
 			if result != nil {
+				resp["interaction_id"] = result.InteractionID
 				resp["summary"] = result.Summary
-				resp["success"] = result.Success
 				if result.Error != "" {
 					resp["error"] = result.Error
 				}
@@ -924,33 +915,33 @@ func (h *Handler) HandleDoerHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Intent   string `json:"intent"`
-		TabID    int    `json:"tab_id"`
-		GoalID   string `json:"goal_id"`
-		ReadOnly bool   `json:"read_only"`
+		Intent        string `json:"intent"`
+		TabID         int    `json:"tab_id"`
+		InteractionID string `json:"interaction_id"`
+		ReadOnly      bool   `json:"read_only"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	if req.GoalID == "" {
-		req.GoalID = fmt.Sprintf("wa-%d", time.Now().UnixMilli())
+	if req.InteractionID == "" {
+		req.InteractionID = fmt.Sprintf("ix-%d", time.Now().UnixMilli())
 	}
 
 	sess := h.getSession(req.TabID)
 	doer := h.getOrCreateDoer(req.TabID, sess)
-	doer.Submit(DoerGoal{
-		ID:       req.GoalID,
-		Text:     req.Intent,
+	doer.Submit(Interaction{
+		ID:       req.InteractionID,
+		Intent:   req.Intent,
 		ReadOnly: req.ReadOnly,
 	})
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"accepted": true,
-		"goal_id":  req.GoalID,
-		"tab_id":   req.TabID,
+		"accepted":       true,
+		"interaction_id": req.InteractionID,
+		"tab_id":         req.TabID,
 	})
 }
 

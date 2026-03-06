@@ -76,34 +76,35 @@ type voiceMessage struct {
 	SampleRate int    `json:"sample_rate,omitempty"`
 }
 
-// talkerToolDefinitions returns the Talker's tools: check_status, issue_command, cancel_task.
+// talkerToolDefinitions returns the Talker's tools: check_interaction, create_interaction, cancel_interaction.
 // These execute instantly (no I/O, no blocking) so the Talker is never muted.
 func talkerToolDefinitions() []*genai.Tool {
 	return []*genai.Tool{{
 		FunctionDeclarations: []*genai.FunctionDeclaration{
 			{
-				Name:        "check_status",
-				Description: "Check what the background navigator is currently doing. Returns the current goal, step, and result if finished. Use this when the user asks 'what are you doing?' or to check if a previous command has completed.",
+				Name:        "check_interaction",
+				Description: "Check what the background navigator is currently doing. Returns the current intent, step, and result if finished. Use this when the user asks 'what are you doing?' or to check if a previous command has completed.",
 				Parameters: &genai.Schema{
 					Type:       genai.TypeObject,
 					Properties: map[string]*genai.Schema{},
 				},
 			},
 			{
-				Name:        "issue_command",
+				Name:        "create_interaction",
 				Description: "Send a navigation command to the background executor. Examples: 'click the first story', 'go to reddit.com', 'search for golang tutorials', 'scroll down'. The command will execute in the background while you remain available to chat.",
 				Parameters: &genai.Schema{
 					Type: genai.TypeObject,
 					Properties: map[string]*genai.Schema{
-						"goal":      {Type: genai.TypeString, Description: "Natural language navigation goal"},
-						"read_only": {Type: genai.TypeBoolean, Description: "Set true when the user asks a QUESTION about the page (what, which, list, describe, tell me). Leave false/omit when the user wants an ACTION (click, play, open, search, type)."},
-						"context":   {Type: genai.TypeString, Description: "Optional: the user's overarching intent behind this command, so the navigator can adapt if the direct approach fails."},
+						"intent":      {Type: genai.TypeString, Description: "Natural language navigation goal"},
+						"read_only":   {Type: genai.TypeBoolean, Description: "Set true when the user asks a QUESTION about the page (what, which, list, describe, tell me). Leave false/omit when the user wants an ACTION (click, play, open, search, type)."},
+						"context":     {Type: genai.TypeString, Description: "Optional: the user's overarching intent behind this command, so the navigator can adapt if the direct approach fails."},
+						"previous_id": {Type: genai.TypeString, Description: "Optional: ID of the previous interaction for chaining multi-step tasks."},
 					},
-					Required: []string{"goal"},
+					Required: []string{"intent"},
 				},
 			},
 			{
-				Name:        "cancel_task",
+				Name:        "cancel_interaction",
 				Description: "Cancel the current background navigation task. Use when the user says stop, cancel, or nevermind.",
 				Parameters: &genai.Schema{
 					Type:       genai.TypeObject,
@@ -123,7 +124,7 @@ func talkerToolDefinitions() []*genai.Tool {
 			},
 			{
 				Name:        "terminal_action",
-				Description: "Execute a simple terminal command INSTANTLY (bypasses the background queue). Use for: opening windows/tabs, typing short commands, sending special keys. For complex multi-step terminal tasks that need filesystem navigation, use issue_command instead.",
+				Description: "Execute a simple terminal command INSTANTLY (bypasses the background queue). Use for: opening windows/tabs, typing short commands, sending special keys. For complex multi-step terminal tasks that need filesystem navigation, use create_interaction instead.",
 				Parameters: &genai.Schema{
 					Type: genai.TypeObject,
 					Properties: map[string]*genai.Schema{
@@ -207,41 +208,47 @@ func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 		return "No active browser tab or terminal session. Use open_url to open a website first."
 	}
 	switch fc.Name {
-	case "check_status":
-		status, goalText, step, result := doer.State().Snapshot()
+	case "check_interaction":
+		status, intent, step, result := doer.State().Snapshot()
 		switch status {
-		case DoerIdle:
+		case StatusIdle:
 			return "No task in progress. Ready for a new command."
-		case DoerExecuting:
-			return fmt.Sprintf("Working on: %q. Current step: %s", goalText, step)
-		case DoerDone:
+		case StatusInProgress:
+			return fmt.Sprintf("Working on: %q. Current step: %s", intent, step)
+		case StatusCompleted:
 			if result != nil {
 				return fmt.Sprintf("Completed: %s", result.Summary)
 			}
 			return "Task completed."
-		case DoerFailed:
+		case StatusFailed:
 			if result != nil {
 				return fmt.Sprintf("Failed: %s", result.Summary)
 			}
 			return "Task failed."
+		case StatusCancelled:
+			if result != nil {
+				return fmt.Sprintf("Cancelled: %s", result.Summary)
+			}
+			return "Task was cancelled."
 		}
 		return "Unknown status."
 
-	case "issue_command":
-		goal, _ := fc.Args["goal"].(string)
-		if goal == "" {
-			return "Error: goal is required."
+	case "create_interaction":
+		intent, _ := fc.Args["intent"].(string)
+		if intent == "" {
+			return "Error: intent is required."
 		}
 		readOnly, _ := fc.Args["read_only"].(bool)
 		taskContext, _ := fc.Args["context"].(string)
-		goalID := fmt.Sprintf("goal-%d", time.Now().UnixMilli())
-		doer.Submit(DoerGoal{ID: goalID, Text: goal, ReadOnly: readOnly, TaskContext: taskContext})
+		previousID, _ := fc.Args["previous_id"].(string)
+		ixID := fmt.Sprintf("ix-%d", time.Now().UnixMilli())
+		doer.Submit(Interaction{ID: ixID, Intent: intent, ReadOnly: readOnly, Context: taskContext, PreviousID: previousID})
 		if readOnly {
-			log.Printf("Voice: issue_command (read_only=true): %q", goal)
+			log.Printf("Voice: create_interaction (read_only=true): %q", intent)
 		}
-		return fmt.Sprintf("Command accepted: %q. Working on it in the background.", goal)
+		return fmt.Sprintf("Command accepted: %q. Working on it in the background. (interaction_id: %s)", intent, ixID)
 
-	case "cancel_task":
+	case "cancel_interaction":
 		doer.Cancel()
 		return "Task cancelled."
 
@@ -254,25 +261,25 @@ func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 var talkerSystemPrompt = `You are a VOICE assistant with a background navigator that can see and interact with the user's browser and terminal sessions.
 
 YOUR TOOLS:
-- issue_command(goal, read_only?): Dispatch ANY system-related task to your background navigator. This works for actions AND questions about the browser or terminal. Examples: "click the first story", "go to reddit.com", "check if I'm logged in", "read the main heading", "what's running in my terminal?", "type npm start in the terminal".
+- create_interaction(intent, read_only?): Dispatch ANY system-related task to your background navigator. This works for actions AND questions about the browser or terminal. Examples: "click the first story", "go to reddit.com", "check if I'm logged in", "read the main heading", "what's running in my terminal?", "type npm start in the terminal".
   Set read_only=true when the user asks a QUESTION about the environment (e.g., "what's playing?", "what's in the terminal?", "describe the page").
   Leave read_only=false (or omit) when the user wants an ACTION (e.g., "click...", "play...", "open...", "search for...", "type...", "go to...").
-- check_status(): Check what the navigator is currently doing. Returns goal, current step, and result if finished.
-- cancel_task(): Cancel the current background task.
+- check_interaction(): Check what the navigator is currently doing. Returns intent, current step, and result if finished.
+- cancel_interaction(): Cancel the current background task.
 - open_url(url): Open a URL in a NEW browser tab. Use when no tab exists or user explicitly says "open [website]".
 - terminal_action(action, text?): Execute a simple terminal command INSTANTLY — no background queue.
   Actions: "new_window" (open terminal), "new_tab", "type" (send text, include \n for Enter), "enter" (special keys like ctrl-c), "focus" (bring terminal to front).
-  Use this for quick terminal operations. For complex multi-step terminal tasks (e.g., "find the process and kill it"), use issue_command instead.
+  Use this for quick terminal operations. For complex multi-step terminal tasks (e.g., "find the process and kill it"), use create_interaction instead.
 
 BEHAVIOR:
-1. When the user asks you to do something OR asks a question about their environment (browser or terminal), call issue_command() IMMEDIATELY without speaking first. Do NOT say anything before the tool call — just call it silently.
+1. When the user asks you to do something OR asks a question about their environment (browser or terminal), call create_interaction() IMMEDIATELY without speaking first. Do NOT say anything before the tool call — just call it silently.
 2. After the tool returns "Command accepted", say ONE short phrase like "Working on it." or "Checking now." and then STOP. Do NOT guess or predict the answer — the result is not ready yet.
 3. CRITICAL: You will receive "[SYSTEM: Background task completed. Result: ...]" when the real result is ready. ONLY THEN announce the result. Until that notification arrives, you do NOT know the answer. NEVER fabricate a response.
-4. If the user asks "what are you doing?" or "are you almost done?", call check_status() and report the current step briefly.
-5. If the user says "stop" or "cancel", use cancel_task() and confirm: "Cancelled."
-6. You can answer general knowledge questions directly using Google Search — no need to issue_command for those.
+4. If the user asks "what are you doing?" or "are you almost done?", call check_interaction() and report the current step briefly.
+5. If the user says "stop" or "cancel", use cancel_interaction() and confirm: "Cancelled."
+6. You can answer general knowledge questions directly using Google Search — no need to create_interaction for those.
 7. Match verbosity to the request. Use one short sentence for simple actions ("Clicking the button"), but give structured multi-sentence responses when reading data back to the user.
-8. If you get "No active browser tab", use open_url() to open a website first, then issue_command() after it loads.
+8. If you get "No active browser tab", use open_url() to open a website first, then create_interaction() after it loads.
 9. SAFETY: For irreversible actions (buy, submit, delete, send, post, confirm, checkout, pay), ALWAYS confirm before dispatching: "I'll click 'Submit Order' — should I go ahead?"
 
 Your navigator can read the full environment structure (including terminals at /iterm/), so ALWAYS delegate environment questions to it — never say "I can't see the terminal."`
@@ -291,6 +298,9 @@ func buildLiveConfig() *genai.LiveConnectConfig {
 		InputAudioTranscription:  &genai.AudioTranscriptionConfig{},
 		OutputAudioTranscription: &genai.AudioTranscriptionConfig{},
 		SessionResumption:        &genai.SessionResumptionConfig{},
+		ContextWindowCompression: &genai.ContextWindowCompressionConfig{
+			SlidingWindow: &genai.SlidingWindow{},
+		},
 	}
 }
 
@@ -330,7 +340,7 @@ func connectWithBackoff(ctx context.Context, connect liveConnector, model string
 
 // HandleVoice upgrades to WebSocket and proxies audio between the browser and
 // Gemini's Live API. Navigation work is delegated to the Doer goroutine;
-// the Talker stays responsive with instant check_status/issue_command tools.
+// the Talker stays responsive with instant check_interaction/create_interaction tools.
 //
 // Query param: ?tab=<tabId> associates this voice session with a tab's schema.
 func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
@@ -624,7 +634,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				}
 				// Only deliver pending results on TurnComplete (model finished naturally).
 				// On Interrupted (user spoke), keep the result queued — it'll deliver
-				// after the model responds to the user. User can also check_status().
+				// after the model responds to the user. User can also check_interaction().
 				if sc.TurnComplete {
 					deliverPendingResult()
 				}
@@ -636,7 +646,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				var responses []*genai.FunctionResponse
 				for _, fc := range tc.FunctionCalls {
 					switch fc.Name {
-					case "check_status", "issue_command", "cancel_task", "open_url", "terminal_action":
+					case "check_interaction", "create_interaction", "cancel_interaction", "open_url", "terminal_action":
 						result := h.executeTalkerTool(fc, resolveDoer())
 						log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
 						responses = append(responses, &genai.FunctionResponse{
@@ -950,7 +960,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				}
 				// Only deliver pending results on TurnComplete (model finished naturally).
 				// On Interrupted (user spoke), keep the result queued — it'll deliver
-				// after the model responds to the user. User can also check_status().
+				// after the model responds to the user. User can also check_interaction().
 				if sc.TurnComplete {
 					deliverPendingResultNative()
 				}
@@ -963,7 +973,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				var responses []*genai.FunctionResponse
 				for _, fc := range tc.FunctionCalls {
 					switch fc.Name {
-					case "check_status", "issue_command", "cancel_task", "open_url", "terminal_action":
+					case "check_interaction", "create_interaction", "cancel_interaction", "open_url", "terminal_action":
 						result := h.executeTalkerTool(fc, resolveDoer())
 						log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
 						responses = append(responses, &genai.FunctionResponse{

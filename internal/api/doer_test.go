@@ -113,9 +113,9 @@ func (m *mockIntentHandler) SetRefValidateFunc(_ func(string) string) {}
 
 func (m *mockIntentHandler) SetSectionHints(_ string) {}
 
-// waitForDone blocks until the Doer finishes (DoerDone or DoerFailed) or times out.
+// waitForDone blocks until the Doer finishes (Completed or Failed) or times out.
 // It wires a completion channel through SetResultNotifyFn internally.
-func waitForDone(t *testing.T, doer *Doer, timeout time.Duration) *DoerResult {
+func waitForDone(t *testing.T, doer *Doer, timeout time.Duration) *InteractionResult {
 	t.Helper()
 	done := make(chan struct{}, 1)
 	doer.SetResultNotifyFn(func(_ string) {
@@ -128,14 +128,14 @@ func waitForDone(t *testing.T, doer *Doer, timeout time.Duration) *DoerResult {
 	case <-done:
 	case <-time.After(timeout):
 		status, _, step, _ := doer.State().Snapshot()
-		t.Fatalf("Doer did not complete within %s (status=%d, step=%q)", timeout, status, step)
+		t.Fatalf("Doer did not complete within %s (status=%s, step=%q)", timeout, status, step)
 	}
 	_, _, _, result := doer.State().Snapshot()
 	return result
 }
 
 // waitForDoneWithNotify is like waitForDone but also calls extraFn on completion.
-func waitForDoneWithNotify(t *testing.T, doer *Doer, timeout time.Duration, extraFn func(string)) *DoerResult {
+func waitForDoneWithNotify(t *testing.T, doer *Doer, timeout time.Duration, extraFn func(string)) *InteractionResult {
 	t.Helper()
 	done := make(chan struct{}, 1)
 	doer.SetResultNotifyFn(func(summary string) {
@@ -151,7 +151,7 @@ func waitForDoneWithNotify(t *testing.T, doer *Doer, timeout time.Duration, extr
 	case <-done:
 	case <-time.After(timeout):
 		status, _, step, _ := doer.State().Snapshot()
-		t.Fatalf("Doer did not complete within %s (status=%d, step=%q)", timeout, status, step)
+		t.Fatalf("Doer did not complete within %s (status=%s, step=%q)", timeout, status, step)
 	}
 	_, _, _, result := doer.State().Snapshot()
 	return result
@@ -184,22 +184,22 @@ func TestDoerStateTransitions(t *testing.T) {
 
 	// State should be Idle before any goal.
 	status, _, _, _ := doer.State().Snapshot()
-	if status != DoerIdle {
-		t.Errorf("expected DoerIdle, got %d", status)
+	if status != StatusIdle {
+		t.Errorf("expected StatusIdle, got %s", status)
 	}
 
 	// Submit a goal.
 	var notified atomic.Value
-	doer.Submit(DoerGoal{ID: "g1", Text: "describe the page"})
+	doer.Submit(Interaction{ID: "g1", Intent: "describe the page"})
 
 	result := waitForDoneWithNotify(t, doer, 2*time.Second, func(summary string) {
 		notified.Store(summary)
 	})
 
-	if result.GoalID != "g1" {
-		t.Errorf("expected goal ID g1, got %s", result.GoalID)
+	if result.InteractionID != "g1" {
+		t.Errorf("expected goal ID g1, got %s", result.InteractionID)
 	}
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success, got failure: %s", result.Error)
 	}
 	if v := notified.Load(); v == nil {
@@ -219,13 +219,13 @@ func TestDoerCancel(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-cancel", Text: "do something slow"})
+	doer.Submit(Interaction{ID: "g-cancel", Intent: "do something slow"})
 
 	// Wait for Executing state.
 	deadline := time.After(2 * time.Second)
 	for {
 		status, _, _, _ := doer.State().Snapshot()
-		if status == DoerExecuting {
+		if status == StatusInProgress {
 			break
 		}
 		select {
@@ -235,11 +235,11 @@ func TestDoerCancel(t *testing.T) {
 		}
 	}
 
-	// Cancel and verify state transitions to Idle.
+	// Cancel and verify state transitions to Cancelled.
 	doer.Cancel()
 	status, _, _, result := doer.State().Snapshot()
-	if status != DoerIdle {
-		t.Errorf("expected DoerIdle after cancel, got %d", status)
+	if status != StatusCancelled {
+		t.Errorf("expected StatusCancelled after cancel, got %s", status)
 	}
 	if result == nil || result.Summary != "Cancelled by user." {
 		t.Errorf("expected cancel result, got %v", result)
@@ -259,17 +259,17 @@ func TestDoerSubmitCancelsPrevious(t *testing.T) {
 	go doer.Run(ctx)
 
 	// Submit first goal.
-	doer.Submit(DoerGoal{ID: "g-old", Text: "old task"})
+	doer.Submit(Interaction{ID: "g-old", Intent: "old task"})
 	time.Sleep(50 * time.Millisecond) // let it start
 
 	// Submit second goal — should cancel the first.
-	doer.Submit(DoerGoal{ID: "g-new", Text: "new task"})
+	doer.Submit(Interaction{ID: "g-new", Intent: "new task"})
 
 	// Wait for g-new specifically (g-old's cancellation also fires resultNotifyFn).
 	done := make(chan struct{}, 1)
 	doer.SetResultNotifyFn(func(_ string) {
 		_, _, _, r := doer.State().Snapshot()
-		if r != nil && r.GoalID == "g-new" {
+		if r != nil && r.InteractionID == "g-new" {
 			select {
 			case done <- struct{}{}:
 			default:
@@ -304,7 +304,7 @@ func TestDoerGotoDispatch(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-goto", Text: "go to example.com"})
+	doer.Submit(Interaction{ID: "g-goto", Intent: "go to example.com"})
 
 	// The Doer's dispatchAction calls ResetSchema + sendGoto, then waits
 	// on SchemaReady. Simulate the extension responding by signaling after a delay.
@@ -314,11 +314,11 @@ func TestDoerGotoDispatch(t *testing.T) {
 	}()
 
 	result := waitForDone(t, doer, 3*time.Second)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success, got error: %s", result.Error)
 	}
-	if result.GoalID != "g-goto" {
-		t.Errorf("expected goal g-goto, got %s", result.GoalID)
+	if result.InteractionID != "g-goto" {
+		t.Errorf("expected goal g-goto, got %s", result.InteractionID)
 	}
 
 	// Verify the engine was reset (new Engine created for goto).
@@ -347,7 +347,7 @@ func TestDoerGotoCancellation(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-slow", Text: "go to slow page"})
+	doer.Submit(Interaction{ID: "g-slow", Intent: "go to slow page"})
 
 	// Cancel the context after 200ms rather than waiting for the real 30s timeout.
 	time.Sleep(200 * time.Millisecond)
@@ -357,7 +357,7 @@ func TestDoerGotoCancellation(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	status, _, _, result := doer.State().Snapshot()
-	if status == DoerExecuting {
+	if status == StatusInProgress {
 		t.Error("Doer should not still be Executing after context cancel")
 	}
 	_ = result // may be nil if cancellation raced
@@ -380,7 +380,7 @@ func TestDoerSchemaWaitSoftProceed(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-noscema", Text: "go to example.com"})
+	doer.Submit(Interaction{ID: "g-noscema", Intent: "go to example.com"})
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
@@ -413,7 +413,7 @@ func TestDoerActionDispatch(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-click", Text: "click the button"})
+	doer.Submit(Interaction{ID: "g-click", Intent: "click the button"})
 
 	// After the click, the Doer resets schema and waits for settle.
 	// Simulate: no auto-snapshot (timeout), then rescan completes.
@@ -424,7 +424,7 @@ func TestDoerActionDispatch(t *testing.T) {
 	}()
 
 	result := waitForDone(t, doer, 10*time.Second)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success, got error: %s", result.Error)
 	}
 
@@ -448,11 +448,11 @@ func TestDoerProgressCallback(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-prog", Text: "find the link"})
+	doer.Submit(Interaction{ID: "g-prog", Intent: "find the link"})
 
 	_ = waitForDone(t, doer, 2*time.Second)
 
-	// Give the defer cleanup in executeGoal a moment to run — the resultNotifyFn
+	// Give the defer cleanup in executeInteraction a moment to run — the resultNotifyFn
 	// fires before the deferred SetProgressFunc(nil) executes.
 	time.Sleep(50 * time.Millisecond)
 
@@ -481,7 +481,7 @@ func TestDoerMultiStepGotoThenRead(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-multi-goto", Text: "go to HN and tell me the top story"})
+	doer.Submit(Interaction{ID: "g-multi-goto", Intent: "go to HN and tell me the top story"})
 
 	// Simulate extension: goto resets schema, signal after a delay.
 	go func() {
@@ -490,7 +490,7 @@ func TestDoerMultiStepGotoThenRead(t *testing.T) {
 	}()
 
 	result := waitForDone(t, doer, 3*time.Second)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success, got error: %s", result.Error)
 	}
 	if result.Summary != "The top story is about AI safety regulations." {
@@ -518,7 +518,7 @@ func TestDoerMultiStepClickNavigates(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-click-nav", Text: "click the third story and tell me about it"})
+	doer.Submit(Interaction{ID: "g-click-nav", Intent: "click the third story and tell me about it"})
 
 	// Simulate: click causes URL change → auto-snapshot → SchemaReady fires quickly.
 	go func() {
@@ -527,7 +527,7 @@ func TestDoerMultiStepClickNavigates(t *testing.T) {
 	}()
 
 	result := waitForDone(t, doer, 3*time.Second)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success, got error: %s", result.Error)
 	}
 	if result.Summary != "The article discusses quantum computing breakthroughs." {
@@ -555,7 +555,7 @@ func TestDoerMultiStepClickNoNav(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-click-nonav", Text: "open the dropdown menu"})
+	doer.Submit(Interaction{ID: "g-click-nonav", Intent: "open the dropdown menu"})
 
 	// Simulate: MutationObserver fires after 200ms (much faster than 2s settle),
 	// then rescan completes and signals SchemaReady.
@@ -568,7 +568,7 @@ func TestDoerMultiStepClickNoNav(t *testing.T) {
 	}()
 
 	result := waitForDone(t, doer, 5*time.Second)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success, got error: %s", result.Error)
 	}
 
@@ -594,7 +594,7 @@ func TestDoerTargetedRescanOnDOMMutation(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-targeted", Text: "expand the fifth item"})
+	doer.Submit(Interaction{ID: "g-targeted", Intent: "expand the fifth item"})
 
 	// Simulate: DOM mutation fires (in-page change near the clicked element),
 	// then rescan completes.
@@ -606,7 +606,7 @@ func TestDoerTargetedRescanOnDOMMutation(t *testing.T) {
 	}()
 
 	result := waitForDone(t, doer, 5*time.Second)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success, got error: %s", result.Error)
 	}
 
@@ -633,7 +633,7 @@ func TestDoerMultiStepClickNoNavFallbackTimeout(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-click-nonav-fallback", Text: "open the dropdown menu"})
+	doer.Submit(Interaction{ID: "g-click-nonav-fallback", Intent: "open the dropdown menu"})
 
 	// No DOMMutatedCh signal — the 2s settle timeout fires, then rescan.
 	go func() {
@@ -642,7 +642,7 @@ func TestDoerMultiStepClickNoNavFallbackTimeout(t *testing.T) {
 	}()
 
 	result := waitForDone(t, doer, 10*time.Second)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success, got error: %s", result.Error)
 	}
 	if calls := mock.handleCalls.Load(); calls != 2 {
@@ -662,7 +662,7 @@ func TestDoerMultiStepMaxSteps(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-loop", Text: "keep clicking forever"})
+	doer.Submit(Interaction{ID: "g-loop", Intent: "keep clicking forever"})
 
 	// Each click step: settle timeout (2s) + rescan signal needed.
 	// Signal SchemaReady repeatedly to keep the loop going.
@@ -675,7 +675,7 @@ func TestDoerMultiStepMaxSteps(t *testing.T) {
 
 	timeout := time.Duration(maxGoalSteps)*(actionSettleTimeout+500*time.Millisecond) + 5*time.Second
 	result := waitForDone(t, doer, timeout)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success (exhausted steps), got error: %s", result.Error)
 	}
 
@@ -712,7 +712,7 @@ func TestDoerMultiStepClickOpensNewTab(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-newtab", Text: "click the link and read the new page"})
+	doer.Submit(Interaction{ID: "g-newtab", Intent: "click the link and read the new page"})
 
 	// Simulate: click opens new tab. The extension sends TAB_ACTIVATED immediately
 	// (before the settle timeout), then the new tab's page loads and SchemaReady fires.
@@ -728,7 +728,7 @@ func TestDoerMultiStepClickOpensNewTab(t *testing.T) {
 	}()
 
 	result := waitForDone(t, doer, 10*time.Second)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success, got error: %s", result.Error)
 	}
 	if result.Summary != "New tab page content." {
@@ -813,10 +813,10 @@ func TestDoerTab0SkipsSchemaGate(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-iterm", Text: "open a new terminal"})
+	doer.Submit(Interaction{ID: "g-iterm", Intent: "open a new terminal"})
 	result := waitForDone(t, doer, 3*time.Second)
 
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success, got error: %s", result.Error)
 	}
 	if result.Summary != "I opened a new terminal window." {
@@ -846,10 +846,10 @@ func TestDoerTab0WeakResponseRetry(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-retry", Text: "type hello world in terminal"})
+	doer.Submit(Interaction{ID: "g-retry", Intent: "type hello world in terminal"})
 	result := waitForDone(t, doer, 5*time.Second)
 
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success after retry, got error: %s", result.Error)
 	}
 	if result.Summary != "Done. Typed hello world in the terminal." {
@@ -876,10 +876,10 @@ func TestDoerDefinitiveNotFoundSkipsRetry(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-definitive", Text: "find the buy button"})
+	doer.Submit(Interaction{ID: "g-definitive", Intent: "find the buy button"})
 	result := waitForDone(t, doer, 3*time.Second)
 
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Errorf("expected success (definitive not-found), got error: %s", result.Error)
 	}
 	// Should be exactly 1 call — no retry.
@@ -915,7 +915,7 @@ func TestDoerProgressShowsIteration(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-progress", Text: "read the terminal"})
+	doer.Submit(Interaction{ID: "g-progress", Intent: "read the terminal"})
 	_ = waitForDone(t, doer, 3*time.Second)
 
 	// The mock returns text immediately (no tool calls), so progressFn
@@ -942,7 +942,7 @@ func TestGuardrailsPaginationTracking(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-pag", Text: "find all users across pages"})
+	doer.Submit(Interaction{ID: "g-pag", Intent: "find all users across pages"})
 
 	// Signal SchemaReady for each goto navigation.
 	go func() {
@@ -953,7 +953,7 @@ func TestGuardrailsPaginationTracking(t *testing.T) {
 	}()
 
 	result := waitForDone(t, doer, 5*time.Second)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Fatalf("expected success, got error: %s", result.Error)
 	}
 
@@ -1011,7 +1011,7 @@ func TestGuardrailsCompletenessRetry(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-complete", Text: "find all reviewers"})
+	doer.Submit(Interaction{ID: "g-complete", Intent: "find all reviewers"})
 
 	// After each click, the Doer resets schema and waits for settle.
 	// Signal SchemaReady repeatedly to unblock the post-dispatch wait.
@@ -1023,7 +1023,7 @@ func TestGuardrailsCompletenessRetry(t *testing.T) {
 	}()
 
 	result := waitForDone(t, doer, 10*time.Second)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Fatalf("expected success, got error: %s", result.Error)
 	}
 
@@ -1085,7 +1085,7 @@ func TestGuardrailsDedupFunctional(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-dedup", Text: "list all people"})
+	doer.Submit(Interaction{ID: "g-dedup", Intent: "list all people"})
 
 	// After each click, the Doer resets schema and waits for settle.
 	// Signal SchemaReady repeatedly to unblock the post-dispatch wait.
@@ -1097,7 +1097,7 @@ func TestGuardrailsDedupFunctional(t *testing.T) {
 	}()
 
 	result := waitForDone(t, doer, 10*time.Second)
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Fatalf("expected success, got error: %s", result.Error)
 	}
 
@@ -1120,10 +1120,10 @@ func TestGuardrailsDisabledByDefault(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-disabled", Text: "find info"})
+	doer.Submit(Interaction{ID: "g-disabled", Intent: "find info"})
 	result := waitForDone(t, doer, 3*time.Second)
 
-	if !result.Success {
+	if result.Status != StatusCompleted {
 		t.Fatalf("expected success, got error: %s", result.Error)
 	}
 	if calls := mock.handleCalls.Load(); calls != 1 {
@@ -1169,7 +1169,7 @@ func TestGuardrailsCleanupOnCancel(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(DoerGoal{ID: "g-cleanup", Text: "do something"})
+	doer.Submit(Interaction{ID: "g-cleanup", Intent: "do something"})
 
 	// Wait until HandleIntent is running.
 	select {
@@ -1180,7 +1180,7 @@ func TestGuardrailsCleanupOnCancel(t *testing.T) {
 
 	// Cancel the goal.
 	doer.Cancel()
-	// Give defer cleanup in executeGoal a moment to run.
+	// Give defer cleanup in executeInteraction a moment to run.
 	time.Sleep(200 * time.Millisecond)
 
 	// Clear scratch from goal execution so we test fresh dedup state.
@@ -1195,9 +1195,9 @@ func TestGuardrailsCleanupOnCancel(t *testing.T) {
 		t.Errorf("expected dedup cleared (both writes succeed), got scratch=%q", scratch)
 	}
 
-	// After cancel + executeGoal's finishGoal, state should not be Executing.
+	// After cancel + executeInteraction's finishInteraction, state should not be InProgress.
 	status, _, _, _ := doer.State().Snapshot()
-	if status == DoerExecuting {
-		t.Errorf("expected non-Executing state after cancel, got DoerExecuting")
+	if status == StatusInProgress {
+		t.Errorf("expected non-InProgress state after cancel, got StatusInProgress")
 	}
 }

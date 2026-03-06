@@ -15,14 +15,15 @@ import (
 	"github.com/agentic-research/x-ray/internal/navigator"
 )
 
-// DoerStatus represents the current state of background work.
-type DoerStatus int
+// InteractionStatus represents the current state of a background interaction.
+type InteractionStatus string
 
 const (
-	DoerIdle      DoerStatus = iota
-	DoerExecuting            // tool-use loop is running
-	DoerDone                 // result available
-	DoerFailed               // error occurred
+	StatusIdle       InteractionStatus = "idle"
+	StatusInProgress InteractionStatus = "in_progress"
+	StatusCompleted  InteractionStatus = "completed"
+	StatusFailed     InteractionStatus = "failed"
+	StatusCancelled  InteractionStatus = "cancelled"
 )
 
 const (
@@ -30,49 +31,50 @@ const (
 	actionSettleTimeout = 2 * time.Second
 )
 
-// DoerGoal is sent from the Talker to the Doer.
-type DoerGoal struct {
-	ID          string // unique goal ID for correlation
-	Text        string // natural language intent
-	ReadOnly    bool   // true → Navigator cannot use act(); must answer with text
-	TaskContext string // higher-level task from the Planner (used in continuations)
+// Interaction is sent from the Talker to the Doer.
+type Interaction struct {
+	ID         string // unique interaction ID for correlation
+	Intent     string // natural language intent
+	ReadOnly   bool   // true → Navigator cannot use act(); must answer with text
+	PreviousID string // ID of the previous interaction (for chaining)
+	Context    string // higher-level task from the Planner (used in continuations)
 }
 
-// DoerResult is produced when a goal completes or fails.
-type DoerResult struct {
-	GoalID  string
-	Success bool
-	Summary string // human-readable for Talker to speak
-	Error   string
+// InteractionResult is produced when an interaction completes or fails.
+type InteractionResult struct {
+	InteractionID string
+	Status        InteractionStatus
+	Summary       string // human-readable for Talker to speak
+	Error         string
 }
 
-// DoerState is the shared state the Talker can poll at any time.
-type DoerState struct {
-	mu       sync.RWMutex
-	Status   DoerStatus
-	GoalText string
-	Step     string // e.g., "reading /main/feed/children"
-	Result   *DoerResult
+// InteractionState is the shared state the Talker can poll at any time.
+type InteractionState struct {
+	mu     sync.RWMutex
+	Status InteractionStatus
+	Intent string
+	Step   string // e.g., "reading /main/feed/children"
+	Result *InteractionResult
 }
 
 // Snapshot returns a thread-safe copy of the current state.
-func (ds *DoerState) Snapshot() (DoerStatus, string, string, *DoerResult) {
+func (ds *InteractionState) Snapshot() (InteractionStatus, string, string, *InteractionResult) {
 	ds.mu.RLock()
 	defer ds.mu.RUnlock()
-	return ds.Status, ds.GoalText, ds.Step, ds.Result
+	return ds.Status, ds.Intent, ds.Step, ds.Result
 }
 
 // Doer runs background navigation work for a tab session.
 type Doer struct {
-	handler  *Handler
-	tabID    int
-	sess     *TabSession
-	state    *DoerState
-	goalCh   chan DoerGoal
-	mu       sync.Mutex
-	cancelFn context.CancelFunc
+	handler       *Handler
+	tabID         int
+	sess          *TabSession
+	state         *InteractionState
+	interactionCh chan Interaction
+	mu            sync.Mutex
+	cancelFn      context.CancelFunc
 
-	resultNotifyFn     func(summary string)                  // called when goal completes
+	resultNotifyFn     func(summary string)                  // called when interaction completes
 	actionNotifyFn     func(macheID, action, payload string) // called when action dispatched
 	dispatchOverrideFn func(*navigator.ActionResult) string  // test-only hook; do not use in production
 }
@@ -80,11 +82,11 @@ type Doer struct {
 // NewDoer creates a Doer for the given tab session.
 func NewDoer(handler *Handler, tabID int, sess *TabSession) *Doer {
 	return &Doer{
-		handler: handler,
-		tabID:   tabID,
-		sess:    sess,
-		state:   &DoerState{Status: DoerIdle},
-		goalCh:  make(chan DoerGoal, 1),
+		handler:       handler,
+		tabID:         tabID,
+		sess:          sess,
+		state:         &InteractionState{Status: StatusIdle},
+		interactionCh: make(chan Interaction, 1),
 	}
 }
 
@@ -104,8 +106,8 @@ func (d *Doer) SetActionNotifyFn(fn func(macheID, action, payload string)) {
 	d.mu.Unlock()
 }
 
-// State returns the DoerState for the Talker to poll.
-func (d *Doer) State() *DoerState {
+// State returns the InteractionState for the Talker to poll.
+func (d *Doer) State() *InteractionState {
 	return d.state
 }
 
@@ -115,14 +117,14 @@ func (d *Doer) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case goal := <-d.goalCh:
-			d.executeGoal(ctx, goal)
+		case ix := <-d.interactionCh:
+			d.executeInteraction(ctx, ix)
 		}
 	}
 }
 
-// Submit sends a goal to the Doer. Cancels any in-flight work first.
-func (d *Doer) Submit(goal DoerGoal) {
+// Submit sends an interaction to the Doer. Cancels any in-flight work first.
+func (d *Doer) Submit(ix Interaction) {
 	// Cancel current work.
 	d.mu.Lock()
 	if d.cancelFn != nil {
@@ -130,16 +132,16 @@ func (d *Doer) Submit(goal DoerGoal) {
 	}
 	d.mu.Unlock()
 
-	// Drain stale goal if any.
+	// Drain stale interaction if any.
 	select {
-	case <-d.goalCh:
+	case <-d.interactionCh:
 	default:
 	}
 
-	d.goalCh <- goal
+	d.interactionCh <- ix
 }
 
-// Cancel aborts the current goal.
+// Cancel aborts the current interaction.
 func (d *Doer) Cancel() {
 	d.mu.Lock()
 	if d.cancelFn != nil {
@@ -149,43 +151,43 @@ func (d *Doer) Cancel() {
 	d.mu.Unlock()
 
 	d.state.mu.Lock()
-	d.state.Status = DoerIdle
-	d.state.GoalText = ""
+	d.state.Status = StatusCancelled
+	d.state.Intent = ""
 	d.state.Step = ""
-	d.state.Result = &DoerResult{Summary: "Cancelled by user."}
+	d.state.Result = &InteractionResult{Summary: "Cancelled by user.", Status: StatusCancelled}
 	d.state.mu.Unlock()
 }
 
-func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
-	goalCtx, cancelFn := context.WithCancel(parentCtx)
+func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
+	ixCtx, cancelFn := context.WithCancel(parentCtx)
 	d.mu.Lock()
 	d.cancelFn = cancelFn
 	d.mu.Unlock()
 	defer cancelFn()
 
-	// Update state: executing.
+	// Update state: in progress.
 	d.state.mu.Lock()
-	d.state.Status = DoerExecuting
-	d.state.GoalText = goal.Text
+	d.state.Status = StatusInProgress
+	d.state.Intent = ix.Intent
 	d.state.Step = "starting"
 	d.state.Result = nil
 	d.state.mu.Unlock()
 
-	log.Printf("Doer [tab %d]: executing goal %q", d.tabID, goal.Text)
+	log.Printf("Doer [tab %d]: executing interaction %q", d.tabID, ix.Intent)
 
 	// Populate /tasks/active/task so Navigator can cat it.
-	taskText := goal.Text
-	if goal.TaskContext != "" {
-		taskText = goal.TaskContext + "\n\nCurrent sub-goal: " + goal.Text
+	taskText := ix.Intent
+	if ix.Context != "" {
+		taskText = ix.Context + "\n\nCurrent sub-goal: " + ix.Intent
 	}
 	if d.sess.Tasks != nil {
 		d.sess.Tasks.SetTask(taskText)
 	}
 
-	// Initialize guardrails for this goal.
+	// Initialize guardrails for this interaction.
 	gs := guardrails.New(d.tabID)
 	if gs.Enabled {
-		gs.Log("init", fmt.Sprintf("guardrails enabled for goal %q", goal.Text))
+		gs.Log("init", fmt.Sprintf("guardrails enabled for interaction %q", ix.Intent))
 	}
 	if d.sess.Tasks != nil {
 		d.sess.Tasks.SetDedupFunc(gs.IsDuplicate)
@@ -218,18 +220,18 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 			log.Printf("Doer [tab %d]: schema ready, proceeding", d.tabID)
 		case <-time.After(15 * time.Second):
 			log.Printf("Doer [tab %d]: schema wait timed out, proceeding anyway", d.tabID)
-		case <-goalCtx.Done():
-			d.finishGoal(goal.ID, false, "Cancelled while waiting for page.", "cancelled")
+		case <-ixCtx.Done():
+			d.finishInteraction(ix.ID, StatusCancelled, "Cancelled while waiting for page.", "cancelled")
 			return
 		}
 	}
 
 	// Multi-step loop: dispatch action, wait for page settle, feed result back.
-	// Always include TaskContext so the Navigator knows the overall goal,
+	// Always include Context so the Navigator knows the overall goal,
 	// not just the Planner's 1-sentence sub-command ("contextual amnesia" fix).
-	enrichedIntent := goal.Text
-	if goal.TaskContext != "" {
-		enrichedIntent = fmt.Sprintf("OVERALL TASK: %s\n\nCurrent step: %s", goal.TaskContext, goal.Text)
+	enrichedIntent := ix.Intent
+	if ix.Context != "" {
+		enrichedIntent = fmt.Sprintf("OVERALL TASK: %s\n\nCurrent step: %s", ix.Context, ix.Intent)
 	}
 	var lastSummary string
 
@@ -250,12 +252,12 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 			}
 		}
 
-		action, textResponse, err := d.sess.Navigator.HandleIntent(goalCtx, enrichedIntent, goal.ReadOnly)
+		action, textResponse, err := d.sess.Navigator.HandleIntent(ixCtx, enrichedIntent, ix.ReadOnly)
 		if err != nil {
-			if goalCtx.Err() != nil {
-				d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
+			if ixCtx.Err() != nil {
+				d.finishInteraction(ix.ID, StatusCancelled, "Cancelled.", "cancelled")
 			} else {
-				d.finishGoal(goal.ID, false, fmt.Sprintf("Failed: %v", err), err.Error())
+				d.finishInteraction(ix.ID, StatusFailed, fmt.Sprintf("Failed: %v", err), err.Error())
 			}
 			return
 		}
@@ -276,7 +278,7 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 				strings.Contains(trimmed, "not present on")
 			if isWeak && !isDefinitive && step < maxGoalSteps-1 {
 				log.Printf("Doer [tab %d]: Navigator returned weak response %q, retrying", d.tabID, trimmed)
-				enrichedIntent = "Previous attempt failed with: " + trimmed + "\nTry a different approach: " + goal.Text + "\nIf you are certain the information does not exist on this page, say so clearly."
+				enrichedIntent = "Previous attempt failed with: " + trimmed + "\nTry a different approach: " + ix.Intent + "\nIf you are certain the information does not exist on this page, say so clearly."
 				continue
 			}
 
@@ -284,21 +286,21 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 			if gs.Enabled && step < maxGoalSteps-1 && d.sess.Tasks != nil {
 				if warning := gs.CheckCompleteness(d.sess.Tasks.Scratch()); warning != "" {
 					log.Printf("Doer [tab %d]: completeness check failed, retrying: %s", d.tabID, warning)
-					enrichedIntent = warning + "\n\nOriginal task: " + goal.Text
+					enrichedIntent = warning + "\n\nOriginal task: " + ix.Intent
 					continue
 				}
 			}
 
-			d.finishGoal(goal.ID, true, textResponse, "")
+			d.finishInteraction(ix.ID, StatusCompleted, textResponse, "")
 			return
 		}
 
 		if action == nil {
-			d.finishGoal(goal.ID, false, "Could not determine what to do.", "no action or response")
+			d.finishInteraction(ix.ID, StatusFailed, "Could not determine what to do.", "no action or response")
 			return
 		}
 
-		lastSummary = d.dispatchAction(goalCtx, action)
+		lastSummary = d.dispatchAction(ixCtx, action)
 
 		// Record page visit and scan for item counts.
 		// NOTE: Navigator-level tool calls (cat, grep, ls) are already tracked
@@ -354,8 +356,8 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 				case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
 					log.Printf("Doer [tab %d]: schema wait timed out after DOM mutation rescan", d.tabID)
 					lastSummary = "Warning: page DOM changed but rescan timed out. Filesystem may be stale."
-				case <-goalCtx.Done():
-					d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
+				case <-ixCtx.Done():
+					d.finishInteraction(ix.ID, StatusCancelled, "Cancelled.", "cancelled")
 					return
 				}
 			case <-time.After(actionSettleTimeout):
@@ -376,8 +378,8 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 					case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
 						log.Printf("Doer [tab %d]: schema wait timed out on new tab", d.tabID)
 						lastSummary = "Warning: switched to new tab but page load timed out. Filesystem may be stale."
-					case <-goalCtx.Done():
-						d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
+					case <-ixCtx.Done():
+						d.finishInteraction(ix.ID, StatusCancelled, "Cancelled.", "cancelled")
 						return
 					}
 				} else {
@@ -390,26 +392,26 @@ func (d *Doer) executeGoal(parentCtx context.Context, goal DoerGoal) {
 					case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
 						log.Printf("Doer [tab %d]: schema wait timed out after settle rescan", d.tabID)
 						lastSummary = "Warning: rescan timed out after action. Filesystem may be stale."
-					case <-goalCtx.Done():
-						d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
+					case <-ixCtx.Done():
+						d.finishInteraction(ix.ID, StatusCancelled, "Cancelled.", "cancelled")
 						return
 					}
 				}
-			case <-goalCtx.Done():
-				d.finishGoal(goal.ID, false, "Cancelled.", "cancelled")
+			case <-ixCtx.Done():
+				d.finishInteraction(ix.ID, StatusCancelled, "Cancelled.", "cancelled")
 				return
 			}
 		}
 		// goto/rescan/switch_tab already waited for SchemaReady in dispatchAction.
 
 		// Record successful interactive actions as NavSections for future reuse.
-		d.recordNavSection(goal, action)
+		d.recordNavSection(ix, action)
 
-		enrichedIntent = buildContinuation(goal.Text, goal.TaskContext, step, action, lastSummary, gs)
+		enrichedIntent = buildContinuation(ix.Intent, ix.Context, step, action, lastSummary, gs)
 	}
 
 	// Exhausted steps — return whatever we have.
-	d.finishGoal(goal.ID, true, lastSummary, "")
+	d.finishInteraction(ix.ID, StatusCompleted, lastSummary, "")
 }
 
 func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResult) string {
@@ -584,23 +586,19 @@ func (d *Doer) updateStep(step string) {
 	d.state.mu.Unlock()
 }
 
-func (d *Doer) finishGoal(goalID string, success bool, summary, errStr string) {
+func (d *Doer) finishInteraction(ixID string, status InteractionStatus, summary, errStr string) {
 	d.state.mu.Lock()
-	if success {
-		d.state.Status = DoerDone
-	} else {
-		d.state.Status = DoerFailed
-	}
+	d.state.Status = status
 	d.state.Step = ""
-	d.state.Result = &DoerResult{
-		GoalID:  goalID,
-		Success: success,
-		Summary: summary,
-		Error:   errStr,
+	d.state.Result = &InteractionResult{
+		InteractionID: ixID,
+		Status:        status,
+		Summary:       summary,
+		Error:         errStr,
 	}
 	d.state.mu.Unlock()
 
-	log.Printf("Doer [tab %d]: goal %s finished (success=%v): %s", d.tabID, goalID, success, summary)
+	log.Printf("Doer [tab %d]: interaction %s finished (status=%s): %s", d.tabID, ixID, status, summary)
 
 	// Notify the Talker so it can announce the result.
 	d.mu.Lock()
@@ -651,7 +649,7 @@ func (d *Doer) extractElementText(action *navigator.ActionResult) string {
 
 // recordNavSection persists a successful interactive action as a NavSection
 // in the schema cache, so future visits to the same page shape can reuse it.
-func (d *Doer) recordNavSection(goal DoerGoal, action *navigator.ActionResult) {
+func (d *Doer) recordNavSection(ix Interaction, action *navigator.ActionResult) {
 	if !isInteractiveAction(action.Action) {
 		return
 	}
@@ -672,7 +670,7 @@ func (d *Doer) recordNavSection(goal DoerGoal, action *navigator.ActionResult) {
 	}
 
 	elemText := d.extractElementText(action)
-	goalHash := NormalizeGoalHash(goal.Text)
+	goalHash := NormalizeGoalHash(ix.Intent)
 
 	section := NavSection{
 		GoalHash:    goalHash,
@@ -713,8 +711,8 @@ func formatSectionHints(sections []NavSection) string {
 
 // buildContinuation creates an enriched intent for the next step in the loop.
 // It tells the Navigator what happened and asks it to continue toward the overall task.
-func buildContinuation(goal, taskContext string, step int, action *navigator.ActionResult, summary string, gs *guardrails.GoalState) string {
-	context := goal
+func buildContinuation(intent, taskContext string, step int, action *navigator.ActionResult, summary string, gs *guardrails.GoalState) string {
+	context := intent
 	if taskContext != "" {
 		context = taskContext
 	}
@@ -728,7 +726,7 @@ func buildContinuation(goal, taskContext string, step int, action *navigator.Act
 		"Only check pagination if: (a) you haven't found the target yet, or (b) the goal explicitly asks for ALL items. "+
 		"When paginating: track visited pages in scratchpad (e.g. 'visited: page 1, 2'). NEVER click Previous or revisit a page you already checked. "+
 		"Before answering, cat /tasks/active/scratch to collect findings and avoid duplicates.",
-		step+1, goal, action.Action, action.Path, summary, context)
+		step+1, intent, action.Action, action.Path, summary, context)
 
 	// Inject guardrail pagination data if available.
 	if gs != nil && gs.Enabled {

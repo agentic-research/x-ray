@@ -538,10 +538,10 @@ func TestTabClosedCancelsDoer(t *testing.T) {
 	// Simulate TAB_CLOSED — should cancel the Doer.
 	h.handleTabClosed(InboundMessage{Type: MsgTabClosed, TabID: 99})
 
-	// Doer state should be Idle (from Cancel()).
+	// Doer state should be Cancelled (from Cancel()).
 	status, _, _, result := doer.State().Snapshot()
-	if status != DoerIdle {
-		t.Errorf("expected DoerIdle after tab close, got %d", status)
+	if status != StatusCancelled {
+		t.Errorf("expected StatusCancelled after tab close, got %s", status)
 	}
 	if result == nil || result.Summary != "Cancelled by user." {
 		t.Errorf("expected cancel result, got %v", result)
