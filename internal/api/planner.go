@@ -290,14 +290,34 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 			return PlannerResult{Status: "cancelled", Summary: "Task cancelled.", Turns: turn, Actions: actions}
 		}
 
-		resp, err := p.client.Models.GenerateContent(ctx, p.model, history, config)
-		if err != nil {
-			log.Printf("Planner: Gemini API error at turn %d: %v", turn, err)
-			return PlannerResult{
-				Status:  "failed",
-				Error:   fmt.Sprintf("Gemini API error: %v", err),
-				Turns:   turn,
-				Actions: actions,
+		// Retry with exponential backoff on 429/RESOURCE_EXHAUSTED (known Gemini bug).
+		var resp *genai.GenerateContentResponse
+		{
+			var apiErr error
+			const maxRetries = 5
+			for attempt := range maxRetries {
+				resp, apiErr = p.client.Models.GenerateContent(ctx, p.model, history, config)
+				if apiErr == nil {
+					break
+				}
+				errStr := apiErr.Error()
+				is429 := strings.Contains(errStr, "429") || strings.Contains(errStr, "RESOURCE_EXHAUSTED")
+				if !is429 || attempt == maxRetries-1 {
+					log.Printf("Planner: Gemini API error at turn %d: %v", turn, apiErr)
+					return PlannerResult{
+						Status:  "failed",
+						Error:   fmt.Sprintf("Gemini API error: %v", apiErr),
+						Turns:   turn,
+						Actions: actions,
+					}
+				}
+				backoff := time.Duration(1<<uint(attempt)) * time.Second // 1s, 2s, 4s, 8s, 16s
+				log.Printf("Planner: 429 at turn %d (attempt %d/%d), retrying in %v", turn, attempt+1, maxRetries, backoff)
+				select {
+				case <-time.After(backoff):
+				case <-ctx.Done():
+					return PlannerResult{Status: "cancelled", Summary: "Task cancelled.", Turns: turn, Actions: actions}
+				}
 			}
 		}
 

@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/agentic-research/x-ray/internal/config"
 	"google.golang.org/genai"
@@ -27,7 +28,26 @@ type GeminiGenerator struct {
 }
 
 func (g *GeminiGenerator) GenerateContent(ctx context.Context, model string, history []*genai.Content, config *genai.GenerateContentConfig) (*genai.GenerateContentResponse, error) {
-	return g.Client.Models.GenerateContent(ctx, model, history, config)
+	const maxRetries = 5
+	for attempt := range maxRetries {
+		resp, err := g.Client.Models.GenerateContent(ctx, model, history, config)
+		if err == nil {
+			return resp, nil
+		}
+		errStr := err.Error()
+		is429 := strings.Contains(errStr, "429") || strings.Contains(errStr, "RESOURCE_EXHAUSTED")
+		if !is429 || attempt == maxRetries-1 {
+			return nil, err
+		}
+		backoff := time.Duration(1<<uint(attempt)) * time.Second
+		log.Printf("GeminiGenerator: 429 (attempt %d/%d), retrying in %v", attempt+1, maxRetries, backoff)
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	return nil, fmt.Errorf("unreachable")
 }
 
 // OllamaGenerator talks to Ollama/OpenAI-compatible endpoints.

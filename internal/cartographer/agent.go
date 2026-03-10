@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
+	"time"
 
 	"google.golang.org/genai"
 )
@@ -58,9 +60,27 @@ func (a *Agent) GenerateSchema(ctx context.Context, screenshot []byte, mimeType,
 		},
 	}
 
-	res, err := a.client.Models.GenerateContent(ctx, a.model, []*genai.Content{userContent}, config)
-	if err != nil {
-		return "", fmt.Errorf("GenerateContent failed: %w", err)
+	// Retry with exponential backoff on 429/RESOURCE_EXHAUSTED.
+	var res *genai.GenerateContentResponse
+	const maxRetries = 5
+	for attempt := range maxRetries {
+		var apiErr error
+		res, apiErr = a.client.Models.GenerateContent(ctx, a.model, []*genai.Content{userContent}, config)
+		if apiErr == nil {
+			break
+		}
+		errStr := apiErr.Error()
+		is429 := strings.Contains(errStr, "429") || strings.Contains(errStr, "RESOURCE_EXHAUSTED")
+		if !is429 || attempt == maxRetries-1 {
+			return "", fmt.Errorf("GenerateContent failed: %w", apiErr)
+		}
+		backoff := time.Duration(1<<uint(attempt)) * time.Second
+		log.Printf("Cartographer: 429 (attempt %d/%d), retrying in %v", attempt+1, maxRetries, backoff)
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
 	}
 
 	if len(res.Candidates) == 0 {
