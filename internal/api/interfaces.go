@@ -25,4 +25,5 @@ type IntentHandler interface {
 	GetViewport() (startPct, endPct int)
 	SetRefValidateFunc(fn func(path string) string)
 	SetSectionHints(hints string)
+	SetScreenshot(data []byte, mime string)
 }

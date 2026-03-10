@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/agentic-research/x-ray/internal/cdp"
@@ -169,50 +170,65 @@ func (h *Handler) captureGoRetry(parentCtx context.Context, tabID int, isRescan 
 		_ = h.cdpProxy.Detach(dCtx, tabID)
 	}()
 
-	// 3a. Layout metrics.
-	pageWidth, pageHeight, err := cdp.LayoutMetrics(ctx, h.cdpProxy, tabID, h.CDPMaxHeight)
-	if err != nil {
-		log.Printf("captureGo: LayoutMetrics failed (tab %d): %v", tabID, err)
+	// Phase 1: independent CDP calls in parallel.
+	var (
+		pageWidth, pageHeight float64
+		layoutErr             error
+		rootNodeID            int
+		rootErr               error
+		pageText              string
+		ptErr                 error
+	)
+	// AX tree result captured via closure (unexported type).
+	axResult := cdp.CaptureAXAsync(ctx, h.cdpProxy, tabID)
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		pageWidth, pageHeight, layoutErr = cdp.LayoutMetrics(ctx, h.cdpProxy, tabID, h.CDPMaxHeight)
+	}()
+	go func() {
+		defer wg.Done()
+		rootNodeID, rootErr = cdp.DocumentRoot(ctx, h.cdpProxy, tabID)
+	}()
+	go func() {
+		defer wg.Done()
+		pageText, ptErr = cdp.PageText(ctx, h.cdpProxy, tabID)
+	}()
+	wg.Wait()
+	if layoutErr != nil {
+		log.Printf("captureGo: LayoutMetrics failed (tab %d): %v", tabID, layoutErr)
 		h.sendOverlayCleanup(conn, tabID, sess)
 		return
 	}
-
-	// 3b. Document root.
-	rootNodeID, err := cdp.DocumentRoot(ctx, h.cdpProxy, tabID)
-	if err != nil {
-		log.Printf("captureGo: DocumentRoot failed (tab %d): %v", tabID, err)
+	if rootErr != nil {
+		log.Printf("captureGo: DocumentRoot failed (tab %d): %v", tabID, rootErr)
 		h.sendOverlayCleanup(conn, tabID, sess)
 		return
 	}
+	if ptErr != nil {
+		log.Printf("captureGo: PageText failed (tab %d): %v — proceeding without page text", tabID, ptErr)
+	}
 
-	// 3c. Element box model (magnifying glass mode).
+	// Phase 2: depends on Phase 1 results.
+
+	// Element box model (magnifying glass mode).
 	var box *cdp.BoxModel
 	if targetMacheID != "" {
-		box, err = cdp.ElementBoxModel(ctx, h.cdpProxy, tabID, rootNodeID, targetMacheID)
-		if err != nil {
+		var boxErr error
+		box, boxErr = cdp.ElementBoxModel(ctx, h.cdpProxy, tabID, rootNodeID, targetMacheID)
+		if boxErr != nil {
 			log.Printf("captureGo: ElementBoxModel failed for %s (tab %d): %v — falling back to full page",
-				targetMacheID, tabID, err)
+				targetMacheID, tabID, boxErr)
 		}
 	}
 
-	// 3d. Build clip and capture screenshot.
+	// Build clip and capture screenshot.
 	clip := cdp.BuildClip(pageWidth, pageHeight, box, h.CDPTargetWidth)
 	screenshot, err := cdp.CaptureScreenshot(ctx, h.cdpProxy, tabID, clip)
 	if err != nil {
 		log.Printf("captureGo: CaptureScreenshot failed (tab %d): %v", tabID, err)
 		screenshot = "" // proceed with empty screenshot
-	}
-
-	// 3e. Full AX tree.
-	axNodes, axErr := cdp.FullAXTree(ctx, h.cdpProxy, tabID)
-	if axErr != nil {
-		log.Printf("captureGo: FullAXTree failed (tab %d): %v — proceeding without AX", tabID, axErr)
-	}
-
-	// 3e2. Page text (visible innerText for grep-searchable content).
-	pageText, ptErr := cdp.PageText(ctx, h.cdpProxy, tabID)
-	if ptErr != nil {
-		log.Printf("captureGo: PageText failed (tab %d): %v — proceeding without page text", tabID, ptErr)
 	}
 
 	// 3f. Mache → backend node ID mapping.
@@ -224,8 +240,8 @@ func (h *Handler) captureGoRetry(parentCtx context.Context, tabID int, isRescan 
 
 	// 3g. Join AX to mache IDs.
 	var axMap map[string]cdp.AXInfo
-	if axErr == nil && macheToBackend != nil {
-		axMap = cdp.JoinAXToMache(axNodes, macheToBackend)
+	if macheToBackend != nil {
+		axMap = axResult.JoinToMache(macheToBackend)
 	}
 
 	// 3h. Layer tree.

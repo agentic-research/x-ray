@@ -270,6 +270,11 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 			}
 		}
 
+		// Inject overlay screenshot for visual grounding (Gemini cloud only).
+		if img, mime := d.sess.GetScreenshot(); len(img) > 0 {
+			d.sess.Navigator.SetScreenshot(img, mime)
+		}
+
 		action, textResponse, err := d.sess.Navigator.HandleIntent(ixCtx, enrichedIntent, ix.ReadOnly)
 		if err != nil {
 			if ixCtx.Err() != nil {
@@ -392,7 +397,7 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 					d.finishInteraction(ix.ID, StatusCancelled, "Cancelled.", "cancelled")
 					return
 				}
-			case <-time.After(actionSettleTimeout):
+			case <-time.After(d.settleTimeout()):
 				// No same-tab navigation or DOM mutation. Check if a new tab was activated.
 				d.handler.mu.Lock()
 				newTabID := d.handler.activeVoiceTab
@@ -439,6 +444,16 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 		// Record successful interactive actions as NavSections for future reuse.
 		d.recordNavSection(ix, action)
 
+		// Fast mode: after a successful action, finish immediately instead of
+		// looping back for a continuation. Interactive actions were already
+		// rescanned above; goto/switch_tab already waited for SchemaReady in
+		// dispatchAction. The VFS is fresh for the next voice command.
+		if d.handler.NavSpeed == "fast" {
+			d.finishInteraction(ix.ID, StatusCompleted,
+				fmt.Sprintf("Done: %s on %s", action.Action, action.Path), "")
+			return
+		}
+
 		enrichedIntent = buildContinuation(ix.Intent, ix.Context, step, action, lastSummary, gs)
 	}
 
@@ -461,8 +476,49 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 			log.Printf("Doer [tab %d]: downgraded https→http for localhost: %s", d.tabID, action.Path)
 		}
 		if !sameOrigin(d.sess.GetCurrentURL(), action.Path) {
-			log.Printf("Doer [tab %d]: BLOCKED goto %s (different origin from %s)", d.tabID, action.Path, d.sess.GetCurrentURL())
-			return fmt.Sprintf("Blocked: %s is a different site. Stay on the current site.", action.Path)
+			// Cross-origin: open in a new tab instead of blocking.
+			// The domain jail only hard-blocks in Planner/eval mode;
+			// voice-mode Doer opens a new tab so the user can navigate freely.
+			log.Printf("Doer [tab %d]: cross-origin goto %s (from %s) — opening new tab", d.tabID, action.Path, d.sess.GetCurrentURL())
+
+			// Drain any stale voiceTabCh values before opening the new tab.
+			for {
+				select {
+				case stale := <-d.handler.voiceTabCh:
+					log.Printf("Doer [tab %d]: drained stale voiceTabCh value %d", d.tabID, stale)
+				default:
+					goto drained
+				}
+			}
+		drained:
+			d.handler.sendCreateTab(action.Path)
+			d.updateStep(fmt.Sprintf("opening %s in new tab", action.Path))
+
+			timeout := time.After(config.Dur(d.handler.Timeouts.SchemaWait))
+			for {
+				select {
+				case newTab := <-d.handler.voiceTabCh:
+					if newTab == d.tabID {
+						// Stale activation for our own tab — keep waiting.
+						log.Printf("Doer [tab %d]: ignoring voiceTabCh for own tab", d.tabID)
+						continue
+					}
+					log.Printf("Doer [tab %d]: new tab %d appeared for %s, waiting on schema", d.tabID, newTab, action.Path)
+					newSess := d.handler.getSession(newTab)
+					select {
+					case <-newSess.GetSchemaReady():
+						return fmt.Sprintf("Navigated to %s in a new tab. Page is loaded.", action.Path)
+					case <-timeout:
+						return fmt.Sprintf("Navigated to %s but page load timed out.", action.Path)
+					case <-ctx.Done():
+						return "Navigation cancelled."
+					}
+				case <-timeout:
+					return fmt.Sprintf("Navigated to %s but page load timed out.", action.Path)
+				case <-ctx.Done():
+					return "Navigation cancelled."
+				}
+			}
 		}
 		// Idempotent: skip reset if already on this URL.
 		if d.sess.GetCurrentURL() == action.Path {
@@ -496,6 +552,32 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 		d.handler.sendGoto(d.tabID, action.Path)
 		d.updateStep(fmt.Sprintf("navigating to %s", action.Path))
 		log.Printf("Doer [tab %d]: goto %s", d.tabID, action.Path)
+
+		// When starting from tab 0 (no browser connected), the page opens in a
+		// new tab. Wait for either tab 0's schema OR the real tab to appear.
+		if d.tabID == 0 {
+			timeout := time.After(config.Dur(d.handler.Timeouts.SchemaWait))
+			select {
+			case <-d.sess.GetSchemaReady():
+				return fmt.Sprintf("Navigated to %s. Page is loaded.", action.Path)
+			case newTab := <-d.handler.voiceTabCh:
+				// Real tab appeared — wait on its schema instead.
+				log.Printf("Doer [tab 0]: real tab %d appeared, waiting on its schema", newTab)
+				newSess := d.handler.getSession(newTab)
+				select {
+				case <-newSess.GetSchemaReady():
+					return fmt.Sprintf("Navigated to %s. Page is loaded.", action.Path)
+				case <-timeout:
+					return fmt.Sprintf("Navigated to %s but page load timed out.", action.Path)
+				case <-ctx.Done():
+					return "Navigation cancelled."
+				}
+			case <-timeout:
+				return fmt.Sprintf("Navigated to %s but page load timed out.", action.Path)
+			case <-ctx.Done():
+				return "Navigation cancelled."
+			}
+		}
 
 		select {
 		case <-d.sess.GetSchemaReady():
@@ -781,6 +863,15 @@ func (d *Doer) wireNavigatorCallbacks(gs *guardrails.GoalState) {
 			return nil, ltCtx.Err()
 		}
 	})
+}
+
+// settleTimeout returns how long to wait for DOM mutations after an interactive action.
+// Fast mode uses a shorter timeout for lower latency in live voice sessions.
+func (d *Doer) settleTimeout() time.Duration {
+	if d.handler.NavSpeed == "fast" {
+		return 500 * time.Millisecond
+	}
+	return actionSettleTimeout
 }
 
 func (d *Doer) updateStep(step string) {

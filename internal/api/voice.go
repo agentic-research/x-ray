@@ -285,11 +285,11 @@ BEHAVIOR:
 Your navigator can read the full environment structure (including terminals at /iterm/), so ALWAYS delegate environment questions to it — never say "I can't see the terminal."`
 
 // buildLiveConfig returns the LiveConnectConfig shared by HandleVoice and StartVoiceLoop.
-func buildLiveConfig() *genai.LiveConnectConfig {
+func buildLiveConfig(language, voice string) *genai.LiveConnectConfig {
 	tools := append(talkerToolDefinitions(), &genai.Tool{
 		GoogleSearch: &genai.GoogleSearch{},
 	})
-	return &genai.LiveConnectConfig{
+	cfg := &genai.LiveConnectConfig{
 		ResponseModalities: []genai.Modality{genai.ModalityAudio},
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{{Text: talkerSystemPrompt}},
@@ -301,7 +301,35 @@ func buildLiveConfig() *genai.LiveConnectConfig {
 		ContextWindowCompression: &genai.ContextWindowCompressionConfig{
 			SlidingWindow: &genai.SlidingWindow{},
 		},
+		// Proactive audio: model can stay silent on irrelevant/ambient input.
+		Proactivity: &genai.ProactivityConfig{
+			ProactiveAudio: genai.Ptr(true),
+		},
+		// Affective dialog: adapt tone to match user's expression.
+		EnableAffectiveDialog: genai.Ptr(true),
+		// Thinking: give model a budget to reason before responding.
+		ThinkingConfig: &genai.ThinkingConfig{
+			IncludeThoughts: false,
+			ThinkingBudget:  genai.Ptr(int32(1024)),
+		},
 	}
+
+	// Language and voice selection.
+	if language != "" || voice != "" {
+		cfg.SpeechConfig = &genai.SpeechConfig{}
+		if language != "" {
+			cfg.SpeechConfig.LanguageCode = language
+		}
+		if voice != "" {
+			cfg.SpeechConfig.VoiceConfig = &genai.VoiceConfig{
+				PrebuiltVoiceConfig: &genai.PrebuiltVoiceConfig{
+					VoiceName: voice,
+				},
+			}
+		}
+	}
+
+	return cfg
 }
 
 // applyResumeHandle sets the session resumption handle on a LiveConnectConfig.
@@ -397,7 +425,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 	var rs liveReconnectState
 	var inputBuf, outputBuf strings.Builder
 	for {
-		config := buildLiveConfig()
+		config := buildLiveConfig(h.VoiceLanguage, h.VoiceName)
 		applyResumeHandle(config, rs.ResumeHandle)
 
 		session, err := connectWithBackoff(ctx, h.LiveClient.Live.Connect, h.LiveModel, config)
@@ -741,7 +769,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 	var rs liveReconnectState
 	var inputBuf, outputBuf strings.Builder
 	for {
-		config := buildLiveConfig()
+		config := buildLiveConfig(h.VoiceLanguage, h.VoiceName)
 		applyResumeHandle(config, rs.ResumeHandle)
 
 		session, err := connectWithBackoff(ctx, h.LiveClient.Live.Connect, h.LiveModel, config)

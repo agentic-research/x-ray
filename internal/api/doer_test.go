@@ -113,6 +113,8 @@ func (m *mockIntentHandler) SetRefValidateFunc(_ func(string) string) {}
 
 func (m *mockIntentHandler) SetSectionHints(_ string) {}
 
+func (m *mockIntentHandler) SetScreenshot(_ []byte, _ string) {}
+
 // waitForDone blocks until the Doer finishes (Completed or Failed) or times out.
 // It wires a completion channel through SetResultNotifyFn internally.
 func waitForDone(t *testing.T, doer *Doer, timeout time.Duration) *InteractionResult {

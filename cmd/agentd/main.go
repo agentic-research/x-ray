@@ -27,7 +27,24 @@ import (
 
 func main() {
 	voiceFlag := flag.Bool("voice", false, "Enable native voice mode (requires sox)")
+	listLangs := flag.Bool("languages", false, "List supported voice languages and exit")
+	listVoices := flag.Bool("voices", false, "List available voice names and exit")
 	flag.Parse()
+
+	if *listLangs {
+		fmt.Println("Supported languages (set via VOICE_LANGUAGE env var):")
+		for _, l := range config.SupportedLanguages() {
+			fmt.Println("  " + l)
+		}
+		return
+	}
+	if *listVoices {
+		fmt.Println("Available voices (set via VOICE_NAME env var):")
+		for _, v := range config.SupportedVoices() {
+			fmt.Println("  " + v)
+		}
+		return
+	}
 
 	log.Println("Starting X-Ray Agentd")
 
@@ -79,17 +96,19 @@ func main() {
 	}
 
 	// Navigator model: default to Gemini REST, override with navigator.mode or endpoint.
+	// NAVIGATOR_MODEL overrides the model for all backends (REST, Live, Ollama).
 	var navGen navigator.ContentGenerator = &navigator.GeminiGenerator{Client: client}
 	navModel := cfg.Gemini.Model
+	if cfg.Navigator.Model != "" {
+		navModel = cfg.Navigator.Model
+	}
 
 	if cfg.Navigator.Mode == "gemini-live" {
+		navModel = cfg.Gemini.LiveModel
 		navGen = &navigator.GeminiLiveGenerator{Client: liveClient, Model: navModel}
 		log.Printf("Navigator: using Gemini Live API (model %s)", navModel)
 	} else if cfg.Navigator.Endpoint != "" {
-		navModel = cfg.Navigator.Model
-		if navModel == "" {
-			navModel = cfg.Gemini.Model
-		}
+		// navModel already set above from NAVIGATOR_MODEL or default.
 		if cfg.Navigator.Format == "gemma" {
 			navGen = &navigator.GemmaGenerator{Endpoint: cfg.Navigator.Endpoint, Model: navModel, Ollama: cfg.Ollama, CLIMode: cfg.Navigator.CLI}
 			if cfg.Navigator.CLI {
@@ -125,6 +144,9 @@ func main() {
 	handler.CDPTargetWidth = float64(cfg.Cartographer.TargetWidth)
 	handler.CDPMaxHeight = float64(cfg.Cartographer.MaxHeight)
 	handler.EnableNFSMount = cfg.EnableNFSMount
+	handler.NavSpeed = cfg.Navigator.Speed
+	handler.VoiceLanguage = cfg.Voice.Language
+	handler.VoiceName = cfg.Voice.Voice
 	if cfg.EnableNFSMount {
 		if err := handler.StartNFS(); err != nil {
 			log.Printf("NFS mount failed (non-fatal): %v", err)

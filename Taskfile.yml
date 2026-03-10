@@ -158,6 +158,18 @@ tasks:
     cmds:
       - ./{{.BINARY_NAME}} --voice
 
+  demo-fast:
+    desc: Build and run fast voice demo (Gemini REST + Thinking, cairn, no continuation)
+    deps: [build]
+    env:
+      CARTOGRAPHER_MODE: cairn
+      NAV_SPEED: fast
+      NAVIGATOR_ENDPOINT: ""
+      NAVIGATOR_MODEL: ""
+      NAVIGATOR_FORMAT: ""
+    cmds:
+      - ./{{.BINARY_NAME}} --voice
+
   demo-local:
     desc: Build and run fully air-gapped (local VLM + local SLM, no cloud API)
     deps: [build]

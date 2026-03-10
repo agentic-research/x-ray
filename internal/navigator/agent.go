@@ -54,6 +54,12 @@ type Agent struct {
 	sectionMu    sync.RWMutex
 	sectionHints string
 
+	screenshotMu   sync.RWMutex
+	screenshotData []byte // overlay screenshot (with mache-ID boxes)
+	screenshotMIME string // "image/png" or "image/jpeg"
+
+	FastMode bool // when true, strip ls/cat/stat tools and reduce iterations for low-latency voice
+
 	registry      *ToolRegistry
 	scrollTool    *ScrollTool
 	listTabs      *ListTabsTool
@@ -204,6 +210,15 @@ func (a *Agent) SetSectionHints(hints string) {
 	a.sectionHints = hints
 }
 
+// SetScreenshot stores the overlay screenshot for visual grounding.
+// Called by the Doer before each HandleIntent so the Navigator can see the page.
+func (a *Agent) SetScreenshot(data []byte, mime string) {
+	a.screenshotMu.Lock()
+	defer a.screenshotMu.Unlock()
+	a.screenshotData = data
+	a.screenshotMIME = mime
+}
+
 // SetListTabsFunc injects the callback used by the list_tabs tool.
 func (a *Agent) SetListTabsFunc(fn func(ctx context.Context) ([]TabInfo, error)) {
 	a.listTabs.mu.Lock()
@@ -228,6 +243,9 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 	tools := a.registry.Definitions()
 	if readOnly {
 		tools = a.registry.DefinitionsExcluding("act")
+	} else if a.FastMode {
+		// Fast mode: strip exploration tools so model acts directly from pre-filled tree dump.
+		tools = a.registry.DefinitionsExcluding("ls", "cat", "stat")
 	}
 
 	config := &genai.GenerateContentConfig{
@@ -259,6 +277,18 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 		log.Printf("Navigator: pre-filled tree:\n%s", treeDump)
 	}
 
+	// Grab overlay screenshot for visual grounding (Gemini cloud only — local
+	// models like Ollama/Gemma are text-only and can't process images).
+	var screenshotData []byte
+	var screenshotMIME string
+	switch a.generator.(type) {
+	case *GeminiGenerator, *GeminiLiveGenerator:
+		a.screenshotMu.Lock()
+		screenshotData = a.screenshotData
+		screenshotMIME = a.screenshotMIME
+		a.screenshotMu.Unlock()
+	}
+
 	var history []*genai.Content
 	if treeDump == "" {
 		// No page loaded yet — tell the model so it knows to use goto().
@@ -266,15 +296,23 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 			{Role: "user", Parts: []*genai.Part{{Text: intent + "\n\n[No page is currently loaded. Use goto(url) to navigate to a website first.]"}}},
 		}
 	} else {
+		// Build user message with intent, tree dump, and optional overlay screenshot.
+		// We include the tree dump directly in the user message instead of faking a
+		// model function call round-trip, because thinking models (e.g. gemini-3.1-flash-lite)
+		// require thought signatures on all model turns with function calls.
+		userParts := []*genai.Part{{Text: intent + "\n\nCurrent page layout (output of `ls /`):\n" + treeDump}}
+		if len(screenshotData) > 0 && screenshotMIME != "" {
+			userParts = append(userParts, &genai.Part{
+				InlineData: &genai.Blob{
+					MIMEType: screenshotMIME,
+					Data:     screenshotData,
+				},
+			})
+			log.Printf("Navigator: injected %d byte overlay screenshot (%s)", len(screenshotData), screenshotMIME)
+		}
+
 		history = []*genai.Content{
-			{Role: "user", Parts: []*genai.Part{{Text: intent}}},
-			{Role: "model", Parts: []*genai.Part{{FunctionCall: &genai.FunctionCall{
-				Name: "ls", Args: map[string]any{"path": "/"},
-			}}}},
-			{Role: "user", Parts: []*genai.Part{{FunctionResponse: &genai.FunctionResponse{
-				Name:     "ls",
-				Response: map[string]any{"output": treeDump},
-			}}}},
+			{Role: "user", Parts: userParts},
 		}
 	}
 
@@ -286,8 +324,12 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 		log.Printf("Navigator: GBNF grammar set with %d paths", len(paths))
 	}
 
-	for i := range maxToolIterations {
-		log.Printf("Navigator: tool-use iteration %d/%d", i+1, maxToolIterations)
+	iterCap := maxToolIterations
+	if a.FastMode {
+		iterCap = 5
+	}
+	for i := range iterCap {
+		log.Printf("Navigator: tool-use iteration %d/%d", i+1, iterCap)
 
 		res, err := a.generator.GenerateContent(ctx, a.model, history, config)
 		if err != nil {
@@ -348,7 +390,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 				for k, v := range fc.Args {
 					argsCopy[k] = v
 				}
-				argsCopy["_iter"] = fmt.Sprintf("%d/%d", i+1, maxToolIterations)
+				argsCopy["_iter"] = fmt.Sprintf("%d/%d", i+1, iterCap)
 				pfn(fc.Name, argsCopy)
 			}
 			result, action := a.registry.Execute(ctx, fc)
@@ -381,7 +423,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 		continue
 	}
 
-	return nil, "", fmt.Errorf("tool-use loop exceeded %d iterations without resolution", maxToolIterations)
+	return nil, "", fmt.Errorf("tool-use loop exceeded %d iterations without resolution", iterCap)
 }
 
 // ExecuteTool dispatches a function call via the tool registry.

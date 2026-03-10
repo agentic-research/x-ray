@@ -240,6 +240,40 @@ func FullAXTree(ctx context.Context, p *Proxy, tabID int) ([]axNode, error) {
 	return resp.Nodes, nil
 }
 
+// AXResult holds the deferred result of an async AX tree fetch.
+type AXResult struct {
+	nodes []axNode
+	err   error
+	done  chan struct{}
+}
+
+// Wait blocks until the async AX tree fetch completes and returns the results.
+func (r *AXResult) Wait() ([]axNode, error) {
+	<-r.done
+	return r.nodes, r.err
+}
+
+// JoinToMache is a convenience method that calls JoinAXToMache on the captured nodes.
+func (r *AXResult) JoinToMache(macheToBackend map[string]int) map[string]AXInfo {
+	<-r.done
+	if r.err != nil || r.nodes == nil {
+		return nil
+	}
+	return JoinAXToMache(r.nodes, macheToBackend)
+}
+
+// CaptureAXAsync starts FullAXTree in a goroutine and returns an AXResult
+// whose Wait method blocks until completion. This allows the caller to
+// run other CDP calls in parallel without referencing the unexported axNode type.
+func CaptureAXAsync(ctx context.Context, p *Proxy, tabID int) *AXResult {
+	r := &AXResult{done: make(chan struct{})}
+	go func() {
+		defer close(r.done)
+		r.nodes, r.err = FullAXTree(ctx, p, tabID)
+	}()
+	return r
+}
+
 // describeNodeResp is the response from DOM.describeNode.
 type describeNodeResp struct {
 	Node struct {

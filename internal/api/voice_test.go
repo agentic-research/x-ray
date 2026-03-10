@@ -91,7 +91,7 @@ func TestVoiceMessageOmitsEmpty(t *testing.T) {
 }
 
 func TestBuildLiveConfigHasTranscription(t *testing.T) {
-	config := buildLiveConfig()
+	config := buildLiveConfig("", "")
 	if config.InputAudioTranscription == nil {
 		t.Error("expected InputAudioTranscription to be set")
 	}
@@ -101,7 +101,7 @@ func TestBuildLiveConfigHasTranscription(t *testing.T) {
 }
 
 func TestBuildLiveConfigHasGoogleSearch(t *testing.T) {
-	config := buildLiveConfig()
+	config := buildLiveConfig("", "")
 	found := false
 	for _, tool := range config.Tools {
 		if tool.GoogleSearch != nil {
@@ -115,7 +115,7 @@ func TestBuildLiveConfigHasGoogleSearch(t *testing.T) {
 }
 
 func TestBuildLiveConfigEnablesResumption(t *testing.T) {
-	config := buildLiveConfig()
+	config := buildLiveConfig("", "")
 	if config.SessionResumption == nil {
 		t.Error("expected SessionResumption to be set")
 	}
@@ -171,7 +171,7 @@ func TestGenerationCompleteForwarded(t *testing.T) {
 }
 
 func TestBuildLiveConfigWithResume(t *testing.T) {
-	config := buildLiveConfig()
+	config := buildLiveConfig("", "")
 	applyResumeHandle(config, "prev-session-handle-abc")
 
 	if config.SessionResumption == nil {
@@ -183,7 +183,7 @@ func TestBuildLiveConfigWithResume(t *testing.T) {
 }
 
 func TestApplyResumeHandleEmpty(t *testing.T) {
-	config := buildLiveConfig()
+	config := buildLiveConfig("", "")
 	applyResumeHandle(config, "")
 
 	// Empty handle should not override the default empty SessionResumption.

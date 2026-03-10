@@ -51,6 +51,8 @@ type TabSession struct {
 	doerCancel        context.CancelFunc       // cancels the Doer's Run goroutine (not just the current goal)
 	TabsListedCh      chan []TabInfo           // receives tab list from LIST_TABS round-trip
 	CVRegions         []EdgeRegion             // canvas regions detected via edge analysis, used for CDP pixel-click
+	ScreenshotBytes   []byte                   // latest overlay screenshot (with mache-ID boxes), for Navigator grounding
+	ScreenshotMIME    string                   // "image/png" or "image/jpeg"
 
 	// Go-driven capture channels.
 	SummaryCh        chan SummaryResponse // receives SUMMARY_RESPONSE from extension
@@ -130,6 +132,21 @@ func (s *TabSession) SetCVRegions(regions []EdgeRegion) {
 	s.schemaMu.Lock()
 	defer s.schemaMu.Unlock()
 	s.CVRegions = regions
+}
+
+// SetScreenshot stores the overlay screenshot for Navigator visual grounding.
+func (s *TabSession) SetScreenshot(data []byte, mime string) {
+	s.schemaMu.Lock()
+	defer s.schemaMu.Unlock()
+	s.ScreenshotBytes = data
+	s.ScreenshotMIME = mime
+}
+
+// GetScreenshot returns the latest overlay screenshot bytes and MIME type.
+func (s *TabSession) GetScreenshot() ([]byte, string) {
+	s.schemaMu.Lock()
+	defer s.schemaMu.Unlock()
+	return s.ScreenshotBytes, s.ScreenshotMIME
 }
 
 // ConsumeRescanPath atomically reads and clears RescanPath.

@@ -145,16 +145,20 @@ func TestBug_DoerTeleportationTab0(t *testing.T) {
 	// Start a goto command on Tab 0 (simulating disconnected extension start)
 	doer.Submit(Interaction{ID: "g-teleport", Intent: "go to example.com"})
 
-	// Simulate the extension waking up and reporting its real ID (Tab 99)
+	// Simulate the extension waking up and reporting its real ID (Tab 99).
+	// Signal voiceTabCh so the goto dispatch notices the real tab immediately
+	// instead of waiting for tab 0's schema timeout.
 	time.Sleep(50 * time.Millisecond)
 	h.mu.Lock()
 	h.activeVoiceTab = 99
 	h.mu.Unlock()
-
-	// Signal Tab 0's schema so the goto unblocks.
-	if oldSess, ok := h.sessions[0]; ok {
-		oldSess.SignalSchemaReady()
+	select {
+	case h.voiceTabCh <- 99:
+	default:
 	}
+
+	// Signal Tab 99's schema (the real tab where the page loaded).
+	sess99.SignalSchemaReady()
 
 	// Wait for the Doer to finish its multi-step loop
 	select {

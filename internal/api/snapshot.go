@@ -130,6 +130,13 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 			mimeType = "image/png"
 		}
 
+		// Store the overlay screenshot for Navigator visual grounding.
+		// This is the CDP screenshot taken with mache-ID colored boxes visible,
+		// before any edge-detection annotation is applied.
+		if len(screenshotBytes) > 0 {
+			sess.SetScreenshot(screenshotBytes, mimeType)
+		}
+
 		// --- Overlay color readback: classify overlay pixels for masking ---
 		var overlayMap *OverlayMap
 		var decodedImg image.Image

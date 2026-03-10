@@ -19,6 +19,7 @@ type Config struct {
 	Navigator      NavigatorConfig    `yaml:"navigator"`
 	Ollama         OllamaConfig       `yaml:"ollama"`
 	Timeouts       TimeoutsConfig     `yaml:"timeouts"`
+	Voice          VoiceConfig        `yaml:"voice"` // Live API voice settings
 	Database       DatabaseConfig     `yaml:"database"`
 	EnableNFSMount bool               `yaml:"nfs_mount"`  // Mount page graph as NFS via mache
 	CFBrowser      CFBrowserConfig    `yaml:"cf_browser"` // Cloudflare Browser Rendering
@@ -35,6 +36,34 @@ type GeminiConfig struct {
 	Model        string `yaml:"model"`
 	LiveModel    string `yaml:"live_model"`
 	PlannerModel string `yaml:"planner_model"`
+}
+
+// VoiceConfig holds Live API voice session settings.
+type VoiceConfig struct {
+	Language string `yaml:"language"` // BCP-47 language code (e.g., "en-US", "ja-JP")
+	Voice    string `yaml:"voice"`    // Prebuilt voice name (e.g., "Aoede", "Charon", "Kore")
+}
+
+// SupportedLanguages returns the list of languages supported by Gemini Live API.
+func SupportedLanguages() []string {
+	return []string{
+		"af-ZA", "am-ET", "ar-XA", "bg-BG", "bn-IN", "ca-ES", "cmn-CN", "cmn-TW",
+		"cs-CZ", "da-DK", "de-DE", "el-GR", "en-AU", "en-GB", "en-IN", "en-US",
+		"es-ES", "es-US", "eu-ES", "fi-FI", "fil-PH", "fr-CA", "fr-FR", "gl-ES",
+		"gu-IN", "he-IL", "hi-IN", "hu-HU", "id-ID", "is-IS", "it-IT", "ja-JP",
+		"kn-IN", "ko-KR", "lt-LT", "lv-LV", "ml-IN", "mr-IN", "ms-MY", "nb-NO",
+		"nl-NL", "pl-PL", "pt-BR", "pt-PT", "ro-RO", "ru-RU", "sk-SK", "sl-SI",
+		"sr-RS", "sv-SE", "sw-KE", "ta-IN", "te-IN", "th-TH", "tr-TR", "uk-UA",
+		"ur-PK", "vi-VN", "yue-HK", "zu-ZA",
+	}
+}
+
+// SupportedVoices returns the prebuilt voice names for Gemini Live API.
+func SupportedVoices() []string {
+	return []string{
+		"Aoede", "Charon", "Fenrir", "Kore", "Leda",
+		"Orus", "Puck", "Zephyr",
+	}
 }
 
 // CartographerConfig holds schema generation settings.
@@ -54,7 +83,13 @@ type NavigatorConfig struct {
 	Model    string `yaml:"model"`
 	Format   string `yaml:"format"`
 	CLI      bool   `yaml:"cli"`
-	Mode     string `yaml:"mode"` // "gemini-live" to use Live API WebSocket; default is REST
+	Mode     string `yaml:"mode"`  // "gemini-live" to use Live API WebSocket; default is REST
+	Speed    string `yaml:"speed"` // "fast" (zero-shot, no continuation) or "safe" (default)
+}
+
+// IsFast returns true when the navigator is configured for low-latency voice mode.
+func (n NavigatorConfig) IsFast() bool {
+	return n.Speed == "fast"
 }
 
 // OllamaConfig holds Ollama-specific request defaults shared by
@@ -231,6 +266,9 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv("NAVIGATOR_MODE"); v != "" {
 		cfg.Navigator.Mode = v
 	}
+	if v := os.Getenv("NAV_SPEED"); v != "" {
+		cfg.Navigator.Speed = v
+	}
 	if v := os.Getenv("OLLAMA_KEEP_ALIVE"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.Ollama.KeepAlive = n
@@ -271,6 +309,12 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if os.Getenv("XRAY_NFS_MOUNT") == "true" || os.Getenv("XRAY_NFS_MOUNT") == "1" {
 		cfg.EnableNFSMount = true
+	}
+	if v := os.Getenv("VOICE_LANGUAGE"); v != "" {
+		cfg.Voice.Language = v
+	}
+	if v := os.Getenv("VOICE_NAME"); v != "" {
+		cfg.Voice.Voice = v
 	}
 	if v := os.Getenv("CF_BROWSER_URL"); v != "" {
 		cfg.CFBrowser.URL = v

@@ -41,6 +41,9 @@ type Handler struct {
 	CDPTargetWidth float64                    // screenshot width for scale computation
 	CDPMaxHeight   float64                    // max page height cap
 	EnableNFSMount bool                       // mount CompositeGraph as NFS per tab
+	NavSpeed       string                     // "fast" or "safe" (default)
+	VoiceLanguage  string                     // BCP-47 language code (e.g., "en-US")
+	VoiceName      string                     // Prebuilt voice name (e.g., "Kore")
 
 	mu             sync.Mutex
 	conn           *websocket.Conn
@@ -57,6 +60,7 @@ type Handler struct {
 	nfsMountPath   string              // e.g. "/tmp/xray-mache/"
 	nfsActiveTab   int                 // tab ID currently exposed via NFS
 	cookiesSetCh   chan struct{}       // signaled when COOKIES_SET ack received
+	voiceTabCh     chan int            // signaled when a new tab is activated (cold start or cross-origin goto)
 	backend        BrowserBackend      // nil = extension mode (default); set for CF Browser Rendering
 }
 
@@ -73,6 +77,7 @@ func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client,
 		schemas:       NewSchemaCache(dbPath),
 		cdpProxy:      cdp.New(nil),
 		cookiesSetCh:  make(chan struct{}, 1),
+		voiceTabCh:    make(chan int, 1),
 	}
 	if client != nil && plannerModel != "" {
 		h.planner = &Planner{handler: h, client: client, model: plannerModel}
@@ -186,6 +191,9 @@ func (h *Handler) getSession(tabID int) *TabSession {
 	}
 
 	nav := navigator.NewAgent(h.NavGen, h.NavModel, composite)
+	if h.NavSpeed == "fast" {
+		nav.FastMode = true
+	}
 	sess := &TabSession{
 		TabID:             tabID,
 		Engine:            engine,
@@ -343,7 +351,17 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			h.handleSelectorsResolved(msg)
 		case MsgTabActivated:
 			h.mu.Lock()
+			prevTab := h.activeVoiceTab
 			h.activeVoiceTab = msg.TabID
+			// Notify Doer when a new tab appears:
+			//   - Cold start: tab 0 → real tab
+			//   - Cross-origin goto: old tab → new tab opened by sendCreateTab
+			if msg.TabID != 0 && msg.TabID != prevTab {
+				select {
+				case h.voiceTabCh <- msg.TabID:
+				default:
+				}
+			}
 			// Swap NFS root to the newly activated tab's CompositeGraph.
 			if h.nfsRoot != nil {
 				if sess, ok := h.sessions[msg.TabID]; ok {
