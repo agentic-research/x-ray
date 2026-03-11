@@ -331,6 +331,14 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		b.mu.Lock()
 		b.active = newSession
 		b.mu.Unlock()
+
+		// Auto-cd to agentd working directory.
+		if wd, err := os.Getwd(); err == nil && wd != "" {
+			time.Sleep(1 * time.Second)
+			_ = b.client.SendText(ctx, newSession, "cd "+wd+"\n")
+			time.Sleep(300 * time.Millisecond)
+		}
+
 		b.rebuildGraph()
 		return &graph.ActionResult{
 			NodeID:  "iterm:" + newSession,
@@ -353,6 +361,16 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		b.mu.Lock()
 		b.active = newSession
 		b.mu.Unlock()
+
+		// Auto-cd new tabs to the agentd working directory so the navigator
+		// doesn't start in ~ when it needs to run repo-local commands (gh, git).
+		if wd, err := os.Getwd(); err == nil && wd != "" {
+			// Wait for shell to be ready, then send cd.
+			time.Sleep(1 * time.Second)
+			_ = b.client.SendText(ctx, newSession, "cd "+wd+"\n")
+			time.Sleep(300 * time.Millisecond)
+		}
+
 		b.rebuildGraph()
 		return &graph.ActionResult{
 			NodeID:  "iterm:" + newSession,

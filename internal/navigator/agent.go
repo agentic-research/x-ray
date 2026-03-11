@@ -326,7 +326,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 
 	iterCap := maxToolIterations
 	if a.FastMode {
-		iterCap = 5
+		iterCap = 8
 	}
 	for i := range iterCap {
 		log.Printf("Navigator: tool-use iteration %d/%d", i+1, iterCap)
