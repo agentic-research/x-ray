@@ -164,6 +164,20 @@ func (b *Bridge) reconcileSessions(ctx context.Context) error {
 	// Get focused session.
 	active, _ := b.client.GetFocusedSession(ctx)
 
+	// Fetch CWD for each session via iTerm2 variable API (requires shell integration).
+	cwdMap := make(map[string]string, len(sessions))
+	for i := range sessions {
+		vars, err := b.client.GetVariable(ctx, sessions[i].SessionID, "path")
+		if err == nil {
+			if p := vars["path"]; p != "" {
+				sessions[i].CWD = p
+				cwdMap[sessions[i].SessionID] = p
+			}
+		} else if b.debug {
+			log.Printf("iterm bridge: GetVariable(path) for %s: %v", sessions[i].SessionID, err)
+		}
+	}
+
 	b.mu.Lock()
 
 	// Detect new sessions.
@@ -187,7 +201,7 @@ func (b *Bridge) reconcileSessions(ctx context.Context) error {
 				}
 			}(s.SessionID)
 		} else {
-			// Update metadata (title may have changed).
+			// Update metadata (title and CWD may have changed).
 			b.sessions[s.SessionID].info = s
 		}
 	}
@@ -249,10 +263,19 @@ func (b *Bridge) refreshBuffer(ctx context.Context, sessionID string) {
 		}
 	}
 
+	// Refresh CWD via variable API (changes when user cd's).
+	cwd := ""
+	if vars, err := b.client.GetVariable(ctx, sessionID, "path"); err == nil {
+		cwd = vars["path"]
+	}
+
 	b.mu.Lock()
 	if ts, ok := b.sessions[sessionID]; ok {
 		ts.buffer = clean
 		ts.status = status
+		if cwd != "" {
+			ts.info.CWD = cwd
+		}
 	}
 	b.mu.Unlock()
 

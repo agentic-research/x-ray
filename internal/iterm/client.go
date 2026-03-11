@@ -242,6 +242,38 @@ func collectSessions(node *pb.SplitTreeNode, wid, tid string, out *[]SessionInfo
 	}
 }
 
+// GetVariable fetches an iTerm2 session variable (e.g., "path" for CWD).
+// Requires shell integration to be installed in the user's shell.
+func (c *Client) GetVariable(ctx context.Context, sessionID string, names ...string) (map[string]string, error) {
+	sid := normalizeSessionID(sessionID)
+	resp, err := c.send(ctx, &pb.ClientOriginatedMessage{
+		Submessage: &pb.ClientOriginatedMessage_VariableRequest{
+			VariableRequest: &pb.VariableRequest{
+				Scope: &pb.VariableRequest_SessionId{SessionId: sid},
+				Get:   names,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	vr := resp.GetVariableResponse()
+	if vr == nil {
+		return nil, fmt.Errorf("iterm2: unexpected response type for variable request")
+	}
+	if vr.GetStatus() != pb.VariableResponse_OK {
+		return nil, fmt.Errorf("iterm2: variable request failed: %v", vr.GetStatus())
+	}
+	result := make(map[string]string, len(names))
+	values := vr.GetValues()
+	for i, name := range names {
+		if i < len(values) {
+			result[name] = values[i]
+		}
+	}
+	return result, nil
+}
+
 // GetBuffer returns the last N lines of a session's terminal buffer as raw text.
 func (c *Client) GetBuffer(ctx context.Context, sessionID string, lines int32) (string, error) {
 	sid := normalizeSessionID(sessionID)

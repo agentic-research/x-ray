@@ -279,13 +279,49 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 			d.sess.Navigator.SetScreenshot(img, mime)
 		}
 
+		// Snapshot the active voice tab before HandleIntent so we can detect
+		// cross-UI tab changes (e.g., terminal `gh browse` opening Chrome).
+		d.handler.mu.Lock()
+		preIntentTab := d.handler.activeVoiceTab
+		d.handler.mu.Unlock()
+
 		action, textResponse, err := d.sess.Navigator.HandleIntent(ixCtx, enrichedIntent, ix.ReadOnly)
 		if err != nil {
 			if ixCtx.Err() != nil {
 				d.finishInteraction(ix.ID, StatusCancelled, "Cancelled.", "cancelled")
-			} else {
-				d.finishInteraction(ix.ID, StatusFailed, fmt.Sprintf("Failed: %v", err), err.Error())
+				return
 			}
+
+			// Cross-UI recovery: if a new browser tab appeared during HandleIntent
+			// (e.g., `gh browse` in terminal opened Chrome), wait for its schema
+			// and retry with the browser now available.
+			d.handler.mu.Lock()
+			postIntentTab := d.handler.activeVoiceTab
+			d.handler.mu.Unlock()
+			if postIntentTab != 0 && postIntentTab != preIntentTab && step < maxGoalSteps-1 {
+				log.Printf("Doer [tab %d]: new browser tab %d appeared during HandleIntent, waiting for schema", d.tabID, postIntentTab)
+				d.tabID = postIntentTab
+				d.sess = d.handler.getSession(postIntentTab)
+				d.wireNavigatorCallbacks(gs)
+				if d.sess.Tasks != nil {
+					d.sess.Tasks.StartInteraction(ix.ID, taskText)
+				}
+				select {
+				case <-d.sess.GetSchemaReady():
+					log.Printf("Doer [tab %d]: cross-UI schema ready, retrying intent", d.tabID)
+					enrichedIntent = fmt.Sprintf(
+						"The browser just loaded a new page. Use ls(\"/browser/\") to explore it. Original task: %s",
+						ix.Intent)
+					continue // retry the Doer step with browser schema now available
+				case <-time.After(config.Dur(d.handler.Timeouts.SchemaWait)):
+					log.Printf("Doer [tab %d]: cross-UI schema wait timed out", d.tabID)
+				case <-ixCtx.Done():
+					d.finishInteraction(ix.ID, StatusCancelled, "Cancelled.", "cancelled")
+					return
+				}
+			}
+
+			d.finishInteraction(ix.ID, StatusFailed, fmt.Sprintf("Failed: %v", err), err.Error())
 			return
 		}
 

@@ -328,8 +328,12 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 	if a.FastMode {
 		iterCap = 8
 	}
-	for i := range iterCap {
-		log.Printf("Navigator: tool-use iteration %d/%d", i+1, iterCap)
+	maxRetries := 5 // extra budget for malformed/prohibited retries (don't eat real iterations)
+	retries := 0
+	realIter := 0
+	for realIter < iterCap {
+
+		log.Printf("Navigator: tool-use iteration %d/%d", realIter+1, iterCap)
 
 		res, err := a.generator.GenerateContent(ctx, a.model, history, config)
 		if err != nil {
@@ -342,18 +346,26 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 		candidate := res.Candidates[0]
 		if candidate.Content == nil || len(candidate.Content.Parts) == 0 {
 			// MALFORMED_FUNCTION_CALL: Gemini tried to call a tool but produced
-			// invalid JSON. Nudge it to retry rather than aborting.
+			// invalid JSON. Nudge it to retry — does NOT count against iteration cap.
 			if candidate.FinishReason == genai.FinishReasonMalformedFunctionCall {
-				log.Printf("Navigator: malformed function call at iteration %d, retrying", i+1)
+				retries++
+				log.Printf("Navigator: malformed function call (retry %d/%d, not counting against %d iterations)", retries, maxRetries, iterCap)
+				if retries > maxRetries {
+					return nil, "", fmt.Errorf("too many malformed function calls (%d)", retries)
+				}
 				history = append(history, &genai.Content{
 					Role:  "user",
 					Parts: []*genai.Part{{Text: "Your function call was malformed. Please try again with valid JSON arguments."}},
 				})
 				continue
 			}
-			// PROHIBITED_CONTENT: safety filter false-positive. Retry once.
+			// PROHIBITED_CONTENT: safety filter false-positive. Retry — does NOT count.
 			if string(candidate.FinishReason) == "PROHIBITED_CONTENT" {
-				log.Printf("Navigator: PROHIBITED_CONTENT at iteration %d, retrying", i+1)
+				retries++
+				log.Printf("Navigator: PROHIBITED_CONTENT (retry %d/%d, not counting against iterations)", retries, maxRetries)
+				if retries > maxRetries {
+					return nil, "", fmt.Errorf("too many prohibited content retries (%d)", retries)
+				}
 				history = append(history, &genai.Content{
 					Role:  "user",
 					Parts: []*genai.Part{{Text: "Please proceed with the task."}},
@@ -362,6 +374,8 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 			}
 			return nil, "", fmt.Errorf("empty response from model (finish_reason: %v)", candidate.FinishReason)
 		}
+		realIter++ // Only count iterations with actual content
+
 		var fc *genai.FunctionCall
 		var finalMsg string
 		for _, p := range candidate.Content.Parts {
@@ -390,7 +404,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 				for k, v := range fc.Args {
 					argsCopy[k] = v
 				}
-				argsCopy["_iter"] = fmt.Sprintf("%d/%d", i+1, iterCap)
+				argsCopy["_iter"] = fmt.Sprintf("%d/%d", realIter, iterCap)
 				pfn(fc.Name, argsCopy)
 			}
 			result, action := a.registry.Execute(ctx, fc)
@@ -414,7 +428,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 
 		// Model returned parts with no function call and no text (e.g., thinking-only).
 		// Instead of crashing, nudge it to continue.
-		log.Printf("Navigator: no actionable parts at iteration %d, nudging model", i+1)
+		log.Printf("Navigator: no actionable parts at iteration %d, nudging model", realIter)
 		history = append(history, candidate.Content)
 		history = append(history, &genai.Content{
 			Role:  "user",
