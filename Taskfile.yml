@@ -432,6 +432,54 @@ tasks:
     cmds:
       - bash scripts/compare_backends.sh {{.CLI_ARGS | default "124"}}
 
+  # ---------------------------------------------------------------------------
+  # Demo
+  # ---------------------------------------------------------------------------
+
+  demo-video:
+    desc: Voice demo for Devpost submission (Cairn + fast nav + iTerm bridge)
+    deps: [build]
+    env:
+      CARTOGRAPHER_MODE: cairn
+      NAV_SPEED: fast
+      NAVIGATOR_ENDPOINT: ""
+      NAVIGATOR_MODEL: ""
+      NAVIGATOR_FORMAT: ""
+    cmds:
+      - |
+        echo "╔══════════════════════════════════════════════════════╗"
+        echo "║  X-Ray Demo — Gemini Live Agent Challenge           ║"
+        echo "╠══════════════════════════════════════════════════════╣"
+        echo "║  Prerequisites:                                     ║"
+        echo "║  • Chrome open (extension installed)                ║"
+        echo "║  • iTerm2 as your terminal (for bridge)             ║"
+        echo "║  • GEMINI_API_KEY set                               ║"
+        echo "║  • gh CLI authenticated (gh auth status)            ║"
+        echo "║                                                     ║"
+        echo "║  Demo script (4 min):                               ║"
+        echo "║                                                     ║"
+        echo "║  1. [0:00] Pitch: 'X-Ray navigates any UI by       ║"
+        echo "║     voice — browser, terminal, structured data'     ║"
+        echo "║                                                     ║"
+        echo "║  2. [0:30] Terminal → Browser (cross-UI context):   ║"
+        echo "║     Voice: 'Look at the issues for this repo'       ║"
+        echo "║     → Agent reads CWD, runs gh, opens GH in Chrome  ║"
+        echo "║                                                     ║"
+        echo "║  3. [1:30] Browser visual parsing:                  ║"
+        echo "║     Voice: 'What does issue 9 say?'                 ║"
+        echo "║     → Cairn zones the GH page, reads the issue      ║"
+        echo "║                                                     ║"
+        echo "║  4. [2:30] Terminal code navigation:                ║"
+        echo "║     Voice: 'Find the navigator tools in our code'   ║"
+        echo "║     → Agent uses mache to search codebase            ║"
+        echo "║                                                     ║"
+        echo "║  5. [3:30] Architecture diagram + wrap              ║"
+        echo "║                                                     ║"
+        echo "║  Start recording, then press Enter...               ║"
+        echo "╚══════════════════════════════════════════════════════╝"
+        read -r
+        ./{{.BINARY_NAME}} --voice
+
   clean:
     desc: Clean build artifacts
     cmds:
