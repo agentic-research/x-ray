@@ -42,6 +42,16 @@ type CairnCartographer struct {
 	// MinZones / MaxZones control zone count bounds. Defaults: 3 / 7.
 	MinZones int
 	MaxZones int
+
+	// SheafFolding enables H⁰ sheaf-based zone folding (ADR-003).
+	// When true, zones are merged based on Čech coboundary consistency
+	// instead of pure spatial proximity. Default: false.
+	SheafFolding bool
+
+	// CurvatureDetection enables H¹ contour detection (ADR-004).
+	// When true, SO(2) transport maps detect visual contours between
+	// zones and annotate mounts with boundary strengths. Default: false.
+	CurvatureDetection bool
 }
 
 // GenerateSchema implements api.SchemaGenerator.
@@ -89,14 +99,26 @@ func (cc *CairnCartographer) GenerateSchema(
 
 	// Step 3: Decode screenshot and extract grid features
 	var cellProjections map[string]string // gridKey → zoneKey
+	var cells []CairnGridCell             // retained for sheaf/curvature
+	var curvature *CurvatureResult
 	if len(screenshot) > 0 {
 		img, _, err := image.Decode(bytes.NewReader(screenshot))
 		if err != nil {
 			log.Printf("CairnCartographer: screenshot decode failed: %v (falling back to DOM-only)", err)
 		} else {
-			cells := ExtractFusedFeatures(img, elements, gridSize)
+			cells = ExtractFusedFeatures(img, elements, gridSize)
 			CairnNormalizeFeatures(cells)
 			cellProjections = projectCells(cells, gear, scale, img.Bounds())
+
+			// Step 3b: Compute curvature if enabled (ADR-004)
+			if cc.CurvatureDetection {
+				cr := ComputeCurvature(cells, gridSize)
+				curvature = &cr
+				if os.Getenv("XRAY_DEBUG") == "1" {
+					log.Printf("CairnCartographer: H¹ curvature: %d contour cells, %d contour edges, H¹=%d",
+						len(cr.ContourCells), len(cr.ContourEdges), cr.H1Dim)
+				}
+			}
 		}
 	}
 
@@ -112,7 +134,12 @@ func (cc *CairnCartographer) GenerateSchema(
 	}
 
 	// Step 6: Fold/merge zones to target range
-	zones = foldCairnZones(zones, elements, minZ, maxZ)
+	if cc.SheafFolding && len(cells) > 0 {
+		// ADR-003: sheaf-based zone folding via Čech H⁰
+		zones = FoldZonesBySheaf(zones, elements, cells, gridSize, minZ, maxZ)
+	} else {
+		zones = foldCairnZones(zones, elements, minZ, maxZ)
+	}
 
 	if len(zones) == 0 {
 		return "", fmt.Errorf("no zones produced from %d elements", len(elements))
@@ -125,6 +152,16 @@ func (cc *CairnCartographer) GenerateSchema(
 		sidebarW:   0.2,
 	}
 	mounts := buildMounts(zones, elements, layout)
+
+	// Step 7b: Annotate zone boundaries with curvature data (ADR-004)
+	if curvature != nil {
+		boundaries := AnnotateZoneBoundaries(zones, *curvature, elements, gridSize)
+		for zi, b := range boundaries {
+			if zi < len(mounts) {
+				mounts[zi].Boundaries = b
+			}
+		}
+	}
 
 	// Step 8: Marshal
 	output := struct {

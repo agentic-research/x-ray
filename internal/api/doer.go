@@ -368,6 +368,11 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 			d.tabID = activeTab
 			d.sess = d.handler.getSession(activeTab)
 			d.wireNavigatorCallbacks(gs)
+			// Carry the interaction into the new session's graph so
+			// Navigator can read/write /interactions/active/*.
+			if d.sess.Tasks != nil {
+				d.sess.Tasks.StartInteraction(ix.ID, taskText)
+			}
 		}
 
 		// For interactive actions (click/type/enter/focus), detect if the page navigated.
@@ -413,6 +418,9 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 					d.tabID = newTabID
 					d.sess = d.handler.getSession(newTabID)
 					d.wireNavigatorCallbacks(gs)
+					if d.sess.Tasks != nil {
+						d.sess.Tasks.StartInteraction(ix.ID, taskText)
+					}
 					select {
 					case <-d.sess.GetSchemaReady():
 						// New tab loaded — continue loop.
@@ -458,7 +466,12 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 			return
 		}
 
-		enrichedIntent = buildContinuation(ix.Intent, ix.Context, step, action, lastSummary, gs)
+		if d.handler.NavSpeed == "fast" {
+			// Fast mode: minimal continuation — no verbose guardrails/pagination.
+			enrichedIntent = fmt.Sprintf("Page loaded. Continue: %s", ix.Intent)
+		} else {
+			enrichedIntent = buildContinuation(ix.Intent, ix.Context, step, action, lastSummary, gs)
+		}
 	}
 
 	// Exhausted steps — return whatever we have.

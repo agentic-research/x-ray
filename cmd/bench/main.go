@@ -314,8 +314,15 @@ func buildCartographer(defaultModel string) (schemaGenerator, bool) {
 		if s, err := strconv.ParseFloat(os.Getenv("CAIRN_SCALE"), 64); err == nil {
 			scale = s
 		}
-		log.Printf("Cartographer: cairn (gear=%d, scale=%.1f)", gear, scale)
-		return &cartographer.CairnCartographer{Gear: gear, Scale: scale}, false
+		cairnCart := &cartographer.CairnCartographer{Gear: gear, Scale: scale}
+		if os.Getenv("CAIRN_SHEAF") == "1" {
+			cairnCart.SheafFolding = true
+		}
+		if os.Getenv("CAIRN_CURVATURE") == "1" {
+			cairnCart.CurvatureDetection = true
+		}
+		log.Printf("Cartographer: cairn (gear=%d, scale=%.1f, sheaf=%v, curvature=%v)", gear, scale, cairnCart.SheafFolding, cairnCart.CurvatureDetection)
+		return cairnCart, false
 	case "tropical":
 		log.Printf("Cartographer: tropical")
 		return &cartographer.TropicalCartographer{}, false

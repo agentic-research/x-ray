@@ -84,8 +84,16 @@ func main() {
 		cart = &cartographer.TropicalCartographer{}
 		log.Println("Cartographer: TropicalCartographer (algebraic)")
 	case "cairn":
-		cart = &cartographer.CairnCartographer{Gear: cfg.Cartographer.Gear, Scale: cfg.Cartographer.Scale}
-		log.Printf("Cartographer: CairnCartographer (gear=%d, scale=%.1f)", cfg.Cartographer.Gear, cfg.Cartographer.Scale)
+		cairnCart := &cartographer.CairnCartographer{Gear: cfg.Cartographer.Gear, Scale: cfg.Cartographer.Scale}
+		if os.Getenv("CAIRN_SHEAF") == "1" {
+			cairnCart.SheafFolding = true
+		}
+		if os.Getenv("CAIRN_CURVATURE") == "1" {
+			cairnCart.CurvatureDetection = true
+		}
+		cart = cairnCart
+		log.Printf("Cartographer: CairnCartographer (gear=%d, scale=%.1f, sheaf=%v, curvature=%v)",
+			cfg.Cartographer.Gear, cfg.Cartographer.Scale, cairnCart.SheafFolding, cairnCart.CurvatureDetection)
 	default:
 		if cfg.Cartographer.Endpoint != "" {
 			cart = &cartographer.OllamaAgent{Endpoint: cfg.Cartographer.Endpoint, Model: cfg.Cartographer.Model, Ollama: cfg.Ollama}

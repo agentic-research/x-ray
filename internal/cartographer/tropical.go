@@ -108,14 +108,15 @@ type zone struct {
 
 // tropicalMount matches mache.CartographerOutput.Mounts JSON.
 type tropicalMount struct {
-	VirtualPath  string     `json:"virtual_path"`
-	MacheID      string     `json:"mache_id"`
-	Description  string     `json:"description"`
-	PrimaryItems []string   `json:"primary_items"`
-	ItemSelector string     `json:"item_selector,omitempty"`
-	Bounds       [4]float64 `json:"bounds,omitempty"`        // zone AABB [x,y,w,h] normalized
-	Fingerprint  string     `json:"fingerprint,omitempty"`   // content hash for cache staleness
-	StructuralFP string     `json:"structural_fp,omitempty"` // tag-shape hash — stable across same-layout pages
+	VirtualPath  string           `json:"virtual_path"`
+	MacheID      string           `json:"mache_id"`
+	Description  string           `json:"description"`
+	PrimaryItems []string         `json:"primary_items"`
+	ItemSelector string           `json:"item_selector,omitempty"`
+	Bounds       [4]float64       `json:"bounds,omitempty"`        // zone AABB [x,y,w,h] normalized
+	Fingerprint  string           `json:"fingerprint,omitempty"`   // content hash for cache staleness
+	StructuralFP string           `json:"structural_fp,omitempty"` // tag-shape hash — stable across same-layout pages
+	Boundaries   *MountBoundaries `json:"boundaries,omitempty"`    // H¹ contour boundary strengths (ADR-004)
 }
 
 // GenerateSchema implements api.SchemaGenerator.
