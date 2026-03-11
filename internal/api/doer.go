@@ -467,12 +467,13 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 		}
 
 		if d.handler.NavSpeed == "fast" {
-			// Fast mode: minimal continuation — include current URL so the
-			// navigator knows it's already on the target page. Without this,
-			// lite models re-issue goto because they see "go to X" in the
-			// intent and interpret it literally.
+			// Fast mode: tell the navigator exactly where it is, what just
+			// happened, and that the page is ready. Without explicit "do not
+			// rescan/switch", lite models waste iterations re-verifying.
 			curURL := d.sess.GetCurrentURL()
-			enrichedIntent = fmt.Sprintf("You are on %s. Done: %s %s. Continue the task: %s",
+			enrichedIntent = fmt.Sprintf(
+				"You are on %s (page is ready, do NOT rescan or switch tabs). "+
+					"Completed: %s %s. Now continue: %s",
 				curURL, action.Action, action.Path, ix.Intent)
 		} else {
 			enrichedIntent = buildContinuation(ix.Intent, ix.Context, step, action, lastSummary, gs)
