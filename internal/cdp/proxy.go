@@ -124,35 +124,45 @@ func (p *Proxy) Send(ctx context.Context, tabID int, method string, params any) 
 // HandleAttached is called when CDP_ATTACHED arrives.
 func (p *Proxy) HandleAttached(tabID int) {
 	if v, ok := p.attachM.Load(tabID); ok {
-		v.(chan error) <- nil
+		if ch, ok := v.(chan error); ok {
+			ch <- nil
+		}
 	}
 }
 
 // HandleAttachFailed is called when CDP_ATTACH_FAILED arrives.
 func (p *Proxy) HandleAttachFailed(tabID int, errMsg string) {
 	if v, ok := p.attachM.Load(tabID); ok {
-		v.(chan error) <- fmt.Errorf("%s", errMsg)
+		if ch, ok := v.(chan error); ok {
+			ch <- fmt.Errorf("%s", errMsg)
+		}
 	}
 }
 
 // HandleDetached is called when CDP_DETACHED arrives.
 func (p *Proxy) HandleDetached(tabID int) {
 	if v, ok := p.detachM.Load(tabID); ok {
-		v.(chan struct{}) <- struct{}{}
+		if ch, ok := v.(chan struct{}); ok {
+			ch <- struct{}{}
+		}
 	}
 }
 
 // HandleResult is called when CDP_RESULT arrives.
 func (p *Proxy) HandleResult(id int64, result json.RawMessage) {
 	if v, ok := p.pending.Load(id); ok {
-		v.(chan cdpResponse) <- cdpResponse{Result: result}
+		if ch, ok := v.(chan cdpResponse); ok {
+			ch <- cdpResponse{Result: result}
+		}
 	}
 }
 
 // HandleError is called when CDP_ERROR arrives.
 func (p *Proxy) HandleError(id int64, errMsg string) {
 	if v, ok := p.pending.Load(id); ok {
-		v.(chan cdpResponse) <- cdpResponse{Error: errMsg}
+		if ch, ok := v.(chan cdpResponse); ok {
+			ch <- cdpResponse{Error: errMsg}
+		}
 	}
 }
 
@@ -167,7 +177,9 @@ func (p *Proxy) SubscribeEvents(tabID int) <-chan EventMsg {
 // UnsubscribeEvents removes the event subscription for the given tabID and closes its channel.
 func (p *Proxy) UnsubscribeEvents(tabID int) {
 	if v, ok := p.eventSubs.LoadAndDelete(tabID); ok {
-		close(v.(chan EventMsg))
+		if ch, ok := v.(chan EventMsg); ok {
+			close(ch)
+		}
 	}
 }
 
@@ -175,10 +187,12 @@ func (p *Proxy) UnsubscribeEvents(tabID int) {
 func (p *Proxy) HandleEvent(tabID int, method string, params json.RawMessage) {
 	// Route to per-tab subscriber (used by CaptureLayerTree).
 	if v, ok := p.eventSubs.Load(tabID); ok {
-		select {
-		case v.(chan EventMsg) <- EventMsg{Method: method, Params: params}:
-		default:
-			// Channel full — subscriber too slow; drop event.
+		if ch, ok := v.(chan EventMsg); ok {
+			select {
+			case ch <- EventMsg{Method: method, Params: params}:
+			default:
+				// Channel full — subscriber too slow; drop event.
+			}
 		}
 	}
 }

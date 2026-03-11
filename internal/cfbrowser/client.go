@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/agentic-research/x-ray/internal/api"
 )
@@ -31,7 +32,7 @@ func NewClient(baseURL, apiToken string) *Client {
 	return &Client{
 		baseURL:    baseURL,
 		apiToken:   apiToken,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 		sessions:   make(map[int]string),
 	}
 }

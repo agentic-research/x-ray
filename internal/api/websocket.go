@@ -62,6 +62,8 @@ type Handler struct {
 	cookiesSetCh   chan struct{}       // signaled when COOKIES_SET ack received
 	voiceTabCh     chan int            // signaled when a new tab is activated (cold start or cross-origin goto)
 	backend        BrowserBackend      // nil = extension mode (default); set for CF Browser Rendering
+	connCtx        context.Context     // cancelled when the current WS connection closes
+	connCancel     context.CancelFunc  // cancels connCtx
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client, liveClient *genai.Client, navModel, liveModel, plannerModel, dbPath string) *Handler {
@@ -274,6 +276,12 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	defer connCancel()
 
 	h.mu.Lock()
+	// Cancel any previous connection's context before replacing.
+	if h.connCancel != nil {
+		h.connCancel()
+	}
+	h.connCtx = connCtx
+	h.connCancel = connCancel
 	h.conn = conn
 	h.cdpProxy.SetSender(h)
 	queued := h.pending
@@ -871,14 +879,22 @@ func (h *Handler) SendActionToExtension(tabID int, macheID, action, payload stri
 				log.Printf("CV click: %s → pixel (%d, %d) (tab %d)", macheID, msg.PixelX, msg.PixelY, tabID)
 
 				// Dispatch click directly via CDP proxy.
+				// Use connection-scoped context so the goroutine aborts on WS disconnect.
+				h.mu.Lock()
+				parentCtx := h.connCtx
+				h.mu.Unlock()
+				if parentCtx == nil {
+					parentCtx = context.Background()
+				}
 				go func() {
-					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					ctx, cancel := context.WithTimeout(parentCtx, 10*time.Second)
 					defer cancel()
 					if err := h.cdpProxy.Attach(ctx, tabID); err != nil {
 						log.Printf("CV click: attach failed: %v", err)
 						return
 					}
 					defer func() {
+						// Detach uses Background — must complete even if connection closed.
 						dCtx, dCancel := context.WithTimeout(context.Background(), 2*time.Second)
 						defer dCancel()
 						_ = h.cdpProxy.Detach(dCtx, tabID)

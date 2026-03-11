@@ -217,3 +217,56 @@ func TestBug_MacheBackendMapShortCircuitsOnCancel(t *testing.T) {
 			"(expected ≤50, ideally ≤%d)", describeCount, DescribeNodeConcurrency*2)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Bug 4: Unsafe type assertions in Handle* methods
+//
+// All Handle* methods load from sync.Map and bare-cast (v.(chan error), etc).
+// If a programming error stores a wrong type, or a stale entry exists, the
+// assertion panics and crashes the server. These should be safe assertions.
+// ---------------------------------------------------------------------------
+
+func TestBug_HandleAttachedWrongType_NoPanic(t *testing.T) {
+	ms := &mockSender{}
+	p := New(ms)
+
+	// Corrupt the map by storing a wrong type.
+	p.attachM.Store(1, "not a channel")
+
+	// Must not panic.
+	p.HandleAttached(1)
+	p.HandleAttachFailed(1, "err")
+}
+
+func TestBug_HandleDetachedWrongType_NoPanic(t *testing.T) {
+	ms := &mockSender{}
+	p := New(ms)
+
+	p.detachM.Store(1, 42)
+	p.HandleDetached(1)
+}
+
+func TestBug_HandleResultWrongType_NoPanic(t *testing.T) {
+	ms := &mockSender{}
+	p := New(ms)
+
+	p.pending.Store(int64(1), "garbage")
+	p.HandleResult(1, json.RawMessage(`{}`))
+	p.HandleError(1, "some error")
+}
+
+func TestBug_UnsubscribeEventsWrongType_NoPanic(t *testing.T) {
+	ms := &mockSender{}
+	p := New(ms)
+
+	p.eventSubs.Store(1, "not a channel")
+	p.UnsubscribeEvents(1)
+}
+
+func TestBug_HandleEventWrongType_NoPanic(t *testing.T) {
+	ms := &mockSender{}
+	p := New(ms)
+
+	p.eventSubs.Store(1, 99)
+	p.HandleEvent(1, "Page.loadEventFired", json.RawMessage(`{}`))
+}

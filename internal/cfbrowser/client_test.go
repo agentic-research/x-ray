@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/agentic-research/x-ray/internal/api"
 )
@@ -194,6 +195,34 @@ func TestAuthHeader(t *testing.T) {
 	_, err := c.CreateSession(context.Background(), "http://example.com", nil)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestHTTPTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Sleep longer than the client timeout.
+		time.Sleep(2 * time.Second)
+		_ = json.NewEncoder(w).Encode(map[string]string{"id": "sess-1"})
+	}))
+	defer srv.Close()
+
+	c := NewClient(srv.URL, "")
+	// Override to a short timeout for the test.
+	c.httpClient.Timeout = 100 * time.Millisecond
+
+	_, err := c.CreateSession(context.Background(), "http://example.com", nil)
+	if err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+}
+
+func TestDefaultHTTPTimeout(t *testing.T) {
+	c := NewClient("http://unused", "")
+	if c.httpClient.Timeout == 0 {
+		t.Fatal("expected non-zero default HTTP timeout, got 0 (no timeout)")
+	}
+	if c.httpClient.Timeout != 30*time.Second {
+		t.Errorf("expected 30s timeout, got %v", c.httpClient.Timeout)
 	}
 }
 
