@@ -437,10 +437,11 @@ tasks:
   # ---------------------------------------------------------------------------
 
   demo-video:
-    desc: Voice demo for Devpost submission (Cairn + fast nav + iTerm bridge)
+    desc: Voice demo for Devpost submission (Cairn + sheaf + fast nav + iTerm bridge)
     deps: [build]
     env:
       CARTOGRAPHER_MODE: cairn
+      CAIRN_SHEAF: "1"
       NAV_SPEED: fast
       NAVIGATOR_ENDPOINT: ""
       NAVIGATOR_MODEL: ""
