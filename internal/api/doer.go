@@ -353,14 +353,14 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 			gs.UpdateItemCount(lastSummary)
 		}
 
-		// If we started on Tab 0 (disconnected), the goto woke up the extension
-		// which reported its real tab ID. Rebind the Doer to the new session.
+		// Rebind if the active tab changed (tab 0 cold start, or cross-origin
+		// goto opened a new tab via sendCreateTab).
 		d.handler.mu.Lock()
 		activeTab := d.handler.activeVoiceTab
 		d.handler.mu.Unlock()
 
-		if d.tabID == 0 && activeTab != 0 {
-			log.Printf("Doer [tab %d]: tab promoted to %d, rebinding", d.tabID, activeTab)
+		if activeTab != 0 && activeTab != d.tabID {
+			log.Printf("Doer [tab %d]: tab changed to %d, rebinding", d.tabID, activeTab)
 			d.tabID = activeTab
 			d.sess = d.handler.getSession(activeTab)
 			d.wireNavigatorCallbacks(gs)
