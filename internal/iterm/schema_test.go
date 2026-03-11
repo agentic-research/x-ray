@@ -175,6 +175,8 @@ func TestResolveSessionID(t *testing.T) {
 	}{
 		{"windows/w0/tabs/t0/sessions/abc-123/buffer", "abc-123"},
 		{"windows/w0/tabs/t0/sessions/abc-123", "abc-123"},
+		{"agent_sessions/886D7E2A-C19E-4348/buffer", "886D7E2A-C19E-4348"},
+		{"agent_sessions/886D7E2A-C19E-4348", "886D7E2A-C19E-4348"},
 		{"iterm:abc-123", "abc-123"},
 		{"windows", ""},
 		{"", ""},

@@ -475,7 +475,7 @@ func (t *NewWindowTool) Execute(_ context.Context, _ map[string]any) (string, *A
 	if err != nil {
 		return fmt.Sprintf("Error: %v", err), nil
 	}
-	sid := strings.TrimPrefix(res.NodeID, "iterm:")
+	sid := extractSessionID(res.NodeID)
 	return fmt.Sprintf("Opened new terminal window (session %s). Use /iterm/agent_sessions/%s/ to interact with it.", sid, sid), nil
 }
 
@@ -505,6 +505,16 @@ func (t *NewTabTool) Execute(_ context.Context, args map[string]any) (string, *A
 	if err != nil {
 		return fmt.Sprintf("Error: %v", err), nil
 	}
-	sid := strings.TrimPrefix(res.NodeID, "iterm:")
+	sid := extractSessionID(res.NodeID)
 	return fmt.Sprintf("Opened new tab (session %s). Use /iterm/agent_sessions/%s/ to interact with it.", sid, sid), nil
+}
+
+// extractSessionID strips mount and protocol prefixes from a NodeID.
+// "iterm/iterm:886D7E2A-..." → "886D7E2A-..."
+// "iterm:886D7E2A-..." → "886D7E2A-..."
+func extractSessionID(nodeID string) string {
+	if i := strings.LastIndex(nodeID, ":"); i >= 0 {
+		return nodeID[i+1:]
+	}
+	return nodeID
 }

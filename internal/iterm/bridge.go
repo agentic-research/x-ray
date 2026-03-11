@@ -489,7 +489,12 @@ func (b *Bridge) waitForIdle(ctx context.Context, sessionID string, timeout time
 }
 
 // resolveSessionID extracts the session UUID from a graph node path.
-// Expected: windows/{wid}/tabs/{tid}/sessions/{sid} or deeper.
+// Accepted formats:
+//
+//	windows/{wid}/tabs/{tid}/sessions/{sid}[/...]
+//	active_session[/...]
+//	agent_sessions/{sid}[/...]
+//	iterm:{uuid}
 func (b *Bridge) resolveSessionID(path string) string {
 	if strings.HasPrefix(path, "active_session") || strings.HasPrefix(path, "/active_session") {
 		b.mu.RLock()
@@ -498,7 +503,15 @@ func (b *Bridge) resolveSessionID(path string) string {
 	}
 
 	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
-	// Find "sessions" segment and take the next part.
+
+	// agent_sessions/{sid}[/...]
+	for i, p := range parts {
+		if p == "agent_sessions" && i+1 < len(parts) {
+			return parts[i+1]
+		}
+	}
+
+	// windows/{wid}/tabs/{tid}/sessions/{sid}[/...]
 	for i, p := range parts {
 		if p == "sessions" && i+1 < len(parts) {
 			return parts[i+1]

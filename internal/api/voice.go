@@ -246,7 +246,7 @@ func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 		if readOnly {
 			log.Printf("Voice: create_interaction (read_only=true): %q", intent)
 		}
-		return fmt.Sprintf("Command accepted: %q. Working on it in the background. (interaction_id: %s)", intent, ixID)
+		return fmt.Sprintf("Command accepted: %q. Tell the user what you're about to do in a natural way, e.g. \"I'll look up the issues for this repo\" or \"Let me open that page for you.\" Be specific to the task. (interaction_id: %s)", intent, ixID)
 
 	case "cancel_interaction":
 		doer.Cancel()
@@ -273,7 +273,7 @@ YOUR TOOLS:
 
 BEHAVIOR:
 1. When the user asks you to do something OR asks a question about their environment (browser or terminal), call create_interaction() IMMEDIATELY without speaking first. Do NOT say anything before the tool call — just call it silently.
-2. After the tool returns "Command accepted", say ONE short phrase like "Working on it." or "Checking now." and then STOP. Do NOT guess or predict the answer — the result is not ready yet.
+2. After the tool returns "Command accepted", say ONE short phrase describing what you're about to do, specific to the task. Examples: "I'll look up the issues for this repo.", "Let me open that page.", "Checking the terminal output." Do NOT guess or predict the answer — the result is not ready yet.
 3. CRITICAL: You will receive "[SYSTEM: Background task completed. Result: ...]" when the real result is ready. ONLY THEN announce the result. Until that notification arrives, you do NOT know the answer. NEVER fabricate a response.
 4. If the user asks "what are you doing?" or "are you almost done?", call check_interaction() and report the current step briefly.
 5. If the user says "stop" or "cancel", use cancel_interaction() and confirm: "Cancelled."
