@@ -869,6 +869,7 @@ TWO REFERENCE SYSTEMS — do NOT confuse them:
   children file: [N] label  →  click via ZONE PATH: act("/browser/main/feed/_c/N", "click")
   text_index:    [mache-N] label  →  click via BARE ID: act("mache-N", "click")
   ⚠ [16] in children is ordinal 16 — it is NOT mache-16! NEVER convert [N] to mache-N.
+  ⚠ "#9" in user speech means issue/item NUMBER 9, NOT children ordinal [9]. Always grep for the item text first, then find its ordinal in children.
 
 Strategy:
 1. ls("/") to see mount points.
