@@ -832,6 +832,7 @@ When working with /iterm/ terminal sessions:
 IMPORTANT: Before typing commands, check if the active session is "idle" (cat status). If it is "running":
   - First cat the buffer. If it ends with "(END)" or ":", a pager is running — send act(path, "enter", "q") to quit it.
   - Otherwise spawn a NEW tab with iterm.new_tab() — never type into a session that is running a real command.
+AGENT SESSIONS: /iterm/agent_sessions/ contains ONLY sessions the agent spawned. These are safe to type into. Prefer reusing an existing agent session over spawning a new tab. For follow-up commands, check agent_sessions first.
 PAGER AVOIDANCE: When running CLI tools that might page output (gh, git log, man), always prefix with GH_PAGER=cat PAGER=cat. Example: act(path, "type", "GH_PAGER=cat gh issue list\n")
 
 INTERACTION HISTORY:

@@ -12,15 +12,15 @@ func TestProjectToGraph_BasicStructure(t *testing.T) {
 	statuses := map[string]string{"abc-123": "idle"}
 	active := "abc-123"
 
-	store := ProjectToGraph(sessions, buffers, statuses, active)
+	store := ProjectToGraph(sessions, buffers, statuses, active, nil)
 
-	// Root should have "windows" and "active_session".
+	// Root should have "windows", "active_session", and "agent_sessions".
 	roots, err := store.ListChildren("")
 	if err != nil {
 		t.Fatalf("ListChildren root: %v", err)
 	}
-	if len(roots) != 2 {
-		t.Fatalf("expected 2 roots, got %d: %v", len(roots), roots)
+	if len(roots) != 3 {
+		t.Fatalf("expected 3 roots, got %d: %v", len(roots), roots)
 	}
 
 	// active_session directory.
@@ -85,7 +85,7 @@ func TestProjectToGraph_MultipleSessions(t *testing.T) {
 	buffers := map[string]string{}
 	statuses := map[string]string{}
 
-	store := ProjectToGraph(sessions, buffers, statuses, "s1")
+	store := ProjectToGraph(sessions, buffers, statuses, "s1", nil)
 
 	// Should have two window dirs.
 	wDir, err := store.GetNode("windows")
@@ -110,7 +110,7 @@ func TestProjectToGraph_EmptyCWD(t *testing.T) {
 	sessions := []SessionInfo{
 		{SessionID: "s1", WindowID: "w0", TabID: "t0", Title: "zsh"},
 	}
-	store := ProjectToGraph(sessions, nil, nil, "")
+	store := ProjectToGraph(sessions, nil, nil, "", nil)
 
 	node, err := store.GetNode("windows/w0/tabs/t0/sessions/s1/cwd")
 	if err != nil {
@@ -135,6 +135,37 @@ func TestBuildDescription(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("buildDescription(%q,%q,%q) = %q, want %q", tt.title, tt.cwd, tt.status, got, tt.want)
 		}
+	}
+}
+
+func TestProjectToGraph_AgentSessions(t *testing.T) {
+	sessions := []SessionInfo{
+		{SessionID: "user-1", WindowID: "w0", TabID: "t0", Title: "zsh", CWD: "~/code"},
+		{SessionID: "agent-1", WindowID: "w0", TabID: "t1", Title: "zsh", CWD: "~/code"},
+		{SessionID: "agent-2", WindowID: "w1", TabID: "t0", Title: "zsh", CWD: "~/work"},
+	}
+	spawned := map[string]bool{"agent-1": true, "agent-2": true}
+	store := ProjectToGraph(sessions, nil, nil, "user-1", spawned)
+
+	// agent_sessions/ should contain only the two spawned sessions.
+	agentDir, err := store.GetNode("agent_sessions")
+	if err != nil {
+		t.Fatalf("GetNode agent_sessions: %v", err)
+	}
+	if len(agentDir.Children) != 2 {
+		t.Errorf("expected 2 agent sessions, got %d: %v", len(agentDir.Children), agentDir.Children)
+	}
+
+	// Verify agent session has all leaf files.
+	for _, leaf := range []string{"description", "mache_id", "buffer", "cwd", "status"} {
+		if _, err := store.GetNode("agent_sessions/agent-1/" + leaf); err != nil {
+			t.Errorf("agent_sessions/agent-1/%s missing: %v", leaf, err)
+		}
+	}
+
+	// User session should NOT appear in agent_sessions.
+	if _, err := store.GetNode("agent_sessions/user-1"); err == nil {
+		t.Error("user-1 should not be in agent_sessions")
 	}
 }
 

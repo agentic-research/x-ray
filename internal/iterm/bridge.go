@@ -31,6 +31,7 @@ type Bridge struct {
 	sessions    map[string]*trackedSession // sessionID → state
 	active      string                     // focused session ID
 	selfSession string                     // the agent's own terminal session ID (blind spot)
+	spawned     map[string]bool            // sessions created by the agent (children)
 	bufLines    int32
 	prompt      *regexp.Regexp
 
@@ -66,6 +67,7 @@ func NewBridge(opts ...BridgeOption) *Bridge {
 	b := &Bridge{
 		store:       graph.NewMemoryStore(),
 		sessions:    make(map[string]*trackedSession),
+		spawned:     make(map[string]bool),
 		bufLines:    DefaultBufferLines,
 		prompt:      DefaultPromptPattern,
 		selfSession: normalizeSessionID(os.Getenv("ITERM_SESSION_ID")),
@@ -288,15 +290,19 @@ func (b *Bridge) rebuildGraph() {
 	sessions := make([]SessionInfo, 0, len(b.sessions))
 	buffers := make(map[string]string, len(b.sessions))
 	statuses := make(map[string]string, len(b.sessions))
+	spawned := make(map[string]bool, len(b.spawned))
 	for _, ts := range b.sessions {
 		sessions = append(sessions, ts.info)
 		buffers[ts.info.SessionID] = ts.buffer
 		statuses[ts.info.SessionID] = ts.status
 	}
+	for sid := range b.spawned {
+		spawned[sid] = true
+	}
 	active := b.active
 	b.mu.RUnlock()
 
-	newStore := ProjectToGraph(sessions, buffers, statuses, active)
+	newStore := ProjectToGraph(sessions, buffers, statuses, active, spawned)
 
 	b.mu.Lock()
 	b.store = newStore
@@ -353,6 +359,7 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		// and GetFocusedSession might return the selfSession (blind spot) → active="".
 		b.mu.Lock()
 		b.active = newSession
+		b.spawned[newSession] = true
 		b.mu.Unlock()
 
 		// Auto-cd to agentd working directory. Poll for shell ready.
@@ -380,6 +387,10 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		// iTerm2 API is async; wait briefly before reconciling so the new session is visible.
 		time.Sleep(500 * time.Millisecond)
 		_ = b.reconcileSessions(ctx)
+		// Track as agent-spawned.
+		b.mu.Lock()
+		b.spawned[newSession] = true
+		b.mu.Unlock()
 		// Force the new session as active (same blind spot fix as new_window).
 		b.mu.Lock()
 		b.active = newSession

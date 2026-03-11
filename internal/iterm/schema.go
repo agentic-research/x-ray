@@ -23,7 +23,10 @@ import (
 //	            cwd            current working directory
 //	            status         "idle" | "running"
 //	active_session             session ID of the focused session
-func ProjectToGraph(sessions []SessionInfo, buffers, statuses map[string]string, activeSession string) *graph.MemoryStore {
+//	agent_sessions/            sessions spawned by the agent (safe to type into)
+//	  {session_id}/
+//	    description, mache_id, buffer, cwd, status
+func ProjectToGraph(sessions []SessionInfo, buffers, statuses map[string]string, activeSession string, spawned map[string]bool) *graph.MemoryStore {
 	store := graph.NewMemoryStore()
 
 	// Root directories.
@@ -42,6 +45,14 @@ func ProjectToGraph(sessions []SessionInfo, buffers, statuses map[string]string,
 		Children: []string{},
 	}
 	store.AddRoot(activeDir)
+
+	// agent_sessions/ contains only sessions spawned by the agent (safe to type into).
+	agentDir := &graph.Node{
+		ID:       "agent_sessions",
+		Mode:     fs.ModeDir,
+		Children: []string{},
+	}
+	store.AddRoot(agentDir)
 
 	// Track which window/tab dirs we've already created.
 	createdDirs := make(map[string]bool)
@@ -207,6 +218,32 @@ func ProjectToGraph(sessions []SessionInfo, buffers, statuses map[string]string,
 			store.AddNode(&graph.Node{ID: "active_session/buffer", Data: []byte(buf)})
 			store.AddNode(&graph.Node{ID: "active_session/cwd", Data: []byte(cwd)})
 			store.AddNode(&graph.Node{ID: "active_session/status", Data: []byte(status)})
+		}
+
+		// If this is an agent-spawned session, mirror into /agent_sessions/{sid}/
+		if spawned[sid] {
+			aDirID := "agent_sessions/" + sid
+			aDir := &graph.Node{
+				ID:   aDirID,
+				Mode: fs.ModeDir,
+				Children: []string{
+					aDirID + "/description",
+					aDirID + "/mache_id",
+					aDirID + "/buffer",
+					aDirID + "/cwd",
+					aDirID + "/status",
+				},
+				Properties: map[string][]byte{
+					"mache_id": []byte("iterm:" + sid),
+				},
+			}
+			store.AddNode(aDir)
+			agentDir.Children = appendUnique(agentDir.Children, aDirID)
+			store.AddNode(&graph.Node{ID: aDirID + "/description", Data: []byte(desc)})
+			store.AddNode(&graph.Node{ID: aDirID + "/mache_id", Data: []byte("iterm:" + sid)})
+			store.AddNode(&graph.Node{ID: aDirID + "/buffer", Data: []byte(buf)})
+			store.AddNode(&graph.Node{ID: aDirID + "/cwd", Data: []byte(cwd)})
+			store.AddNode(&graph.Node{ID: aDirID + "/status", Data: []byte(status)})
 		}
 	}
 
