@@ -143,6 +143,16 @@ func (t *ActTool) Execute(_ context.Context, args map[string]any) (string, *Acti
 		return fmt.Sprintf("Error: %v", err), nil
 	}
 
+	// Non-browser graphs (interactions, iterm) that returned ErrActNotSupported
+	// should NOT fall through to browser dispatch — give the LLM a clear hint.
+	if strings.HasPrefix(cleanPath(p), "interactions/") {
+		return "Error: /interactions/active/ only supports act(path, \"type\", text) on scratch and status. " +
+			"Use cat() to read other fields (intent, task, id, steps).", nil
+	}
+	if strings.Contains(p, "iterm") {
+		return fmt.Sprintf("Error: %q does not support %q action. Terminal sessions support \"type\" only.", p, action), nil
+	}
+
 	// Graph doesn't support Act() (browser MemoryStore) — fall back to
 	// ActionResult so the Doer dispatches via the Chrome extension.
 	macheID, err := t.fs.ResolveMacheID(p)
