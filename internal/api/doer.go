@@ -475,8 +475,14 @@ func (d *Doer) dispatchAction(ctx context.Context, action *navigator.ActionResul
 			action.Path = "http" + action.Path[5:]
 			log.Printf("Doer [tab %d]: downgraded https→http for localhost: %s", d.tabID, action.Path)
 		}
-		if !sameOrigin(d.sess.GetCurrentURL(), action.Path) {
-			// Cross-origin: open in a new tab instead of blocking.
+		currentURL := d.sess.GetCurrentURL()
+		if currentURL == "" && d.tabID != 0 {
+			// No URL set (CDP attach failed or no snapshot received).
+			// Treat as cross-origin so we open a fresh tab.
+			log.Printf("Doer [tab %d]: no currentURL set, treating goto as cross-origin", d.tabID)
+		}
+		if (currentURL == "" && d.tabID != 0) || !sameOrigin(currentURL, action.Path) {
+			// Cross-origin (or broken tab): open in a new tab instead of blocking.
 			// The domain jail only hard-blocks in Planner/eval mode;
 			// voice-mode Doer opens a new tab so the user can navigate freely.
 			log.Printf("Doer [tab %d]: cross-origin goto %s (from %s) — opening new tab", d.tabID, action.Path, d.sess.GetCurrentURL())
