@@ -471,11 +471,12 @@ func (t *NewWindowTool) Declaration() *genai.FunctionDeclaration {
 }
 
 func (t *NewWindowTool) Execute(_ context.Context, _ map[string]any) (string, *ActionResult) {
-	_, err := t.fs.Act("/iterm/windows", "new_window", "")
+	res, err := t.fs.Act("/iterm/windows", "new_window", "")
 	if err != nil {
 		return fmt.Sprintf("Error: %v", err), nil
 	}
-	return "Opened a new terminal window. It is now the active session — use /iterm/active_session to interact with it.", nil
+	sid := strings.TrimPrefix(res.NodeID, "iterm:")
+	return fmt.Sprintf("Opened new terminal window (session %s). Use /iterm/agent_sessions/%s/ to interact with it.", sid, sid), nil
 }
 
 // --- iterm.new_tab ---
@@ -500,9 +501,10 @@ func (t *NewTabTool) Execute(_ context.Context, args map[string]any) (string, *A
 	if p == "" {
 		p = "/iterm/windows"
 	}
-	_, err := t.fs.Act(p, "new_tab", "")
+	res, err := t.fs.Act(p, "new_tab", "")
 	if err != nil {
 		return fmt.Sprintf("Error: %v", err), nil
 	}
-	return fmt.Sprintf("Opened a new tab in %s. It is now the active session — use /iterm/active_session to interact with it.", p), nil
+	sid := strings.TrimPrefix(res.NodeID, "iterm:")
+	return fmt.Sprintf("Opened new tab (session %s). Use /iterm/agent_sessions/%s/ to interact with it.", sid, sid), nil
 }
