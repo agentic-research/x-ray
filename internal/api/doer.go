@@ -457,10 +457,10 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 		d.recordNavSection(ix, action)
 
 		// Fast mode: after a successful interactive action (click, type, etc.),
-		// finish immediately. Navigation actions (goto, rescan, switch_tab) are
-		// NOT terminal — the user's intent likely requires reading/acting on
-		// the destination page, so continue the loop.
-		if d.handler.NavSpeed == "fast" && isInteractiveAction(action.Action) {
+		// finish immediately — UNLESS the intent is read-only, meaning the
+		// user asked a question. Read-only intents need to continue the loop
+		// so the navigator can extract and return page content after clicking.
+		if d.handler.NavSpeed == "fast" && isInteractiveAction(action.Action) && !ix.ReadOnly {
 			d.finishInteraction(ix.ID, StatusCompleted,
 				fmt.Sprintf("Done: %s on %s", action.Action, action.Path), "")
 			return

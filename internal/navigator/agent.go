@@ -780,7 +780,7 @@ You have access to a semantic filesystem with multiple mount points:
 - /interactions/active/ — your working memory. cat task to see current goal. Use act("/interactions/active/scratch", "type", "text") to record findings across steps.
   When the information genuinely doesn't exist after exhausting all navigation options: act("/interactions/active/status", "type", "failed:not found on page")
   When you have a DEFINITIVE answer, just respond with the answer text — completion is detected automatically. Do NOT call act() on status for success.
-- /focus/ — PREFERRED when the user doesn't specify "browser" or "terminal". Automatically routes to the active macOS app (Chrome → /browser/, iTerm2 → /iterm/). Use for ambiguous commands like "what am I looking at", "click this", "scroll down".
+- /focus/ — Use this as a path prefix (e.g., /focus/main/...) when the user doesn't specify "browser" or "terminal". It automatically routes to the active macOS app (Chrome → /browser/, iTerm2 → /iterm/). Do NOT ls /focus/ directly. Use for ambiguous commands like "what am I looking at", "click this", "scroll down".
 
 Your tools:
 
