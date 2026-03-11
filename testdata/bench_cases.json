@@ -18,6 +18,36 @@
     "expect_text": "Loops"
   },
   {
+    "site": "hackernews",
+    "intent": "click the new link in the navigation",
+    "expect_mache_id": "mache-2",
+    "expect_text": "new"
+  },
+  {
+    "site": "hackernews",
+    "intent": "click the past link",
+    "expect_mache_id": "mache-3",
+    "expect_text": "past"
+  },
+  {
+    "site": "hackernews",
+    "intent": "click the submit link",
+    "expect_mache_id": "mache-8",
+    "expect_text": "submit"
+  },
+  {
+    "site": "hackernews",
+    "intent": "click the 214 comments link",
+    "expect_mache_id": "mache-37",
+    "expect_text": "214 comments"
+  },
+  {
+    "site": "hackernews",
+    "intent": "click the story about database transactions",
+    "expect_mache_id": "mache-95",
+    "expect_text": "What is a database transaction?"
+  },
+  {
     "site": "lobsters",
     "intent": "click the first story",
     "expect_mache_id": "mache-8",
@@ -28,6 +58,42 @@
     "intent": "click the second story",
     "expect_mache_id": "mache-16",
     "expect_text": "You are not left behind"
+  },
+  {
+    "site": "lobsters",
+    "intent": "click the Active link",
+    "expect_mache_id": "mache-1",
+    "expect_text": "Active"
+  },
+  {
+    "site": "lobsters",
+    "intent": "click the Recent link",
+    "expect_mache_id": "mache-2",
+    "expect_text": "Recent"
+  },
+  {
+    "site": "lobsters",
+    "intent": "click the Search link",
+    "expect_mache_id": "mache-4",
+    "expect_text": "Search"
+  },
+  {
+    "site": "lobsters",
+    "intent": "click the meta tag",
+    "expect_mache_id": "mache-10",
+    "expect_text": "meta"
+  },
+  {
+    "site": "lobsters",
+    "intent": "click the story about lobste.rs migrating to SQLite",
+    "expect_mache_id": "mache-84",
+    "expect_text": "lobste.rs migrates from MariaDB to SQLite"
+  },
+  {
+    "site": "lobsters",
+    "intent": "click the story about Donald Knuth",
+    "expect_mache_id": "mache-62",
+    "expect_text": "The Tears of Donald Knuth"
   },
   {
     "site": "github",
@@ -42,6 +108,42 @@
     "expect_text": "Actions"
   },
   {
+    "site": "github",
+    "intent": "click Sign in",
+    "expect_mache_id": "mache-4",
+    "expect_text": "Sign in"
+  },
+  {
+    "site": "github",
+    "intent": "click GitHub Spark",
+    "expect_mache_id": "mache-8",
+    "expect_text": "GitHub Spark"
+  },
+  {
+    "site": "github",
+    "intent": "click the Issues link",
+    "expect_mache_id": "mache-13",
+    "expect_text": "Issues"
+  },
+  {
+    "site": "github",
+    "intent": "click Why GitHub",
+    "expect_mache_id": "mache-18",
+    "expect_text": "Why GitHub"
+  },
+  {
+    "site": "github",
+    "intent": "click Documentation",
+    "expect_mache_id": "mache-19",
+    "expect_text": "Documentation"
+  },
+  {
+    "site": "github",
+    "intent": "click Enterprises",
+    "expect_mache_id": "mache-25",
+    "expect_text": "Enterprises"
+  },
+  {
     "site": "ecommerce",
     "intent": "click Daily Deals",
     "expect_mache_id": "mache-3",
@@ -54,6 +156,42 @@
     "expect_text": "Sign in"
   },
   {
+    "site": "ecommerce",
+    "intent": "click Brand Outlet",
+    "expect_mache_id": "mache-4",
+    "expect_text": "Brand Outlet"
+  },
+  {
+    "site": "ecommerce",
+    "intent": "click Sell",
+    "expect_mache_id": "mache-7",
+    "expect_text": "Sell"
+  },
+  {
+    "site": "ecommerce",
+    "intent": "click My eBay",
+    "expect_mache_id": "mache-10",
+    "expect_text": "My eBay"
+  },
+  {
+    "site": "ecommerce",
+    "intent": "click the Motors category",
+    "expect_mache_id": "mache-34",
+    "expect_text": "Motors"
+  },
+  {
+    "site": "ecommerce",
+    "intent": "click the Advanced search link",
+    "expect_mache_id": "mache-88",
+    "expect_text": "Advanced"
+  },
+  {
+    "site": "ecommerce",
+    "intent": "click Help & Contact",
+    "expect_mache_id": "mache-6",
+    "expect_text": "Help & Contact"
+  },
+  {
     "site": "wikipedia",
     "intent": "click the search box",
     "expect_mache_id": "mache-1",
@@ -64,5 +202,71 @@
     "intent": "click the Donkey Kong link",
     "expect_mache_id": "mache-88",
     "expect_text": "Donkey Kong"
+  },
+  {
+    "site": "wikipedia",
+    "intent": "click Main page",
+    "expect_mache_id": "mache-4",
+    "expect_text": "Main page"
+  },
+  {
+    "site": "wikipedia",
+    "intent": "click Random article",
+    "expect_mache_id": "mache-7",
+    "expect_text": "Random article"
+  },
+  {
+    "site": "wikipedia",
+    "intent": "click About Wikipedia",
+    "expect_mache_id": "mache-8",
+    "expect_text": "About Wikipedia"
+  },
+  {
+    "site": "wikipedia",
+    "intent": "click Contents",
+    "expect_mache_id": "mache-5",
+    "expect_text": "Contents"
+  },
+  {
+    "site": "wikipedia",
+    "intent": "click Current events",
+    "expect_mache_id": "mache-6",
+    "expect_text": "Current events"
+  },
+  {
+    "site": "wikipedia",
+    "intent": "click the Shigeru Miyamoto link",
+    "expect_mache_id": "mache-89",
+    "expect_text": "Shigeru Miyamoto"
+  },
+  {
+    "site": "reddit",
+    "intent": "click the Best sort option",
+    "expect_mache_id": "mache-9",
+    "expect_text": "Best"
+  },
+  {
+    "site": "reddit",
+    "intent": "click Hot",
+    "expect_mache_id": "mache-10",
+    "expect_text": "Hot"
+  },
+  {
+    "site": "reddit",
+    "intent": "click Advertise on Reddit",
+    "expect_mache_id": "mache-4",
+    "expect_text": "Advertise on Reddit"
+  },
+  {
+    "site": "reddit",
+    "intent": "click the r/space subreddit link",
+    "expect_mache_id": "mache-32",
+    "expect_text": "r/space"
+  },
+  {
+    "site": "reddit",
+    "intent": "click the post about James Webb Telescope",
+    "expect_mache_id": "mache-31",
+    "expect_text": "James Webb Telescope"
   }
 ]
