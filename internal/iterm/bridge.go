@@ -332,11 +332,11 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		b.active = newSession
 		b.mu.Unlock()
 
-		// Auto-cd to agentd working directory.
+		// Auto-cd to agentd working directory. Poll for shell ready.
+		b.waitForIdle(ctx, newSession, 5*time.Second)
 		if wd, err := os.Getwd(); err == nil && wd != "" {
-			time.Sleep(1 * time.Second)
 			_ = b.client.SendText(ctx, newSession, "cd "+wd+"\n")
-			time.Sleep(300 * time.Millisecond)
+			b.waitForIdle(ctx, newSession, 3*time.Second)
 		}
 
 		b.rebuildGraph()
@@ -362,13 +362,11 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		b.active = newSession
 		b.mu.Unlock()
 
-		// Auto-cd new tabs to the agentd working directory so the navigator
-		// doesn't start in ~ when it needs to run repo-local commands (gh, git).
+		// Auto-cd to agentd working directory. Poll for shell ready.
+		b.waitForIdle(ctx, newSession, 5*time.Second)
 		if wd, err := os.Getwd(); err == nil && wd != "" {
-			// Wait for shell to be ready, then send cd.
-			time.Sleep(1 * time.Second)
 			_ = b.client.SendText(ctx, newSession, "cd "+wd+"\n")
-			time.Sleep(300 * time.Millisecond)
+			b.waitForIdle(ctx, newSession, 3*time.Second)
 		}
 
 		b.rebuildGraph()
@@ -392,6 +390,11 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		if err := b.client.SendText(ctx, sessionID, payload); err != nil {
 			return nil, fmt.Errorf("type failed: %w", err)
 		}
+		// If the payload ends with \n, a command was submitted — wait for it
+		// to finish so the navigator sees the result in the buffer.
+		if strings.HasSuffix(payload, "\n") {
+			b.waitForIdle(ctx, sessionID, 5*time.Second)
+		}
 	case "enter":
 		text := specialKeyText(payload)
 		if err := b.client.SendText(ctx, sessionID, text); err != nil {
@@ -405,12 +408,37 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 		return nil, fmt.Errorf("unsupported action %q for terminal session", action)
 	}
 
+	// Refresh buffer after any action so subsequent cat() sees fresh data.
+	b.refreshBuffer(ctx, sessionID)
+	b.rebuildGraph()
+
 	return &graph.ActionResult{
 		NodeID:  "iterm:" + sessionID,
 		Action:  action,
 		Path:    id,
 		Payload: payload,
 	}, nil
+}
+
+// waitForIdle polls the session buffer until the prompt appears (idle),
+// or the timeout expires. This ensures that after typing a command,
+// the navigator sees the output on the next cat(buffer).
+func (b *Bridge) waitForIdle(ctx context.Context, sessionID string, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		time.Sleep(300 * time.Millisecond)
+		b.refreshBuffer(ctx, sessionID)
+		b.mu.RLock()
+		ts, ok := b.sessions[sessionID]
+		status := ""
+		if ok {
+			status = ts.status
+		}
+		b.mu.RUnlock()
+		if status == "idle" {
+			return
+		}
+	}
 }
 
 // resolveSessionID extracts the session UUID from a graph node path.
