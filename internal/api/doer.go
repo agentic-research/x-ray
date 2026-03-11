@@ -230,12 +230,16 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 	// Skip for tab 0 (system session) — there's no browser to wait for.
 	// The Navigator can still use /iterm/ and /interactions/ paths without browser schema.
 	if d.tabID != 0 && !d.sess.GetEngine().HasSchema() {
+		initialSchemaWait := 15 * time.Second
+		if d.handler.NavSpeed == "fast" {
+			initialSchemaWait = 3 * time.Second
+		}
 		d.updateStep("waiting for page to load")
-		log.Printf("Doer [tab %d]: waiting for schema before starting", d.tabID)
+		log.Printf("Doer [tab %d]: waiting for schema before starting (timeout %s)", d.tabID, initialSchemaWait)
 		select {
 		case <-d.sess.GetSchemaReady():
 			log.Printf("Doer [tab %d]: schema ready, proceeding", d.tabID)
-		case <-time.After(15 * time.Second):
+		case <-time.After(initialSchemaWait):
 			log.Printf("Doer [tab %d]: schema wait timed out, proceeding anyway", d.tabID)
 		case <-ixCtx.Done():
 			d.finishInteraction(ix.ID, StatusCancelled, "Cancelled while waiting for page.", "cancelled")
