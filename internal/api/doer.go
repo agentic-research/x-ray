@@ -467,8 +467,13 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 		}
 
 		if d.handler.NavSpeed == "fast" {
-			// Fast mode: minimal continuation — no verbose guardrails/pagination.
-			enrichedIntent = fmt.Sprintf("Page loaded. Continue: %s", ix.Intent)
+			// Fast mode: minimal continuation — include current URL so the
+			// navigator knows it's already on the target page. Without this,
+			// lite models re-issue goto because they see "go to X" in the
+			// intent and interpret it literally.
+			curURL := d.sess.GetCurrentURL()
+			enrichedIntent = fmt.Sprintf("You are on %s. Done: %s %s. Continue the task: %s",
+				curURL, action.Action, action.Path, ix.Intent)
 		} else {
 			enrichedIntent = buildContinuation(ix.Intent, ix.Context, step, action, lastSummary, gs)
 		}

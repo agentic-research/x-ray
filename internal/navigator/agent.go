@@ -459,7 +459,7 @@ func (a *Agent) buildTreeDump() string {
 	return strings.TrimRight(sb.String(), "\n")
 }
 
-const maxTreeDepth = 3
+const maxTreeDepth = 5
 
 func (a *Agent) walkTree(sb *strings.Builder, fullPath, name, indent string, depth int) {
 	isDir := strings.HasSuffix(name, "/")
