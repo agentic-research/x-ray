@@ -104,10 +104,15 @@ func main() {
 	}
 
 	// Navigator model: default to Gemini REST, override with navigator.mode or endpoint.
-	// NAVIGATOR_MODEL overrides the model for all backends (REST, Live, Ollama).
+	// NAVIGATOR_MODEL env var overrides the model for all backends.
+	// navigator.model from config.yaml only applies when a local endpoint is set,
+	// otherwise it would pollute the Gemini cloud path with a local model name.
 	var navGen navigator.ContentGenerator = &navigator.GeminiGenerator{Client: client}
 	navModel := cfg.Gemini.Model
-	if cfg.Navigator.Model != "" {
+	explicitModel := os.Getenv("NAVIGATOR_MODEL")
+	if explicitModel != "" {
+		navModel = explicitModel
+	} else if cfg.Navigator.Endpoint != "" && cfg.Navigator.Model != "" {
 		navModel = cfg.Navigator.Model
 	}
 
