@@ -1572,6 +1572,12 @@ func inferDescription(z zone, elements []element, lt layoutThresholds) string {
 	case cat == "footer":
 		return fmt.Sprintf("Footer section with %d elements", n)
 	case subcat == "feed":
+		if cat == "header" {
+			return fmt.Sprintf("Top content feed with %d items", len(z.listIdxs))
+		}
+		if cat == "footer" {
+			return fmt.Sprintf("Footer feed with %d items", len(z.listIdxs))
+		}
 		return fmt.Sprintf("Content feed with %d items", len(z.listIdxs))
 	case subcat == "search":
 		return fmt.Sprintf("Search/input area with %d elements", n)
