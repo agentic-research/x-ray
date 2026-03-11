@@ -473,7 +473,7 @@ func (a *Agent) buildTreeDump() string {
 	return strings.TrimRight(sb.String(), "\n")
 }
 
-const maxTreeDepth = 5
+const maxTreeDepth = 7
 
 func (a *Agent) walkTree(sb *strings.Builder, fullPath, name, indent string, depth int) {
 	isDir := strings.HasSuffix(name, "/")
@@ -860,7 +860,7 @@ Before calling act(), ALWAYS classify the user's intent:
 
 CRITICAL CONSTRAINTS:
 - Do NOT hallucinate tools or paths. Only use paths confirmed via ls().
-- Never guess a path. Always ls() a directory before trying to cat() or act().
+- Never guess a path. Use ls() only for discovery or verification of unknown paths; for known browser zones or [mache-N] IDs, direct cat/act is permitted without prior ls().
 - You have exactly twelve tools: ls, cat, stat, act, grep, browser.scroll, browser.goto, browser.rescan, browser.list_tabs, browser.switch_tab, iterm.new_window, iterm.new_tab.
 - If you cannot find an element, use browser.rescan() before giving up.
 - When told to "search" or "find" text, ALWAYS use the grep tool to scan DOM content. Do NOT type into the website's search bar unless explicitly told to "type into the search bar".
@@ -876,11 +876,11 @@ Strategy:
 2. If the user specifies "browser", "web", or "Chrome" → use /browser/ directly.
 3. If the user specifies "terminal" or "iTerm" → use /iterm/ directly.
 4. Otherwise → use /focus/ (auto-detects the active app).
-5. For INFORMATION RETRIEVAL: grep a single distinctive keyword. If no match, try a shorter/broader keyword before scrolling or rescanning.
-6. For browser ACTIONS: cat "children" of the target zone, find the item by its ordinal [N], then act on the ZONE PATH with _c/N (e.g., act("/browser/main/feed/_c/3", "click")). If grep fails to find a tab/button, ALWAYS cat children next — do NOT rescan immediately.
+5. For INFORMATION RETRIEVAL: Use grep with a single distinctive keyword or combined synonyms (e.g., grep("review|rating")). If no match, move to browser.scroll() or cat page_text, do NOT re-grep with different terms.
+6. For browser ACTIONS: If the target is not already identified by a [mache-N] ID or a specific zone path and ordinal, perform ONE grep call for text matching the objective. If grep yields a direct interactive element [mache-N] that clearly matches the objective, act("mache-N", "click") immediately. Otherwise (if grep yields only text matches, or no matches, or ambiguous [mache-N] matches), *always* use grep results to inform which browser zone's "children" file to cat. If grep yielded no zone-specific hints, prioritize /browser/main/, then /browser/header/, then /browser/footer/ to identify the specific interactive element. If grep does not yield any matches, cat "children" of the target zone. For browser zones like /browser/main/ or /browser/header/, you can always directly cat their 'children' file without a preceding ls() call. From children, identify all elements matching the objective. Among these, CRITICAL: ALWAYS select the most specific interactive child element (e.g., a link, button, or input) over its parent container (e.g., a div or span). Once found, act on this specific child element immediately by its ordinal [N] using its ZONE PATH with _c/N (e.g., act("/browser/main/feed/_c/3", "click")). Do NOT rescan if grep fails; always check children next.
 7. For terminal: cat "buffer" → act with "type" to send commands.
 
-Be decisive. One grep call should find what you need. If grep fails for an action target, cat children to find it — do NOT rescan or give up.
+Be decisive. Once an actionable element (mache-N or _c/N) is identified, act immediately. Prioritize interactive elements like buttons, links, or inputs; never click a parent container if a more specific interactive child exists. One grep call should find what you need. If grep fails for an action target, cat children to find it — do NOT rescan or give up.
 
 SEMI-FORMAL REASONING — think in three steps before every action:
 1. PREMISES: State what you know. "I see /browser/main/content with 5 children. grep('review') found 3 matches in text_index."
@@ -892,7 +892,7 @@ GREP STRATEGY:
 - Use SHORT keywords (1-2 words), never full phrases. "ear cups being small" → grep("small|ear cups").
 - Use regex OR: grep("price|cost"), grep("review|rating"), grep("small|tiny|little").
 - Think about SYNONYMS: if the task says "small", also try "tiny|little|compact".
-- grep results from text_index show [mache-N] tags — click via bare ID: act("mache-42", "click").
+- grep results from text_index show [mache-N] tags. If multiple [mache-N] matches, CRITICAL: prioritize the most specific interactive element (e.g., button, link, input) over any parent container. Once identified, act("mache-N", "click") immediately.
 - grep also searches page_text (full visible text) for content not in interactive elements.
 - When grep returns long text blocks, read them carefully for ALL relevant names/items, not just the search term.
 

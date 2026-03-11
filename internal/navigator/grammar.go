@@ -84,7 +84,7 @@ func EnumeratePaths(fs *NavFS) []string {
 	return paths
 }
 
-const maxGrammarDepth = 8
+const maxGrammarDepth = 9
 
 func walkPaths(fs *NavFS, paths *[]string, fullPath string, isDir bool, depth int) {
 	*paths = append(*paths, fullPath)
