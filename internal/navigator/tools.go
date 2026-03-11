@@ -123,6 +123,20 @@ func (t *ActTool) Execute(_ context.Context, args map[string]any) (string, *Acti
 		if payload != "" {
 			desc = fmt.Sprintf("Typed %q into %s", payload, p)
 		}
+		// For terminal type actions, include the buffer so the navigator
+		// sees stdout/stderr without a separate cat() call.
+		if action == "type" && strings.Contains(p, "iterm") {
+			bufPath := p
+			// Trim to session dir and append /buffer.
+			if idx := strings.Index(bufPath, "/buffer"); idx >= 0 {
+				bufPath = bufPath[:idx] + "/buffer"
+			} else {
+				bufPath = strings.TrimSuffix(bufPath, "/") + "/buffer"
+			}
+			if buf, err := t.fs.ReadFile(bufPath); err == nil && buf != "" {
+				desc += "\n\nTerminal output:\n" + buf
+			}
+		}
 		return desc, nil
 	}
 	if !errors.Is(err, graph.ErrActNotSupported) {
