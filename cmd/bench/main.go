@@ -315,10 +315,10 @@ func buildCartographer(defaultModel string) (schemaGenerator, bool) {
 			scale = s
 		}
 		cairnCart := &cartographer.CairnCartographer{Gear: gear, Scale: scale}
-		if os.Getenv("CAIRN_SHEAF") == "1" {
+		if v := os.Getenv("CAIRN_SHEAF"); v != "" && v != "0" && v != "false" {
 			cairnCart.SheafFolding = true
 		}
-		if os.Getenv("CAIRN_CURVATURE") == "1" {
+		if v := os.Getenv("CAIRN_CURVATURE"); v != "" && v != "0" && v != "false" {
 			cairnCart.CurvatureDetection = true
 		}
 		log.Printf("Cartographer: cairn (gear=%d, scale=%.1f, sheaf=%v, curvature=%v)", gear, scale, cairnCart.SheafFolding, cairnCart.CurvatureDetection)

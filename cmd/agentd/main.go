@@ -85,10 +85,10 @@ func main() {
 		log.Println("Cartographer: TropicalCartographer (algebraic)")
 	case "cairn":
 		cairnCart := &cartographer.CairnCartographer{Gear: cfg.Cartographer.Gear, Scale: cfg.Cartographer.Scale}
-		if os.Getenv("CAIRN_SHEAF") == "1" {
+		if v := os.Getenv("CAIRN_SHEAF"); v != "" && v != "0" && v != "false" {
 			cairnCart.SheafFolding = true
 		}
-		if os.Getenv("CAIRN_CURVATURE") == "1" {
+		if v := os.Getenv("CAIRN_CURVATURE"); v != "" && v != "0" && v != "false" {
 			cairnCart.CurvatureDetection = true
 		}
 		cart = cairnCart
