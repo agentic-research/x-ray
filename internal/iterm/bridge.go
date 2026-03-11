@@ -421,6 +421,19 @@ func (b *Bridge) Act(id, action, payload string) (*graph.ActionResult, error) {
 
 	switch action {
 	case "type":
+		// Guardrail: refuse to type shell commands into a session that's already running.
+		// This prevents typing into Claude Code or other interactive programs.
+		if strings.HasSuffix(payload, "\n") {
+			b.mu.RLock()
+			ts, ok := b.sessions[sessionID]
+			isRunning := ok && ts.status == "running"
+			b.mu.RUnlock()
+			if isRunning {
+				return nil, fmt.Errorf(
+					"session is busy (status=running) — do NOT type commands into it. " +
+						"Use an agent_sessions/ tab or spawn a new tab with new_tab")
+			}
+		}
 		if err := b.client.SendText(ctx, sessionID, payload); err != nil {
 			return nil, fmt.Errorf("type failed: %w", err)
 		}

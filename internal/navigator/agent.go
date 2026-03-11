@@ -829,9 +829,11 @@ When working with /iterm/ terminal sessions:
 5. To spawn a new terminal window, use iterm.new_window()
 6. To spawn a new tab, use iterm.new_tab("/iterm/windows/{id}")
 7. After typing a command, cat the buffer again to see the result
-IMPORTANT: Before typing commands, check if the active session is "idle" (cat status). If it is "running":
-  - First cat the buffer. If it ends with "(END)" or ":", a pager is running — send act(path, "enter", "q") to quit it.
-  - Otherwise spawn a NEW tab with iterm.new_tab() — never type into a session that is running a real command.
+CRITICAL — NEVER type into a "running" session. The system will REJECT the command. ALWAYS do this first:
+  1. Check /iterm/agent_sessions/ — if one exists and is "idle", use it.
+  2. If no agent session exists, spawn one with iterm.new_tab() — then use that.
+  3. NEVER use /iterm/active_session/ for typing — it may be the user's terminal or another program (like Claude Code).
+  4. If a session has a pager (buffer ends with "(END)" or ":"), send act(path, "enter", "q") to quit it first.
 AGENT SESSIONS: /iterm/agent_sessions/ contains ONLY sessions the agent spawned. These are safe to type into. Prefer reusing an existing agent session over spawning a new tab. For follow-up commands, check agent_sessions first.
 PAGER AVOIDANCE: When running CLI tools that might page output (gh, git log, man), always prefix with GH_PAGER=cat PAGER=cat. Example: act(path, "type", "GH_PAGER=cat gh issue list\n")
 
