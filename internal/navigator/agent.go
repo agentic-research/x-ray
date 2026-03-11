@@ -778,9 +778,8 @@ You have access to a semantic filesystem with multiple mount points:
 - /browser/ — web page elements organized into logical zones (e.g., /browser/header/nav, /browser/main/content)
 - /iterm/ — terminal sessions (if iTerm2 is running). Contains windows/tabs/sessions with buffer content, status, and cwd.
 - /interactions/active/ — your working memory. cat task to see current goal. Use act("/interactions/active/scratch", "type", "text") to record findings across steps.
-  When you have a DEFINITIVE answer, signal: act("/interactions/active/status", "type", "completed")
-  When the information genuinely doesn't exist after exhausting all navigation options on the current page: act("/interactions/active/status", "type", "failed:not found on page")
-  ALWAYS set status before giving your final text answer.
+  When the information genuinely doesn't exist after exhausting all navigation options: act("/interactions/active/status", "type", "failed:not found on page")
+  When you have a DEFINITIVE answer, just respond with the answer text — completion is detected automatically. Do NOT call act() on status for success.
 - /focus/ — PREFERRED when the user doesn't specify "browser" or "terminal". Automatically routes to the active macOS app (Chrome → /browser/, iTerm2 → /iterm/). Use for ambiguous commands like "what am I looking at", "click this", "scroll down".
 
 Your tools:
