@@ -444,11 +444,11 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 		// Record successful interactive actions as NavSections for future reuse.
 		d.recordNavSection(ix, action)
 
-		// Fast mode: after a successful action, finish immediately instead of
-		// looping back for a continuation. Interactive actions were already
-		// rescanned above; goto/switch_tab already waited for SchemaReady in
-		// dispatchAction. The VFS is fresh for the next voice command.
-		if d.handler.NavSpeed == "fast" {
+		// Fast mode: after a successful interactive action (click, type, etc.),
+		// finish immediately. Navigation actions (goto, rescan, switch_tab) are
+		// NOT terminal — the user's intent likely requires reading/acting on
+		// the destination page, so continue the loop.
+		if d.handler.NavSpeed == "fast" && isInteractiveAction(action.Action) {
 			d.finishInteraction(ix.ID, StatusCompleted,
 				fmt.Sprintf("Done: %s on %s", action.Action, action.Path), "")
 			return
