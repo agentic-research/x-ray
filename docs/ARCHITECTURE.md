@@ -8,93 +8,137 @@ X-Ray is a voice-driven UI navigator built on three core ideas:
 2. **Vision without VLMs.** CairnCartographer segments pages using Leech lattice error-correcting codes — pure math, deterministic, ~100ms.
 3. **Voice is the interface.** Gemini Live API streams audio bidirectionally with real-time tool execution.
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  Chrome Extension (ext/)                                         │
-│  ┌──────────┐  ┌──────────────┐  ┌────────────┐  ┌───────────┐ │
-│  │content.js│  │background.js │  │sidepanel   │  │terminal.js│ │
-│  │DOM reg.  │  │WS + CDP pipe │  │LOG tab     │  │ghostty-web│ │
-│  │overlays  │  │tab lifecycle │  │agent events│  │mache shell│ │
-│  └─────┬────┘  └──────┬───────┘  └─────┬──────┘  └─────┬─────┘ │
-│        │       WebSocket│               │port            │port   │
-└────────┼───────────┬────┼───────────────┼────────────────┼───────┘
-         │           │    │               │                │
-    CDP events    WS msgs│          broadcast         broadcast
-         │           │    │
-┌────────┼───────────┼────┼────────────────────────────────────────┐
-│  Go Server (cmd/agentd)  │                                       │
-│        │           │    │                                        │
-│  ┌─────▼───────────▼────▼───┐                                    │
-│  │  WebSocket Handler       │ internal/api/websocket.go          │
-│  │  message router, sessions│                                    │
-│  └──┬──────┬──────┬────┬────┘                                    │
-│     │      │      │    │                                         │
-│  ┌──▼──┐ ┌─▼───┐ │  ┌─▼──────────┐                              │
-│  │CDP  │ │Shell│ │  │Capture     │ internal/api/capture.go       │
-│  │Proxy│ │Cmds │ │  │Orchestrator│ summary→overlay→CDP→enrich    │
-│  └─────┘ └─────┘ │  └─────┬──────┘                              │
-│   internal/cdp/   │        │                                     │
-│                   │  ┌─────▼──────────┐                          │
-│                   │  │Cartographer    │ internal/cartographer/    │
-│                   │  │CairnCartographer│ Leech Λ₂₄ tokenization  │
-│                   │  └─────┬──────────┘                          │
-│                   │        │ schema                               │
-│                   │  ┌─────▼──────────┐                          │
-│                   │  │Mache Engine    │ internal/mache/           │
-│                   │  │graph → VFS     │ HotSwapGraph, NavFS      │
-│                   │  └─────┬──────────┘                          │
-│                   │        │                                     │
-│             ┌─────▼────────▼──┐                                  │
-│             │ Navigator Agent  │ internal/navigator/             │
-│             │ ls, cat, act,   │ Gemini tool-use loop             │
-│             │ scroll, goto... │ 12 tools, multi-step             │
-│             └─────────────────┘                                  │
-│                                                                  │
-│  ┌───────────────────┐  ┌──────────────────┐                     │
-│  │Talker (voice.go)  │  │Doer (doer.go)    │                     │
-│  │Gemini Live session│  │goal executor     │                     │
-│  │always responsive  │  │Navigator + scroll│                     │
-│  │3 lightweight tools│  │+ guardrails      │                     │
-│  └───────────────────┘  └──────────────────┘                     │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Chrome["Chrome Extension (ext/)"]
+        CS["content.js<br/>DOM registry · overlays"]
+        BG["background.js<br/>WS client · CDP pipe · tab lifecycle"]
+        SP["sidepanel.html<br/>LOG tab · agent events"]
+        TM["terminal.js<br/>ghostty-web · mache shell"]
+        CS <-->|messages| BG
+        BG -->|port| SP
+        BG -->|port| TM
+    end
+
+    subgraph Server["Go Server (cmd/agentd)"]
+        WS["WebSocket Handler<br/><i>internal/api/websocket.go</i>"]
+        CAP["Capture Orchestrator<br/><i>internal/api/capture.go</i><br/>summary → overlay → CDP → enrich"]
+        CDP["CDP Proxy<br/><i>internal/cdp/</i>"]
+        SH["Shell Commands<br/><i>internal/api/shell.go</i>"]
+        CART["CairnCartographer<br/><i>internal/cartographer/</i><br/>Leech Λ₂₄ tokenization"]
+        MACHE["Mache Engine<br/><i>internal/mache/</i><br/>HotSwapGraph · NavFS"]
+        NAV["Navigator Agent<br/><i>internal/navigator/</i><br/>12 tools · multi-step"]
+        TALK["Talker<br/><i>voice.go</i><br/>Gemini Live · always responsive"]
+        DOER["Doer<br/><i>doer.go</i><br/>goal executor · guardrails"]
+
+        WS --> CAP
+        WS --> CDP
+        WS --> SH
+        CAP --> CART
+        CART -->|schema| MACHE
+        MACHE --> NAV
+        TALK -->|issue_command| DOER
+        DOER --> NAV
+        NAV -->|AGENT_SHELL| WS
+    end
+
+    subgraph GCP["Google Cloud"]
+        CR["Cloud Run<br/>internal ingress only"]
+        AR["Artifact Registry"]
+        SM["Secret Manager<br/>Gemini API key"]
+        CR --> SM
+    end
+
+    subgraph Gemini["Gemini API"]
+        LIVE["Gemini Live API<br/>bidirectional audio stream"]
+        FLASH["Gemini Flash<br/>Navigator tool-use"]
+    end
+
+    BG <-->|WebSocket| WS
+    CS <-->|CDP events| CDP
+    TALK <-->|audio + tools| LIVE
+    NAV <-->|generate content| FLASH
+    Server -.->|ko + Terraform| CR
+    AR -.->|container image| CR
 ```
 
 ## Data Flow
 
 ### Page Capture Pipeline
 
-```
-PAGE_READY → captureGo()
-  1. REQUEST_SUMMARY  → content.js builds DOM summary (tag, bounds, text)
-  2. DRAW_OVERLAY     → content.js paints mache-ID labels on page
-  3. CDP Attach       → chrome.debugger.attach(tabId, '1.3')
-  4. Parallel:
-     a. Page.getLayoutMetrics    → page dimensions
-     b. DOM.getDocument          → root node ID
-     c. Runtime.evaluate         → page text
-     d. Accessibility.getFullAXTree (async)
-  5. Page.captureScreenshot      → scaled PNG (800px target width)
-  6. DOM.querySelectorAll('[data-mache-id]') → backend node map
-  7. Join AX tree to mache IDs   → role, name, properties
-  8. LayerTree (optional)        → paint order, stacking context
-  9. CDP Detach
- 10. Enrich summary with AX + layer data
- 11. → handleDOMSnapshot → Cartographer → Mache Engine → SCHEMA_READY
+```mermaid
+sequenceDiagram
+    participant BG as background.js
+    participant CS as content.js
+    participant GO as Go Server
+    participant CDP as Chrome CDP
+
+    BG->>GO: PAGE_READY
+    GO->>BG: REQUEST_SUMMARY
+    BG->>CS: CAPTURE_SNAPSHOT
+    CS-->>BG: summary + URL
+    BG-->>GO: SUMMARY_RESPONSE
+
+    GO->>BG: DRAW_OVERLAY
+    BG->>CS: DRAW_OVERLAY
+    CS-->>BG: done
+    BG-->>GO: OVERLAY_DRAWN
+
+    GO->>BG: CDP_ATTACH
+    BG->>CDP: chrome.debugger.attach
+    CDP-->>BG: attached
+    BG-->>GO: CDP_ATTACHED
+
+    par Parallel CDP calls
+        GO->>CDP: Page.getLayoutMetrics
+        GO->>CDP: DOM.getDocument
+        GO->>CDP: Runtime.evaluate (page text)
+        GO->>CDP: Accessibility.getFullAXTree
+    end
+
+    GO->>CDP: Page.captureScreenshot
+    GO->>CDP: DOM.querySelectorAll [data-mache-id]
+    GO->>CDP: LayerTree.enable (optional)
+
+    GO->>BG: CDP_DETACH
+
+    Note over GO: Enrich summary with AX + layers
+    GO->>GO: Cartographer → Mache Engine
+    GO->>BG: SCHEMA_READY
 ```
 
 ### Voice Pipeline (Talker/Doer)
 
-```
-Mic audio → Gemini Live (bidirectional stream)
-  ├─ Talker: always listening, 3 tools (check_status, issue_command, cancel)
-  │    └─ issue_command → Doer.Start(intent)
-  └─ Doer: background goroutine per goal
-       ├─ Wait for schema ready
-       ├─ Navigator.HandleIntent(intent)
-       │    └─ Multi-step tool loop: ls → cat → act → rescan → ...
-       │         └─ Each tool call broadcasts to sidebar terminal (AGENT_SHELL)
-       ├─ Execute actions (click, type, scroll, goto)
-       └─ Report completion → Talker speaks result
+```mermaid
+sequenceDiagram
+    actor User as User (mic)
+    participant GL as Gemini Live
+    participant T as Talker
+    participant D as Doer
+    participant N as Navigator
+    participant E as Extension
+    participant TM as Sidebar Terminal
+
+    User->>GL: speech audio
+    GL->>T: transcribed intent
+    T->>D: issue_command(intent)
+
+    D->>D: wait for schema ready
+    D->>N: HandleIntent(intent)
+
+    loop Multi-step tool loop
+        N->>N: ls / cat / grep
+        N-->>TM: ⚡ agent:~$ ls /content
+        N->>N: decide action
+        N-->>TM: ⚡ agent:~$ act click /content/mache-42
+        N->>E: EXECUTE_ACTION
+        E-->>N: action result
+        N->>N: rescan if needed
+    end
+
+    D-->>T: goal complete + summary
+    T->>GL: result text
+    GL->>User: spoken response
 ```
 
 ## Key Components
