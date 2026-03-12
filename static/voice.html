@@ -153,29 +153,52 @@ function flushPlayback() {
   playing = false;
 }
 
-// --- Mic capture (acquired once on connect, gated by `recording` flag) ---
+// --- Mic capture (AudioWorklet + 16kHz context) ---
+// Browser's built-in sinc resampler handles mic→16kHz downsampling.
+// AudioWorklet batches 512 samples (~32ms at 16kHz, within 20-40ms best practice).
 async function acquireMic() {
   mediaStream = await navigator.mediaDevices.getUserMedia({ audio: {
-    sampleRate: 48000, channelCount: 1, echoCancellation: true, noiseSuppression: true,
+    channelCount: 1, echoCancellation: true, noiseSuppression: true,
   }});
-  micCtx = new AudioContext({ sampleRate: 48000 });
+  micCtx = new AudioContext({ sampleRate: INPUT_RATE });
   const source = micCtx.createMediaStreamSource(mediaStream);
 
-  // 1024 samples at 48kHz ≈ 21ms chunks (best practice: 20-40ms).
-  processor = micCtx.createScriptProcessor(1024, 1, 1);
-  processor.onaudioprocess = (e) => {
-    if (!recording || !ws || ws.readyState !== WebSocket.OPEN) return;
-    const input = e.inputBuffer.getChannelData(0);
-    const ratio = 48000 / INPUT_RATE;
-    const out = new Int16Array(Math.floor(input.length / ratio));
-    for (let i = 0; i < out.length; i++) {
-      const s = Math.max(-1, Math.min(1, input[Math.round(i * ratio)]));
-      out[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  const workletBlob = new Blob([`
+    class PcmProcessor extends AudioWorkletProcessor {
+      constructor() {
+        super();
+        this.buf = new Float32Array(512);
+        this.pos = 0;
+      }
+      process(inputs) {
+        const ch = inputs[0]?.[0];
+        if (!ch) return true;
+        for (let i = 0; i < ch.length; i++) {
+          this.buf[this.pos++] = ch[i];
+          if (this.pos >= 512) {
+            this.port.postMessage(this.buf.slice());
+            this.pos = 0;
+          }
+        }
+        return true;
+      }
     }
-    ws.send(out.buffer);
+    registerProcessor('pcm-processor', PcmProcessor);
+  `], { type: 'application/javascript' });
+
+  await micCtx.audioWorklet.addModule(URL.createObjectURL(workletBlob));
+  processor = new AudioWorkletNode(micCtx, 'pcm-processor');
+  processor.port.onmessage = (e) => {
+    if (!recording || !ws || ws.readyState !== WebSocket.OPEN) return;
+    const floats = e.data;
+    const pcm = new Int16Array(floats.length);
+    for (let i = 0; i < floats.length; i++) {
+      const s = Math.max(-1, Math.min(1, floats[i]));
+      pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    ws.send(pcm.buffer);
   };
   source.connect(processor);
-  processor.connect(micCtx.destination);
 }
 
 function releaseMic() {
