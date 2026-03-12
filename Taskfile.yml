@@ -437,14 +437,16 @@ tasks:
   # ---------------------------------------------------------------------------
 
   demo-video:
-    desc: Voice demo for Devpost submission (Cairn + sheaf + fast nav + iTerm bridge)
+    desc: Voice demo for Devpost submission (Cairn + sheaf + curvature + Gemini Flash Lite)
     deps: [build]
     env:
       CARTOGRAPHER_MODE: cairn
       CAIRN_SHEAF: "1"
+      CAIRN_CURVATURE: "1"
+      XRAY_DEBUG: "1"
       NAV_SPEED: fast
+      NAVIGATOR_MODEL: "gemini-3.1-flash-lite-preview"
       NAVIGATOR_ENDPOINT: ""
-      NAVIGATOR_MODEL: ""
       NAVIGATOR_FORMAT: ""
     cmds:
       - |
@@ -453,33 +455,75 @@ tasks:
         echo "╠══════════════════════════════════════════════════════╣"
         echo "║  Prerequisites:                                     ║"
         echo "║  • Chrome open (extension installed)                ║"
-        echo "║  • iTerm2 as your terminal (for bridge)             ║"
+        echo "║  • Ghostty terminal (screenshot capture)            ║"
         echo "║  • GEMINI_API_KEY set                               ║"
         echo "║  • gh CLI authenticated (gh auth status)            ║"
-        echo "║                                                     ║"
-        echo "║  Demo script (4 min):                               ║"
-        echo "║                                                     ║"
-        echo "║  1. [0:00] Pitch: 'X-Ray navigates any UI by       ║"
-        echo "║     voice — browser, terminal, structured data'     ║"
-        echo "║                                                     ║"
-        echo "║  2. [0:30] Terminal → Browser (cross-UI context):   ║"
-        echo "║     Voice: 'Look at the issues for this repo'       ║"
-        echo "║     → Agent reads CWD, runs gh, opens GH in Chrome  ║"
-        echo "║                                                     ║"
-        echo "║  3. [1:30] Browser visual parsing:                  ║"
-        echo "║     Voice: 'What does issue 9 say?'                 ║"
-        echo "║     → Cairn zones the GH page, reads the issue      ║"
-        echo "║                                                     ║"
-        echo "║  4. [2:30] Terminal code navigation:                ║"
-        echo "║     Voice: 'Find the navigator tools in our code'   ║"
-        echo "║     → Agent uses mache to search codebase            ║"
-        echo "║                                                     ║"
-        echo "║  5. [3:30] Architecture diagram + wrap              ║"
         echo "║                                                     ║"
         echo "║  Start recording, then press Enter...               ║"
         echo "╚══════════════════════════════════════════════════════╝"
         read -r
         ./{{.BINARY_NAME}} --voice
+
+  # ---------------------------------------------------------------------------
+  # GCP Deployment (ko + Terraform)
+  # Requires .envrc: GCP_PROJECT_ID, GCP_REGION, KO_DOCKER_REPO, TF_VAR_project_id
+  # ---------------------------------------------------------------------------
+
+  deploy:
+    desc: Build image with ko, deploy to Cloud Run via Terraform
+    preconditions:
+      - sh: test -n "$GCP_PROJECT_ID"
+        msg: "GCP_PROJECT_ID not set — source .envrc"
+      - sh: test -n "$KO_DOCKER_REPO"
+        msg: "KO_DOCKER_REPO not set — source .envrc"
+    cmds:
+      - |
+        set -euo pipefail
+        echo "==> Building image with ko..."
+        IMAGE=$(ko build ./cmd/agentd --bare --platform=linux/amd64)
+        echo "    Image: $IMAGE"
+        echo ""
+        echo "==> Applying Terraform..."
+        cd deploy
+        terraform init -input=false
+        terraform apply -auto-approve -var="image=$IMAGE"
+        echo ""
+        echo "==> Done. Use 'task deploy-proxy' to tunnel locally."
+
+  deploy-proxy:
+    desc: Proxy Cloud Run agentd to localhost:8080 (authenticated, no public exposure)
+    preconditions:
+      - sh: test -n "$GCP_PROJECT_ID"
+        msg: "GCP_PROJECT_ID not set — source .envrc"
+    cmds:
+      - |
+        REGION="${GCP_REGION:-us-central1}"
+        echo "Proxying x-ray-agentd → localhost:8080 (Ctrl-C to stop)"
+        echo "Extension connects to ws://localhost:8080 as usual."
+        gcloud run services proxy x-ray-agentd \
+          --region "$REGION" \
+          --project "$GCP_PROJECT_ID" \
+          --port 8080
+
+  deploy-proof:
+    desc: Print Cloud Run service info for GCP deployment proof
+    preconditions:
+      - sh: test -n "$GCP_PROJECT_ID"
+        msg: "GCP_PROJECT_ID not set — source .envrc"
+    cmds:
+      - |
+        REGION="${GCP_REGION:-us-central1}"
+        echo "=== GCP Deployment Proof ==="
+        gcloud run services describe x-ray-agentd \
+          --region "$REGION" \
+          --project "$GCP_PROJECT_ID" \
+          --format "yaml(status.url, status.conditions, metadata.annotations)"
+        echo ""
+        echo "=== Ingress (should be internal-and-cloud-load-balancing) ==="
+        gcloud run services describe x-ray-agentd \
+          --region "$REGION" \
+          --project "$GCP_PROJECT_ID" \
+          --format "value(metadata.annotations[run.googleapis.com/ingress])"
 
   clean:
     desc: Clean build artifacts

@@ -1,14 +1,15 @@
-# X-Ray Agentd — Cloud Run deployment via Terraform
+# X-Ray Agentd — Cloud Run deployment via Terraform + ko
 #
 # Usage:
-#   cd deploy
-#   terraform init
-#   terraform apply -var="project_id=your-project"
+#   export TF_VAR_project_id=gen-lang-client-0958889140
+#   export KO_DOCKER_REPO=us-central1-docker.pkg.dev/$TF_VAR_project_id/x-ray
+#   ko build ./cmd/agentd          # builds & pushes image
+#   cd deploy && terraform init && terraform apply
 #
-# Or with deploy.sh for a quick gcloud-only deploy.
+# The image var is set by the deploy task (ko build --bare outputs the digest).
 
 variable "project_id" {
-  description = "GCP project ID"
+  description = "GCP project ID (set via TF_VAR_project_id env var)"
   type        = string
 }
 
@@ -25,14 +26,12 @@ variable "gemini_api_key_secret" {
 }
 
 variable "image" {
-  description = "Container image URL (built via deploy.sh or Cloud Build)"
+  description = "Container image URL (output of ko build)"
   type        = string
-  default     = ""
 }
 
 locals {
   service_name = "x-ray-agentd"
-  image        = var.image != "" ? var.image : "gcr.io/${var.project_id}/${local.service_name}"
 }
 
 terraform {
@@ -51,15 +50,27 @@ provider "google" {
 
 # Enable required APIs
 resource "google_project_service" "run" {
-  service = "run.googleapis.com"
+  service            = "run.googleapis.com"
+  disable_on_destroy = false
 }
 
-resource "google_project_service" "build" {
-  service = "cloudbuild.googleapis.com"
+resource "google_project_service" "artifactregistry" {
+  service            = "artifactregistry.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "secretmanager" {
-  service = "secretmanager.googleapis.com"
+  service            = "secretmanager.googleapis.com"
+  disable_on_destroy = false
+}
+
+# Artifact Registry repo for ko-built images
+resource "google_artifact_registry_repository" "x_ray" {
+  repository_id = "x-ray"
+  location      = var.region
+  format        = "DOCKER"
+
+  depends_on = [google_project_service.artifactregistry]
 }
 
 # Cloud Run service
@@ -71,7 +82,7 @@ resource "google_cloud_run_v2_service" "agentd" {
 
   template {
     containers {
-      image = local.image
+      image = var.image
 
       ports {
         container_port = 8080
@@ -94,7 +105,6 @@ resource "google_cloud_run_v2_service" "agentd" {
         }
       }
 
-      # TCP probe — agentd has no HTTP health endpoint, just check the port is listening.
       startup_probe {
         tcp_socket {
           port = 8080
@@ -113,15 +123,13 @@ resource "google_cloud_run_v2_service" "agentd" {
       max_instance_count = 1
     }
   }
+
+  # Only allow traffic from internal sources and Cloud Load Balancing — not the public internet.
+  ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 }
 
-# Allow unauthenticated access (extension connects directly)
-resource "google_cloud_run_v2_service_iam_member" "public" {
-  name     = google_cloud_run_v2_service.agentd.name
-  location = var.region
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-}
+# No public access — use `gcloud run services proxy` for authenticated local access.
+# The deploying user's account already has roles/run.invoker via project-level IAM.
 
 output "service_url" {
   value = google_cloud_run_v2_service.agentd.uri
