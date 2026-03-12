@@ -252,9 +252,9 @@ func formatToolAsShell(toolName string, args map[string]any) string {
 	case "act":
 		p, _ := args["path"].(string)
 		action, _ := args["action"].(string)
-		value, _ := args["value"].(string)
-		if value != "" {
-			return fmt.Sprintf("act %s %s %q", action, p, value)
+		payload, _ := args["payload"].(string)
+		if payload != "" {
+			return fmt.Sprintf("act %s %s %q", action, p, payload)
 		}
 		return fmt.Sprintf("act %s %s", action, p)
 	case "scroll":

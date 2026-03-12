@@ -202,8 +202,19 @@ func TestGeminiLive_DeltaTracking(t *testing.T) {
 		t.Fatalf("expected at least 3 sends, got %d", len(session.sent))
 	}
 	// The third send should be a LiveToolResponseInput (tool response)
-	if _, ok := session.sent[2].(genai.LiveToolResponseInput); !ok {
-		t.Errorf("expected third send to be LiveToolResponseInput, got %T", session.sent[2])
+	toolResp, ok := session.sent[2].(genai.LiveToolResponseInput)
+	if !ok {
+		t.Fatalf("expected third send to be LiveToolResponseInput, got %T", session.sent[2])
+	}
+	// Verify the FunctionResponse ID is preserved through sendDelta.
+	if len(toolResp.FunctionResponses) != 1 {
+		t.Fatalf("expected 1 FunctionResponse, got %d", len(toolResp.FunctionResponses))
+	}
+	if toolResp.FunctionResponses[0].ID != "call-1" {
+		t.Errorf("FunctionResponse ID = %q, want %q", toolResp.FunctionResponses[0].ID, "call-1")
+	}
+	if toolResp.FunctionResponses[0].Name != "ls" {
+		t.Errorf("FunctionResponse Name = %q, want %q", toolResp.FunctionResponses[0].Name, "ls")
 	}
 
 	// Final response should have text

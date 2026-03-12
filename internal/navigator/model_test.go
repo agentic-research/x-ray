@@ -905,3 +905,59 @@ func TestOllamaIntegrationToolFormatDiagnostic(t *testing.T) {
 
 	t.Logf("HTTP %d, response logged to stderr", resp.StatusCode)
 }
+
+// TestFunctionResponseIDPreserved verifies that HandleIntent copies the
+// FunctionCall ID into the FunctionResponse it appends to history.
+// This is required by the Gemini Live API for call/response correlation.
+func TestFunctionResponseIDPreserved(t *testing.T) {
+	engine := mache.NewEngine()
+	if err := engine.ApplySchema(testSchema); err != nil {
+		t.Fatalf("ApplySchema: %v", err)
+	}
+	engine.LoadChildren(testSummary, nil)
+
+	callID := "fc-abc-123"
+	mock := &mockGenerator{
+		responses: []*genai.GenerateContentResponse{
+			// Iteration 1: model calls ls with an ID.
+			{Candidates: []*genai.Candidate{{Content: &genai.Content{
+				Role: "model",
+				Parts: []*genai.Part{{FunctionCall: &genai.FunctionCall{
+					ID: callID, Name: "ls", Args: map[string]any{"path": "/"},
+				}}},
+			}}}},
+			// Iteration 2: model returns text (ends the loop).
+			{Candidates: []*genai.Candidate{{Content: &genai.Content{
+				Role:  "model",
+				Parts: []*genai.Part{{Text: "I see header, main, footer."}},
+			}}}},
+		},
+	}
+
+	agent := newTestAgentWithGen(mock, engine)
+	_, text, err := agent.HandleIntent(context.Background(), "list the page", true)
+	if err != nil {
+		t.Fatalf("HandleIntent: %v", err)
+	}
+	if text == "" {
+		t.Fatal("expected text response")
+	}
+
+	// The second GenerateContent call should include the FunctionResponse
+	// with the same ID as the FunctionCall.
+	if len(mock.calls) < 2 {
+		t.Fatalf("expected at least 2 calls, got %d", len(mock.calls))
+	}
+	history := mock.calls[1].History
+	var foundID string
+	for _, content := range history {
+		for _, part := range content.Parts {
+			if part.FunctionResponse != nil {
+				foundID = part.FunctionResponse.ID
+			}
+		}
+	}
+	if foundID != callID {
+		t.Errorf("FunctionResponse ID = %q, want %q", foundID, callID)
+	}
+}
