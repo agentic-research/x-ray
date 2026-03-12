@@ -63,30 +63,7 @@ async function acquireMic() {
   micCtx = new AudioContext({ sampleRate: INPUT_RATE });
   const source = micCtx.createMediaStreamSource(mediaStream);
 
-  const workletBlob = new Blob([`
-    class PcmProcessor extends AudioWorkletProcessor {
-      constructor() {
-        super();
-        this.buf = new Float32Array(512);
-        this.pos = 0;
-      }
-      process(inputs) {
-        const ch = inputs[0]?.[0];
-        if (!ch) return true;
-        for (let i = 0; i < ch.length; i++) {
-          this.buf[this.pos++] = ch[i];
-          if (this.pos >= 512) {
-            this.port.postMessage(this.buf.slice());
-            this.pos = 0;
-          }
-        }
-        return true;
-      }
-    }
-    registerProcessor('pcm-processor', PcmProcessor);
-  `], { type: 'application/javascript' });
-
-  await micCtx.audioWorklet.addModule(URL.createObjectURL(workletBlob));
+  await micCtx.audioWorklet.addModule(chrome.runtime.getURL('pcm-processor.js'));
   processor = new AudioWorkletNode(micCtx, 'pcm-processor');
   processor.port.onmessage = (e) => {
     if (!recording || !voiceWs || voiceWs.readyState !== WebSocket.OPEN) return;
