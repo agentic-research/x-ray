@@ -434,6 +434,7 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 				Role: "user",
 				Parts: []*genai.Part{{
 					FunctionResponse: &genai.FunctionResponse{
+						ID:       fc.ID,
 						Name:     fc.Name,
 						Response: map[string]any{"output": result},
 					},

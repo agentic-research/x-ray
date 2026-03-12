@@ -437,7 +437,7 @@ tasks:
   # ---------------------------------------------------------------------------
 
   demo-video:
-    desc: Voice demo for Devpost submission (Cairn + sheaf + curvature + Gemini Flash Lite)
+    desc: Voice demo for Devpost (Cairn + sheaf + Gemini Live + ghostty-web terminal)
     deps: [build]
     env:
       CARTOGRAPHER_MODE: cairn
@@ -445,22 +445,29 @@ tasks:
       CAIRN_CURVATURE: "1"
       XRAY_DEBUG: "1"
       NAV_SPEED: fast
-      NAVIGATOR_MODEL: "gemini-3.1-flash-lite-preview"
+      NAVIGATOR_MODEL: "gemini-2.5-flash"
       NAVIGATOR_ENDPOINT: ""
       NAVIGATOR_FORMAT: ""
     cmds:
       - |
-        echo "╔══════════════════════════════════════════════════════╗"
-        echo "║  X-Ray Demo — Gemini Live Agent Challenge           ║"
-        echo "╠══════════════════════════════════════════════════════╣"
-        echo "║  Prerequisites:                                     ║"
-        echo "║  • Chrome open (extension installed)                ║"
-        echo "║  • Ghostty terminal (screenshot capture)            ║"
-        echo "║  • GEMINI_API_KEY set                               ║"
-        echo "║  • gh CLI authenticated (gh auth status)            ║"
-        echo "║                                                     ║"
-        echo "║  Start recording, then press Enter...               ║"
-        echo "╚══════════════════════════════════════════════════════╝"
+        echo "╔══════════════════════════════════════════════════════════╗"
+        echo "║  X-Ray Demo — Gemini Live Agent Challenge               ║"
+        echo "╠══════════════════════════════════════════════════════════╣"
+        echo "║  Prerequisites:                                         ║"
+        echo "║  • Chrome open with X-Ray extension installed           ║"
+        echo "║  • Sidebar open (LOG + TERMINAL tabs)                   ║"
+        echo "║  • GEMINI_API_KEY set                                   ║"
+        echo "║  • Mic enabled for voice commands                       ║"
+        echo "║                                                         ║"
+        echo "║  Demo flow:                                             ║"
+        echo "║  1. Navigate to a site (voice: \"go to ...\")             ║"
+        echo "║  2. Watch agent ls/cat in TERMINAL tab (⚡ agent:~$)    ║"
+        echo "║  3. Voice command: \"click on mache-XX\" (overlay IDs)    ║"
+        echo "║  4. Toggle overlay: Cmd+Shift+X (zone segmentation)     ║"
+        echo "║  5. Show GCP: task deploy-proof                         ║"
+        echo "║                                                         ║"
+        echo "║  Start recording, then press Enter...                   ║"
+        echo "╚══════════════════════════════════════════════════════════╝"
         read -r
         ./{{.BINARY_NAME}} --voice
 
