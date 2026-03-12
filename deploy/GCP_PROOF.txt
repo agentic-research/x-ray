@@ -1,0 +1,38 @@
+task: [deploy-proof] REGION="${GCP_REGION:-us-central1}"
+echo "=== GCP Deployment Proof ==="
+gcloud run services describe x-ray-agentd \
+  --region "$REGION" \
+  --project "$GCP_PROJECT_ID" \
+  --format "yaml(status.url, status.conditions, metadata.annotations)"
+echo ""
+echo "=== Ingress (should be internal-and-cloud-load-balancing) ==="
+gcloud run services describe x-ray-agentd \
+  --region "$REGION" \
+  --project "$GCP_PROJECT_ID" \
+  --format "value(metadata.annotations[run.googleapis.com/ingress])"
+
+=== GCP Deployment Proof ===
+metadata:
+  annotations:
+    run.googleapis.com/ingress: internal-and-cloud-load-balancing
+    run.googleapis.com/ingress-status: internal-and-cloud-load-balancing
+    run.googleapis.com/maxScale: '20'
+    run.googleapis.com/operation-id: 5708e6b2-a321-47cc-a829-732458cf715e
+    run.googleapis.com/urls: '["https://x-ray-agentd-644065325459.us-central1.run.app","https://x-ray-agentd-tomxpsfegq-uc.a.run.app"]'
+    serving.knative.dev/creator: Jamestexasgardner@gmail.com
+    serving.knative.dev/lastModifier: Jamestexasgardner@gmail.com
+status:
+  conditions:
+  - lastTransitionTime: '2026-03-12T04:03:37.862444Z'
+    status: 'True'
+    type: Ready
+  - lastTransitionTime: '2026-03-12T04:03:29.010013Z'
+    status: 'True'
+    type: ConfigurationsReady
+  - lastTransitionTime: '2026-03-12T04:03:37.814339Z'
+    status: 'True'
+    type: RoutesReady
+  url: https://x-ray-agentd-tomxpsfegq-uc.a.run.app
+
+=== Ingress (should be internal-and-cloud-load-balancing) ===
+internal-and-cloud-load-balancing
