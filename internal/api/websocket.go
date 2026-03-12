@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/agentic-research/mache/graph"
@@ -65,6 +66,7 @@ type Handler struct {
 	connCtx        context.Context     // cancelled when the current WS connection closes
 	connCancel     context.CancelFunc  // cancels connCtx
 	videoFrameCh   chan videoFrame     // screenshot → voice session (1-buffered, non-blocking send)
+	videoEnabled   atomic.Bool         // toggled by screen_share tool; gates videoFrameCh sends
 }
 
 // videoFrame carries a page screenshot to the Talker's Live session.

@@ -388,6 +388,99 @@ func TestTalkerToolDefinitionsIncludesTerminalAction(t *testing.T) {
 	}
 }
 
+func TestExecuteScreenShareEnable(t *testing.T) {
+	h := newTestHandler()
+
+	fc := &genai.FunctionCall{
+		Name: "screen_share",
+		Args: map[string]any{"enabled": true},
+	}
+	result := h.executeScreenShare(fc)
+	if !h.videoEnabled.Load() {
+		t.Error("expected videoEnabled=true after screen_share(enabled=true)")
+	}
+	if !strings.Contains(result, "enabled") {
+		t.Errorf("expected 'enabled' in result, got %q", result)
+	}
+}
+
+func TestExecuteScreenShareDisable(t *testing.T) {
+	h := newTestHandler()
+	h.videoEnabled.Store(true) // pre-enable
+
+	fc := &genai.FunctionCall{
+		Name: "screen_share",
+		Args: map[string]any{"enabled": false},
+	}
+	result := h.executeScreenShare(fc)
+	if h.videoEnabled.Load() {
+		t.Error("expected videoEnabled=false after screen_share(enabled=false)")
+	}
+	if !strings.Contains(result, "disabled") {
+		t.Errorf("expected 'disabled' in result, got %q", result)
+	}
+}
+
+func TestExecuteScreenShareSendsImmediateFrame(t *testing.T) {
+	h := newTestHandler()
+	// Create a session with a screenshot.
+	sess := h.getSession(42)
+	sess.SetScreenshot([]byte("fake-png"), "image/png")
+	h.mu.Lock()
+	h.activeVoiceTab = 42
+	h.mu.Unlock()
+
+	fc := &genai.FunctionCall{
+		Name: "screen_share",
+		Args: map[string]any{"enabled": true},
+	}
+	h.executeScreenShare(fc)
+
+	// Should have an immediate frame in the channel.
+	select {
+	case vf := <-h.videoFrameCh:
+		if string(vf.Data) != "fake-png" {
+			t.Errorf("unexpected frame data: %q", vf.Data)
+		}
+		if vf.MIME != "image/png" {
+			t.Errorf("unexpected MIME: %q", vf.MIME)
+		}
+	default:
+		t.Error("expected immediate video frame in channel after screen_share enable")
+	}
+}
+
+func TestVideoEnabledGatesFrameSend(t *testing.T) {
+	h := newTestHandler()
+
+	// videoEnabled is false by default — frames should NOT be sent.
+	if h.videoEnabled.Load() {
+		t.Fatal("videoEnabled should default to false")
+	}
+
+	// Verify the channel is empty.
+	select {
+	case <-h.videoFrameCh:
+		t.Fatal("videoFrameCh should be empty initially")
+	default:
+	}
+}
+
+func TestTalkerToolDefinitionsIncludesScreenShare(t *testing.T) {
+	tools := talkerToolDefinitions()
+	found := false
+	for _, tool := range tools {
+		for _, fd := range tool.FunctionDeclarations {
+			if fd.Name == "screen_share" {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Error("expected screen_share in talkerToolDefinitions")
+	}
+}
+
 func TestSessionFreshHasNoSchema(t *testing.T) {
 	h := NewHandler(&stubCartographer{}, nil, nil, nil, "test", "test-live", "", "")
 	sess := h.getSession(99)

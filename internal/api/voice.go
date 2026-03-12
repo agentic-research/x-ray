@@ -134,6 +134,17 @@ func talkerToolDefinitions() []*genai.Tool {
 					Required: []string{"action"},
 				},
 			},
+			{
+				Name:        "screen_share",
+				Description: "Toggle screen sharing so you can SEE the user's browser page. Call with enabled=true when the user says 'look at my screen', 'can you see this', 'take a look', etc. Call with enabled=false when done or the user says 'stop looking'. While enabled, you receive live page screenshots as video frames after every page capture.",
+				Parameters: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"enabled": {Type: genai.TypeBoolean, Description: "true to start receiving screenshots, false to stop"},
+					},
+					Required: []string{"enabled"},
+				},
+			},
 		},
 	}}
 }
@@ -196,6 +207,30 @@ func (h *Handler) executeTerminalAction(fc *genai.FunctionCall) string {
 	}
 }
 
+// executeScreenShare toggles video frame streaming to the Talker's Live session.
+func (h *Handler) executeScreenShare(fc *genai.FunctionCall) string {
+	enabled, _ := fc.Args["enabled"].(bool)
+	h.videoEnabled.Store(enabled)
+	if enabled {
+		log.Printf("Voice: screen_share enabled")
+		// Send an immediate frame so the model gets instant visual context.
+		tid := h.getVoiceTabID()
+		if tid != 0 {
+			if s := h.getSession(tid); s != nil {
+				if img, mime := s.GetScreenshot(); len(img) > 0 {
+					select {
+					case h.videoFrameCh <- videoFrame{Data: img, MIME: mime}:
+					default:
+					}
+				}
+			}
+		}
+		return "Screen sharing enabled. You will now receive page screenshots as video frames after every page capture. Describe what you see."
+	}
+	log.Printf("Voice: screen_share disabled")
+	return "Screen sharing disabled. You will no longer receive page screenshots."
+}
+
 // executeTalkerTool dispatches a Talker tool call. All tools return instantly.
 func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 	if fc.Name == "open_url" {
@@ -203,6 +238,9 @@ func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 	}
 	if fc.Name == "terminal_action" {
 		return h.executeTerminalAction(fc)
+	}
+	if fc.Name == "screen_share" {
+		return h.executeScreenShare(fc)
 	}
 	if doer == nil {
 		return "No active browser tab or terminal session. Use open_url to open a website first."
@@ -687,7 +725,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 				var responses []*genai.FunctionResponse
 				for _, fc := range tc.FunctionCalls {
 					switch fc.Name {
-					case "check_interaction", "create_interaction", "cancel_interaction", "open_url", "terminal_action":
+					case "check_interaction", "create_interaction", "cancel_interaction", "open_url", "terminal_action", "screen_share":
 						result := h.executeTalkerTool(fc, resolveDoer())
 						log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
 						responses = append(responses, &genai.FunctionResponse{
@@ -1025,7 +1063,7 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 				var responses []*genai.FunctionResponse
 				for _, fc := range tc.FunctionCalls {
 					switch fc.Name {
-					case "check_interaction", "create_interaction", "cancel_interaction", "open_url", "terminal_action":
+					case "check_interaction", "create_interaction", "cancel_interaction", "open_url", "terminal_action", "screen_share":
 						result := h.executeTalkerTool(fc, resolveDoer())
 						log.Printf("Voice: Talker tool %s → %q", fc.Name, result)
 						responses = append(responses, &genai.FunctionResponse{
