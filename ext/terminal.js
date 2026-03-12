@@ -52,6 +52,10 @@ function connectPort() {
       pendingResolve(msg);
       pendingResolve = null;
     }
+    // Agent tool calls — render live in the terminal
+    if (msg.type === 'AGENT_SHELL') {
+      renderAgentShell(msg);
+    }
     // Also handle WS status for the dot indicator
     if (msg.type === 'WS_STATUS') {
       document.getElementById('ws-dot').classList.toggle('connected', msg.connected);
@@ -267,12 +271,60 @@ function normalizePath(p) {
   return '/' + resolved.join('/');
 }
 
+// --- Agent tool call rendering ---
+const AGENT_PROMPT = '\x1b[38;5;208m⚡ agent\x1b[0m:\x1b[38;5;245m~\x1b[0m$ ';
+const MAX_RESULT_LINES = 30;
+
+function renderAgentShell(msg) {
+  // Auto-init terminal if not yet initialized
+  if (!initialized) {
+    initTerminal();
+  }
+  // Auto-switch to terminal tab when agent starts working
+  const termBtn = document.querySelector('[data-panel="term-panel"]');
+  if (termBtn && !termBtn.classList.contains('active')) {
+    termBtn.click();
+  }
+
+  const writeTo = term || fallbackPre;
+  if (!writeTo) return;
+
+  if (msg.command) {
+    // Render the tool call as a typed command
+    writeFn(`\r\n${AGENT_PROMPT}\x1b[38;5;255m${msg.command}\x1b[0m\r\n`);
+  }
+  if (msg.output) {
+    // Truncate long results for readability
+    const lines = msg.output.split('\n');
+    const truncated = lines.length > MAX_RESULT_LINES;
+    const display = truncated ? lines.slice(0, MAX_RESULT_LINES).join('\r\n') : msg.output.replace(/\n/g, '\r\n');
+    writeFn(`\x1b[38;5;245m${display}\x1b[0m`);
+    if (truncated) {
+      writeFn(`\r\n\x1b[38;5;239m  ... ${lines.length - MAX_RESULT_LINES} more lines\x1b[0m`);
+    }
+    writeFn('\r\n');
+  }
+}
+
+function writeFn(text) {
+  if (term) {
+    term.write(text);
+  } else if (fallbackPre) {
+    // Strip ANSI for fallback
+    fallbackPre.textContent += text.replace(/\x1b\[[0-9;]*m/g, '').replace(/\r\n/g, '\n');
+    fallbackPre.scrollTop = fallbackPre.scrollHeight;
+  }
+}
+
+let fallbackPre = null;
+
 // --- Fallback terminal (pure DOM, no WASM) ---
 function initFallbackTerminal(container) {
   container.innerHTML = '';
   const pre = document.createElement('pre');
   pre.style.cssText = 'padding:12px;color:#a9b1d6;background:#1a1b26;height:100%;overflow-y:auto;white-space:pre-wrap;word-break:break-word;';
   container.appendChild(pre);
+  fallbackPre = pre; // enable agent shell rendering in fallback mode
 
   const input = document.createElement('input');
   input.style.cssText = 'position:absolute;bottom:8px;left:12px;right:12px;background:#111;border:1px solid #333;color:#a9b1d6;font:12px monospace;padding:4px 8px;outline:none;';

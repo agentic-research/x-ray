@@ -222,6 +222,7 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 	defer func() {
 		d.sess.Navigator.SetScrollFunc(nil)
 		d.sess.Navigator.SetProgressFunc(nil)
+		d.sess.Navigator.SetResultFunc(nil)
 		d.sess.Navigator.SetListTabsFunc(nil)
 	}()
 
@@ -911,6 +912,14 @@ func (d *Doer) wireNavigatorCallbacks(gs *guardrails.GoalState) {
 		if gs != nil && gs.Enabled {
 			gs.RecordAction(0, toolName, p, "")
 		}
+
+		// Broadcast tool call to sidebar terminal as a shell command.
+		cmdLine := formatToolAsShell(toolName, args)
+		d.handler.broadcastAgentTerminal(d.tabID, cmdLine, "")
+	})
+	d.sess.Navigator.SetResultFunc(func(toolName string, args map[string]any, result string) {
+		// Broadcast tool result to sidebar terminal.
+		d.handler.broadcastAgentTerminal(d.tabID, "", result)
 	})
 	d.sess.Navigator.SetListTabsFunc(func(ltCtx context.Context) ([]navigator.TabInfo, error) {
 		d.updateStep("listing open tabs")

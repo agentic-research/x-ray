@@ -581,6 +581,14 @@ function connectWebSocket() {
         }
         break;
       }
+
+      case 'AGENT_SHELL': {
+        // Forward agent tool call/result to sidebar terminal.
+        for (const port of sidePanelPorts) {
+          try { port.postMessage(msg); } catch (_) {}
+        }
+        break;
+      }
     }
   };
 

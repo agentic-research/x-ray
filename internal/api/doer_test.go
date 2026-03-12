@@ -102,6 +102,9 @@ func (m *mockIntentHandler) SetProgressFunc(fn func(toolName string, args map[st
 	m.mu.Unlock()
 }
 
+func (m *mockIntentHandler) SetResultFunc(_ func(toolName string, args map[string]any, result string)) {
+}
+
 func (m *mockIntentHandler) SetListTabsFunc(_ func(ctx context.Context) ([]navigator.TabInfo, error)) {
 }
 

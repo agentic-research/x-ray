@@ -44,6 +44,7 @@ type Agent struct {
 	hotswap    *graph.HotSwapGraph // thread-safe graph swap (all reads go through this)
 	mu         sync.RWMutex
 	progressFn func(toolName string, args map[string]any)
+	resultFn   func(toolName string, args map[string]any, result string)
 
 	// Viewport state (set after each scroll via SetViewport).
 	viewportMu      sync.RWMutex
@@ -191,6 +192,14 @@ func (a *Agent) SetProgressFunc(fn func(toolName string, args map[string]any)) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.progressFn = fn
+}
+
+// SetResultFunc injects a callback fired after each tool execution,
+// carrying the tool name, args, and the result string.
+func (a *Agent) SetResultFunc(fn func(toolName string, args map[string]any, result string)) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.resultFn = fn
 }
 
 // SetRefValidateFunc installs a guardrail that validates act() paths before
@@ -409,6 +418,13 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 			}
 			result, action := a.registry.Execute(ctx, fc)
 			log.Printf("Navigator: tool=%s args=%v result=%q", fc.Name, fc.Args, result)
+
+			a.mu.RLock()
+			rfn := a.resultFn
+			a.mu.RUnlock()
+			if rfn != nil {
+				rfn(fc.Name, fc.Args, result)
+			}
 
 			if action != nil {
 				return action, "", nil

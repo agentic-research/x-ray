@@ -20,6 +20,7 @@ type IntentHandler interface {
 	SetGraph(g graph.Graph)
 	SetScrollFunc(fn func(ctx context.Context, direction string) error)
 	SetProgressFunc(fn func(toolName string, args map[string]any))
+	SetResultFunc(fn func(toolName string, args map[string]any, result string))
 	SetListTabsFunc(fn func(ctx context.Context) ([]navigator.TabInfo, error))
 	SetViewport(scrollY, scrollHeight, viewportHeight float64)
 	GetViewport() (startPct, endPct int)
