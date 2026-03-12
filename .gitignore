@@ -70,6 +70,7 @@ docker/webarena-data/
 # Submission tracking (local)
 RUBRIC.md
 DEVPOST.md
+TODO_DEMO.md
 
 # WebArena eval results (large trace files)
 results/
