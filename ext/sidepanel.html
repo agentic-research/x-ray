@@ -7,8 +7,25 @@
   body { font-family: 'SF Mono', 'Menlo', 'Consolas', monospace; background: #0a0a0a; color: #999; font-size: 11px; height: 100vh; display: flex; flex-direction: column; }
   #header { padding: 8px 12px; background: #111; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   #header h1 { font-size: 11px; font-weight: 600; color: #666; letter-spacing: 1px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: #c0392b; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #c0392b; flex-shrink: 0; }
   .dot.connected { background: #27ae60; }
+  .spacer { flex: 1; }
+  #voice-status { font-size: 10px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
+  #mic-btn {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #1a1a1a; border: 1px solid #333;
+    color: #555; font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; flex-shrink: 0;
+    user-select: none; -webkit-user-select: none;
+  }
+  #mic-btn:hover { background: #222; border-color: #555; color: #888; }
+  #mic-btn.recording { background: #c0392b; border-color: #e74c3c; color: #fff; animation: pulse 1.5s infinite; }
+  #mic-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(192,57,43,0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(192,57,43,0); }
+  }
 
   /* Tab bar */
   #tabs { display: flex; background: #0d0d0d; border-bottom: 1px solid #1a1a1a; flex-shrink: 0; }
@@ -45,6 +62,10 @@
   .entry-ERROR .icon { color: #e74c3c; }
   .entry-SYS { border-left-color: #2c3e50; }
   .entry-SYS .icon { color: #555; }
+  .entry-VOICE { border-left-color: #5dade2; }
+  .entry-VOICE .icon { color: #5dade2; }
+  .entry-MODEL { border-left-color: #58d68d; }
+  .entry-MODEL .icon { color: #58d68d; }
   #empty { color: #333; padding: 20px; text-align: center; }
 
   /* Terminal panel */
@@ -55,6 +76,9 @@
   <div id="header">
     <div class="dot" id="ws-dot"></div>
     <h1>X-RAY</h1>
+    <span class="spacer"></span>
+    <span id="voice-status"></span>
+    <button id="mic-btn" disabled title="Hold to talk (or spacebar)">&#x1F3A4;</button>
   </div>
 
   <div id="tabs">
@@ -81,6 +105,7 @@
   </div>
 
   <script src="sidepanel.js"></script>
+  <script src="voice-sidebar.js"></script>
   <script type="module" src="terminal.js"></script>
 </body>
 </html>

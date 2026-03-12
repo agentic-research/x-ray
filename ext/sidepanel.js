@@ -15,7 +15,8 @@ const buffer = [];
 const ICON_TYPE = {
   'S': 'STATUS', 'C': 'STATUS', '!': 'ERROR',
   'A': 'EXECUTE', 'G': 'GOTO', 'V': 'SCROLL',
-  'R': 'SCHEMA', '--': 'SYS'
+  'R': 'SCHEMA', '--': 'SYS',
+  'U': 'VOICE', 'T': 'MODEL'
 };
 
 function connectPort() {
