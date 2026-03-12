@@ -282,7 +282,9 @@ BEHAVIOR:
 8. If you get "No active browser tab", use open_url() to open a website first, then create_interaction() after it loads.
 9. SAFETY: For irreversible actions (buy, submit, delete, send, post, confirm, checkout, pay), ALWAYS confirm before dispatching: "I'll click 'Submit Order' — should I go ahead?"
 
-Your navigator can read the full environment structure (including terminals at /iterm/), so ALWAYS delegate environment questions to it — never say "I can't see the terminal."`
+Your navigator can read the full environment structure (including terminals at /iterm/), so ALWAYS delegate environment questions to it — never say "I can't see the terminal."
+
+VISION: You receive page screenshots as video frames whenever the browser captures a new page. You can see the page layout, overlay zones, and mache-ID labels. Use this visual context to give more informed responses — but still delegate actions to create_interaction().`
 
 // buildLiveConfig returns the LiveConnectConfig shared by HandleVoice and StartVoiceLoop.
 func buildLiveConfig(language, voice string) *genai.LiveConnectConfig {
@@ -584,6 +586,17 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 								log.Printf("Voice: SendClientContent error: %v", err)
 							}
 						}
+					}
+				case vf := <-h.videoFrameCh:
+					// Page screenshot → Gemini Live as a video frame.
+					log.Printf("Voice [tab %d]: sending video frame (%d bytes, %s)", tabID, len(vf.Data), vf.MIME)
+					sessionMu.Lock()
+					err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+						Video: &genai.Blob{Data: vf.Data, MIMEType: vf.MIME},
+					})
+					sessionMu.Unlock()
+					if err != nil {
+						log.Printf("Voice: SendRealtimeInput video error: %v", err)
 					}
 				}
 			}
@@ -909,6 +922,17 @@ func (h *Handler) StartVoiceLoop(ctx context.Context, mic <-chan []byte, speaker
 					sessionMu.Unlock()
 					if err != nil {
 						log.Printf("Voice: SendClientContent error: %v", err)
+					}
+				case vf := <-h.videoFrameCh:
+					// Page screenshot → Gemini Live as a video frame.
+					log.Printf("Voice: sending video frame (%d bytes, %s)", len(vf.Data), vf.MIME)
+					sessionMu.Lock()
+					err := session.SendRealtimeInput(genai.LiveRealtimeInput{
+						Video: &genai.Blob{Data: vf.Data, MIMEType: vf.MIME},
+					})
+					sessionMu.Unlock()
+					if err != nil {
+						log.Printf("Voice: SendRealtimeInput video error: %v", err)
 					}
 				}
 			}

@@ -64,6 +64,13 @@ type Handler struct {
 	backend        BrowserBackend      // nil = extension mode (default); set for CF Browser Rendering
 	connCtx        context.Context     // cancelled when the current WS connection closes
 	connCancel     context.CancelFunc  // cancels connCtx
+	videoFrameCh   chan videoFrame     // screenshot → voice session (1-buffered, non-blocking send)
+}
+
+// videoFrame carries a page screenshot to the Talker's Live session.
+type videoFrame struct {
+	Data []byte
+	MIME string
 }
 
 func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client, liveClient *genai.Client, navModel, liveModel, plannerModel, dbPath string) *Handler {
@@ -80,6 +87,7 @@ func NewHandler(cart SchemaGenerator, navGen navigator.ContentGenerator, client,
 		cdpProxy:      cdp.New(nil),
 		cookiesSetCh:  make(chan struct{}, 1),
 		voiceTabCh:    make(chan int, 1),
+		videoFrameCh:  make(chan videoFrame, 1),
 	}
 	if client != nil && plannerModel != "" {
 		h.planner = &Planner{handler: h, client: client, model: plannerModel}

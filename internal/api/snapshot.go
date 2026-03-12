@@ -345,6 +345,15 @@ func (h *Handler) resolveAndFinalize(ctx context.Context, conn *websocket.Conn, 
 	// Signal that schema is ready — unblocks any waiting handleNavigate or voice tool call.
 	sess.SignalSchemaReady()
 
+	// Push screenshot as a video frame to the Talker's Live session (if active).
+	// Non-blocking: drops the frame if the voice goroutine hasn't consumed the last one.
+	if img, mime := sess.GetScreenshot(); len(img) > 0 {
+		select {
+		case h.videoFrameCh <- videoFrame{Data: img, MIME: mime}:
+		default:
+		}
+	}
+
 	var schema any
 	if err := json.Unmarshal([]byte(schemaJSON), &schema); err != nil {
 		log.Printf("Failed to parse schema JSON for response: %v", err)
