@@ -10,56 +10,69 @@
     background: #1a1a1a; color: #e0e0e0;
     padding: 16px;
   }
-  h1 { font-size: 13px; color: #888; font-weight: 500; margin-bottom: 12px; letter-spacing: 0.5px; }
+  .header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .header h1 {
+    font-size: 13px; color: #888; font-weight: 500;
+    letter-spacing: 0.5px; flex-shrink: 0;
+  }
+  #status {
+    font-size: 11px; color: #555;
+    line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #status.connected { color: #4a8a4a; }
+  #status.error { color: #8a4a4a; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
   .btn {
-    display: block; width: 100%;
-    padding: 10px 12px; margin-bottom: 8px;
+    display: block;
+    padding: 8px 0;
     border: 1px solid #333; border-radius: 6px;
     background: #222; color: #ccc;
-    font-size: 13px; cursor: pointer;
-    text-align: left; transition: all 0.15s;
+    font-size: 12px; cursor: pointer;
+    text-align: center; transition: all 0.15s;
   }
   .btn:hover { background: #2a2a2a; border-color: #555; color: #fff; }
   .btn:active { background: #333; }
-  .row {
-    display: flex; gap: 6px; margin-bottom: 8px;
-  }
-  .row .btn { margin-bottom: 0; }
-  .row .btn.grow { flex: 1; }
+  .btn.accent { color: #4a8a4a; }
   .intent-row {
-    display: flex; gap: 4px; margin-bottom: 8px;
+    display: flex; gap: 4px;
   }
   .intent-row input {
     flex: 1; padding: 8px 10px;
     border: 1px solid #333; border-radius: 6px;
     background: #222; color: #ccc;
-    font-size: 13px; outline: none;
+    font-size: 12px; outline: none;
+    min-width: 0;
   }
   .intent-row input:focus { border-color: #555; }
   .intent-row input::placeholder { color: #555; }
-  .intent-row .btn { width: 48px; margin-bottom: 0; text-align: center; flex-shrink: 0; }
-  #status {
-    font-size: 11px; color: #555; margin-top: 8px;
-    min-height: 14px; line-height: 1.3;
-  }
-  #status.connected { color: #4a8a4a; }
-  #status.error { color: #8a4a4a; }
+  .intent-row .btn { width: 40px; flex-shrink: 0; padding: 8px 0; }
 </style>
 </head>
 <body>
 
-<h1>X-RAY</h1>
-<div class="row">
-  <button id="snapshot-btn" class="btn grow">Snapshot</button>
-  <button id="overlay-btn" class="btn" style="width:48px;flex-shrink:0;text-align:center" title="Toggle Set-of-Mark overlay (Cmd+Shift+O)">Overlay</button>
-  <button id="export-btn" class="btn" style="width:48px;flex-shrink:0;text-align:center" title="Export Set-of-Mark overlay as PNG">Export</button>
-  <button id="log-btn" class="btn" style="width:36px;flex-shrink:0;text-align:center;color:#4a8a4a" title="Open agent log panel">Log</button>
+<div class="header">
+  <h1>X-RAY</h1>
+  <div id="status">Checking...</div>
+</div>
+<div class="grid">
+  <button id="snapshot-btn" class="btn" title="Capture page snapshot">Snapshot</button>
+  <button id="overlay-btn" class="btn" title="Toggle Set-of-Mark overlay (Cmd+Shift+O)">Overlay</button>
+  <button id="export-btn" class="btn" title="Export Set-of-Mark overlay as PNG">Export</button>
+  <button id="log-btn" class="btn accent" title="Open agent log panel">Log</button>
 </div>
 <div class="intent-row">
-  <input id="intent-input" type="text" placeholder="Type a command or press Enter to talk...">
+  <input id="intent-input" type="text" placeholder="Command or Enter to talk...">
   <button id="intent-btn" class="btn">Go</button>
 </div>
-<div id="status">Checking connection...</div>
 
 <script src="popup.js"></script>
 </body>
