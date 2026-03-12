@@ -117,6 +117,7 @@ function addLine(cls, text) {
 // --- Audio playback ---
 let playQueue = [];
 let playing = false;
+let currentSource = null;
 
 function enqueueAudio(pcmBytes) {
   playQueue.push(pcmBytes);
@@ -124,7 +125,7 @@ function enqueueAudio(pcmBytes) {
 }
 
 function drainQueue() {
-  if (playQueue.length === 0) { playing = false; return; }
+  if (playQueue.length === 0) { playing = false; currentSource = null; return; }
   playing = true;
   const raw = playQueue.shift();
   const samples = new Int16Array(raw.buffer, raw.byteOffset, raw.byteLength / 2);
@@ -138,7 +139,18 @@ function drainQueue() {
   src.buffer = buf;
   src.connect(audioCtx.destination);
   src.onended = drainQueue;
+  currentSource = src;
   src.start();
+}
+
+// Flush playback buffer on interruption (best practice: discard immediately).
+function flushPlayback() {
+  playQueue.length = 0;
+  if (currentSource) {
+    try { currentSource.stop(); } catch (_) {}
+    currentSource = null;
+  }
+  playing = false;
 }
 
 // --- Mic capture (acquired once on connect, gated by `recording` flag) ---
@@ -149,7 +161,8 @@ async function acquireMic() {
   micCtx = new AudioContext({ sampleRate: 48000 });
   const source = micCtx.createMediaStreamSource(mediaStream);
 
-  processor = micCtx.createScriptProcessor(4096, 1, 1);
+  // 1024 samples at 48kHz ≈ 21ms chunks (best practice: 20-40ms).
+  processor = micCtx.createScriptProcessor(1024, 1, 1);
   processor.onaudioprocess = (e) => {
     if (!recording || !ws || ws.readyState !== WebSocket.OPEN) return;
     const input = e.inputBuffer.getChannelData(0);
@@ -218,6 +231,7 @@ function connect() {
         addLine('action-line', `Action: ${msg.action} on ${msg.mache_id}`);
         break;
       case 'interrupted':
+        flushPlayback();
         addLine('system-line', '(interrupted)');
         break;
       case 'generation_complete':

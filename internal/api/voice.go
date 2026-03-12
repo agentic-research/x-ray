@@ -607,7 +607,7 @@ func (h *Handler) HandleVoice(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if sc := msg.ServerContent; sc != nil {
-				// Always forward audio — browser handles its own buffer flush on interruption.
+				// Always forward audio — browser flushes its playback buffer on "interrupted".
 				if sc.ModelTurn != nil {
 					modelSpeaking.Store(true)
 					for _, part := range sc.ModelTurn.Parts {
