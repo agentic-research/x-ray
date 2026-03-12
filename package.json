@@ -2,5 +2,8 @@
   "private": true,
   "devDependencies": {
     "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "ghostty-web": "^0.4.0"
   }
 }

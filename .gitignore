@@ -70,3 +70,23 @@ docker/webarena-data/
 # Submission tracking (local)
 RUBRIC.md
 DEVPOST.md
+
+# WebArena eval results (large trace files)
+results/
+
+# Demo assets (large media files)
+demo/
+
+# Scratch / debug files
+/1
+/bench
+/diag
+/output.txt
+/cc.json
+/bun.lock
+/skills-lock.json
+/test_cf.js
+/webarena
+_agent_plans/
+.agents/
+scripts/__pycache__/

@@ -57,7 +57,7 @@ func generateLargeDOMSummary(numNodes int) string {
 		if i > 0 {
 			parentID = fmt.Sprintf("el-%d", i/2) // Create a binary tree structure for realistic depth
 		}
-		sb.WriteString(fmt.Sprintf("ID: el-%d | Tag: div | Parent: %s | Path: body>div | Bounds: [0.1, 0.1, 0.8, 0.8] | Text: Node %d\n", i, parentID, i))
+		fmt.Fprintf(&sb, "ID: el-%d | Tag: div | Parent: %s | Path: body>div | Bounds: [0.1, 0.1, 0.8, 0.8] | Text: Node %d\n", i, parentID, i)
 	}
 	return sb.String()
 }

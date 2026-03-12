@@ -28,6 +28,8 @@ const (
 	MsgTabClosed         = "TAB_CLOSED"
 	MsgDOMMutated        = "DOM_MUTATED"
 	MsgPing              = "PING"
+	MsgShellCommand      = "SHELL_COMMAND"
+	MsgShellResponse     = "SHELL_RESPONSE"
 
 	// Go-driven capture orchestration.
 	MsgPageReady         = "PAGE_READY"             // ext → server: tab ready for capture

@@ -149,16 +149,16 @@ func (w *ResultWriter) WriteSummary() error {
 	// Write human-readable summary.txt
 	var sb strings.Builder
 	sb.WriteString("=== WebArena Evaluation Summary ===\n\n")
-	sb.WriteString(fmt.Sprintf("Timestamp:  %s\n", s.Timestamp))
-	sb.WriteString(fmt.Sprintf("Total:      %d tasks\n", s.TotalTasks))
-	sb.WriteString(fmt.Sprintf("Succeeded:  %d\n", s.Succeeded))
-	sb.WriteString(fmt.Sprintf("Failed:     %d\n", s.Failed))
-	sb.WriteString(fmt.Sprintf("Timeouts:   %d\n", s.Timeouts))
-	sb.WriteString(fmt.Sprintf("Errors:     %d\n", s.Errors))
-	sb.WriteString(fmt.Sprintf("Score:      %.1f%%\n", s.ScorePct))
-	sb.WriteString(fmt.Sprintf("Avg time:   %.0f ms\n\n", s.AvgElapsed))
+	fmt.Fprintf(&sb, "Timestamp:  %s\n", s.Timestamp)
+	fmt.Fprintf(&sb, "Total:      %d tasks\n", s.TotalTasks)
+	fmt.Fprintf(&sb, "Succeeded:  %d\n", s.Succeeded)
+	fmt.Fprintf(&sb, "Failed:     %d\n", s.Failed)
+	fmt.Fprintf(&sb, "Timeouts:   %d\n", s.Timeouts)
+	fmt.Fprintf(&sb, "Errors:     %d\n", s.Errors)
+	fmt.Fprintf(&sb, "Score:      %.1f%%\n", s.ScorePct)
+	fmt.Fprintf(&sb, "Avg time:   %.0f ms\n\n", s.AvgElapsed)
 
-	sb.WriteString(fmt.Sprintf("%-8s %-8s %-10s %s\n", "TaskID", "Status", "Time(ms)", "Summary"))
+	fmt.Fprintf(&sb, "%-8s %-8s %-10s %s\n", "TaskID", "Status", "Time(ms)", "Summary")
 	sb.WriteString(strings.Repeat("-", 70) + "\n")
 	for _, r := range w.results {
 		summary := r.Summary
@@ -171,7 +171,7 @@ func (w *ResultWriter) WriteSummary() error {
 				summary = summary[:37] + "..."
 			}
 		}
-		sb.WriteString(fmt.Sprintf("%-8d %-8s %-10d %s\n", r.TaskID, r.Status, r.ElapsedMs, summary))
+		fmt.Fprintf(&sb, "%-8d %-8s %-10d %s\n", r.TaskID, r.Status, r.ElapsedMs, summary)
 	}
 
 	return os.WriteFile(filepath.Join(w.dir, "summary.txt"), []byte(sb.String()), 0o644)

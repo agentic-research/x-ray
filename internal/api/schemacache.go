@@ -1,3 +1,19 @@
+// TODO(post-hackathon): Replace raw MemoryStore + manual persistLocked() with
+// graph.GraphCache from mache (merged in agentic-research/mache#79).
+//
+// Migration plan:
+//  1. Replace c.mu/c.store/c.dbPath with *graph.GraphCache
+//  2. Simple single-op methods (PutZone, InvalidateZone, InvalidateURL) →
+//     use GraphCache.PutDir/PutFile/AppendChild/RemoveChild/ClearChildren
+//  3. Complex multi-op methods (PutZones, getSectionsLocked) →
+//     use GraphCache.Batch(func(store *graph.MemoryStore) { ... })
+//     for atomic multi-step mutations with one SQLite persist
+//  4. Remove persistLocked() entirely — GraphCache handles it
+//  5. Keep all domain logic here: fingerprint matching, NavSection
+//     serialization, goal hash normalization, max-sections eviction
+//  6. Validate via existing schemacache_test.go (behavioral equivalence)
+//
+// See also: INVESTIGATION_LOG.md entry "2026-03-11: Implemented graph.GraphCache"
 package api
 
 import (

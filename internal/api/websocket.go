@@ -389,6 +389,8 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Voice [ext tab %d]: %s", msg.TabID, msg.Message)
 		case MsgPing:
 			// Client-side keep-alive heartbeat — no action needed.
+		case MsgShellCommand:
+			go h.handleShellCommand(conn, msgBytes)
 
 		// Go-driven capture orchestration messages.
 		case MsgPageReady:

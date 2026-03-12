@@ -61,8 +61,10 @@ func TestSheafFolding_WithVisualFeatures(t *testing.T) {
 	idToIdx["nav"] = 0
 	for i := 0; i < 3; i++ {
 		id := fmt.Sprintf("nav-link-%d", i)
-		elements = append(elements, element{id: id, tag: "a", parentID: "nav", hasBounds: true,
-			centerX: float64(i)*0.3 + 0.15, centerY: 0.05, bounds: [4]float64{float64(i) * 0.3, 0, 0.3, 0.1}})
+		elements = append(elements, element{
+			id: id, tag: "a", parentID: "nav", hasBounds: true,
+			centerX: float64(i)*0.3 + 0.15, centerY: 0.05, bounds: [4]float64{float64(i) * 0.3, 0, 0.3, 0.1},
+		})
 		idToIdx[id] = len(elements) - 1
 	}
 
@@ -71,8 +73,10 @@ func TestSheafFolding_WithVisualFeatures(t *testing.T) {
 	idToIdx["main"] = len(elements) - 1
 	for i := 0; i < 5; i++ {
 		id := fmt.Sprintf("content-%d", i)
-		elements = append(elements, element{id: id, tag: "div", parentID: "main", hasBounds: true,
-			centerX: 0.5, centerY: 0.2 + float64(i)*0.06, bounds: [4]float64{0.1, 0.15 + float64(i)*0.06, 0.8, 0.05}})
+		elements = append(elements, element{
+			id: id, tag: "div", parentID: "main", hasBounds: true,
+			centerX: 0.5, centerY: 0.2 + float64(i)*0.06, bounds: [4]float64{0.1, 0.15 + float64(i)*0.06, 0.8, 0.05},
+		})
 		idToIdx[id] = len(elements) - 1
 	}
 
@@ -81,8 +85,10 @@ func TestSheafFolding_WithVisualFeatures(t *testing.T) {
 	idToIdx["footer"] = len(elements) - 1
 	for i := 0; i < 2; i++ {
 		id := fmt.Sprintf("footer-link-%d", i)
-		elements = append(elements, element{id: id, tag: "a", parentID: "footer", hasBounds: true,
-			centerX: float64(i)*0.4 + 0.3, centerY: 0.92, bounds: [4]float64{float64(i)*0.4 + 0.1, 0.85, 0.3, 0.15}})
+		elements = append(elements, element{
+			id: id, tag: "a", parentID: "footer", hasBounds: true,
+			centerX: float64(i)*0.4 + 0.3, centerY: 0.92, bounds: [4]float64{float64(i)*0.4 + 0.1, 0.85, 0.3, 0.15},
+		})
 		idToIdx[id] = len(elements) - 1
 	}
 
@@ -166,30 +172,30 @@ func buildRichSummary(t *testing.T) string {
 	sb.WriteString("ID: el-0 | Parent: none | Tag: header | Text: \"Site Header\" | Bounds: [0.000, 0.000, 1.000, 0.080]\n")
 	sb.WriteString("ID: el-1 | Parent: el-0 | Tag: nav | Text: \"Navigation\" | Bounds: [0.000, 0.000, 1.000, 0.080]\n")
 	for i := 0; i < 5; i++ {
-		sb.WriteString(fmt.Sprintf("ID: el-%d | Parent: el-1 | Tag: a | Text: \"Link %d\" | Bounds: [%.3f, 0.010, 0.150, 0.060]\n",
-			10+i, i, float64(i)*0.18+0.05))
+		fmt.Fprintf(&sb, "ID: el-%d | Parent: el-1 | Tag: a | Text: \"Link %d\" | Bounds: [%.3f, 0.010, 0.150, 0.060]\n",
+			10+i, i, float64(i)*0.18+0.05)
 	}
 
 	// Main content
 	sb.WriteString("ID: el-20 | Parent: none | Tag: main | Text: \"Content\" | Bounds: [0.000, 0.100, 1.000, 0.700]\n")
 	sb.WriteString("ID: el-21 | Parent: el-20 | Tag: section | Text: \"Feed\" | Bounds: [0.050, 0.120, 0.600, 0.650]\n")
 	for i := 0; i < 10; i++ {
-		sb.WriteString(fmt.Sprintf("ID: el-%d | Parent: el-21 | Tag: a | Text: \"Story %d\" | Bounds: [0.060, %.3f, 0.580, 0.050]\n",
-			30+i, i, 0.13+float64(i)*0.06))
+		fmt.Fprintf(&sb, "ID: el-%d | Parent: el-21 | Tag: a | Text: \"Story %d\" | Bounds: [0.060, %.3f, 0.580, 0.050]\n",
+			30+i, i, 0.13+float64(i)*0.06)
 	}
 
 	// Sidebar
 	sb.WriteString("ID: el-50 | Parent: el-20 | Tag: aside | Text: \"Sidebar\" | Bounds: [0.700, 0.120, 0.280, 0.400]\n")
 	for i := 0; i < 3; i++ {
-		sb.WriteString(fmt.Sprintf("ID: el-%d | Parent: el-50 | Tag: a | Text: \"Ad %d\" | Bounds: [0.710, %.3f, 0.260, 0.100]\n",
-			60+i, i, 0.13+float64(i)*0.12))
+		fmt.Fprintf(&sb, "ID: el-%d | Parent: el-50 | Tag: a | Text: \"Ad %d\" | Bounds: [0.710, %.3f, 0.260, 0.100]\n",
+			60+i, i, 0.13+float64(i)*0.12)
 	}
 
 	// Footer
 	sb.WriteString("ID: el-80 | Parent: none | Tag: footer | Text: \"Footer\" | Bounds: [0.000, 0.880, 1.000, 0.120]\n")
 	for i := 0; i < 3; i++ {
-		sb.WriteString(fmt.Sprintf("ID: el-%d | Parent: el-80 | Tag: a | Text: \"Footer Link %d\" | Bounds: [%.3f, 0.900, 0.200, 0.060]\n",
-			90+i, i, float64(i)*0.25+0.1))
+		fmt.Fprintf(&sb, "ID: el-%d | Parent: el-80 | Tag: a | Text: \"Footer Link %d\" | Bounds: [%.3f, 0.900, 0.200, 0.060]\n",
+			90+i, i, float64(i)*0.25+0.1)
 	}
 
 	return sb.String()
@@ -204,10 +210,11 @@ func countMounts(schemaJSON string) int {
 // while baseline merges spatially-close zones.
 //
 // Layout (8 zones, maxZ=4):
-//   Row 0: [nav-A: horiz edges] [nav-B: horiz edges]   ← visually similar
-//   Row 1: [content-A: vert edges] [sidebar-A: mixed]   ← visually different
-//   Row 2: [content-B: vert edges] [sidebar-B: mixed]   ← matches row 1
-//   Row 3: [footer-A: horiz edges] [footer-B: horiz edges] ← visually similar
+//
+//	Row 0: [nav-A: horiz edges] [nav-B: horiz edges]   ← visually similar
+//	Row 1: [content-A: vert edges] [sidebar-A: mixed]   ← visually different
+//	Row 2: [content-B: vert edges] [sidebar-B: mixed]   ← matches row 1
+//	Row 3: [footer-A: horiz edges] [footer-B: horiz edges] ← visually similar
 //
 // Spatial fold merges vertically adjacent zones (nav-A + content-A, etc.)
 // Sheaf fold merges visually similar zones (nav-A + nav-B, content-A + content-B, etc.)

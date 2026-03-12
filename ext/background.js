@@ -21,6 +21,18 @@ chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== 'sidepanel') return;
   sidePanelPorts.add(port);
   port.onDisconnect.addListener(() => sidePanelPorts.delete(port));
+
+  // Handle messages FROM the side panel (terminal shell commands).
+  port.onMessage.addListener((msg) => {
+    if (msg.type === 'SHELL_COMMAND' && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'SHELL_COMMAND',
+        command: msg.command,
+        args: msg.args,
+        cwd: msg.cwd,
+      }));
+    }
+  });
 });
 
 // Load configured WebSocket URL, then connect (auto-launching agentd if needed).
@@ -551,6 +563,14 @@ function connectWebSocket() {
           await chrome.debugger.detach({ tabId });
         } catch (_) {}
         ws.send(JSON.stringify({ type: 'CDP_DETACHED', tab_id: tabId }));
+        break;
+      }
+
+      case 'SHELL_RESPONSE': {
+        // Forward shell response to all connected side panel ports.
+        for (const port of sidePanelPorts) {
+          try { port.postMessage(msg); } catch (_) {}
+        }
         break;
       }
     }
