@@ -546,10 +546,18 @@ function connectWebSocket() {
 
       case 'CDP_SEND': {
         const { cdp_id, tab_id, cdp_method, cdp_params } = msg;
+        const CDP_SEND_TIMEOUT_MS = 30000;
         try {
-          const result = await chrome.debugger.sendCommand(
-            { tabId: tab_id }, cdp_method, cdp_params || {}
-          );
+          const result = await Promise.race([
+            chrome.debugger.sendCommand(
+              { tabId: tab_id }, cdp_method, cdp_params || {}
+            ),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error(
+                `CDP command ${cdp_method} timed out after ${CDP_SEND_TIMEOUT_MS / 1000}s`
+              )), CDP_SEND_TIMEOUT_MS)
+            ),
+          ]);
           ws.send(JSON.stringify({ type: 'CDP_RESULT', cdp_id, cdp_result: result }));
         } catch (e) {
           ws.send(JSON.stringify({ type: 'CDP_ERROR', cdp_id, cdp_error: e.message }));

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
 )
@@ -26,11 +27,12 @@ type EventMsg struct {
 
 // Proxy mediates CDP commands through the Chrome extension WebSocket.
 type Proxy struct {
-	sender  Sender
-	nextID  atomic.Int64
-	pending sync.Map // int64 -> chan cdpResponse
-	attachM sync.Map // int -> chan error (tabID -> attach result)
-	detachM sync.Map // int -> chan struct{}
+	sender   Sender
+	senderMu sync.RWMutex
+	nextID   atomic.Int64
+	pending  sync.Map // int64 -> chan cdpResponse
+	attachM  sync.Map // int -> chan error (tabID -> attach result)
+	detachM  sync.Map // int -> chan struct{}
 
 	eventSubs sync.Map // int (tabID) -> chan EventMsg
 }
@@ -42,7 +44,9 @@ func New(sender Sender) *Proxy {
 
 // SetSender updates the sender (e.g., on WS reconnect).
 func (p *Proxy) SetSender(s Sender) {
+	p.senderMu.Lock()
 	p.sender = s
+	p.senderMu.Unlock()
 }
 
 // Attach asks the extension to chrome.debugger.attach(tabId, '1.3').
@@ -51,7 +55,11 @@ func (p *Proxy) Attach(ctx context.Context, tabID int) error {
 	p.attachM.Store(tabID, ch)
 	defer p.attachM.Delete(tabID)
 
-	if err := p.sender.SendJSON(map[string]any{
+	p.senderMu.RLock()
+	sender := p.sender
+	p.senderMu.RUnlock()
+
+	if err := sender.SendJSON(map[string]any{
 		"type":   "CDP_ATTACH",
 		"tab_id": tabID,
 	}); err != nil {
@@ -72,7 +80,11 @@ func (p *Proxy) Detach(ctx context.Context, tabID int) error {
 	p.detachM.Store(tabID, ch)
 	defer p.detachM.Delete(tabID)
 
-	if err := p.sender.SendJSON(map[string]any{
+	p.senderMu.RLock()
+	sender := p.sender
+	p.senderMu.RUnlock()
+
+	if err := sender.SendJSON(map[string]any{
 		"type":   "CDP_DETACH",
 		"tab_id": tabID,
 	}); err != nil {
@@ -104,7 +116,11 @@ func (p *Proxy) Send(ctx context.Context, tabID int, method string, params any) 
 		msg["cdp_params"] = params
 	}
 
-	if err := p.sender.SendJSON(msg); err != nil {
+	p.senderMu.RLock()
+	sender := p.sender
+	p.senderMu.RUnlock()
+
+	if err := sender.SendJSON(msg); err != nil {
 		return nil, fmt.Errorf("cdp %s: send: %w", method, err)
 	}
 
@@ -170,7 +186,14 @@ func (p *Proxy) HandleError(id int64, errMsg string) {
 // The caller must call UnsubscribeEvents when done to avoid leaking the channel.
 func (p *Proxy) SubscribeEvents(tabID int) <-chan EventMsg {
 	ch := make(chan EventMsg, 8)
-	p.eventSubs.Store(tabID, ch)
+	if old, loaded := p.eventSubs.LoadOrStore(tabID, ch); loaded {
+		// Existing subscriber — close old channel and replace.
+		if oldCh, ok := old.(chan EventMsg); ok {
+			close(oldCh)
+		}
+		p.eventSubs.Store(tabID, ch)
+		log.Printf("WARNING: SubscribeEvents overwriting existing subscriber for tab %d", tabID)
+	}
 	return ch
 }
 

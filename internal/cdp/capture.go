@@ -73,12 +73,19 @@ func LayoutMetrics(ctx context.Context, p *Proxy, tabID int, maxHeight float64) 
 			Width  float64 `json:"width"`
 			Height float64 `json:"height"`
 		} `json:"cssContentSize"`
+		ContentSize struct {
+			Width  float64 `json:"width"`
+			Height float64 `json:"height"`
+		} `json:"contentSize"`
 	}
 	if err := json.Unmarshal(result, &resp); err != nil {
 		return 0, 0, fmt.Errorf("LayoutMetrics: unmarshal: %w", err)
 	}
-	h := math.Min(resp.CSSContentSize.Height, maxHeight)
-	return resp.CSSContentSize.Width, h, nil
+	w, h := resp.CSSContentSize.Width, resp.CSSContentSize.Height
+	if w == 0 && resp.ContentSize.Width > 0 {
+		w, h = resp.ContentSize.Width, resp.ContentSize.Height
+	}
+	return w, math.Min(h, maxHeight), nil
 }
 
 // DocumentRoot calls DOM.getDocument(depth:0) and returns the root node ID.
@@ -134,14 +141,19 @@ func ElementBoxModel(ctx context.Context, p *Proxy, tabID, rootNodeID int, mache
 		return nil, fmt.Errorf("ElementBoxModel: getBoxModel unmarshal: %w", err)
 	}
 	b := bmResp.Model.Border
-	if len(b) < 6 {
+	if len(b) < 8 {
 		return nil, nil
 	}
+	// Compute axis-aligned bounding box of the quad (handles CSS-rotated elements).
+	minX := math.Min(math.Min(b[0], b[2]), math.Min(b[4], b[6]))
+	minY := math.Min(math.Min(b[1], b[3]), math.Min(b[5], b[7]))
+	maxX := math.Max(math.Max(b[0], b[2]), math.Max(b[4], b[6]))
+	maxY := math.Max(math.Max(b[1], b[3]), math.Max(b[5], b[7]))
 	return &BoxModel{
-		X: b[0],
-		Y: b[1],
-		W: b[2] - b[0],
-		H: b[5] - b[1],
+		X: minX,
+		Y: minY,
+		W: maxX - minX,
+		H: maxY - minY,
 	}, nil
 }
 
@@ -521,13 +533,18 @@ func CaptureLayerTree(ctx context.Context, p *Proxy, tabID int, macheToBackend m
 				return
 			}
 			var resp struct {
-				CompositingReasons []string `json:"compositingReasons"`
+				CompositingReasons   []string `json:"compositingReasons"`
+				CompositingReasonIds []string `json:"compositingReasonIds"`
 			}
 			if err := json.Unmarshal(res, &resp); err != nil {
 				reasonsCh <- reasonResult{backendID: l.BackendNodeID}
 				return
 			}
-			reasonsCh <- reasonResult{backendID: l.BackendNodeID, reasons: resp.CompositingReasons}
+			reasons := resp.CompositingReasons
+			if len(reasons) == 0 {
+				reasons = resp.CompositingReasonIds
+			}
+			reasonsCh <- reasonResult{backendID: l.BackendNodeID, reasons: reasons}
 		}(&layers[i])
 	}
 	wg.Wait()
