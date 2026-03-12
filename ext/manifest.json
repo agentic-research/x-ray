@@ -18,8 +18,7 @@
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_title": "X-Ray",
-    "default_popup": "popup.html"
+    "default_title": "X-Ray"
   },
   "background": {
     "service_worker": "background.js"

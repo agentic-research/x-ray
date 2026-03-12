@@ -1,5 +1,10 @@
 // background.js - Service worker for X-Ray extension (DOM bridge only)
 
+// Clicking the extension icon opens the sidebar (no popup).
+chrome.action.onClicked.addListener((tab) => {
+  chrome.sidePanel.open({ windowId: tab.windowId }).catch(() => {});
+});
+
 const DEFAULT_WS_URL = 'ws://localhost:8080/ws';
 
 let ws = null;
