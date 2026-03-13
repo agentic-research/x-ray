@@ -91,3 +91,7 @@ demo/
 _agent_plans/
 .agents/
 scripts/__pycache__/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
