@@ -103,6 +103,10 @@ func main() {
 		}
 	}
 
+	// navReady is closed once the Navigator model is loaded and ready.
+	// When no local model is configured, it's closed immediately.
+	navReady := make(chan struct{})
+
 	// Navigator model: default to Gemini REST, override with navigator.mode or endpoint.
 	// NAVIGATOR_MODEL env var overrides the model for all backends.
 	// navigator.model from config.yaml only applies when a local endpoint is set,
@@ -136,7 +140,9 @@ func main() {
 
 		// Pre-warm: send a throwaway request so Ollama loads the model into GPU
 		// memory before the first real intent arrives.
+		// Blocks the readiness gate — "Agent OS Ready" won't print until this completes.
 		go func() {
+			defer close(navReady)
 			log.Printf("Navigator: pre-warming model %s...", navModel)
 			warmCtx, warmCancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer warmCancel()
@@ -144,11 +150,15 @@ func main() {
 				{Role: "user", Parts: []*genai.Part{{Text: "hi"}}},
 			}, nil)
 			if err != nil {
-				log.Printf("Navigator: pre-warm failed (non-fatal): %v", err)
+				log.Printf("Navigator: pre-warm FAILED: %v", err)
+				log.Printf("Navigator: check that model %q exists (ollama list)", navModel)
 			} else {
 				log.Printf("Navigator: model %s pre-warmed and ready", navModel)
 			}
 		}()
+	}
+	if cfg.Navigator.Endpoint == "" || cfg.Navigator.Mode == "gemini-live" {
+		close(navReady) // cloud models don't need pre-warm
 	}
 
 	// Per-tab Engine + Navigator are created on demand inside Handler.
@@ -239,6 +249,11 @@ func main() {
 			log.Printf("HTTP shutdown error: %v", err)
 		}
 	}()
+
+	// Wait for all subsystems to be ready before accepting user interaction.
+	// The HTTP server is already listening (health checks work), but we gate
+	// the "Agent OS Ready" banner on actual readiness.
+	<-navReady
 
 	if *voiceFlag {
 		if !audio.Available() {
