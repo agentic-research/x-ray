@@ -9,6 +9,7 @@ const cmdBtn = document.getElementById('cmd-btn');
 
 const MAX_ENTRIES = 500;
 let autoScroll = true;
+let agentConnected = false;
 const buffer = [];
 
 // Icon -> type mapping for color coding.
@@ -19,17 +20,29 @@ const ICON_TYPE = {
   'U': 'VOICE', 'T': 'MODEL'
 };
 
+// --- Connection state: enable/disable toolbar based on agent WS ---
+function setConnected(connected) {
+  agentConnected = connected;
+  wsDot.classList.toggle('connected', connected);
+  snapshotBtn.disabled = !connected;
+  overlayBtn.disabled = !connected;
+  exportBtn.disabled = !connected;
+  cmdInput.disabled = !connected;
+  cmdBtn.disabled = !connected;
+  cmdInput.placeholder = connected ? 'Type a command...' : 'Not connected';
+}
+
 function connectPort() {
   const port = chrome.runtime.connect({ name: 'sidepanel' });
   port.onMessage.addListener((msg) => {
     if (msg.type === 'AGENT_LOG') {
       addEntry(msg);
     } else if (msg.type === 'WS_STATUS') {
-      wsDot.classList.toggle('connected', msg.connected);
+      setConnected(msg.connected);
     }
   });
   port.onDisconnect.addListener(() => {
-    wsDot.classList.remove('connected');
+    setConnected(false);
     setTimeout(connectPort, 1000);
   });
 }
@@ -73,7 +86,7 @@ snapshotBtn.addEventListener('click', () => {
   snapshotBtn.disabled = true;
   chrome.runtime.sendMessage({ type: 'TRIGGER_SNAPSHOT' }, (resp) => {
     snapshotBtn.textContent = 'Snapshot';
-    snapshotBtn.disabled = false;
+    snapshotBtn.disabled = !agentConnected;
   });
 });
 
@@ -84,7 +97,7 @@ overlayBtn.addEventListener('click', () => {
       overlayBtn.textContent = resp.visible ? 'Hide' : 'Overlay';
       overlayBtn.classList.toggle('on', resp.visible);
     }
-    overlayBtn.disabled = false;
+    overlayBtn.disabled = !agentConnected;
   });
 });
 
@@ -93,7 +106,7 @@ exportBtn.addEventListener('click', () => {
   exportBtn.disabled = true;
   chrome.runtime.sendMessage({ type: 'EXPORT_OVERLAY' }, (resp) => {
     exportBtn.textContent = 'Export';
-    exportBtn.disabled = false;
+    exportBtn.disabled = !agentConnected;
   });
 });
 
@@ -104,8 +117,8 @@ function sendCommand() {
   cmdInput.disabled = true;
   cmdBtn.disabled = true;
   chrome.runtime.sendMessage({ type: 'SEND_INTENT', intent: text }, (resp) => {
-    cmdInput.disabled = false;
-    cmdBtn.disabled = false;
+    cmdInput.disabled = !agentConnected;
+    cmdBtn.disabled = !agentConnected;
     cmdInput.value = '';
     cmdInput.focus();
   });
@@ -120,13 +133,13 @@ cmdInput.addEventListener('keydown', (e) => {
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'SCHEMA_READY_EVENT') {
     snapshotBtn.textContent = 'Snapshot';
-    snapshotBtn.disabled = false;
+    snapshotBtn.disabled = !agentConnected;
   }
 });
 
 // Get initial WS status.
 chrome.runtime.sendMessage({ type: 'CHECK_SCHEMA' }, (resp) => {
-  if (resp && resp.wsConnected) wsDot.classList.add('connected');
+  setConnected(resp?.wsConnected ?? false);
 });
 
 connectPort();
