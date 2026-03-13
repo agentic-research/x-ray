@@ -280,9 +280,17 @@ func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 		taskContext, _ := fc.Args["context"].(string)
 		previousID, _ := fc.Args["previous_id"].(string)
 		ixID := fmt.Sprintf("ix-%d", time.Now().UnixMilli())
-		doer.Submit(Interaction{ID: ixID, Intent: intent, ReadOnly: readOnly, Context: taskContext, PreviousID: previousID})
+		started := doer.Submit(Interaction{ID: ixID, Intent: intent, ReadOnly: readOnly, Context: taskContext, PreviousID: previousID})
 		if readOnly {
 			log.Printf("Voice: create_interaction (read_only=true): %q", intent)
+		}
+		// Wait for the Doer to pick up the interaction. If it fails fast
+		// (model 404, bad config), we catch it here instead of speaking
+		// an optimistic message about a dead interaction.
+		<-started
+		if status, _, _, result := doer.State().Snapshot(); status == StatusFailed && result != nil {
+			log.Printf("Voice: create_interaction early failure: %s", result.Summary)
+			return fmt.Sprintf("Command failed immediately: %s. Tell the user what went wrong.", result.Summary)
 		}
 		return fmt.Sprintf("Command accepted: %q. Tell the user what you're about to do in a natural way, e.g. \"I'll look up the issues for this repo\" or \"Let me open that page for you.\" Be specific to the task. (interaction_id: %s)", intent, ixID)
 

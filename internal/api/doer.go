@@ -50,11 +50,12 @@ const (
 
 // Interaction is sent from the Talker to the Doer.
 type Interaction struct {
-	ID         string // unique interaction ID for correlation
-	Intent     string // natural language intent
-	ReadOnly   bool   // true → Navigator cannot use act(); must answer with text
-	PreviousID string // ID of the previous interaction (for chaining)
-	Context    string // higher-level task from the Planner (used in continuations)
+	ID         string        // unique interaction ID for correlation
+	Intent     string        // natural language intent
+	ReadOnly   bool          // true → Navigator cannot use act(); must answer with text
+	PreviousID string        // ID of the previous interaction (for chaining)
+	Context    string        // higher-level task from the Planner (used in continuations)
+	Started    chan struct{} // closed by Doer once interaction is running (or failed fast)
 }
 
 // InteractionResult is produced when an interaction completes or fails.
@@ -141,7 +142,11 @@ func (d *Doer) Run(ctx context.Context) {
 }
 
 // Submit sends an interaction to the Doer. Cancels any in-flight work first.
-func (d *Doer) Submit(ix Interaction) {
+// The returned channel is closed once the Doer has picked up the interaction
+// and is past fast-fail checks, so the caller can check State() for early errors.
+func (d *Doer) Submit(ix Interaction) <-chan struct{} {
+	ix.Started = make(chan struct{})
+
 	// Cancel current work.
 	d.mu.Lock()
 	if d.cancelFn != nil {
@@ -156,6 +161,7 @@ func (d *Doer) Submit(ix Interaction) {
 	}
 
 	d.interactionCh <- ix
+	return ix.Started
 }
 
 // Cancel aborts the current interaction.
@@ -191,6 +197,13 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 	d.state.mu.Unlock()
 
 	log.Printf("Doer [tab %d]: executing interaction %q", d.tabID, ix.Intent)
+
+	// Signal that the interaction has been picked up. Closed on first
+	// Navigator call or on early failure so the Talker doesn't speak
+	// optimistically about a dead interaction.
+	startedOnce := sync.Once{}
+	signalStarted := func() { startedOnce.Do(func() { close(ix.Started) }) }
+	defer signalStarted() // ensure it fires even on unexpected early returns
 
 	// Populate /interactions/active/ so Navigator can cat intent and write status.
 	taskText := ix.Intent
@@ -247,6 +260,11 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 			return
 		}
 	}
+
+	// Signal started — we're past setup and about to call the Navigator.
+	// If the Navigator fails fast (model 404, etc.), the Talker will see
+	// StatusFailed when it checks after <-ix.Started.
+	signalStarted()
 
 	// Multi-step loop: dispatch action, wait for page settle, feed result back.
 	// Always include Context so the Navigator knows the overall goal,
