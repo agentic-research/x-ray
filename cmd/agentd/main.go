@@ -150,8 +150,7 @@ func main() {
 				{Role: "user", Parts: []*genai.Part{{Text: "hi"}}},
 			}, nil)
 			if err != nil {
-				log.Printf("Navigator: pre-warm FAILED: %v", err)
-				log.Printf("Navigator: check that model %q exists (ollama list)", navModel)
+				log.Fatalf("Navigator: model %q not available: %v\nRun: ollama pull %s", navModel, err, navModel)
 			} else {
 				log.Printf("Navigator: model %s pre-warmed and ready", navModel)
 			}
