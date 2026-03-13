@@ -23,6 +23,7 @@
   }
   .tool-btn:hover { background: #222; border-color: #444; color: #ccc; }
   .tool-btn:active { background: #333; }
+  .tool-btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .tool-btn.on { background: #1a2a1a; border-color: #2a4a2a; color: #4a8; }
   #mic-btn {
     width: 26px; height: 26px; border-radius: 50%;
@@ -107,9 +108,9 @@
   </div>
 
   <div id="toolbar">
-    <button id="snapshot-btn" class="tool-btn" title="Capture page snapshot">Snapshot</button>
-    <button id="overlay-btn" class="tool-btn" title="Toggle overlay (Cmd+Shift+O)">Overlay</button>
-    <button id="export-btn" class="tool-btn" title="Export overlay PNG">Export</button>
+    <button id="snapshot-btn" class="tool-btn" disabled title="Capture page snapshot">Snapshot</button>
+    <button id="overlay-btn" class="tool-btn" disabled title="Toggle overlay (Cmd+Shift+O)">Overlay</button>
+    <button id="export-btn" class="tool-btn" disabled title="Export overlay PNG">Export</button>
     <button id="mic-btn" disabled title="Hold to talk (or spacebar)">&#x1F3A4;</button>
   </div>
 
