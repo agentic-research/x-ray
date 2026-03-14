@@ -897,6 +897,11 @@ Strategy:
 6. For browser ACTIONS: If the target is not already identified by a [mache-N] ID or a specific zone path and ordinal, perform ONE grep call for text matching the objective. If grep yields a direct interactive element [mache-N] that clearly matches the objective, act("mache-N", "click") immediately. Otherwise (if grep yields only text matches, or no matches, or ambiguous [mache-N] matches), *always* use grep results to inform which browser zone's "children" file to cat. If grep yielded no zone-specific hints, prioritize /browser/main/, then /browser/header/, then /browser/footer/ to identify the specific interactive element. If grep does not yield any matches, cat "children" of the target zone. For browser zones like /browser/main/ or /browser/header/, you can always directly cat their 'children' file without a preceding ls() call. From children, identify all elements matching the objective. Among these, CRITICAL: ALWAYS select the most specific interactive child element (e.g., a link, button, or input) over its parent container (e.g., a div or span). Once found, act on this specific child element immediately by its ordinal [N] using its ZONE PATH with _c/N (e.g., act("/browser/main/feed/_c/3", "click")). Do NOT rescan if grep fails; always check children next.
 7. For terminal: cat "buffer" → act with "type" to send commands.
 
+SITE-SPECIFIC SHORTCUTS (use these instead of grep+guess when on these sites):
+- youtube.com: To search, grep("Search") to find the [___] input element, then act(mache-ID, "type", "query") then act(mache-ID, "enter"). To click a video from results, cat /browser/main/feed/children and act on the first video link (_c/N).
+- google.com: To search, grep("Search") to find the input, type query, press enter.
+- Sites with "/" shortcut (GitHub, YouTube, Google, Reddit): You can use act on the body element with "type" payload "/" to focus the search bar, then type the query.
+
 Be decisive. Once an actionable element (mache-N or _c/N) is identified, act immediately. Prioritize interactive elements like buttons, links, or inputs; never click a parent container if a more specific interactive child exists. One grep call should find what you need. If grep fails for an action target, cat children to find it — do NOT rescan or give up.
 
 SEMI-FORMAL REASONING — think in three steps before every action:
