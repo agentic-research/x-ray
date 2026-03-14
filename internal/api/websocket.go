@@ -944,6 +944,13 @@ func (h *Handler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// tab_id=0 → resolve to active browser tab (same as /doer).
+	if tabID == 0 {
+		h.mu.Lock()
+		tabID = h.activeVoiceTab
+		h.mu.Unlock()
+	}
+
 	sess := h.lookupSession(tabID)
 
 	resp := map[string]any{
@@ -1055,8 +1062,20 @@ func (h *Handler) HandleDoerHTTP(w http.ResponseWriter, r *http.Request) {
 		req.InteractionID = fmt.Sprintf("ix-%d", time.Now().UnixMilli())
 	}
 
-	sess := h.getSession(req.TabID)
-	doer := h.getOrCreateDoer(req.TabID, sess)
+	// tab_id=0 → resolve to active browser tab (same behavior as voice flow).
+	tabID := req.TabID
+	if tabID == 0 {
+		h.mu.Lock()
+		tabID = h.activeVoiceTab
+		h.mu.Unlock()
+	}
+	if tabID == 0 {
+		http.Error(w, "no active browser tab — open a page with X-Ray extension first", http.StatusPreconditionFailed)
+		return
+	}
+
+	sess := h.getSession(tabID)
+	doer := h.getOrCreateDoer(tabID, sess)
 	doer.Submit(Interaction{
 		ID:       req.InteractionID,
 		Intent:   req.Intent,
