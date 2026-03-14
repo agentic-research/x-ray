@@ -1,0 +1,11 @@
+{
+  "hackernews": {
+    "click_first_result": "To click_first_result: grep(I Built Time...) → act(click) → act(mache-11, click)"
+  },
+  "youtube": {
+    "search": "To search: act(type) → act(mache-5, type, {query})"
+  },
+  "youtube_results": {
+    "search": "To search: act(click) → act(/browser/main/feed/_c/4, click)"
+  }
+}

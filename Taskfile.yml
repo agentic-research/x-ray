@@ -496,6 +496,16 @@ tasks:
     cmds:
       - go run ./cmd/capture-testdata {{.CLI_ARGS}}
 
+  analyze-replay:
+    desc: Extract site primers from replay results (which tool chains win?)
+    cmds:
+      - go run ./cmd/analyze-replay {{.CLI_ARGS}}
+
+  analyze-replay-emit:
+    desc: Extract + write site_primers.json
+    cmds:
+      - go run ./cmd/analyze-replay -emit
+
   replay:
     desc: Offline Navigator replay — debug decisions without browser (real Gemini)
     env:
