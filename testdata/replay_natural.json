@@ -1,0 +1,28 @@
+{
+  "name": "natural_language_youtube",
+  "steps": [
+    {
+      "site": "youtube",
+      "intent": "pull up bb blocks on youtube",
+      "expect_action": "type",
+      "expect_payload_contains": "bb blocks"
+    },
+    {
+      "site": "youtube",
+      "intent": "play bb blocks",
+      "expect_action": "type",
+      "expect_payload_contains": "bb blocks"
+    },
+    {
+      "site": "youtube",
+      "intent": "search youtube for minecraft videos",
+      "expect_action": "type",
+      "expect_payload_contains": "minecraft"
+    },
+    {
+      "site": "youtube_results",
+      "intent": "play the first one",
+      "expect_action": "click"
+    }
+  ]
+}
