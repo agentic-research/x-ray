@@ -38,7 +38,7 @@ mkdir -p "$LOG_DIR"
 # Golden path steps — each is a Doer intent.
 STEPS=(
   "Go to youtube.com"
-  "Type into the search bar input field: Minecraft speedruns. Then press enter to submit the search."
+  "Search for Minecraft speedruns"
   "Click on the first video in the search results"
   "What is the title of this video?"
 )

@@ -880,7 +880,7 @@ CRITICAL CONSTRAINTS:
 - Never guess a path. Use ls() only for discovery or verification of unknown paths; for known browser zones or [mache-N] IDs, direct cat/act is permitted without prior ls().
 - You have exactly twelve tools: ls, cat, stat, act, grep, browser.scroll, browser.goto, browser.rescan, browser.list_tabs, browser.switch_tab, iterm.new_window, iterm.new_tab.
 - If you cannot find an element, use browser.rescan() before giving up.
-- When told to "search" or "find" text, ALWAYS use the grep tool to scan DOM content. Do NOT type into the website's search bar unless explicitly told to "type into the search bar".
+- When told to "search for X" on a site with a search bar (YouTube, Google, Amazon, etc.), type the query into the search input and press enter. When told to "find X" in existing page content, use the grep tool to scan DOM content.
 
 TWO REFERENCE SYSTEMS — do NOT confuse them:
   children file: [N] label  →  click via ZONE PATH: act("/browser/main/feed/_c/N", "click")
