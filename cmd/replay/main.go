@@ -481,26 +481,30 @@ func resizeScreenshot(data []byte, maxWidth int) []byte {
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
 
-	// Calculate scale factor needed.
+	needsResize := w > maxWidth || h > maxHeight || len(data) > maxBytes
+	if !needsResize {
+		return data
+	}
+
+	// For very tall full-page screenshots, crop to top viewport instead of scaling.
+	// Scaling a 970x15874 image to fit 2048 height gives 125px width — useless.
+	cropH := h
+	if h > maxHeight {
+		cropH = maxHeight
+		log.Printf("Cropping screenshot height: %d → %d (viewport crop)", h, cropH)
+	}
+
+	// Calculate scale factor for width.
 	scale := 1.0
 	if w > maxWidth {
 		scale = float64(maxWidth) / float64(w)
 	}
-	if float64(h)*scale > float64(maxHeight) {
-		scale = float64(maxHeight) / float64(h)
-	}
-
-	if scale >= 1.0 && len(data) <= maxBytes {
-		return data // already fine
-	}
-
-	// If only the byte size is too large, scale down by sqrt of ratio.
-	if scale >= 1.0 && len(data) > maxBytes {
-		scale = 0.7 // rough — PNG compression varies, but this usually works
+	if len(data) > maxBytes && scale >= 1.0 {
+		scale = 0.7
 	}
 
 	newW := int(float64(w) * scale)
-	newH := int(float64(h) * scale)
+	newH := int(float64(cropH) * scale)
 	if newW < 1 {
 		newW = 1
 	}
@@ -510,7 +514,7 @@ func resizeScreenshot(data []byte, maxWidth int) []byte {
 
 	dst := image.NewRGBA(image.Rect(0, 0, newW, newH))
 	for y := range newH {
-		srcY := y * h / newH
+		srcY := y * cropH / newH
 		for x := range newW {
 			srcX := x * w / newW
 			dst.Set(x, y, img.At(bounds.Min.X+srcX, bounds.Min.Y+srcY))
