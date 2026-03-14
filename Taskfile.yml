@@ -471,6 +471,16 @@ tasks:
         read -r
         ./{{.BINARY_NAME}} --voice
 
+  golden-path:
+    desc: Run golden path test (YouTube search → click → read) against running agentd
+    cmds:
+      - ./scripts/golden_path_test.sh {{.CLI_ARGS}}
+
+  golden-path-loop:
+    desc: Run golden path test 5x to identify flaky steps and measure latency
+    cmds:
+      - ./scripts/golden_path_test.sh --loop 5
+
   # ---------------------------------------------------------------------------
   # GCP Deployment (ko + Terraform)
   # Requires .envrc: GCP_PROJECT_ID, GCP_REGION, KO_DOCKER_REPO, TF_VAR_project_id
