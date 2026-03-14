@@ -116,21 +116,9 @@ func (h *Handler) captureGoRetry(parentCtx context.Context, tabID int, isRescan 
 		return
 	}
 
-	// 2. DRAW_OVERLAY_CMD → wait for OVERLAY_DRAWN.
-	select {
-	case <-sess.OverlayDrawnCh:
-	default:
-	}
-
-	h.sendMessage(conn, OutboundMessage{Type: MsgDrawOverlayCmd, TabID: tabID})
-
-	select {
-	case <-sess.OverlayDrawnCh:
-	case <-time.After(config.Dur(h.Timeouts.Overlay)):
-		log.Printf("captureGo: overlay draw timed out (tab %d), continuing", tabID)
-	case <-ctx.Done():
-		return
-	}
+	// 2. Screenshot captures the clean page — no overlay drawn.
+	// The text summary provides all mache IDs and positions to the Navigator.
+	// This avoids overlay flicker on the user's screen during capture cycles.
 
 	// 3. CDP Attach → screenshot + AX + layers → Detach.
 	if err := h.cdpProxy.Attach(ctx, tabID); err != nil {
@@ -414,14 +402,6 @@ func (h *Handler) captureViaBackend(parentCtx context.Context, tabID int, isResc
 	h.handleDOMSnapshot(parentCtx, conn, syntheticMsg)
 }
 
-// sendOverlayCleanup removes the machine overlay.
-// Zone overlay (dashed Cairn boundaries) stays — it shows structural understanding
-// without the per-element noise of the human/semantic overlays.
-func (h *Handler) sendOverlayCleanup(conn *websocket.Conn, tabID int, sess *TabSession) {
-	// Remove machine overlay.
-	select {
-	case <-sess.OverlayRemovedCh:
-	default:
-	}
-	h.sendMessage(conn, OutboundMessage{Type: MsgRemoveOverlayCmd, TabID: tabID})
-}
+// sendOverlayCleanup is a no-op now that we skip overlay draw during capture.
+// Kept as a function to avoid removing all call sites.
+func (h *Handler) sendOverlayCleanup(conn *websocket.Conn, tabID int, sess *TabSession) {}
