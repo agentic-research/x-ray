@@ -33,8 +33,8 @@ var (
 // Golden path steps — the YouTube demo flow.
 var steps = []string{
 	"Go to youtube.com",
-	"Search for Minecraft speedruns",
-	"Click on the first video in the results",
+	"Click on the search bar and type Minecraft speedruns then press enter",
+	"Click on the first video in the search results",
 	"What is the title of this video?",
 }
 
