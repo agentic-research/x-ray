@@ -1020,6 +1020,16 @@ func (h *Handler) HandleCaptureTestdata(w http.ResponseWriter, r *http.Request) 
 
 	saved := map[string]string{}
 
+	// Trigger a fresh capture cycle so screenshot is up to date.
+	h.mu.Lock()
+	conn := h.conn
+	h.mu.Unlock()
+	if conn != nil {
+		log.Printf("capture-testdata: triggering fresh capture for tab %d", tabID)
+		h.captureGo(context.Background(), tabID, false, "")
+		time.Sleep(2 * time.Second) // let CDP screenshot complete
+	}
+
 	// Grab screenshot from session.
 	screenshot, mime := sess.GetScreenshot()
 	if len(screenshot) > 0 {
@@ -1032,9 +1042,6 @@ func (h *Handler) HandleCaptureTestdata(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Request fresh DOM summary from extension (raw format with Bounds/Tag/etc).
-	h.mu.Lock()
-	conn := h.conn
-	h.mu.Unlock()
 	if conn != nil {
 		// Drain any stale summary.
 		select {
