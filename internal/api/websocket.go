@@ -990,6 +990,76 @@ func (h *Handler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
+// HandleCaptureTestdata saves the current tab's DOM summary + screenshot
+// to testdata/<name>/ for offline replay testing.
+// GET /capture-testdata?name=youtube
+func (h *Handler) HandleCaptureTestdata(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		http.Error(w, "?name= required (e.g. youtube)", http.StatusBadRequest)
+		return
+	}
+
+	// Resolve active tab.
+	h.mu.Lock()
+	tabID := h.activeVoiceTab
+	h.mu.Unlock()
+	if tabID == 0 {
+		http.Error(w, "no active browser tab", http.StatusPreconditionFailed)
+		return
+	}
+
+	sess := h.lookupSession(tabID)
+	if sess == nil {
+		http.Error(w, "no session for active tab", http.StatusNotFound)
+		return
+	}
+
+	dir := "testdata/" + name
+	os.MkdirAll(dir, 0o755)
+
+	saved := map[string]string{}
+
+	// Grab screenshot from session.
+	screenshot, mime := sess.GetScreenshot()
+	if len(screenshot) > 0 {
+		path := dir + "/page.png"
+		if err := os.WriteFile(path, screenshot, 0o644); err != nil {
+			log.Printf("capture-testdata: write screenshot: %v", err)
+		} else {
+			saved["screenshot"] = fmt.Sprintf("%s (%d bytes, %s)", path, len(screenshot), mime)
+		}
+	}
+
+	// Grab summary from engine's text_index (the raw DOM summary).
+	engine := sess.GetEngine()
+	if engine != nil {
+		if ti, err := engine.ReadFile("text_index"); err == nil && ti != "" {
+			path := dir + "/page_summary.txt"
+			if err := os.WriteFile(path, []byte(ti), 0o644); err != nil {
+				log.Printf("capture-testdata: write summary: %v", err)
+			} else {
+				lines := strings.Count(ti, "\n")
+				saved["summary"] = fmt.Sprintf("%s (%d lines)", path, lines)
+			}
+		}
+	}
+
+	// Save URL.
+	url := sess.GetCurrentURL()
+	if url != "" {
+		os.WriteFile(dir+"/url.txt", []byte(url+"\n"), 0o644)
+		saved["url"] = url
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"dir":   dir,
+		"saved": saved,
+		"tab_id": tabID,
+	})
+}
+
 // HandleNavigateHTTP provides a POST /navigate endpoint for curl/UI testing.
 func (h *Handler) HandleNavigateHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

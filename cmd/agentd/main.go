@@ -210,6 +210,7 @@ func main() {
 	http.HandleFunc("/agent/reset", handler.HandleAgentReset)
 	http.HandleFunc("/voice", handler.HandleVoice)
 	http.HandleFunc("/voice-ui", serveVoiceUI)
+	http.HandleFunc("/capture-testdata", handler.HandleCaptureTestdata)
 
 	port := ":" + cfg.Port
 
