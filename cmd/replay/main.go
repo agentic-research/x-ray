@@ -15,10 +15,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"image"
+	"image/png"
 	"log"
 	"os"
 	"strconv"
@@ -32,6 +35,8 @@ import (
 	"github.com/agentic-research/x-ray/internal/navigator"
 	"google.golang.org/genai"
 )
+
+const maxScreenshotWidth = 1280 // Gemini inline limit ~20MB total; keep screenshots reasonable
 
 // schemaGenerator matches the GenerateSchema method on all cartographer backends.
 type schemaGenerator interface {
@@ -204,7 +209,10 @@ func runStep(ctx context.Context, step replayStep, cart schemaGenerator, navGen 
 		return result
 	}
 
-	// 4. Create Navigator with tool call logging
+	// 4. Resize screenshot if too large for Gemini inline limit.
+	screenshot = resizeScreenshot(screenshot, maxScreenshotWidth)
+
+	// 5. Create Navigator with tool call logging
 	nav := navigator.NewAgent(navGen, navModel, composite)
 	nav.SetScreenshot(screenshot, "image/png")
 
@@ -457,6 +465,38 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "..."
+}
+
+// resizeScreenshot downscales a PNG to maxWidth if wider, re-encoding as PNG.
+// Keeps Gemini inline requests under the 20MB limit.
+func resizeScreenshot(data []byte, maxWidth int) []byte {
+	img, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		return data // not a valid PNG, return as-is
+	}
+	bounds := img.Bounds()
+	if bounds.Dx() <= maxWidth {
+		return data // already small enough
+	}
+	// Scale proportionally.
+	newW := maxWidth
+	newH := bounds.Dy() * maxWidth / bounds.Dx()
+	dst := image.NewRGBA(image.Rect(0, 0, newW, newH))
+	// Nearest-neighbor scale (fast, no x/image dependency).
+	for y := 0; y < newH; y++ {
+		srcY := y * bounds.Dy() / newH
+		for x := 0; x < newW; x++ {
+			srcX := x * bounds.Dx() / newW
+			dst.Set(x, y, img.At(bounds.Min.X+srcX, bounds.Min.Y+srcY))
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, dst); err != nil {
+		return data
+	}
+	log.Printf("Resized screenshot: %dx%d → %dx%d (%d → %d bytes)",
+		bounds.Dx(), bounds.Dy(), newW, newH, len(data), buf.Len())
+	return buf.Bytes()
 }
 
 func printMultiRunSummary(scenario *replayScenario, allResults [][]stepResult) {
