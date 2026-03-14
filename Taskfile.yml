@@ -481,6 +481,16 @@ tasks:
     cmds:
       - ./scripts/golden_path_test.sh --loop 5
 
+  golden-loop:
+    desc: Self-contained YouTube test — starts/stops agentd, logs everything, analyzes
+    cmds:
+      - ./scripts/golden_loop.sh {{.CLI_ARGS}}
+
+  golden-loop-3:
+    desc: 3x YouTube golden loop for flake detection + A/B comparison
+    cmds:
+      - ./scripts/golden_loop.sh --runs 3 {{.CLI_ARGS}}
+
   # ---------------------------------------------------------------------------
   # GCP Deployment (ko + Terraform)
   # Requires .envrc: GCP_PROJECT_ID, GCP_REGION, KO_DOCKER_REPO, TF_VAR_project_id
