@@ -213,12 +213,12 @@ run_golden_path() {
     if run_step "${STEPS[$i]}" "$step_num" "$step_log"; then
       local dur=$(python3 -c "import json; print(json.load(open('${step_log}')).get('duration_s',0))" 2>/dev/null || echo "?")
       ok "Step ${step_num} passed (${dur}s)"
-      ((passed++))
+      passed=$((passed + 1))
     else
       local status=$(python3 -c "import json; print(json.load(open('${step_log}')).get('status','?'))" 2>/dev/null || echo "?")
       local err=$(python3 -c "import json; print(json.load(open('${step_log}')).get('error','')[:80])" 2>/dev/null || echo "")
       fail "Step ${step_num} ${status}${err:+: $err}"
-      ((failed++))
+      failed=$((failed + 1))
     fi
     echo ""
     sleep 2
@@ -355,7 +355,7 @@ build_agentd
 total_clean=0
 for run in $(seq 1 "$RUNS"); do
   if run_golden_path "$run"; then
-    ((total_clean++))
+    total_clean=$((total_clean + 1))
   fi
 done
 
