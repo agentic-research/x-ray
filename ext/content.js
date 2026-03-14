@@ -394,38 +394,79 @@ function getHumanColor(node) {
   return HUMAN_COLORS.other;
 }
 
-function drawOverlay() {
-  removeOverlay();
+// --- Overlay box tracking for position-only updates (no DOM rebuild) ---
+const _semanticBoxes = new Map();  // macheId → { box: HTMLElement, node: Element }
+const _humanBoxes = new Map();     // macheId → { box: HTMLElement, node: Element }
+let _lastZones = null;
+let _scrollRAF = null;
 
+// Update positions of all visible overlay boxes without rebuilding DOM.
+// Called on scroll — just reads getBoundingClientRect and writes style.transform.
+function _updateOverlayPositions() {
+  for (const [, entry] of _semanticBoxes) {
+    const rect = entry.node.getBoundingClientRect();
+    entry.box.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
+    entry.box.style.width = rect.width + 'px';
+    entry.box.style.height = rect.height + 'px';
+  }
+  for (const [, entry] of _humanBoxes) {
+    const rect = entry.node.getBoundingClientRect();
+    entry.box.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
+    entry.box.style.width = rect.width + 'px';
+    entry.box.style.height = rect.height + 'px';
+  }
+  // Zone overlay uses normalized bounds — update from stored zone data.
+  if (_lastZones) {
+    const zoneEl = document.getElementById(ZONE_OVERLAY_ID);
+    if (zoneEl) _updateZonePositions(zoneEl, _lastZones);
+  }
+}
+
+function _updateZonePositions(container, zones) {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let idx = 0;
+  const boxes = container.children;
+  function walk(zoneList) {
+    for (const zone of zoneList) {
+      if (!zone.bounds || zone.bounds.length < 4) continue;
+      const box = boxes[idx++];
+      if (!box) return;
+      const [nx, ny, nw, nh] = zone.bounds;
+      box.style.transform = `translate(${nx * vw}px, ${ny * vh}px)`;
+      box.style.width = (nw * vw) + 'px';
+      box.style.height = (nh * vh) + 'px';
+      if (zone.children) walk(zone.children);
+    }
+  }
+  walk(zones);
+}
+
+function drawOverlay() {
   const overlay = document.createElement('div');
   overlay.id = OVERLAY_ID;
   overlay.style.cssText =
-    'position: absolute; top: 0; left: 0; width: 100%; height: 100%;' +
-    'pointer-events: none; z-index: 2147483647;';
+    'position: fixed; top: 0; left: 0; width: 100%; height: 100%;' +
+    'pointer-events: none; z-index: 2147483647; overflow: visible;';
 
+  const newBoxes = new Map();
   for (const [macheId, node] of elementRegistry) {
     const rect = node.getBoundingClientRect();
-    // Skip elements that are off-screen or zero-sized
     if (rect.width === 0 || rect.height === 0) continue;
 
     const color = getSemanticColor(node);
     const alpha = areaOpacity(rect);
     const [r, g, b] = color.rgb;
 
-    // Bounding box with area-adaptive translucent fill + thick border
     const box = document.createElement('div');
     box.style.cssText =
-      `position: absolute;` +
-      `left: ${rect.left + window.scrollX}px;` +
-      `top: ${rect.top + window.scrollY}px;` +
-      `width: ${rect.width}px;` +
-      `height: ${rect.height}px;` +
+      `position: absolute; left: 0; top: 0;` +
+      `transform: translate(${rect.left}px, ${rect.top}px);` +
+      `width: ${rect.width}px; height: ${rect.height}px;` +
       `background: rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)});` +
       `border: 2px solid ${color.border};` +
-      `pointer-events: none;` +
-      `box-sizing: border-box;`;
+      `pointer-events: none; box-sizing: border-box;`;
 
-    // ID label
     const label = document.createElement('span');
     label.textContent = macheId;
     label.style.cssText =
@@ -435,20 +476,26 @@ function drawOverlay() {
       'white-space: nowrap; pointer-events: none;' +
       'line-height: 12px;';
     box.appendChild(label);
-
     overlay.appendChild(box);
+    newBoxes.set(macheId, { box, node });
   }
 
-  document.documentElement.appendChild(overlay);
+  // Double-buffer: swap in one operation, no flicker.
+  const existing = document.getElementById(OVERLAY_ID);
+  if (existing) {
+    existing.replaceWith(overlay);
+  } else {
+    document.documentElement.appendChild(overlay);
+  }
+  _semanticBoxes.clear();
+  for (const [k, v] of newBoxes) _semanticBoxes.set(k, v);
   console.log(`X-Ray: Drew semantic overlay with ${elementRegistry.size} boxes`);
 }
 
 function removeOverlay() {
   const existing = document.getElementById(OVERLAY_ID);
   if (existing) existing.remove();
-  // Also remove zone overlay to stay in sync.
-  const zones = document.getElementById(ZONE_OVERLAY_ID);
-  if (zones) zones.remove();
+  _semanticBoxes.clear();
 }
 
 function removeZoneOverlay() {
@@ -457,13 +504,11 @@ function removeZoneOverlay() {
 }
 
 function drawZoneOverlay(zones) {
-  removeZoneOverlay();
-
   const overlay = document.createElement('div');
   overlay.id = ZONE_OVERLAY_ID;
   overlay.style.cssText =
-    'position: absolute; top: 0; left: 0; width: 100%; height: 100%;' +
-    'pointer-events: none; z-index: 2147483646;';
+    'position: fixed; top: 0; left: 0; width: 100%; height: 100%;' +
+    'pointer-events: none; z-index: 2147483646; overflow: visible;';
 
   const vw = window.innerWidth;
   const vh = window.innerHeight;
@@ -473,19 +518,14 @@ function drawZoneOverlay(zones) {
     if (!bounds || bounds.length < 4) return;
 
     const [nx, ny, nw, nh] = bounds;
-    const px = nx * vw + window.scrollX;
-    const py = ny * vh + window.scrollY;
-    const pw = nw * vw;
-    const ph = nh * vh;
-
     const color = ZONE_COLORS[depth % ZONE_COLORS.length];
     const [r, g, b] = color.fill;
 
     const box = document.createElement('div');
     box.style.cssText =
-      `position: absolute;` +
-      `left: ${px}px; top: ${py}px;` +
-      `width: ${pw}px; height: ${ph}px;` +
+      `position: absolute; left: 0; top: 0;` +
+      `transform: translate(${nx * vw}px, ${ny * vh}px);` +
+      `width: ${nw * vw}px; height: ${nh * vh}px;` +
       `background: rgba(${r}, ${g}, ${b}, 0.06);` +
       `border: 2px dashed ${color.border};` +
       `pointer-events: none; box-sizing: border-box;`;
@@ -499,7 +539,6 @@ function drawZoneOverlay(zones) {
       'white-space: nowrap; pointer-events: none;' +
       'line-height: 12px; border-radius: 2px;';
     box.appendChild(label);
-
     overlay.appendChild(box);
 
     if (zone.children) {
@@ -513,23 +552,31 @@ function drawZoneOverlay(zones) {
     renderZone(zone, 0);
   }
 
-  document.documentElement.appendChild(overlay);
+  // Double-buffer swap.
+  const existing = document.getElementById(ZONE_OVERLAY_ID);
+  if (existing) {
+    existing.replaceWith(overlay);
+  } else {
+    document.documentElement.appendChild(overlay);
+  }
+  _lastZones = zones;
   console.log(`X-Ray: Drew zone overlay with ${zones.length} top-level zones`);
 }
 
 function removeHumanOverlay() {
   const existing = document.getElementById(HUMAN_OVERLAY_ID);
   if (existing) existing.remove();
+  _humanBoxes.clear();
 }
 
 function drawHumanOverlay() {
-  removeHumanOverlay();
   const overlay = document.createElement('div');
   overlay.id = HUMAN_OVERLAY_ID;
   overlay.style.cssText =
-    'position: absolute; top: 0; left: 0; width: 100%; height: 100%;' +
-    'pointer-events: none; z-index: 2147483645;';
+    'position: fixed; top: 0; left: 0; width: 100%; height: 100%;' +
+    'pointer-events: none; z-index: 2147483645; overflow: visible;';
 
+  const newBoxes = new Map();
   for (const [macheId, node] of elementRegistry) {
     const rect = node.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) continue;
@@ -541,8 +588,8 @@ function drawHumanOverlay() {
 
     const box = document.createElement('div');
     box.style.cssText =
-      `position: absolute;` +
-      `left: ${rect.left + window.scrollX}px; top: ${rect.top + window.scrollY}px;` +
+      `position: absolute; left: 0; top: 0;` +
+      `transform: translate(${rect.left}px, ${rect.top}px);` +
       `width: ${rect.width}px; height: ${rect.height}px;` +
       `background: rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)});` +
       `border: 1px solid ${color.border};` +
@@ -558,15 +605,32 @@ function drawHumanOverlay() {
       'line-height: 12px; border-radius: 2px;';
     box.appendChild(label);
     overlay.appendChild(box);
+    newBoxes.set(macheId, { box, node });
   }
 
-  document.documentElement.appendChild(overlay);
+  // Double-buffer swap.
+  const existing = document.getElementById(HUMAN_OVERLAY_ID);
+  if (existing) {
+    existing.replaceWith(overlay);
+  } else {
+    document.documentElement.appendChild(overlay);
+  }
+  _humanBoxes.clear();
+  for (const [k, v] of newBoxes) _humanBoxes.set(k, v);
   console.log(`X-Ray: Drew human overlay with ${elementRegistry.size} boxes`);
 }
 
+// Scroll listener: rAF-throttled position updates — no DOM rebuild, just transform writes.
+window.addEventListener('scroll', () => {
+  if (_scrollRAF) return;
+  _scrollRAF = requestAnimationFrame(() => {
+    _scrollRAF = null;
+    _updateOverlayPositions();
+  });
+}, { passive: true });
+
 // Redraw overlay on window resize so boxes track their elements.
 let resizeTimer = null;
-let _lastZones = null;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
