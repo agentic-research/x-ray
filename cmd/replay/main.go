@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/agentic-research/mache/graph"
 	"github.com/agentic-research/x-ray/internal/cartographer"
 	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/agentic-research/x-ray/internal/mache"
@@ -187,7 +188,7 @@ func runStep(ctx context.Context, step replayStep, cart schemaGenerator, navGen 
 		return result
 	}
 
-	// 3. Build mache engine
+	// 3. Build mache engine, mount under "browser/" to match production paths.
 	engine := mache.NewEngine()
 	if err := engine.ApplySchema(schema); err != nil {
 		result.Err = fmt.Sprintf("ApplySchema: %v", err)
@@ -196,8 +197,15 @@ func runStep(ctx context.Context, step replayStep, cart schemaGenerator, navGen 
 	}
 	engine.LoadChildren(summary, nil)
 
+	composite := graph.NewCompositeGraph()
+	if err := composite.Mount("browser", engine); err != nil {
+		result.Err = fmt.Sprintf("Mount: %v", err)
+		result.Reason = result.Err
+		return result
+	}
+
 	// 4. Create Navigator with tool call logging
-	nav := navigator.NewAgent(navGen, navModel, engine)
+	nav := navigator.NewAgent(navGen, navModel, composite)
 	nav.SetScreenshot(screenshot, "image/png")
 
 	var calls []toolCall
@@ -328,7 +336,15 @@ func runDump(ctx context.Context, cart schemaGenerator, scenario *replayScenario
 		}
 		engine.LoadChildren(summary, nil)
 
-		entries, err := engine.ListDir("/")
+		composite := graph.NewCompositeGraph()
+		if err := composite.Mount("browser", engine); err != nil {
+			fmt.Printf("  ERROR: Mount: %v\n\n", err)
+			continue
+		}
+
+		// Use NavFS for dump — same view as Navigator gets.
+		dumpFS := navigator.NewNavFS(composite)
+		entries, err := dumpFS.ListDir("/")
 		if err != nil {
 			fmt.Printf("  ls(\"/\"): ERROR: %v\n\n", err)
 			continue
@@ -336,45 +352,28 @@ func runDump(ctx context.Context, cart schemaGenerator, scenario *replayScenario
 
 		fmt.Println("ls(\"/\"):")
 		for _, entry := range entries {
-			desc, _ := engine.ReadFile(entry + "/description")
-			if len(desc) > 80 {
-				desc = desc[:77] + "..."
-			}
-			fmt.Printf("  %-30s %s\n", entry+"/", desc)
+			fmt.Printf("  %s\n", entry)
 		}
 		fmt.Println()
 
-		// Show children for each zone
-		dumpChildren(engine, "", entries)
-		fmt.Println()
-	}
-}
-
-func dumpChildren(engine *mache.Engine, parent string, entries []string) {
-	for _, entry := range entries {
-		name := strings.TrimSuffix(entry, "/")
-		full := name
-		if parent != "" {
-			full = parent + "/" + name
-		}
-
-		children, _ := engine.ReadFile(full + "/children")
-		if children != "" {
-			fmt.Printf("Zone: %s/children\n", full)
-			for _, line := range strings.Split(children, "\n") {
-				if line != "" {
-					fmt.Printf("  %s\n", line)
+		// Show children for each zone under /browser/
+		browserEntries, err := dumpFS.ListDir("/browser/")
+		if err == nil {
+			for _, entry := range browserEntries {
+				name := strings.TrimSuffix(entry, "/")
+				childrenContent, _ := dumpFS.ReadFile("/browser/" + name + "/children")
+				if childrenContent != "" {
+					fmt.Printf("Zone: /browser/%s/children\n", name)
+					for _, line := range strings.Split(childrenContent, "\n") {
+						if line != "" {
+							fmt.Printf("  %s\n", line)
+						}
+					}
+					fmt.Println()
 				}
 			}
-			fmt.Println()
 		}
-
-		if strings.HasSuffix(entry, "/") {
-			sub, err := engine.ListDir(full)
-			if err == nil {
-				dumpChildren(engine, full, sub)
-			}
-		}
+		fmt.Println()
 	}
 }
 
