@@ -1063,15 +1063,28 @@ func (h *Handler) HandleDoerHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// tab_id=0 → resolve to active browser tab (same behavior as voice flow).
+	// Wait up to 10s for a tab to connect if none yet (agentd just started).
 	tabID := req.TabID
 	if tabID == 0 {
 		h.mu.Lock()
 		tabID = h.activeVoiceTab
 		h.mu.Unlock()
-	}
-	if tabID == 0 {
-		http.Error(w, "no active browser tab — open a page with X-Ray extension first", http.StatusPreconditionFailed)
-		return
+		if tabID == 0 {
+			deadline := time.Now().Add(10 * time.Second)
+			for time.Now().Before(deadline) {
+				time.Sleep(500 * time.Millisecond)
+				h.mu.Lock()
+				tabID = h.activeVoiceTab
+				h.mu.Unlock()
+				if tabID != 0 {
+					break
+				}
+			}
+		}
+		if tabID == 0 {
+			http.Error(w, "no active browser tab — open a page with X-Ray extension first", http.StatusPreconditionFailed)
+			return
+		}
 	}
 
 	sess := h.getSession(tabID)
