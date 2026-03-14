@@ -491,6 +491,16 @@ tasks:
     cmds:
       - ./scripts/golden_loop.sh --runs 3 {{.CLI_ARGS}}
 
+  golden:
+    desc: Golden path test (Go) — full diagnostics, URLs, actions, timing
+    cmds:
+      - go run ./cmd/golden {{.CLI_ARGS}}
+
+  golden-3:
+    desc: 3x golden path with A/B comparison
+    cmds:
+      - go run ./cmd/golden -runs 3 {{.CLI_ARGS}}
+
   # ---------------------------------------------------------------------------
   # GCP Deployment (ko + Terraform)
   # Requires .envrc: GCP_PROJECT_ID, GCP_REGION, KO_DOCKER_REPO, TF_VAR_project_id

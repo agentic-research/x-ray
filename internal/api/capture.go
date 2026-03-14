@@ -414,7 +414,9 @@ func (h *Handler) captureViaBackend(parentCtx context.Context, tabID int, isResc
 	h.handleDOMSnapshot(parentCtx, conn, syntheticMsg)
 }
 
-// sendOverlayCleanup removes the machine overlay and draws the human-friendly overlay.
+// sendOverlayCleanup removes the machine overlay.
+// Zone overlay (dashed Cairn boundaries) stays — it shows structural understanding
+// without the per-element noise of the human/semantic overlays.
 func (h *Handler) sendOverlayCleanup(conn *websocket.Conn, tabID int, sess *TabSession) {
 	// Remove machine overlay.
 	select {
@@ -422,7 +424,4 @@ func (h *Handler) sendOverlayCleanup(conn *websocket.Conn, tabID int, sess *TabS
 	default:
 	}
 	h.sendMessage(conn, OutboundMessage{Type: MsgRemoveOverlayCmd, TabID: tabID})
-
-	// Draw human-friendly overlay.
-	h.sendMessage(conn, OutboundMessage{Type: MsgDrawHumanOverlay, TabID: tabID})
 }
