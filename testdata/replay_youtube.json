@@ -1,0 +1,21 @@
+{
+  "name": "youtube_search_play",
+  "steps": [
+    {
+      "site": "youtube",
+      "intent": "Search for Minecraft speedruns",
+      "expect_action": "type",
+      "expect_payload_contains": "Minecraft"
+    },
+    {
+      "site": "youtube",
+      "intent": "Press enter on the search input to submit",
+      "expect_action": "enter"
+    },
+    {
+      "site": "youtube_results",
+      "intent": "Click on the first video in the search results",
+      "expect_action": "click"
+    }
+  ]
+}

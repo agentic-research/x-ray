@@ -1,0 +1,10 @@
+{
+  "name": "hn_click_first_story",
+  "steps": [
+    {
+      "site": "hackernews",
+      "intent": "Click on the first story",
+      "expect_action": "click"
+    }
+  ]
+}

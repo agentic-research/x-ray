@@ -491,6 +491,30 @@ tasks:
     cmds:
       - ./scripts/golden_loop.sh --runs 3 {{.CLI_ARGS}}
 
+  replay:
+    desc: Offline Navigator replay — debug decisions without browser (real Gemini)
+    env:
+      CARTOGRAPHER_MODE: cairn
+      CAIRN_SHEAF: "1"
+    cmds:
+      - go run ./cmd/replay {{.CLI_ARGS}}
+
+  replay-3:
+    desc: 3x offline replay for consistency check
+    env:
+      CARTOGRAPHER_MODE: cairn
+      CAIRN_SHEAF: "1"
+    cmds:
+      - go run ./cmd/replay -runs 3 {{.CLI_ARGS}}
+
+  replay-dump:
+    desc: Dump what Navigator sees for replay testdata (no LLM call)
+    env:
+      CARTOGRAPHER_MODE: cairn
+      CAIRN_SHEAF: "1"
+    cmds:
+      - go run ./cmd/replay -dump {{.CLI_ARGS}}
+
   golden:
     desc: Golden path test (Go) — full diagnostics, URLs, actions, timing
     cmds:
