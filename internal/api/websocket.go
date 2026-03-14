@@ -1031,17 +1031,30 @@ func (h *Handler) HandleCaptureTestdata(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Grab summary from engine's text_index (the raw DOM summary).
-	engine := sess.GetEngine()
-	if engine != nil {
-		if ti, err := engine.ReadFile("text_index"); err == nil && ti != "" {
-			path := dir + "/page_summary.txt"
-			if err := os.WriteFile(path, []byte(ti), 0o644); err != nil {
-				log.Printf("capture-testdata: write summary: %v", err)
-			} else {
-				lines := strings.Count(ti, "\n")
-				saved["summary"] = fmt.Sprintf("%s (%d lines)", path, lines)
+	// Request fresh DOM summary from extension (raw format with Bounds/Tag/etc).
+	h.mu.Lock()
+	conn := h.conn
+	h.mu.Unlock()
+	if conn != nil {
+		// Drain any stale summary.
+		select {
+		case <-sess.SummaryCh:
+		default:
+		}
+		h.sendMessage(conn, OutboundMessage{Type: MsgRequestSummary, TabID: tabID})
+		select {
+		case summaryResp := <-sess.SummaryCh:
+			if summaryResp.Summary != "" {
+				path := dir + "/page_summary.txt"
+				if err := os.WriteFile(path, []byte(summaryResp.Summary), 0o644); err != nil {
+					log.Printf("capture-testdata: write summary: %v", err)
+				} else {
+					lines := strings.Count(summaryResp.Summary, "\n")
+					saved["summary"] = fmt.Sprintf("%s (%d lines)", path, lines)
+				}
 			}
+		case <-time.After(10 * time.Second):
+			log.Printf("capture-testdata: summary request timed out")
 		}
 	}
 
