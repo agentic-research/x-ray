@@ -491,6 +491,11 @@ tasks:
     cmds:
       - ./scripts/golden_loop.sh --runs 3 {{.CLI_ARGS}}
 
+  capture-testdata:
+    desc: Capture frozen testdata from running agentd (screenshot + summary)
+    cmds:
+      - go run ./cmd/capture-testdata {{.CLI_ARGS}}
+
   replay:
     desc: Offline Navigator replay — debug decisions without browser (real Gemini)
     env:
