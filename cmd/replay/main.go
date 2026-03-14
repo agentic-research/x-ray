@@ -467,26 +467,52 @@ func truncate(s string, n int) string {
 	return s[:n] + "..."
 }
 
-// resizeScreenshot downscales a PNG to maxWidth if wider, re-encoding as PNG.
-// Keeps Gemini inline requests under the 20MB limit.
+// resizeScreenshot downscales a PNG if it exceeds size limits.
+// Gemini inline limit is ~20MB total request; keep screenshots under 2MB.
+// Also caps height to prevent full-page screenshots from being sent.
 func resizeScreenshot(data []byte, maxWidth int) []byte {
+	const maxBytes = 2 * 1024 * 1024 // 2MB
+	const maxHeight = 2048
+
 	img, err := png.Decode(bytes.NewReader(data))
 	if err != nil {
 		return data // not a valid PNG, return as-is
 	}
 	bounds := img.Bounds()
-	if bounds.Dx() <= maxWidth {
-		return data // already small enough
+	w, h := bounds.Dx(), bounds.Dy()
+
+	// Calculate scale factor needed.
+	scale := 1.0
+	if w > maxWidth {
+		scale = float64(maxWidth) / float64(w)
 	}
-	// Scale proportionally.
-	newW := maxWidth
-	newH := bounds.Dy() * maxWidth / bounds.Dx()
+	if float64(h)*scale > float64(maxHeight) {
+		scale = float64(maxHeight) / float64(h)
+	}
+
+	if scale >= 1.0 && len(data) <= maxBytes {
+		return data // already fine
+	}
+
+	// If only the byte size is too large, scale down by sqrt of ratio.
+	if scale >= 1.0 && len(data) > maxBytes {
+		scale = 0.7 // rough — PNG compression varies, but this usually works
+	}
+
+	newW := int(float64(w) * scale)
+	newH := int(float64(h) * scale)
+	if newW < 1 {
+		newW = 1
+	}
+	if newH < 1 {
+		newH = 1
+	}
+
 	dst := image.NewRGBA(image.Rect(0, 0, newW, newH))
-	// Nearest-neighbor scale (fast, no x/image dependency).
-	for y := 0; y < newH; y++ {
-		srcY := y * bounds.Dy() / newH
-		for x := 0; x < newW; x++ {
-			srcX := x * bounds.Dx() / newW
+	for y := range newH {
+		srcY := y * h / newH
+		for x := range newW {
+			srcX := x * w / newW
 			dst.Set(x, y, img.At(bounds.Min.X+srcX, bounds.Min.Y+srcY))
 		}
 	}
@@ -495,7 +521,7 @@ func resizeScreenshot(data []byte, maxWidth int) []byte {
 		return data
 	}
 	log.Printf("Resized screenshot: %dx%d → %dx%d (%d → %d bytes)",
-		bounds.Dx(), bounds.Dy(), newW, newH, len(data), buf.Len())
+		w, h, newW, newH, len(data), buf.Len())
 	return buf.Bytes()
 }
 
