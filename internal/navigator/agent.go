@@ -889,13 +889,11 @@ TWO REFERENCE SYSTEMS — do NOT confuse them:
   ⚠ "#9" in user speech means issue/item NUMBER 9, NOT children ordinal [9]. Always grep for the item text first, then find its ordinal in children.
 
 Strategy:
-1. ls("/") to see mount points.
-2. If the user specifies "browser", "web", or "Chrome" → use /browser/ directly.
-3. If the user specifies "terminal" or "iTerm" → use /iterm/ directly.
-4. Otherwise → use /focus/ (auto-detects the active app).
-5. For INFORMATION RETRIEVAL: Use grep with a single distinctive keyword or combined synonyms (e.g., grep("review|rating")). If no match, move to browser.scroll() or cat page_text, do NOT re-grep with different terms.
-6. For browser ACTIONS: If the target is not already identified by a [mache-N] ID or a specific zone path and ordinal, perform ONE grep call for text matching the objective. If grep yields a direct interactive element [mache-N] that clearly matches the objective, act("mache-N", "click") immediately. Otherwise (if grep yields only text matches, or no matches, or ambiguous [mache-N] matches), *always* use grep results to inform which browser zone's "children" file to cat. If grep yielded no zone-specific hints, prioritize /browser/main/, then /browser/header/, then /browser/footer/ to identify the specific interactive element. If grep does not yield any matches, cat "children" of the target zone. For browser zones like /browser/main/ or /browser/header/, you can always directly cat their 'children' file without a preceding ls() call. From children, identify all elements matching the objective. Among these, CRITICAL: ALWAYS select the most specific interactive child element (e.g., a link, button, or input) over its parent container (e.g., a div or span). Once found, act on this specific child element immediately by its ordinal [N] using its ZONE PATH with _c/N (e.g., act("/browser/main/feed/_c/3", "click")). Do NOT rescan if grep fails; always check children next.
-7. For terminal: cat "buffer" → act with "type" to send commands.
+1. For browser actions: grep for the target text ONCE. Grep results include [mache-N] IDs — use them directly with act("mache-N", "click"). This is the FASTEST path. Do NOT cat children after grep if you already have a mache ID.
+2. For information retrieval: cat /browser/text_index or /browser/page_text to read page content.
+3. If grep finds no mache-N ID, cat the zone's children file to find ordinal elements.
+4. For terminal: cat "buffer" → act with "type" to send commands.
+5. NEVER use ls() unless you truly don't know the structure. The tree dump above shows you everything.
 
 SITE-SPECIFIC SHORTCUTS (use these instead of grep+guess when on these sites):
 - youtube.com: To search, use browser.goto("https://www.youtube.com/results?search_query=QUERY") replacing QUERY with the search terms (use + for spaces). This skips typing and goes directly to results. To play a video from results, cat the first feed children file and click the FIRST link element (_c/1 or the first [N] a: entry).
