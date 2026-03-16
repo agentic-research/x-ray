@@ -168,8 +168,12 @@ func BuildClip(pageWidth, pageHeight float64, box *BoxModel, targetWidth float64
 		scale := math.Min(1, targetWidth/cw)
 		return ScreenshotClip{X: cx, Y: cy, Width: cw, Height: ch, Scale: scale}
 	}
+	// Cap height to approximate viewport — full-page screenshots produce
+	// unusable images after resize (e.g., 16000px → 71px wide).
+	const maxClipHeight = 1200.0
+	h := math.Min(pageHeight, maxClipHeight)
 	scale := math.Min(1, targetWidth/pageWidth)
-	return ScreenshotClip{X: 0, Y: 0, Width: pageWidth, Height: pageHeight, Scale: scale}
+	return ScreenshotClip{X: 0, Y: 0, Width: pageWidth, Height: h, Scale: scale}
 }
 
 // CaptureScreenshot captures a PNG screenshot with the given clip.
