@@ -467,10 +467,9 @@ tasks:
           sleep 1
         done
         sleep 3
-        echo "Sending intent: {{.CLI_ARGS}}"
-        curl -sf -X POST http://localhost:8080/doer \
-          -H "Content-Type: application/json" \
-          -d '{"intent":"{{.CLI_ARGS}}","tab_id":0}' || true
+        INTENT="{{.CLI_ARGS}}"
+        echo "Sending intent: $INTENT"
+        python3 -c "import json,urllib.request as r; req=r.Request('http://localhost:8080/doer',json.dumps({'intent':'$INTENT','tab_id':0}).encode(),{'Content-Type':'application/json'}); print(r.urlopen(req).read().decode())" || true
         echo ""
         echo "Polling status..."
         for i in $(seq 1 45); do

@@ -345,8 +345,6 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 		}
 
 		// Text response — the navigator answered rather than acted.
-		// Read structured status from the interaction graph instead of
-		// string-matching the response text.
 		if textResponse != "" {
 			ixStatus := ""
 			if d.sess.Tasks != nil {
@@ -359,6 +357,16 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 				log.Printf("Doer [tab %d]: Navigator signaled failure: %s", d.tabID, reason)
 				d.finishInteraction(ix.ID, StatusFailed, "Not found: "+reason, reason)
 				return
+			}
+
+			// Action intent guard: if the user wanted an action (play, click, open)
+			// but Navigator returned text instead, push it to actually act.
+			if isActionIntent(ix.Intent) && step < maxGoalSteps-1 {
+				log.Printf("Doer [tab %d]: action intent got text response, pushing Navigator to act (step %d)", d.tabID, step)
+				enrichedIntent = fmt.Sprintf(
+					"You described the page but did NOT perform the action. The user wants you to ACT, not describe. "+
+						"Task: %s. Use act() to click the target element NOW.", ix.Intent)
+				continue
 			}
 
 			// Completeness guardrail: check if we have all expected items.
@@ -794,6 +802,18 @@ func (d *Doer) dispatchGotoViaBackend(ctx context.Context, backend BrowserBacken
 	case <-ctx.Done():
 		return "Navigation cancelled."
 	}
+}
+
+// isActionIntent returns true if the user wants a browser action performed
+// (play, click, open, go) vs information retrieval (what, read, find, list).
+func isActionIntent(intent string) bool {
+	lower := strings.ToLower(intent)
+	for _, verb := range []string{"play", "click", "open", "go to", "navigate", "watch", "start", "launch"} {
+		if strings.Contains(lower, verb) {
+			return true
+		}
+	}
+	return false
 }
 
 // dispatchRescanViaBackend triggers a capture via BrowserBackend.
