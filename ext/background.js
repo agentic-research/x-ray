@@ -247,9 +247,19 @@ function connectWebSocket() {
           doGoto(msg.tab_id);
         } else {
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs[0]) {
-              console.log('X-Ray: GOTO_URL tab_id=0, resolved to active tab', tabs[0].id);
-              doGoto(tabs[0].id);
+            const activeTab = tabs[0];
+            const activeUrl = activeTab?.url || '';
+            // Can't navigate chrome:// or about: pages — open a new tab instead.
+            if (!activeTab || /^(chrome(-extension)?|about|edge|brave):\/\//.test(activeUrl)) {
+              console.log('X-Ray: GOTO_URL — active tab is restricted, creating new tab for', url);
+              chrome.tabs.create({ url }, (newTab) => {
+                if (newTab && newTab.windowId) {
+                  chrome.windows.update(newTab.windowId, { focused: true });
+                }
+              });
+            } else {
+              console.log('X-Ray: GOTO_URL tab_id=0, resolved to active tab', activeTab.id);
+              doGoto(activeTab.id);
             }
           });
         }
