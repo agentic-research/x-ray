@@ -289,12 +289,19 @@ function executeAction(macheId, actionType, payload) {
   if (actionType === 'type') {
     console.log(`X-Ray: Typing "${payload}" into`, el);
     typeText(el, payload || '');
-    // Auto-submit search inputs — prevents autocomplete dropdown from confusing the Navigator.
-    const inputType = (el.getAttribute('type') || '').toLowerCase();
-    const role = (el.getAttribute('role') || '').toLowerCase();
-    if (el.tagName.toLowerCase() === 'input' && (inputType === 'search' || inputType === 'text' || inputType === '' || role === 'combobox' || role === 'searchbox')) {
-      console.log('X-Ray: Auto-submitting search input');
-      setTimeout(() => pressEnter(el), 100);
+    // Auto-submit ALL inputs — prevents autocomplete dropdowns from confusing the Navigator.
+    // 500ms delay lets the page process the input event before we press Enter.
+    if (el.tagName.toLowerCase() === 'input' || el.tagName.toLowerCase() === 'textarea' || el.getAttribute('contenteditable') === 'true') {
+      console.log('X-Ray: Auto-submitting input after type');
+      setTimeout(() => {
+        pressEnter(el);
+        // Also submit the parent form if it exists (backup for sites where Enter doesn't submit).
+        const form = el.closest('form');
+        if (form) {
+          console.log('X-Ray: Also submitting parent form');
+          form.requestSubmit ? form.requestSubmit() : form.submit();
+        }
+      }, 500);
     }
   } else if (actionType === 'enter') {
     console.log(`X-Ray: Pressing Enter on`, el);
