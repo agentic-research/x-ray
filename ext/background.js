@@ -95,6 +95,12 @@ function connectWebSocket() {
         const url = tabs[0].url || '';
         if (url.startsWith('http://') || url.startsWith('https://')) {
           captureAndSend(tabs[0].id);
+        } else {
+          // Fresh browser with chrome://newtab — navigate to a real page so capture can start.
+          console.log('X-Ray: Active tab is restricted (' + url + '), navigating to about:blank for capture');
+          chrome.tabs.update(tabs[0].id, { url: 'https://www.google.com' }, () => {
+            // onUpdated listener will trigger capture when the page loads.
+          });
         }
       }
     });
