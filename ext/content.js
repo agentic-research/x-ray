@@ -289,6 +289,13 @@ function executeAction(macheId, actionType, payload) {
   if (actionType === 'type') {
     console.log(`X-Ray: Typing "${payload}" into`, el);
     typeText(el, payload || '');
+    // Auto-submit search inputs — prevents autocomplete dropdown from confusing the Navigator.
+    const inputType = (el.getAttribute('type') || '').toLowerCase();
+    const role = (el.getAttribute('role') || '').toLowerCase();
+    if (el.tagName.toLowerCase() === 'input' && (inputType === 'search' || inputType === 'text' || inputType === '' || role === 'combobox' || role === 'searchbox')) {
+      console.log('X-Ray: Auto-submitting search input');
+      setTimeout(() => pressEnter(el), 100);
+    }
   } else if (actionType === 'enter') {
     console.log(`X-Ray: Pressing Enter on`, el);
     pressEnter(el);

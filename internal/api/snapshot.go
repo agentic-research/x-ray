@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/jpeg"
 	_ "image/png" // register PNG decoder for format-agnostic image.Decode
 	"log"
 	"os"
@@ -130,11 +131,12 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 			mimeType = "image/png"
 		}
 
-		// Store the overlay screenshot for Navigator visual grounding.
-		// This is the CDP screenshot taken with mache-ID colored boxes visible,
-		// before any edge-detection annotation is applied.
+		// Store screenshot for Navigator visual grounding, resized to 768px max
+		// for optimal Gemini token cost (258 tokens = 1 tile at ≤768px).
+		// Full-res screenshot is kept in screenshotBytes for edge detection below.
 		if len(screenshotBytes) > 0 {
-			sess.SetScreenshot(screenshotBytes, mimeType)
+			resized := resizeForGemini(screenshotBytes, 768)
+			sess.SetScreenshot(resized, "image/jpeg")
 		}
 
 		// --- Overlay color readback: classify overlay pixels for masking ---
@@ -370,4 +372,52 @@ func countCachedZones(schemaJSON string) int {
 		return 0
 	}
 	return len(output.Mounts)
+}
+
+// resizeForGemini downscales a screenshot to maxDim (largest side) and
+// re-encodes as JPEG for minimal token cost. At ≤768px both dimensions,
+// Gemini uses a single 258-token tile — optimal for speed.
+func resizeForGemini(data []byte, maxDim int) []byte {
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return data
+	}
+	bounds := img.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	if w <= maxDim && h <= maxDim {
+		// Already small enough — just re-encode as JPEG for size.
+		var buf bytes.Buffer
+		if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80}); err != nil {
+			return data
+		}
+		return buf.Bytes()
+	}
+
+	// Scale so largest side = maxDim.
+	scale := float64(maxDim) / float64(max(w, h))
+	newW := int(float64(w) * scale)
+	newH := int(float64(h) * scale)
+	if newW < 1 {
+		newW = 1
+	}
+	if newH < 1 {
+		newH = 1
+	}
+
+	dst := image.NewRGBA(image.Rect(0, 0, newW, newH))
+	for y := range newH {
+		srcY := y * h / newH
+		for x := range newW {
+			srcX := x * w / newW
+			dst.Set(x, y, img.At(bounds.Min.X+srcX, bounds.Min.Y+srcY))
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: 80}); err != nil {
+		return data
+	}
+	log.Printf("resizeForGemini: %dx%d → %dx%d (%d → %d bytes)",
+		w, h, newW, newH, len(data), buf.Len())
+	return buf.Bytes()
 }

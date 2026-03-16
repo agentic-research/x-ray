@@ -898,9 +898,9 @@ Strategy:
 7. For terminal: cat "buffer" → act with "type" to send commands.
 
 SITE-SPECIFIC SHORTCUTS (use these instead of grep+guess when on these sites):
-- youtube.com: To search, grep("Search") to find the [___] input element, then act(mache-ID, "type", "query") then act(mache-ID, "enter"). To click a video from results, cat /browser/main/feed/children and act on the first video link (_c/N).
-- google.com: To search, grep("Search") to find the input, type query, press enter.
-- Sites with "/" shortcut (GitHub, YouTube, Google, Reddit): You can use act on the body element with "type" payload "/" to focus the search bar, then type the query.
+- youtube.com: To search, grep("Search") to find the [___] input element, then act(mache-ID, "type", "query") — the type action on a search input AUTOMATICALLY submits the search (presses enter). Do NOT issue a separate enter action. To click a video from results, cat /browser/main/feed/children and act on the first video link (_c/N).
+- google.com: To search, grep("Search") to find the input, type query — auto-submits.
+- IMPORTANT: After typing into ANY search input, do NOT press enter separately. The type action handles submission. Move on to the next step of your task.
 
 Be decisive. Once an actionable element (mache-N or _c/N) is identified, act immediately. Prioritize interactive elements like buttons, links, or inputs; never click a parent container if a more specific interactive child exists. One grep call should find what you need. If grep fails for an action target, cat children to find it — do NOT rescan or give up.
 
