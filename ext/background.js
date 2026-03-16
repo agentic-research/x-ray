@@ -530,8 +530,6 @@ function connectWebSocket() {
         const tabId = msg.tab_id;
         try {
           // Pre-check: don't attempt debugger.attach on non-http tabs.
-          // Chrome briefly shows a chrome-extension:// new-tab page when
-          // chrome.tabs.create() runs — attaching there always fails.
           const tabInfo = await chrome.tabs.get(tabId);
           const tabUrl = tabInfo?.url || '';
           if (tabUrl && !tabUrl.startsWith('http://') && !tabUrl.startsWith('https://')) {
@@ -541,6 +539,9 @@ function connectWebSocket() {
             }));
             break;
           }
+          // Force-detach stale debugger sessions before attaching.
+          // Prevents "Another debugger is already attached" from crashed/timed-out captures.
+          try { await chrome.debugger.detach({ tabId }); } catch (_) { /* not attached — fine */ }
           await chrome.debugger.attach({ tabId }, '1.3');
           ws.send(JSON.stringify({ type: 'CDP_ATTACHED', tab_id: tabId }));
         } catch (e) {
