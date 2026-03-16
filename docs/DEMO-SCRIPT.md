@@ -20,7 +20,7 @@
 
 ## ACT 2: The Golden Path — Voice Navigation (0:25 - 1:40)
 
-> My son is seven. He has a PICC line, a wound vac, and an NG tube. Using a mouse isn't always easy. So we built something he can use.
+> My son has limited mobility. Using a mouse isn't always easy. So I built something he can use.
 
 **Do:** YouTube is open. Overlay visible. Zones highlighted.
 

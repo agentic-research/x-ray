@@ -1,7 +1,7 @@
 # X-Ray Agentd — Cloud Run deployment via Terraform + ko
 #
 # Usage:
-#   export TF_VAR_project_id=gen-lang-client-0958889140
+#   export TF_VAR_project_id=your-gcp-project-id
 #   export KO_DOCKER_REPO=us-central1-docker.pkg.dev/$TF_VAR_project_id/x-ray
 #   ko build ./cmd/agentd          # builds & pushes image
 #   cd deploy && terraform init && terraform apply

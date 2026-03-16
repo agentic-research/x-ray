@@ -46,6 +46,10 @@ _agent_log/
 _agent_logs/
 SESSION_SUMMARY.md
 HANDOFF.md
+INVESTIGATION_LOG.md
+PLAN.md
+PROJECT_CHECKLIST.md
+deploy/GCP_PROOF.txt
 
 # Experiment tracking (local)
 experiments/
