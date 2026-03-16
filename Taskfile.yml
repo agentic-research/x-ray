@@ -457,24 +457,25 @@ tasks:
           curl -sf http://localhost:8080/status >/dev/null 2>&1 && break
           sleep 1
         done
-        echo "Waiting for Chrome extension + schema ready..."
+        echo "Waiting for Chrome extension + page capture..."
         for i in $(seq 1 30); do
-          STATUS=$(curl -sf http://localhost:8080/status?tab_id=0 2>/dev/null)
-          S=$(echo "$STATUS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))" 2>/dev/null || echo "")
-          echo "  [$i] status=$S"
-          [ "$S" = "ready" ] && break
-          [ "$S" = "idle" ] && break
+          RESP=$(curl -sf http://localhost:8080/status 2>/dev/null)
+          S=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))" 2>/dev/null || echo "")
+          URL=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('url',''))" 2>/dev/null || echo "")
+          echo "  [$i] status=$S url=$URL"
+          if [ "$S" = "ready" ] || [ "$S" = "loading" ]; then break; fi
           sleep 1
         done
+        sleep 3
         echo "Sending intent: {{.CLI_ARGS}}"
         curl -sf -X POST http://localhost:8080/doer \
           -H "Content-Type: application/json" \
-          -d "{\"intent\":\"{{.CLI_ARGS}}\",\"tab_id\":0}" || true
+          -d '{"intent":"{{.CLI_ARGS}}","tab_id":0}' || true
         echo ""
         echo "Polling status..."
-        for i in $(seq 1 30); do
+        for i in $(seq 1 45); do
           sleep 2
-          RESP=$(curl -sf http://localhost:8080/status?tab_id=0 2>/dev/null)
+          RESP=$(curl -sf http://localhost:8080/status 2>/dev/null)
           STATUS=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))" 2>/dev/null || echo "")
           STEP=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('step',''))" 2>/dev/null || echo "")
           echo "  [$((i*2))s] $STATUS: $STEP"
