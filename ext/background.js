@@ -437,13 +437,13 @@ function connectWebSocket() {
           } catch (_) {}
         }
 
-        // Forward zone data to content.js for visual rendering.
-        if (msg.schema && msg.schema.mounts) {
-          chrome.tabs.sendMessage(tabId, {
-            type: 'DRAW_ZONES',
-            zones: msg.schema.mounts
-          }).catch(() => {});
-        }
+        // Zone overlay disabled — clean page for demo. Toggle with Cmd+Shift+X.
+        // if (msg.schema && msg.schema.mounts) {
+        //   chrome.tabs.sendMessage(tabId, {
+        //     type: 'DRAW_ZONES',
+        //     zones: msg.schema.mounts
+        //   }).catch(() => {});
+        // }
 
         sendAgentLog(tabId, 'R', `schema ready -- ${(msg.schema?.mounts?.length || 0)} zones`);
 
