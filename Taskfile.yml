@@ -498,6 +498,7 @@ tasks:
       CAIRN_CURVATURE: "1"
       XRAY_DEBUG: "1"
       SCHEMA_CACHE: "0"
+      ITERM_BRIDGE: "0"
       NAVIGATOR_MODEL: "gemini-2.5-flash"
       NAVIGATOR_ENDPOINT: ""
       NAVIGATOR_FORMAT: ""

@@ -197,12 +197,17 @@ func main() {
 	})
 
 	// iTerm2 bridge: connect if iTerm is running. Non-fatal if unavailable.
-	bridge := iterm.NewBridge()
-	if err := bridge.Start(ctx); err != nil {
-		log.Printf("iTerm2 bridge: %v (terminal features disabled)", err)
+	// Disabled when ITERM_BRIDGE=0 — reduces tree dump noise for simpler Navigator context.
+	if os.Getenv("ITERM_BRIDGE") != "0" {
+		bridge := iterm.NewBridge()
+		if err := bridge.Start(ctx); err != nil {
+			log.Printf("iTerm2 bridge: %v (terminal features disabled)", err)
+		} else {
+			log.Println("iTerm2 bridge: connected — terminal sessions available at /iterm/")
+			handler.SetTermBridge(bridge)
+		}
 	} else {
-		log.Println("iTerm2 bridge: connected — terminal sessions available at /iterm/")
-		handler.SetTermBridge(bridge)
+		log.Println("iTerm2 bridge: disabled (ITERM_BRIDGE=0)")
 	}
 
 	http.HandleFunc("/ws", handler.HandleWebSocket)
