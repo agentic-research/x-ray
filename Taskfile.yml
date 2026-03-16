@@ -436,6 +436,57 @@ tasks:
   # Demo
   # ---------------------------------------------------------------------------
 
+  demo-test:
+    desc: Quick test — send intent via HTTP, no voice (e.g. task demo-test -- "play bb blocks on youtube")
+    deps: [build]
+    env:
+      CARTOGRAPHER_MODE: cairn
+      CAIRN_SHEAF: "0"
+      CAIRN_CURVATURE: "1"
+      XRAY_DEBUG: "1"
+      SCHEMA_CACHE: "0"
+      NAVIGATOR_MODEL: "gemini-2.5-flash"
+      NAVIGATOR_ENDPOINT: ""
+      NAVIGATOR_FORMAT: ""
+    cmds:
+      - |
+        ./bin/agentd &
+        AGENTD_PID=$!
+        echo "Waiting for agentd (PID $AGENTD_PID)..."
+        for i in $(seq 1 15); do
+          curl -sf http://localhost:8080/status >/dev/null 2>&1 && break
+          sleep 1
+        done
+        echo "Waiting for Chrome extension to connect..."
+        for i in $(seq 1 10); do
+          STATUS=$(curl -sf http://localhost:8080/status?tab_id=0 2>/dev/null)
+          TAB=$(echo "$STATUS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))" 2>/dev/null || echo "")
+          [ "$TAB" != "no_session" ] && break
+          sleep 1
+        done
+        echo "Sending intent: {{.CLI_ARGS}}"
+        curl -sf -X POST http://localhost:8080/doer \
+          -H "Content-Type: application/json" \
+          -d "{\"intent\":\"{{.CLI_ARGS}}\",\"tab_id\":0}" || true
+        echo ""
+        echo "Polling status..."
+        for i in $(seq 1 30); do
+          sleep 2
+          RESP=$(curl -sf http://localhost:8080/status?tab_id=0 2>/dev/null)
+          STATUS=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))" 2>/dev/null || echo "")
+          STEP=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('step',''))" 2>/dev/null || echo "")
+          echo "  [$((i*2))s] $STATUS: $STEP"
+          if [ "$STATUS" = "completed" ] || [ "$STATUS" = "failed" ] || [ "$STATUS" = "idle" ]; then
+            SUMMARY=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('summary','')[:200])" 2>/dev/null || echo "")
+            echo ""
+            echo "Result: $STATUS"
+            echo "Summary: $SUMMARY"
+            break
+          fi
+        done
+        kill $AGENTD_PID 2>/dev/null
+        wait $AGENTD_PID 2>/dev/null
+
   demo-video:
     desc: Voice demo for Devpost (Cairn + Gemini Live)
     deps: [build]
