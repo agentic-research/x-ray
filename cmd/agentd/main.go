@@ -161,7 +161,12 @@ func main() {
 	}
 
 	// Per-tab Engine + Navigator are created on demand inside Handler.
-	handler := api.NewHandler(cart, navGen, client, liveClient, navModel, cfg.Gemini.LiveModel, plannerModel, cfg.Database.Path)
+	dbPath := cfg.Database.Path
+	if os.Getenv("SCHEMA_CACHE") == "0" {
+		dbPath = "" // in-memory only — no stale cache entries
+		log.Println("Schema cache disabled (SCHEMA_CACHE=0)")
+	}
+	handler := api.NewHandler(cart, navGen, client, liveClient, navModel, cfg.Gemini.LiveModel, plannerModel, dbPath)
 	handler.Timeouts = cfg.Timeouts
 	handler.CDPTargetWidth = float64(cfg.Cartographer.TargetWidth)
 	handler.CDPMaxHeight = float64(cfg.Cartographer.MaxHeight)
