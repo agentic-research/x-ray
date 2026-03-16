@@ -292,7 +292,7 @@ func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 			log.Printf("Voice: create_interaction early failure: %s", result.Summary)
 			return fmt.Sprintf("Command failed immediately: %s. Tell the user what went wrong.", result.Summary)
 		}
-		return fmt.Sprintf("Command accepted: %q. Tell the user what you're about to do in a natural way, e.g. \"I'll look up the issues for this repo\" or \"Let me open that page for you.\" Be specific to the task. (interaction_id: %s)", intent, ixID)
+		return fmt.Sprintf("Command accepted: %q. Tell the user what you're doing — be warm, specific, and conversational. For example: \"Okay! Let me pull up YouTube and search for that.\" Keep talking naturally while the task runs in the background — describe what's happening, like \"Opening YouTube now... typing in the search... looking for the video.\" Don't go silent. (interaction_id: %s)", intent, ixID)
 
 	case "cancel_interaction":
 		doer.Cancel()
