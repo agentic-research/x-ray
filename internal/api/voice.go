@@ -292,7 +292,7 @@ func (h *Handler) executeTalkerTool(fc *genai.FunctionCall, doer *Doer) string {
 			log.Printf("Voice: create_interaction early failure: %s", result.Summary)
 			return fmt.Sprintf("Command failed immediately: %s. Tell the user what went wrong.", result.Summary)
 		}
-		return fmt.Sprintf("Command accepted: %q. Tell the user what you're doing — be warm, specific, and conversational. For example: \"Okay! Let me pull up YouTube and search for that.\" Keep talking naturally while the task runs in the background — describe what's happening, like \"Opening YouTube now... typing in the search... looking for the video.\" Don't go silent. (interaction_id: %s)", intent, ixID)
+		return fmt.Sprintf("Command accepted: %q. Tell the user what you're about to do in a natural way, e.g. \"Let me open that for you\" or \"Searching YouTube now.\" Be brief. (interaction_id: %s)", intent, ixID)
 
 	case "cancel_interaction":
 		doer.Cancel()
@@ -349,9 +349,10 @@ func buildLiveConfig(language, voice string) *genai.LiveConnectConfig {
 		ContextWindowCompression: &genai.ContextWindowCompressionConfig{
 			SlidingWindow: &genai.SlidingWindow{},
 		},
-		// Proactive audio: model can stay silent on irrelevant/ambient input.
+		// Proactive audio disabled — was causing silence when combined with
+		// background task notifications. Always respond with audio for demo.
 		Proactivity: &genai.ProactivityConfig{
-			ProactiveAudio: genai.Ptr(true),
+			ProactiveAudio: genai.Ptr(false),
 		},
 		// Affective dialog: adapt tone to match user's expression.
 		EnableAffectiveDialog: genai.Ptr(true),
