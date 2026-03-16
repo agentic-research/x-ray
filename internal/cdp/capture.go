@@ -177,7 +177,7 @@ func BuildClip(pageWidth, pageHeight float64, box *BoxModel, targetWidth float64
 func CaptureScreenshot(ctx context.Context, p *Proxy, tabID int, clip ScreenshotClip) (string, error) {
 	result, err := p.Send(ctx, tabID, "Page.captureScreenshot", map[string]any{
 		"format":                "png",
-		"captureBeyondViewport": true,
+		"captureBeyondViewport": false,
 		"clip":                  clip,
 	})
 	if err != nil {
