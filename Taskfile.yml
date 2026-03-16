@@ -444,7 +444,6 @@ tasks:
       CAIRN_SHEAF: "1"
       CAIRN_CURVATURE: "1"
       XRAY_DEBUG: "1"
-      NAV_SPEED: fast
       NAVIGATOR_MODEL: "gemini-2.5-flash"
       NAVIGATOR_ENDPOINT: ""
       NAVIGATOR_FORMAT: ""
