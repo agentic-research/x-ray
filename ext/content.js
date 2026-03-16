@@ -318,19 +318,8 @@ function executeAction(macheId, actionType, payload) {
         el = clickable;
       }
     }
-    // Prefer focus+enter for links and buttons — uses browser's native keyboard
-    // event pipeline which is more reliable than el.click() on SPAs with event
-    // delegation, shadow DOM, or React synthetic events.
-    const tag = el.tagName.toLowerCase();
-    if (tag === 'a' || tag === 'button' || el.getAttribute('role') === 'button' ||
-        el.getAttribute('role') === 'link' || el.getAttribute('role') === 'tab') {
-      console.log(`X-Ray: Focus+Enter on <${tag}>`, el);
-      el.focus();
-      pressEnter(el);
-    } else {
-      console.log(`X-Ray: Executing click on`, el);
-      el.click();
-    }
+    console.log(`X-Ray: Executing click on`, el);
+    el.click();
   } else if (actionType === 'focus') {
     console.log(`X-Ray: Executing focus on`, el);
     el.focus();
