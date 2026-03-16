@@ -263,13 +263,6 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 		},
 		Tools:       tools,
 		Temperature: genai.Ptr(float32(1.0)),
-		// Force tool calls — never return text. Prevents Navigator from
-		// narrating "now playing" instead of actually clicking.
-		ToolConfig: &genai.ToolConfig{
-			FunctionCallingConfig: &genai.FunctionCallingConfig{
-				Mode: genai.FunctionCallingConfigModeAny,
-			},
-		},
 		SafetySettings: []*genai.SafetySetting{
 			{Category: genai.HarmCategoryHarassment, Threshold: genai.HarmBlockThresholdOff},
 			{Category: genai.HarmCategoryHateSpeech, Threshold: genai.HarmBlockThresholdOff},
