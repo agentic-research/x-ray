@@ -437,11 +437,11 @@ tasks:
   # ---------------------------------------------------------------------------
 
   demo-video:
-    desc: Voice demo for Devpost (Cairn + sheaf + Gemini Live + ghostty-web terminal)
+    desc: Voice demo for Devpost (Cairn + Gemini Live)
     deps: [build]
     env:
       CARTOGRAPHER_MODE: cairn
-      CAIRN_SHEAF: "1"
+      CAIRN_SHEAF: "0"
       CAIRN_CURVATURE: "1"
       XRAY_DEBUG: "1"
       SCHEMA_CACHE: "0"
