@@ -361,7 +361,8 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 
 			// Action intent guard: if the user wanted an action (play, click, open)
 			// but Navigator returned text instead, push it to actually act.
-			if isActionIntent(ix.Intent) && step < maxGoalSteps-1 {
+			// Only retry once to avoid infinite loops with mock navigators.
+			if isActionIntent(ix.Intent) && step < maxGoalSteps-1 && step == 0 {
 				log.Printf("Doer [tab %d]: action intent got text response, pushing Navigator to act (step %d)", d.tabID, step)
 				enrichedIntent = fmt.Sprintf(
 					"You described the page but did NOT perform the action. The user wants you to ACT, not describe. "+
