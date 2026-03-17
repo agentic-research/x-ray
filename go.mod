@@ -47,4 +47,5 @@ require (
 	modernc.org/sqlite v1.46.1 // indirect
 )
 
-replace github.com/agentic-research/mache => ../mache
+// Local development only — comment out for CI/public:
+// replace github.com/agentic-research/mache => ../mache
