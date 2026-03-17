@@ -41,9 +41,10 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - uses: golangci/golangci-lint-action@v7
-        with:
-          version: v2.1.6
+      # golangci-lint disabled until a release built with Go 1.25 is available.
+      # - uses: golangci/golangci-lint-action@v7
+      #   with:
+      #     version: v2.1.6
 
   bench:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
