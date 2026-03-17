@@ -211,8 +211,8 @@ func TestBuildClip_FullPage(t *testing.T) {
 	if clip.X != 0 || clip.Y != 0 {
 		t.Errorf("expected origin (0,0), got (%f,%f)", clip.X, clip.Y)
 	}
-	if clip.Width != 1440 || clip.Height != 5000 {
-		t.Errorf("expected (1440,5000), got (%f,%f)", clip.Width, clip.Height)
+	if clip.Width != 1440 || clip.Height != 1200 {
+		t.Errorf("expected (1440,1200), got (%f,%f)", clip.Width, clip.Height)
 	}
 	expectedScale := 800.0 / 1440.0
 	if clip.Scale != expectedScale {

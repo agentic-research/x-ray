@@ -818,7 +818,7 @@ func TestDoerTab0SkipsSchemaGate(t *testing.T) {
 	defer cancel()
 	go doer.Run(ctx)
 
-	doer.Submit(Interaction{ID: "g-iterm", Intent: "open a new terminal"})
+	doer.Submit(Interaction{ID: "g-iterm", Intent: "list the terminal sessions"})
 	result := waitForDone(t, doer, 3*time.Second)
 
 	if result.Status != StatusCompleted {
