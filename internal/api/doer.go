@@ -202,7 +202,13 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 	// Navigator call or on early failure so the Talker doesn't speak
 	// optimistically about a dead interaction.
 	startedOnce := sync.Once{}
-	signalStarted := func() { startedOnce.Do(func() { close(ix.Started) }) }
+	signalStarted := func() {
+		startedOnce.Do(func() {
+			if ix.Started != nil {
+				close(ix.Started)
+			}
+		})
+	}
 	defer signalStarted() // ensure it fires even on unexpected early returns
 
 	// Populate /interactions/active/ so Navigator can cat intent and write status.
