@@ -252,7 +252,7 @@ func (d *Doer) executeInteraction(parentCtx context.Context, ix Interaction) {
 	if d.tabID != 0 && !d.sess.GetEngine().HasSchema() {
 		initialSchemaWait := 15 * time.Second
 		if d.handler.NavSpeed == "fast" {
-			initialSchemaWait = 3 * time.Second
+			initialSchemaWait = 8 * time.Second
 		}
 		d.updateStep("waiting for page to load")
 		log.Printf("Doer [tab %d]: waiting for schema before starting (timeout %s)", d.tabID, initialSchemaWait)
