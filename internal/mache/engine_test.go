@@ -1566,3 +1566,97 @@ func TestValidateSchemaBounds_ZeroBounds(t *testing.T) {
 		t.Errorf("zones without stored bounds should be skipped, got stale: %v", stale)
 	}
 }
+
+func TestValidateSchemaStructure_AllMatch(t *testing.T) {
+	cached := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-0","structural_fp":"abc123"},
+		{"virtual_path":"/main","mache_id":"mache-1","structural_fp":"def456"}
+	]}`
+	current := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-0","structural_fp":"abc123"},
+		{"virtual_path":"/main","mache_id":"mache-1","structural_fp":"def456"}
+	]}`
+
+	changed := ValidateSchemaStructure(cached, current)
+	if len(changed) != 0 {
+		t.Errorf("expected no changed zones when all FPs match, got: %v", changed)
+	}
+}
+
+func TestValidateSchemaStructure_OneChanged(t *testing.T) {
+	cached := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-0","structural_fp":"abc123"},
+		{"virtual_path":"/main","mache_id":"mache-1","structural_fp":"def456"}
+	]}`
+	current := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-0","structural_fp":"abc123"},
+		{"virtual_path":"/main","mache_id":"mache-1","structural_fp":"CHANGED"}
+	]}`
+
+	changed := ValidateSchemaStructure(cached, current)
+	if len(changed) != 1 {
+		t.Fatalf("expected 1 changed zone, got %d: %v", len(changed), changed)
+	}
+	if id, ok := changed["/main"]; !ok || id != "mache-1" {
+		t.Errorf("expected /main → mache-1, got %v", changed)
+	}
+}
+
+func TestValidateSchemaStructure_EmptyFP_Skipped(t *testing.T) {
+	cached := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-0","structural_fp":""},
+		{"virtual_path":"/main","mache_id":"mache-1","structural_fp":"def456"}
+	]}`
+	current := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-0","structural_fp":"DIFFERENT"},
+		{"virtual_path":"/main","mache_id":"mache-1","structural_fp":"def456"}
+	]}`
+
+	changed := ValidateSchemaStructure(cached, current)
+	if len(changed) != 0 {
+		t.Errorf("expected empty FP to be skipped, got changed: %v", changed)
+	}
+}
+
+func TestValidateSchemaStructure_EmptyCurrentFP_Skipped(t *testing.T) {
+	// When current side has empty FP, the zone should also be skipped.
+	cached := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-0","structural_fp":"abc123"}
+	]}`
+	current := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-0","structural_fp":""}
+	]}`
+
+	changed := ValidateSchemaStructure(cached, current)
+	if len(changed) != 0 {
+		t.Errorf("expected empty current FP to be skipped, got changed: %v", changed)
+	}
+}
+
+func TestValidateSchemaStructure_DisappearedZone(t *testing.T) {
+	// Zone present in cached but not in current — should be skipped (not flagged).
+	cached := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-0","structural_fp":"abc123"},
+		{"virtual_path":"/sidebar","mache_id":"mache-2","structural_fp":"ghi789"}
+	]}`
+	current := `{"mounts":[
+		{"virtual_path":"/header","mache_id":"mache-0","structural_fp":"abc123"}
+	]}`
+
+	changed := ValidateSchemaStructure(cached, current)
+	if len(changed) != 0 {
+		t.Errorf("disappeared zone should be skipped, got changed: %v", changed)
+	}
+}
+
+func TestValidateSchemaStructure_InvalidJSON(t *testing.T) {
+	changed := ValidateSchemaStructure("not json", `{"mounts":[]}`)
+	if changed != nil {
+		t.Errorf("expected nil for invalid cached JSON, got: %v", changed)
+	}
+
+	changed = ValidateSchemaStructure(`{"mounts":[]}`, "not json")
+	if changed != nil {
+		t.Errorf("expected nil for invalid current JSON, got: %v", changed)
+	}
+}

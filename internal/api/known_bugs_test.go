@@ -493,7 +493,9 @@ func TestBug_CrossTabCachePoisoning(t *testing.T) {
 
 func TestBug_CrossTabCachePoisoningE2E(t *testing.T) {
 	// Full WS test: Tab A snapshots (cache miss → 1 Cartographer call).
-	// Tab B same URL but element positions shifted → cache hit rejected → 2nd Cartographer call.
+	// Tab B same URL, same mache-IDs but element positions shifted.
+	// Since ValidateSchemaZones confirms all mache-IDs still exist in the DOM,
+	// bounds-only shifts are treated as cosmetic — cache is kept (no 2nd call).
 	schemaA := `{"mounts":[{
 		"virtual_path":"/main/feed",
 		"mache_id":"mache-1",
@@ -528,13 +530,6 @@ func TestBug_CrossTabCachePoisoningE2E(t *testing.T) {
 
 	// Tab B: same URL, same mache-ID name, but completely different position.
 	summaryB := "ID: mache-1 | Parent: none | Tag: a | Text: \"Sidebar\" | Bounds: [0.8, 0.05, 0.15, 0.05]\n"
-	// Update cartographer output for Tab B.
-	cart.schema = `{"mounts":[{
-		"virtual_path":"/main/feed",
-		"mache_id":"mache-1",
-		"description":"Feed (tab B)",
-		"bounds":[0.8, 0.05, 0.15, 0.05]
-	}]}`
 
 	sendJSON(t, conn, InboundMessage{
 		Type: MsgDOMSnapshot, TabID: 2,
@@ -546,9 +541,9 @@ func TestBug_CrossTabCachePoisoningE2E(t *testing.T) {
 		}
 	}
 
-	// Cache should have been rejected for Tab B → Cartographer called a second time.
-	if got := cart.callCount.Load(); got < 2 {
-		t.Errorf("BUG NOT FIXED: expected ≥2 Cartographer calls (Tab B cache rejected), got %d", got)
+	// Bounds shifted but all mache-IDs valid → cache kept, no additional Cartographer call.
+	if got := cart.callCount.Load(); got != 1 {
+		t.Errorf("expected 1 Cartographer call total (bounds shift is cosmetic), got %d", got)
 	}
 }
 

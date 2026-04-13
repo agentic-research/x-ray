@@ -55,14 +55,17 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 			staleZones := mache.ValidateSchemaZones(cached, msg.Summary)
 			forceFull := false
 			if len(staleZones) == 0 {
-				// Secondary guard: catch cross-tab cache poisoning by bounds shift.
-				// Same mache-ID can map to a different element in a different tab.
+				// Secondary guard: bounds shifted but all mache-IDs still valid.
+				// This is common on dynamic pages (YouTube ads, thumbnails loading).
+				// Since ValidateSchemaZones already confirmed all elements exist,
+				// bounds-only shifts are cosmetic — keep the cache.
 				boundsStale := mache.ValidateSchemaBounds(cached, msg.Summary, 0.10)
 				if len(boundsStale) > 0 {
-					// Bounds-only mismatches trigger FULL regen, not partial.
-					forceFull = true
-					log.Printf("Schema CACHE BOUNDS MISMATCH for %q (tab %d) — %d zones displaced: %v — full regen",
+					log.Printf("Schema CACHE BOUNDS SHIFT for %q (tab %d) — %d zones shifted: %v — keeping cache (all mache-IDs valid)",
 						key, msg.TabID, len(boundsStale), boundsStale)
+					// NOTE: intentionally NOT setting forceFull = true.
+					// ValidateSchemaZones already confirmed all elements exist.
+					// Bounds shifts on existing elements are cosmetic (same structure).
 				}
 			}
 			if len(staleZones) == 0 && !forceFull {

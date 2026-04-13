@@ -193,6 +193,42 @@ func ValidateSchemaBounds(schemaJSON, summary string, threshold float64) map[str
 	return stale
 }
 
+// ValidateSchemaStructure compares structural fingerprints between a cached
+// schema JSON and a freshly computed one. Returns a map of zone_path → mache_id
+// for zones whose StructuralFP differs. Zones with empty StructuralFP on either
+// side are skipped. An empty map means all structures match.
+func ValidateSchemaStructure(cachedJSON, currentJSON string) map[string]string {
+	var cached, current CartographerOutput
+	if err := json.Unmarshal([]byte(cachedJSON), &cached); err != nil {
+		return nil
+	}
+	if err := json.Unmarshal([]byte(currentJSON), &current); err != nil {
+		return nil
+	}
+
+	currentFP := make(map[string]string, len(current.Mounts))
+	for _, m := range current.Mounts {
+		if m.StructuralFP != "" {
+			currentFP[m.VirtualPath] = m.StructuralFP
+		}
+	}
+
+	changed := make(map[string]string)
+	for _, m := range cached.Mounts {
+		if m.StructuralFP == "" {
+			continue
+		}
+		curFP, ok := currentFP[m.VirtualPath]
+		if !ok {
+			continue // zone disappeared — caught by ValidateSchemaZones
+		}
+		if m.StructuralFP != curFP {
+			changed[m.VirtualPath] = m.MacheID
+		}
+	}
+	return changed
+}
+
 // ApplySchema parses the Cartographer JSON and builds the virtual FS.
 func (e *Engine) ApplySchema(schemaJSON string) error {
 	var output CartographerOutput
