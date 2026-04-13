@@ -16,13 +16,14 @@ type Tool interface {
 
 // ToolRegistry holds all registered tools and dispatches calls.
 type ToolRegistry struct {
-	tools  []Tool
-	byName map[string]Tool
+	tools   []Tool
+	byName  map[string]Tool
+	blocked map[string]bool
 }
 
 // NewToolRegistry creates an empty registry.
 func NewToolRegistry() *ToolRegistry {
-	return &ToolRegistry{byName: make(map[string]Tool)}
+	return &ToolRegistry{byName: make(map[string]Tool), blocked: make(map[string]bool)}
 }
 
 // Register adds a tool to the registry.
@@ -56,8 +57,26 @@ func (r *ToolRegistry) DefinitionsExcluding(names ...string) []*genai.Tool {
 	return []*genai.Tool{{FunctionDeclarations: decls}}
 }
 
+// SetBlocked marks the named tools as blocked at the dispatch level.
+// Blocked tools are rejected by Execute even if the model calls them.
+func (r *ToolRegistry) SetBlocked(names ...string) {
+	for _, n := range names {
+		r.blocked[n] = true
+	}
+}
+
+// ClearBlocked removes all dispatch-level blocks.
+func (r *ToolRegistry) ClearBlocked() {
+	for k := range r.blocked {
+		delete(r.blocked, k)
+	}
+}
+
 // Execute dispatches a FunctionCall to the matching tool.
 func (r *ToolRegistry) Execute(ctx context.Context, fc *genai.FunctionCall) (string, *ActionResult) {
+	if r.blocked[fc.Name] {
+		return fmt.Sprintf("Tool %q is blocked in this session (read-only mode)", fc.Name), nil
+	}
 	t, ok := r.byName[fc.Name]
 	if !ok {
 		return fmt.Sprintf("Unknown tool: %s", fc.Name), nil

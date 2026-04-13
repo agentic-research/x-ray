@@ -252,6 +252,8 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 	tools := a.registry.Definitions()
 	if readOnly {
 		tools = a.registry.DefinitionsExcluding("act")
+		a.registry.SetBlocked("act")
+		defer a.registry.ClearBlocked()
 	} else if a.FastMode {
 		// Fast mode: strip exploration tools so model acts directly from pre-filled tree dump.
 		tools = a.registry.DefinitionsExcluding("ls", "cat", "stat")
