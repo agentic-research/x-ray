@@ -533,6 +533,38 @@ func (t *NewTabTool) Execute(_ context.Context, args map[string]any) (string, *A
 	return fmt.Sprintf("Opened new tab (session %s). Use /iterm/agent_sessions/%s/ to interact with it.", sid, sid), nil
 }
 
+// --- answer ---
+
+// AnswerTool lets the model return a text answer directly.
+// Used for read-only queries where the model already has the answer
+// from the tree dump and doesn't need to call another tool.
+type AnswerTool struct{}
+
+func (a *AnswerTool) Declaration() *genai.FunctionDeclaration {
+	return &genai.FunctionDeclaration{
+		Name:        "answer",
+		Description: "Return a text answer to the user's question. Use this when you can answer from what you already see in the page tree — no need to call other tools first.",
+		Parameters: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"text": {
+					Type:        genai.TypeString,
+					Description: "Your answer text",
+				},
+			},
+			Required: []string{"text"},
+		},
+	}
+}
+
+func (a *AnswerTool) Execute(_ context.Context, args map[string]any) (string, *ActionResult) {
+	text, _ := args["text"].(string)
+	if text == "" {
+		return "Error: answer text is required", nil
+	}
+	return text, nil
+}
+
 // extractSessionID strips mount and protocol prefixes from a NodeID.
 // "iterm/iterm:886D7E2A-..." → "886D7E2A-..."
 // "iterm:886D7E2A-..." → "886D7E2A-..."

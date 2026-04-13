@@ -79,3 +79,29 @@ func TestClearBlocked(t *testing.T) {
 		t.Fatalf("after ClearBlocked, expected 'act executed', got %q", msg)
 	}
 }
+
+func TestAnswerToolReturnsText(t *testing.T) {
+	tool := &AnswerTool{}
+	decl := tool.Declaration()
+	if decl.Name != "answer" {
+		t.Fatalf("expected name 'answer', got %q", decl.Name)
+	}
+
+	result, ar := tool.Execute(context.Background(), map[string]any{
+		"text": "The title is Minecraft Speedrun World Record",
+	})
+	if result != "The title is Minecraft Speedrun World Record" {
+		t.Fatalf("unexpected result: %s", result)
+	}
+	if ar != nil {
+		t.Fatal("answer tool should not produce an ActionResult")
+	}
+}
+
+func TestAnswerToolEmptyText(t *testing.T) {
+	tool := &AnswerTool{}
+	result, _ := tool.Execute(context.Background(), map[string]any{"text": ""})
+	if result == "" {
+		t.Fatal("should return error for empty text")
+	}
+}

@@ -111,6 +111,8 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 	reg.Register(switchTab)
 	reg.Register(newWindow)
 	reg.Register(newTab)
+	answerTool := &AnswerTool{}
+	reg.Register(answerTool)
 
 	a := &Agent{
 		generator:     gen,
@@ -426,6 +428,12 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 			a.mu.RUnlock()
 			if rfn != nil {
 				rfn(fc.Name, fc.Args, result)
+			}
+
+			// answer() tool terminates the loop — return text directly.
+			if fc.Name == "answer" {
+				log.Printf("Navigator: answer tool returned: %s", result)
+				return nil, result, nil
 			}
 
 			if action != nil {
