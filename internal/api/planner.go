@@ -17,6 +17,12 @@ import (
 
 const maxPlannerTurns = 15
 
+// intentDedupKey produces a hash key for (intent, url) deduplication.
+// Used to detect when the planner retries the same command on the same page.
+func intentDedupKey(intent, url string) string {
+	return strings.ToLower(strings.TrimSpace(intent)) + "|" + strings.TrimSpace(url)
+}
+
 // Planner uses the regular Gemini REST API (not Live) to decompose a high-level
 // task into Doer commands. This is the non-voice equivalent of the Talker in voice.go.
 type Planner struct {
@@ -284,6 +290,7 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 	var actions []PlannerAction
 	consecutiveEmptyTurns := 0
 	consecutiveNavFailures := 0
+	intentSeen := make(map[string]int)
 
 	for turn := 0; turn < maxPlannerTurns; turn++ {
 		if ctx.Err() != nil {
@@ -525,6 +532,30 @@ func (p *Planner) RunTask(ctx context.Context, intent string, tabID int, siteHin
 
 			var responseParts []*genai.Part
 			for _, fc := range functionCalls {
+				// Intent dedup: detect repeated identical commands on same page.
+				if fc.Name == "create_interaction" {
+					intentStr, _ := fc.Args["intent"].(string)
+					urlStr := pctx.sess.GetCurrentURL()
+					dk := intentDedupKey(intentStr, urlStr)
+					intentSeen[dk]++
+					if intentSeen[dk] > 2 {
+						log.Printf("Planner: intent %q repeated %d times on %q — forcing strategy change", intentStr, intentSeen[dk], urlStr)
+						responseParts = append(responseParts, &genai.Part{
+							FunctionResponse: &genai.FunctionResponse{
+								Name: fc.Name,
+								Response: map[string]any{
+									"output": fmt.Sprintf("STRATEGY CHANGE REQUIRED: You have tried %q %d times on this page with no progress. Do NOT repeat this intent. Either: (1) navigate to a different page with open_url, (2) try a completely different approach, or (3) call finish() with what you have so far.", intentStr, intentSeen[dk]),
+								},
+							},
+						})
+						actions = append(actions, PlannerAction{
+							Turn: turn, Tool: fc.Name, Args: fc.Args,
+							Result: "Blocked: repeated intent", ReadOnly: false,
+						})
+						continue // skip executeTool for this FC
+					}
+				}
+
 				toolStart := time.Now()
 				result := p.executeTool(ctx, fc, pctx, intent)
 				toolElapsed := time.Since(toolStart).Milliseconds()
