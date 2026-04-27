@@ -79,17 +79,29 @@ type CartographerConfig struct {
 
 // NavigatorConfig holds navigation/action generation settings.
 type NavigatorConfig struct {
-	Endpoint string `yaml:"endpoint"`
-	Model    string `yaml:"model"`
-	Format   string `yaml:"format"`
-	CLI      bool   `yaml:"cli"`
-	Mode     string `yaml:"mode"`  // "gemini-live" to use Live API WebSocket; default is REST
-	Speed    string `yaml:"speed"` // "fast" (zero-shot, no continuation) or "safe" (default)
+	Endpoint   string `yaml:"endpoint"`
+	Model      string `yaml:"model"`
+	Format     string `yaml:"format"`
+	CLI        bool   `yaml:"cli"`
+	Mode       string `yaml:"mode"`       // "gemini-live" to use Live API WebSocket; default is REST
+	Speed      string `yaml:"speed"`      // "fast" (zero-shot, no continuation) or "safe" (default)
+	Tools      string `yaml:"tools"`      // "full" (default) or "simplified"
+	Projection string `yaml:"projection"` // "mache" (default) or "semantic"
 }
 
 // IsFast returns true when the navigator is configured for low-latency voice mode.
 func (n NavigatorConfig) IsFast() bool {
 	return n.Speed == "fast"
+}
+
+// IsSimplifiedTools returns true when the simplified 5-tool set is enabled.
+func (n NavigatorConfig) IsSimplifiedTools() bool {
+	return n.Tools == "simplified"
+}
+
+// IsSemanticProjection returns true when semantic path projection is enabled.
+func (n NavigatorConfig) IsSemanticProjection() bool {
+	return n.Projection == "semantic"
 }
 
 // OllamaConfig holds Ollama-specific request defaults shared by
@@ -269,6 +281,12 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv("NAV_SPEED"); v != "" {
 		cfg.Navigator.Speed = v
 	}
+	if v := os.Getenv("NAVIGATOR_TOOLS"); v != "" {
+		cfg.Navigator.Tools = v
+	}
+	if v := os.Getenv("NAVIGATOR_PROJECTION"); v != "" {
+		cfg.Navigator.Projection = v
+	}
 	if v := os.Getenv("OLLAMA_KEEP_ALIVE"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.Ollama.KeepAlive = n
@@ -380,6 +398,10 @@ navigator:
   format: "` + cfg.Navigator.Format + `"
   # CLI mode for Gemma (space-delimited commands, GBNF grammar).
   cli: false
+  # Tool set: "full" (12 tools, default) or "simplified" (5 tools: find, act, scroll, answer, look).
+  tools: ""
+  # Path projection: "mache" (default, opaque IDs) or "semantic" (human-readable paths).
+  projection: ""
 
 # Ollama-specific request defaults (shared by cartographer + navigator).
 ollama:

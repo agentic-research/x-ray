@@ -12,6 +12,8 @@ import (
 	"sync"
 
 	"github.com/agentic-research/mache/graph"
+	"github.com/agentic-research/x-ray/internal/config"
+	"github.com/agentic-research/x-ray/internal/mache"
 	"google.golang.org/genai"
 )
 
@@ -70,49 +72,87 @@ type Agent struct {
 	rescanTool    *RescanTool
 	newWindowTool *NewWindowTool
 	newTabTool    *NewTabTool
+
+	navConfig  config.NavigatorConfig
+	projection *SemanticProjection // non-nil when projection = "semantic"
 }
 
 // NewAgent creates a Navigator agent backed by a unified graph.Graph.
 // The graph is typically a CompositeGraph with mounts like "browser" and "iterm".
 func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
+	return NewAgentWithConfig(gen, model, g, config.NavigatorConfig{})
+}
+
+// NewAgentWithConfig creates a Navigator agent with explicit config for tool
+// set and projection mode. When config.Tools == "simplified", only the 5-tool
+// simplified set is registered. When config.Projection == "semantic", a
+// SemanticProjection is built from the initial graph state.
+func NewAgentWithConfig(gen ContentGenerator, model string, g graph.Graph, navCfg config.NavigatorConfig) *Agent {
 	if model == "" {
 		model = "gemini-2.5-flash"
 	}
 
-	// Wrap the graph in HotSwapGraph so all reads are RLock-protected
-	// and graph replacement is an atomic Swap. NavFS is created once
-	// and never replaced — it delegates through the HotSwapGraph.
 	hs := graph.NewHotSwapGraph(g)
 	fs := NewNavFS(hs)
 
-	ls := &LsTool{fs: fs}
-	cat := &CatTool{fs: fs}
-	stat := &StatTool{fs: fs}
-	act := &ActTool{fs: fs}
-	grepTool := &GrepTool{fs: fs}
-	scroll := &ScrollTool{}
-	goTo := &GotoTool{}
-	rescan := &RescanTool{fs: fs}
-	listTabs := &ListTabsTool{}
-	switchTab := &SwitchTabTool{}
-	newWindow := &NewWindowTool{fs: fs}
-	newTab := &NewTabTool{fs: fs}
-
 	reg := NewToolRegistry()
-	reg.Register(ls)
-	reg.Register(cat)
-	reg.Register(stat)
-	reg.Register(act)
-	reg.Register(grepTool)
-	reg.Register(scroll)
-	reg.Register(goTo)
-	reg.Register(rescan)
-	reg.Register(listTabs)
-	reg.Register(switchTab)
-	reg.Register(newWindow)
-	reg.Register(newTab)
+
+	scroll := &ScrollTool{}
+	act := &ActTool{fs: fs}
 	answerTool := &AnswerTool{}
-	reg.Register(answerTool)
+	listTabs := &ListTabsTool{}
+
+	var rescan *RescanTool
+	var newWindow *NewWindowTool
+	var newTab *NewTabTool
+	var lsTool *LsTool
+	var catTool *CatTool
+	var projection *SemanticProjection
+
+	if navCfg.IsSimplifiedTools() {
+		// Simplified: find, act (semantic), scroll, answer, look.
+		// Projection starts empty and is populated via SetGraphWithProjection
+		// when the Doer provides mounts + summary after each page capture.
+		projection = &SemanticProjection{
+			pathToMacheID: make(map[string]string),
+			macheIDToPath: make(map[string]string),
+		}
+
+		findTool := &FindTool{projection: projection}
+		lookTool := &LookTool{projection: projection}
+		semanticAct := &SemanticActTool{inner: act, projection: projection}
+
+		reg.Register(findTool)
+		reg.Register(semanticAct)
+		reg.Register(scroll)
+		reg.Register(answerTool)
+		reg.Register(lookTool)
+	} else {
+		// Full: existing 12-tool set.
+		lsTool = &LsTool{fs: fs}
+		catTool = &CatTool{fs: fs}
+		stat := &StatTool{fs: fs}
+		grepTool := &GrepTool{fs: fs}
+		goTo := &GotoTool{}
+		rescan = &RescanTool{fs: fs}
+		switchTab := &SwitchTabTool{}
+		newWindow = &NewWindowTool{fs: fs}
+		newTab = &NewTabTool{fs: fs}
+
+		reg.Register(lsTool)
+		reg.Register(catTool)
+		reg.Register(stat)
+		reg.Register(act)
+		reg.Register(grepTool)
+		reg.Register(scroll)
+		reg.Register(goTo)
+		reg.Register(rescan)
+		reg.Register(listTabs)
+		reg.Register(switchTab)
+		reg.Register(newWindow)
+		reg.Register(newTab)
+		reg.Register(answerTool)
+	}
 
 	a := &Agent{
 		generator:     gen,
@@ -122,14 +162,15 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 		registry:      reg,
 		scrollTool:    scroll,
 		listTabs:      listTabs,
-		lsTool:        ls,
-		catTool:       cat,
+		lsTool:        lsTool,
+		catTool:       catTool,
 		actTool:       act,
 		rescanTool:    rescan,
 		newWindowTool: newWindow,
 		newTabTool:    newTab,
+		navConfig:     navCfg,
+		projection:    projection,
 	}
-	// Wire viewport getter so scroll results include position info.
 	scroll.getViewport = a.viewportString
 	return a
 }
@@ -139,6 +180,20 @@ func NewAgent(gen ContentGenerator, model string, g graph.Graph) *Agent {
 // subsequent reads see the new graph. Thread-safe via HotSwapGraph.
 func (a *Agent) SetGraph(g graph.Graph) {
 	a.hotswap.Swap(g)
+}
+
+// SetGraphWithProjection atomically swaps the graph and rebuilds the
+// SemanticProjection. Only meaningful when projection mode is "semantic";
+// otherwise it delegates to SetGraph.
+func (a *Agent) SetGraphWithProjection(g graph.Graph, mounts []mache.Mount, summary string) {
+	a.hotswap.Swap(g)
+	if a.navConfig.IsSemanticProjection() && a.projection != nil {
+		newProj := NewSemanticProjection(mounts, summary)
+		// Update the projection in place so existing tool references stay valid.
+		a.projection.pathToMacheID = newProj.pathToMacheID
+		a.projection.macheIDToPath = newProj.macheIDToPath
+		a.projection.allPaths = newProj.allPaths
+	}
 }
 
 // SetScrollFunc injects the scroll callback used by the scroll tool.
