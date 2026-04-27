@@ -118,3 +118,65 @@ func TestFindTool_TopNLimit(t *testing.T) {
 		t.Errorf("expected at most 5 results, got %d lines:\n%s", lines, result)
 	}
 }
+
+func TestLookTool_TopLevel(t *testing.T) {
+	lt := &LookTool{projection: testProjection()}
+
+	// Omit zone -> show top-level zones.
+	result, action := lt.Execute(context.Background(), map[string]any{})
+
+	if action != nil {
+		t.Fatal("look should not return an action")
+	}
+	if result == "" {
+		t.Fatal("expected non-empty result")
+	}
+	// Should contain the regions from our test data.
+	if !strings.Contains(result, "header") {
+		t.Errorf("expected 'header' zone in result: %s", result)
+	}
+	if !strings.Contains(result, "main") {
+		t.Errorf("expected 'main' zone in result: %s", result)
+	}
+	t.Logf("look top-level:\n%s", result)
+}
+
+func TestLookTool_ZoneChildren(t *testing.T) {
+	sp := testProjection()
+	lt := &LookTool{projection: sp}
+
+	// Find a zone path that exists (the header zone).
+	var headerZone string
+	for _, pi := range sp.AllPaths() {
+		if strings.Contains(pi.Path, "header") && !strings.Contains(pi.Path[len("/browser/header/"):], "/") {
+			headerZone = pi.Path
+			break
+		}
+	}
+	if headerZone == "" {
+		t.Skip("no header zone found in projection")
+	}
+
+	result, _ := lt.Execute(context.Background(), map[string]any{
+		"zone": headerZone,
+	})
+
+	// Should list children of the header zone.
+	if !strings.Contains(result, "Home") || !strings.Contains(result, "About") {
+		t.Errorf("expected header children (Home, About) in result: %s", result)
+	}
+	t.Logf("look zone:\n%s", result)
+}
+
+func TestLookTool_UnknownZone(t *testing.T) {
+	lt := &LookTool{projection: testProjection()}
+
+	result, _ := lt.Execute(context.Background(), map[string]any{
+		"zone": "/browser/nonexistent/zone",
+	})
+
+	// Should return a helpful message, not crash.
+	if !strings.Contains(result, "No elements found") && !strings.Contains(result, "not found") {
+		t.Errorf("expected error-ish message for unknown zone: %s", result)
+	}
+}
