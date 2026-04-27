@@ -30,6 +30,7 @@ type benchCase struct {
 	Intent        string `json:"intent"`
 	ExpectMacheID string `json:"expect_mache_id"`
 	ExpectText    string `json:"expect_text"`
+	Difficulty    string `json:"difficulty"` // "simple", "medium", or "hard"
 }
 
 type benchResult struct {
@@ -114,9 +115,9 @@ func main() {
 	fmt.Println("=== X-Ray Navigation Benchmark ===")
 	fmt.Printf("Cartographer: %s\n", cartMode)
 	fmt.Println()
-	fmt.Printf("%-13s %-26s %-9s %-13s %-8s %s\n",
-		"Site", "Intent", "Result", "MacheID", "Time", "Iters")
-	fmt.Println(strings.Repeat("\u2500", 78))
+	fmt.Printf("%-13s %-26s %-8s %-9s %-13s %-8s %s\n",
+		"Site", "Intent", "Diff", "Result", "MacheID", "Time", "Iters")
+	fmt.Println(strings.Repeat("\u2500", 86))
 
 	for _, tc := range cases {
 		schema, err := getOrGenerateSchema(ctx, cart, tc.Site, schemaCache, cartMode == "gemini")
@@ -172,7 +173,7 @@ func main() {
 		printRow(r)
 	}
 
-	fmt.Println(strings.Repeat("\u2500", 78))
+	fmt.Println(strings.Repeat("\u2500", 86))
 	printSummary(results)
 }
 
@@ -402,6 +403,10 @@ func printRow(r benchResult) {
 	}
 	timeStr := fmt.Sprintf("%.1fs", r.elapsed.Seconds())
 	itersStr := fmt.Sprintf("%d", r.iters)
+	diff := r.tc.Difficulty
+	if diff == "" {
+		diff = "?"
+	}
 
 	if r.err != nil {
 		result = "ERR"
@@ -411,8 +416,8 @@ func printRow(r benchResult) {
 		log.Printf("  Error: %v", r.err)
 	}
 
-	fmt.Printf("%-13s %-26s %-9s %-13s %-8s %s\n",
-		r.tc.Site, r.tc.Intent, result, macheID, timeStr, itersStr)
+	fmt.Printf("%-13s %-26s %-8s %-9s %-13s %-8s %s\n",
+		r.tc.Site, r.tc.Intent, diff, result, macheID, timeStr, itersStr)
 }
 
 func printSummary(results []benchResult) {
@@ -421,13 +426,30 @@ func printSummary(results []benchResult) {
 	totalIters := 0
 	valid := 0
 
+	// Per-difficulty tracking.
+	type diffStats struct {
+		total, passed, valid int
+	}
+	byDiff := map[string]*diffStats{}
+
 	for _, r := range results {
+		d := r.tc.Difficulty
+		if d == "" {
+			d = "unknown"
+		}
+		if byDiff[d] == nil {
+			byDiff[d] = &diffStats{}
+		}
+		byDiff[d].total++
+
 		if r.err != nil {
 			continue
 		}
 		valid++
+		byDiff[d].valid++
 		if r.pass {
 			passed++
+			byDiff[d].passed++
 		}
 		totalLatency += r.elapsed
 		totalIters += r.iters
@@ -445,4 +467,17 @@ func printSummary(results []benchResult) {
 
 	fmt.Printf("Result: %d/%d passed (%.0f%%)   Avg latency: %.1fs   Avg iterations: %.1f\n",
 		passed, total, pct, avgLatency, avgIters)
+
+	// Difficulty breakdown.
+	for _, d := range []string{"simple", "medium", "hard"} {
+		s := byDiff[d]
+		if s == nil {
+			continue
+		}
+		dpct := 0.0
+		if s.total > 0 {
+			dpct = float64(s.passed) / float64(s.total) * 100
+		}
+		fmt.Printf("  %-8s %d/%d (%.0f%%)\n", d+":", s.passed, s.total, dpct)
+	}
 }
