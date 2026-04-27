@@ -24,14 +24,14 @@ repos:
 
       - id: go-vet
         name: go vet
-        entry: bash -c 'if [ "$(uname)" = "Darwin" ] && [ -d /Library/Frameworks/fuse_t.framework ]; then export CGO_CFLAGS="-I/Library/Frameworks/fuse_t.framework/Versions/Current/Headers" CGO_LDFLAGS="-F/Library/Frameworks -framework fuse_t -Wl,-rpath,/Library/Frameworks"; fi && go vet ./...'
+        entry: bash -c 'export GOWORK=off; if [ "$(uname)" = "Darwin" ] && [ -d /Library/Frameworks/fuse_t.framework ]; then export CGO_CFLAGS="-I/Library/Frameworks/fuse_t.framework/Versions/Current/Headers" CGO_LDFLAGS="-F/Library/Frameworks -framework fuse_t -Wl,-rpath,/Library/Frameworks"; fi && go vet ./...'
         language: system
         files: \.go$
         pass_filenames: false
 
       - id: golangci-lint
         name: golangci-lint
-        entry: bash -c 'if [ "$(uname)" = "Darwin" ] && [ -d /Library/Frameworks/fuse_t.framework ]; then export CGO_CFLAGS="-I/Library/Frameworks/fuse_t.framework/Versions/Current/Headers" CGO_LDFLAGS="-F/Library/Frameworks -framework fuse_t -Wl,-rpath,/Library/Frameworks"; fi && golangci-lint run --fix'
+        entry: bash -c 'export GOWORK=off; if [ "$(uname)" = "Darwin" ] && [ -d /Library/Frameworks/fuse_t.framework ]; then export CGO_CFLAGS="-I/Library/Frameworks/fuse_t.framework/Versions/Current/Headers" CGO_LDFLAGS="-F/Library/Frameworks -framework fuse_t -Wl,-rpath,/Library/Frameworks"; fi && golangci-lint run --fix --new-from-rev=HEAD~1'
         language: system
         files: \.go$
         pass_filenames: false
