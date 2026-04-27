@@ -13,6 +13,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/agentic-research/x-ray/internal/cartographer"
 	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/gorilla/websocket"
 )
@@ -203,7 +204,37 @@ func (h *Handler) handleDOMSnapshot(ctx context.Context, conn *websocket.Conn, m
 
 		cartStart := time.Now()
 		var err error
-		schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, cartSummary)
+
+		// Progressive cartographer: stream intermediate results.
+		if pc, ok := h.Cartographer.(*cartographer.ProgressiveCartographer); ok {
+			progressCh := make(chan cartographer.ProgressResult, 10)
+			pc2 := *pc // shallow copy to avoid mutating shared struct
+			pc2.Progress = progressCh
+			var genErr error
+			go func() {
+				schemaJSON, genErr = pc2.GenerateSchema(ctx, screenshotBytes, mimeType, cartSummary)
+				close(progressCh)
+			}()
+
+			// Consume first intermediate result for fast response
+			firstResult, ok := <-progressCh
+			if ok && firstResult.Schema != "" {
+				log.Printf("Cartographer: progressive stage %d (%s) ready in %s (tab %d)",
+					firstResult.Stage, cartographer.StageName(firstResult.Stage),
+					firstResult.Latency, msg.TabID)
+				// Could apply early schema here for ultra-low-latency path
+				// For now, drain remaining results and use final
+			}
+
+			// Wait for final result
+			for range progressCh {
+				// drain
+			}
+			err = genErr
+		} else {
+			schemaJSON, err = h.Cartographer.GenerateSchema(ctx, screenshotBytes, mimeType, cartSummary)
+		}
+
 		if err != nil {
 			log.Printf("Cartographer failed after %s: %v", time.Since(cartStart), err)
 			h.sendMessage(conn, OutboundMessage{

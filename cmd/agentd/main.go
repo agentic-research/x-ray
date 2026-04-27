@@ -94,6 +94,12 @@ func main() {
 		cart = cairnCart
 		log.Printf("Cartographer: CairnCartographer (gear=%d, scale=%.1f, sheaf=%v, curvature=%v)",
 			cfg.Cartographer.Gear, cfg.Cartographer.Scale, cairnCart.SheafFolding, cairnCart.CurvatureDetection)
+	case "progressive":
+		cart = &cartographer.ProgressiveCartographer{
+			Scale:    cfg.Cartographer.Scale,
+			GridSize: 12,
+		}
+		log.Printf("Cartographer: ProgressiveCartographer (scale=%.1f)", cfg.Cartographer.Scale)
 	default:
 		if cfg.Cartographer.Endpoint != "" {
 			cart = &cartographer.OllamaAgent{Endpoint: cfg.Cartographer.Endpoint, Model: cfg.Cartographer.Model, Ollama: cfg.Ollama}

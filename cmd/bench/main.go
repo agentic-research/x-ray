@@ -336,6 +336,13 @@ func buildCartographer(defaultModel string) (schemaGenerator, bool) {
 	case "tropical":
 		log.Printf("Cartographer: tropical")
 		return &cartographer.TropicalCartographer{}, false
+	case "progressive":
+		scale := 10.0
+		if s, err := strconv.ParseFloat(os.Getenv("CAIRN_SCALE"), 64); err == nil {
+			scale = s
+		}
+		log.Printf("Cartographer: progressive (scale=%.1f)", scale)
+		return &cartographer.ProgressiveCartographer{Scale: scale, GridSize: 12}, false
 	default:
 		log.Printf("Cartographer: gemini (%s)", defaultModel)
 		return nil, true // placeholder — filled after client init

@@ -204,6 +204,21 @@ tasks:
     cmds:
       - go run ./cmd/bench
 
+  demo-progressive:
+    desc: Build and run voice demo with progressive cartographer (staged pipeline)
+    deps: [build]
+    env:
+      CARTOGRAPHER_MODE: progressive
+    cmds:
+      - ./{{.BINARY_NAME}} --voice
+
+  bench-progressive:
+    desc: Run bench with progressive cartographer
+    env:
+      CARTOGRAPHER_MODE: progressive
+    cmds:
+      - go run ./cmd/bench
+
   nav-dump:
     desc: Dump what Navigator sees for each testdata site (no LLM needed, instant)
     env:

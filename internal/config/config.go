@@ -67,6 +67,7 @@ func SupportedVoices() []string {
 }
 
 // CartographerConfig holds schema generation settings.
+// CartographerConfig.Mode: "tropical", "cairn", "progressive", or "" (Gemini VLM).
 type CartographerConfig struct {
 	Mode        string  `yaml:"mode"`
 	Gear        int     `yaml:"gear"`
@@ -354,7 +355,7 @@ gemini:
   planner_model: ""
 
 cartographer:
-  # Schema generation mode: "tropical" (algebraic), "cairn" (Leech), or "" (Gemini VLM).
+  # Schema generation mode: "tropical" (algebraic), "cairn" (Leech), "progressive" (staged), or "" (Gemini VLM).
   mode: "` + cfg.Cartographer.Mode + `"
   # CairnCartographer gear level (1-8). Only used when mode=cairn.
   gear: ` + strconv.Itoa(cfg.Cartographer.Gear) + `
