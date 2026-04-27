@@ -180,3 +180,118 @@ func TestLookTool_UnknownZone(t *testing.T) {
 		t.Errorf("expected error-ish message for unknown zone: %s", result)
 	}
 }
+
+func TestSemanticActTool_ResolvesPath(t *testing.T) {
+	sp := testProjection()
+
+	// Build a minimal ActTool backed by the standard test agent's NavFS.
+	agent := newTestAgent()
+	inner := agent.actTool
+
+	sat := &SemanticActTool{
+		inner:      inner,
+		projection: sp,
+	}
+
+	// Find the semantic path for the "Home" link (mache-1).
+	homePath := sp.SemanticPath("mache-1")
+	if homePath == "" {
+		t.Fatal("mache-1 should have a semantic path")
+	}
+
+	result, action := sat.Execute(context.Background(), map[string]any{
+		"path":   homePath,
+		"action": "click",
+	})
+
+	// Should resolve to mache-1 and attempt the click action.
+	t.Logf("result=%q action=%+v", result, action)
+
+	if action == nil {
+		// Browser MemoryStore returns ErrActNotSupported, so ActTool falls through
+		// to ActionResult dispatch. That path calls ResolveMacheID which needs
+		// the mache-ID, not the semantic path. Our wrapper should have resolved it.
+		t.Fatal("expected an ActionResult for browser element click")
+	}
+	if action.MacheID != "mache-1" {
+		t.Errorf("expected mache-1, got %q", action.MacheID)
+	}
+}
+
+func TestSemanticActTool_FallsBackToBareID(t *testing.T) {
+	sp := testProjection()
+	agent := newTestAgent()
+
+	sat := &SemanticActTool{
+		inner:      agent.actTool,
+		projection: sp,
+	}
+
+	// Bare mache-ID should still work (passthrough).
+	result, action := sat.Execute(context.Background(), map[string]any{
+		"path":   "mache-10",
+		"action": "click",
+	})
+
+	t.Logf("result=%q action=%+v", result, action)
+
+	if action == nil {
+		t.Fatal("expected ActionResult for bare mache-ID")
+	}
+	if action.MacheID != "mache-10" {
+		t.Errorf("expected mache-10, got %q", action.MacheID)
+	}
+}
+
+func TestSemanticActTool_UnknownPath(t *testing.T) {
+	sp := testProjection()
+	agent := newTestAgent()
+
+	sat := &SemanticActTool{
+		inner:      agent.actTool,
+		projection: sp,
+	}
+
+	result, action := sat.Execute(context.Background(), map[string]any{
+		"path":   "/browser/nonexistent/element",
+		"action": "click",
+	})
+
+	// Should return an error, not panic.
+	if action != nil {
+		t.Fatal("expected nil action for unknown path")
+	}
+	if !strings.Contains(result, "Error") && !strings.Contains(result, "not found") {
+		t.Errorf("expected error message, got: %s", result)
+	}
+}
+
+func TestSemanticActTool_TypeAction(t *testing.T) {
+	sp := testProjection()
+	agent := newTestAgent()
+
+	sat := &SemanticActTool{
+		inner:      agent.actTool,
+		projection: sp,
+	}
+
+	// Find the search input.
+	searchPath := sp.SemanticPath("mache-3")
+	if searchPath == "" {
+		t.Skip("mache-3 not projected (no search input in test data)")
+	}
+
+	result, action := sat.Execute(context.Background(), map[string]any{
+		"path":    searchPath,
+		"action":  "type",
+		"payload": "hello world",
+	})
+
+	t.Logf("result=%q action=%+v", result, action)
+	if action == nil {
+		t.Fatal("expected ActionResult for type action")
+	}
+	if action.Payload != "hello world" {
+		t.Errorf("expected payload 'hello world', got %q", action.Payload)
+	}
+}

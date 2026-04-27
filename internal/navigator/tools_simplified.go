@@ -191,3 +191,50 @@ func (l *LookTool) showZoneChildren(zone string, allPaths []PathInfo) string {
 	}
 	return strings.TrimRight(sb.String(), "\n")
 }
+
+// SemanticActTool wraps the existing ActTool to accept semantic paths.
+// If the path is a known semantic path, it resolves to the mache-ID first.
+// If the path is already a bare mache-ID or a NavFS path, it passes through.
+type SemanticActTool struct {
+	inner      *ActTool
+	projection *SemanticProjection
+}
+
+func (s *SemanticActTool) Declaration() *genai.FunctionDeclaration {
+	return &genai.FunctionDeclaration{
+		Name:        "act",
+		Description: "Execute an action on a page element. Accepts semantic paths (from find/look results) or bare mache IDs. Actions: 'click', 'focus', 'type', 'enter'.",
+		Parameters: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"path":    {Type: genai.TypeString, Description: "Semantic path (e.g., '/browser/header/search-input') or bare mache ID (e.g., 'mache-42')"},
+				"action":  {Type: genai.TypeString, Description: "Action: 'click', 'focus', 'type', or 'enter'"},
+				"payload": {Type: genai.TypeString, Description: "Text to type (required for 'type' action)"},
+			},
+			Required: []string{"path", "action"},
+		},
+	}
+}
+
+func (s *SemanticActTool) Execute(ctx context.Context, args map[string]any) (string, *ActionResult) {
+	path, _ := args["path"].(string)
+
+	// Try to resolve semantic path -> mache-ID.
+	if macheID := s.projection.MacheID(path); macheID != "" {
+		// Replace the semantic path with the actual NavFS path or bare mache-ID
+		// that the inner ActTool understands.
+		args = copyArgs(args)
+		args["path"] = macheID
+	}
+
+	return s.inner.Execute(ctx, args)
+}
+
+// copyArgs returns a shallow copy of the args map to avoid mutating the original.
+func copyArgs(args map[string]any) map[string]any {
+	cp := make(map[string]any, len(args))
+	for k, v := range args {
+		cp[k] = v
+	}
+	return cp
+}
