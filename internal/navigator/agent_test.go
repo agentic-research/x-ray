@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/agentic-research/mache/graph"
+	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/agentic-research/x-ray/internal/mache"
 	"google.golang.org/genai"
 )
@@ -636,5 +637,133 @@ func TestExecuteToolRescanRoot(t *testing.T) {
 	}
 	if strings.Contains(result, "Error") {
 		t.Errorf("rescan('/') should not error: %s", result)
+	}
+}
+
+func TestNewAgent_DefaultToolSet(t *testing.T) {
+	// Default: full tool set — should have ls, cat, stat, act, grep, etc.
+	agent := newTestAgent()
+	decls := agent.registry.Definitions()
+	if len(decls) == 0 || len(decls[0].FunctionDeclarations) == 0 {
+		t.Fatal("expected tool declarations")
+	}
+
+	names := make(map[string]bool)
+	for _, d := range decls[0].FunctionDeclarations {
+		names[d.Name] = true
+	}
+
+	for _, want := range []string{"ls", "cat", "stat", "act", "grep"} {
+		if !names[want] {
+			t.Errorf("default tool set missing %q", want)
+		}
+	}
+	// Should NOT have simplified tools.
+	for _, unwanted := range []string{"find", "look"} {
+		if names[unwanted] {
+			t.Errorf("default tool set should not have %q", unwanted)
+		}
+	}
+}
+
+func TestNewAgentSimplified_ToolSet(t *testing.T) {
+	engine := mache.NewEngine()
+	if err := engine.ApplySchema(testSchema); err != nil {
+		t.Fatal(err)
+	}
+	engine.LoadChildren(testSummary, nil)
+
+	agent := NewAgentWithConfig(nil, "test", engine, config.NavigatorConfig{
+		Tools:      "simplified",
+		Projection: "semantic",
+	})
+
+	decls := agent.registry.Definitions()
+	if len(decls) == 0 || len(decls[0].FunctionDeclarations) == 0 {
+		t.Fatal("expected tool declarations")
+	}
+
+	names := make(map[string]bool)
+	for _, d := range decls[0].FunctionDeclarations {
+		names[d.Name] = true
+	}
+
+	// Simplified set: find, act, browser.scroll, answer, look
+	for _, want := range []string{"find", "act", "browser.scroll", "answer", "look"} {
+		if !names[want] {
+			t.Errorf("simplified tool set missing %q", want)
+		}
+	}
+	// Should NOT have full tools.
+	for _, unwanted := range []string{"ls", "cat", "stat", "grep"} {
+		if names[unwanted] {
+			t.Errorf("simplified tool set should not have %q", unwanted)
+		}
+	}
+}
+
+func TestNewAgentSimplified_ProjectionUpdatesOnSetGraph(t *testing.T) {
+	engine := mache.NewEngine()
+	if err := engine.ApplySchema(testSchema); err != nil {
+		t.Fatal(err)
+	}
+	engine.LoadChildren(testSummary, nil)
+
+	agent := NewAgentWithConfig(nil, "test", engine, config.NavigatorConfig{
+		Tools:      "simplified",
+		Projection: "semantic",
+	})
+
+	// Projection starts empty (populated via SetGraphWithProjection).
+	if agent.projection == nil {
+		t.Fatal("expected projection to be set (even if empty)")
+	}
+	initialPaths := len(agent.projection.AllPaths())
+
+	// Populate projection via SetGraphWithProjection with mounts + summary.
+	agent.SetGraphWithProjection(engine, []mache.Mount{
+		{VirtualPath: "/header/nav", MacheID: "mache-0", Description: "Top navigation bar", Bounds: [4]float64{0, 0, 1.0, 0.1}},
+		{VirtualPath: "/main/stories", MacheID: "mache-10", Description: "Main story listing", Bounds: [4]float64{0.1, 0.2, 0.7, 0.6}},
+		{VirtualPath: "/footer/links", MacheID: "mache-50", Description: "Footer navigation", Bounds: [4]float64{0, 0.9, 1.0, 0.1}},
+	}, testSummary)
+
+	afterFirstPaths := len(agent.projection.AllPaths())
+	if afterFirstPaths == 0 {
+		t.Fatal("expected non-zero paths after SetGraphWithProjection")
+	}
+	if afterFirstPaths == initialPaths {
+		t.Errorf("projection should have changed after SetGraphWithProjection (was %d, now %d)", initialPaths, afterFirstPaths)
+	}
+
+	// Build a new engine with different content.
+	engine2 := mache.NewEngine()
+	schema2 := `{
+		"mounts": [
+			{
+				"virtual_path": "/header/brand",
+				"mache_id": "mache-100",
+				"description": "Brand logo",
+				"bounds": [0, 0, 0.3, 0.1]
+			}
+		]
+	}`
+	if err := engine2.ApplySchema(schema2); err != nil {
+		t.Fatal(err)
+	}
+	engine2.LoadChildren(`Interactive Elements:
+ID: mache-100 | Parent: none | Tag: img | Text: "Logo"
+`, nil)
+
+	// Swap the graph with new projection data.
+	agent.SetGraphWithProjection(engine2, []mache.Mount{
+		{VirtualPath: "/header/brand", MacheID: "mache-100", Description: "Brand logo", Bounds: [4]float64{0, 0, 0.3, 0.1}},
+	}, `Interactive Elements:
+ID: mache-100 | Parent: none | Tag: img | Text: "Logo"
+`)
+
+	// Projection should be rebuilt with different paths.
+	newPaths := len(agent.projection.AllPaths())
+	if newPaths == afterFirstPaths {
+		t.Errorf("projection should have changed after second SetGraphWithProjection (was %d, now %d)", afterFirstPaths, newPaths)
 	}
 }
