@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/agentic-research/mache/graph"
+
 	"github.com/agentic-research/x-ray/internal/cartographer"
 	"github.com/agentic-research/x-ray/internal/config"
 	"github.com/agentic-research/x-ray/internal/mache"
@@ -136,7 +138,15 @@ func main() {
 		summary := loadSummary(tc.Site)
 		engine.LoadChildren(summary, nil)
 
-		nav := navigator.NewAgent(navGen, navModel, engine)
+		composite := graph.NewCompositeGraph()
+		if err := composite.Mount("browser", engine); err != nil {
+			r := benchResult{tc: tc, err: fmt.Errorf("Mount: %w", err)}
+			results = append(results, r)
+			printRow(r)
+			continue
+		}
+
+		nav := navigator.NewAgent(navGen, navModel, composite)
 
 		start := time.Now()
 		action, _, err := nav.HandleIntent(ctx, tc.Intent, false)
