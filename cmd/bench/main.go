@@ -140,7 +140,7 @@ func main() {
 
 		composite := graph.NewCompositeGraph()
 		if err := composite.Mount("browser", engine); err != nil {
-			r := benchResult{tc: tc, err: fmt.Errorf("Mount: %w", err)}
+			r := benchResult{tc: tc, err: fmt.Errorf("mount: %w", err)}
 			results = append(results, r)
 			printRow(r)
 			continue
