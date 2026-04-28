@@ -79,17 +79,34 @@ func NewSemanticProjection(mounts []mache.Mount, summary string) *SemanticProjec
 		zonePath = dedup(zonePath, used)
 		sp.register(zonePath, m.MacheID, elemByID)
 
-		// Register child elements.
-		for _, childID := range childrenOf[m.MacheID] {
-			child, ok := elemByID[childID]
-			if !ok {
-				continue
+		// Register ALL descendant elements (not just direct children).
+		// Walk the tree depth-first from the mount root.
+		var walkDescendants func(parentID string)
+		walkDescendants = func(parentID string) {
+			for _, childID := range childrenOf[parentID] {
+				child, ok := elemByID[childID]
+				if !ok {
+					continue
+				}
+				// Only register interactive/meaningful elements
+				role := inferRole(child.tag)
+				if role == "text" || role == "div" {
+					// Skip structural containers but walk their children
+					walkDescendants(childID)
+					continue
+				}
+				childSlug := slugify(child.text, 30)
+				if childSlug == "" {
+					childSlug = role
+				}
+				childPath := zonePath + "/" + childSlug
+				childPath = dedup(childPath, used)
+				sp.register(childPath, childID, elemByID)
+				// Also walk this element's children
+				walkDescendants(childID)
 			}
-			childSlug := slugify(child.text, 30)
-			childPath := zonePath + "/" + childSlug
-			childPath = dedup(childPath, used)
-			sp.register(childPath, childID, elemByID)
 		}
+		walkDescendants(m.MacheID)
 	}
 
 	return sp
@@ -219,9 +236,13 @@ func dedup(path string, used map[string]int) string {
 }
 
 // summaryLineRe parses lines like:
-// ID: mache-11 | Parent: mache-10 | Tag: a | Text: "First Story Title"
+//
+//	ID: mache-11 | Parent: mache-10 | Tag: a | Text: "First Story Title"
+//	ID: mache-11 | Parent: mache-10 | Tag: a | Role: link | Text: "Title" | Bounds: ...
+//
+// Matches ID, Parent, Tag, and Text fields regardless of other fields between them.
 var summaryLineRe = regexp.MustCompile(
-	`ID:\s*(\S+)\s*\|\s*Parent:\s*(\S+)\s*\|\s*Tag:\s*(\S+)\s*\|\s*Text:\s*"([^"]*)"`,
+	`ID:\s*(\S+)\s*\|\s*Parent:\s*(\S+)\s*\|\s*Tag:\s*(\S+).*?\|\s*Text:\s*"([^"]*)"`,
 )
 
 // parseSummaryElements extracts structured elements from the DOM summary text.

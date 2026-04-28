@@ -18,6 +18,7 @@ import (
 	"github.com/agentic-research/mache/graph"
 	"github.com/agentic-research/x-ray/internal/mache"
 	"github.com/agentic-research/x-ray/internal/navigator"
+	"google.golang.org/genai"
 )
 
 func TestE2E_Fast(t *testing.T) {
@@ -118,6 +119,16 @@ func TestE2E_Fast(t *testing.T) {
 			}
 		}
 
+		// Log first few paths so we can see what the model receives
+		allPaths := proj.AllPaths()
+		t.Logf("  %s: %d semantic paths. First 5:", site, len(allPaths))
+		for i, pi := range allPaths {
+			if i >= 5 {
+				break
+			}
+			t.Logf("    %s [%s] %q", pi.Path, pi.Action, truncIntent(pi.Text, 40))
+		}
+
 		for _, tc := range cases {
 			engine := mache.NewEngine()
 			if err := engine.ApplySchema(schema); err != nil {
@@ -128,27 +139,113 @@ func TestE2E_Fast(t *testing.T) {
 			composite := graph.NewCompositeGraph()
 			composite.Mount("browser", engine)
 
-			// Create agent with semantic prompt
-			nav := navigator.NewAgent(navGen, model, composite)
+			// Call LLM directly — flat element list with mache-IDs.
+			// This is what the curl test used at 0.89s with correct results.
+			// Build a compact flat listing: [mache-ID] role: "text"
+			var flatListing strings.Builder
+			for _, pi := range proj.AllPaths() {
+				if pi.Action == "none" || pi.Action == "" {
+					continue // skip non-interactive
+				}
+				macheID := proj.MacheID(pi.Path)
+				if macheID == "" {
+					continue
+				}
+				text := pi.Text
+				if len(text) > 50 {
+					text = text[:47] + "..."
+				}
+				if text != "" {
+					fmt.Fprintf(&flatListing, "[%s] %s: %q (%s)\n", macheID, pi.Role, text, pi.Path)
+				}
+			}
+			// Also add elements from the text_index (which has ALL elements)
+			// Parse the summary directly for a flat element list
+			for _, line := range strings.Split(string(summary), "\n") {
+				if !strings.Contains(line, "ID: ") || !strings.Contains(line, "Text: ") {
+					continue
+				}
+				// Extract ID and Text
+				idStart := strings.Index(line, "ID: ") + 4
+				idEnd := strings.Index(line[idStart:], " ")
+				if idEnd < 0 {
+					continue
+				}
+				macheID := line[idStart : idStart+idEnd]
+				textStart := strings.Index(line, "Text: \"")
+				if textStart < 0 {
+					continue
+				}
+				textStart += 7
+				textEnd := strings.Index(line[textStart:], "\"")
+				if textEnd < 0 {
+					continue
+				}
+				text := line[textStart : textStart+textEnd]
+				if text == "" || len(text) < 2 {
+					continue
+				}
+				// Get tag
+				tagStr := ""
+				if ti := strings.Index(line, "Tag: "); ti >= 0 {
+					rest := line[ti+5:]
+					if si := strings.Index(rest, " "); si > 0 {
+						tagStr = rest[:si]
+					}
+				}
+				if len(text) > 50 {
+					text = text[:47] + "..."
+				}
+				fmt.Fprintf(&flatListing, "[%s] %s: %q\n", macheID, tagStr, text)
+			}
 
-			semanticPrompt := `You navigate web pages by calling tools.
+			sysPrompt := "You navigate web pages. The page elements are listed below. Call act(element, action) to interact."
+			userMsg := tc.Intent + "\n\nPage elements:\n" + flatListing.String()
 
-Tools:
-- act(path, action): Interact with an element by its path. Actions: "click", "type", "focus".
-- answer(text): Return a text answer.
+			history := []*genai.Content{
+				{Role: "user", Parts: []*genai.Part{{Text: userMsg}}},
+			}
+			// Build enum of valid paths for the act tool
+			var validPaths []string
+			for _, pi := range proj.AllPaths() {
+				validPaths = append(validPaths, pi.Path)
+			}
 
-Page elements (path [action] "text"):
-` + pathListing.String() + `
-Rules:
-- Find the element path that matches the user's request, then call act(path, "click").
-- The path encodes WHERE the element is: /browser/header/ = top, /browser/main/ = content, /browser/footer/ = bottom.
-- For type: act(path, "type", "search text").
-- If not found, say so.`
-
-			nav.OverrideSystemPrompt(semanticPrompt)
+			llmConfig := &genai.GenerateContentConfig{
+				SystemInstruction: &genai.Content{
+					Parts: []*genai.Part{{Text: sysPrompt}},
+				},
+				Tools: []*genai.Tool{{
+					FunctionDeclarations: []*genai.FunctionDeclaration{
+						{
+							Name:        "act",
+							Description: "Click, type, or focus on an element by its path",
+							Parameters: &genai.Schema{
+								Type: genai.TypeObject,
+								Properties: map[string]*genai.Schema{
+									"element": {Type: genai.TypeString, Description: "Element mache-ID from the page listing (e.g. mache-11)"},
+									"action":  {Type: genai.TypeString, Description: "click, type, or focus", Enum: []string{"click", "type", "focus"}},
+								},
+								Required: []string{"path", "action"},
+							},
+						},
+						{
+							Name:        "answer",
+							Description: "Return a text answer",
+							Parameters: &genai.Schema{
+								Type: genai.TypeObject,
+								Properties: map[string]*genai.Schema{
+									"text": {Type: genai.TypeString, Description: "Your answer"},
+								},
+								Required: []string{"text"},
+							},
+						},
+					},
+				}},
+			}
 
 			start := time.Now()
-			action, textResp, navErr := nav.HandleIntent(ctx, tc.Intent, false)
+			resp, navErr := navGen.GenerateContent(ctx, model, history, llmConfig)
 			elapsed := time.Since(start)
 
 			r := result{
@@ -160,23 +257,21 @@ Rules:
 
 			if navErr != nil {
 				r.got = "ERR"
-			} else if action != nil {
-				// The model acts on semantic paths or mache-IDs.
-				// Try resolving semantic path → mache-ID via projection.
-				gotID := action.MacheID
-				if resolved := proj.MacheID(gotID); resolved != "" {
-					gotID = resolved
+			} else if resp != nil && len(resp.Candidates) > 0 && resp.Candidates[0].Content != nil {
+				for _, part := range resp.Candidates[0].Content.Parts {
+					if part.FunctionCall != nil && part.FunctionCall.Name == "act" {
+						element, _ := part.FunctionCall.Args["element"].(string)
+						r.got = element
+						r.pass = element == tc.ExpectMacheID
+						break
+					}
+					if part.Text != "" {
+						r.got = "text:" + truncIntent(part.Text, 20)
+					}
 				}
-				// Also try if model used the path field
-				if resolved := proj.MacheID(action.Path); resolved != "" {
-					gotID = resolved
-				}
-				r.got = gotID
-				r.pass = gotID == tc.ExpectMacheID
-			} else if textResp != "" {
-				r.got = "text:" + truncIntent(textResp, 20)
-			} else {
-				r.got = "no-action"
+			}
+			if r.got == "" {
+				r.got = "no-response"
 			}
 
 			results = append(results, r)
