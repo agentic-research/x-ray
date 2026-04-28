@@ -103,3 +103,4 @@ scripts/__pycache__/
 results/album/
 results/bench_local/
 node_modules/
+testdata/desktop/page.png

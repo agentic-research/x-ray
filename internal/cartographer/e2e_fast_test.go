@@ -7,6 +7,7 @@ package cartographer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -91,6 +92,32 @@ func TestE2E_Fast(t *testing.T) {
 			continue
 		}
 
+		// Build semantic projection from schema mounts
+		var schemaOutput mache.CartographerOutput
+		json.Unmarshal([]byte(schema), &schemaOutput)
+		proj := navigator.NewSemanticProjection(schemaOutput.Mounts, string(summary))
+
+		// Build semantic tree for the prompt — shows paths with roles
+		var pathListing strings.Builder
+		for _, pi := range proj.AllPaths() {
+			if pi.Text == "" && pi.Role == "text" {
+				continue // skip structural containers without text
+			}
+			actionTag := ""
+			if pi.Action != "none" && pi.Action != "" {
+				actionTag = " [" + pi.Action + "]"
+			}
+			text := pi.Text
+			if len(text) > 60 {
+				text = text[:57] + "..."
+			}
+			if text != "" {
+				fmt.Fprintf(&pathListing, "%s%s \"%s\"\n", pi.Path, actionTag, text)
+			} else {
+				fmt.Fprintf(&pathListing, "%s%s\n", pi.Path, actionTag)
+			}
+		}
+
 		for _, tc := range cases {
 			engine := mache.NewEngine()
 			if err := engine.ApplySchema(schema); err != nil {
@@ -101,9 +128,24 @@ func TestE2E_Fast(t *testing.T) {
 			composite := graph.NewCompositeGraph()
 			composite.Mount("browser", engine)
 
-			// Create agent with MINIMAL prompt
+			// Create agent with semantic prompt
 			nav := navigator.NewAgent(navGen, model, composite)
-			nav.OverrideSystemPrompt(navigator.MinimalNavigatorPrompt)
+
+			semanticPrompt := `You navigate web pages by calling tools.
+
+Tools:
+- act(path, action): Interact with an element by its path. Actions: "click", "type", "focus".
+- answer(text): Return a text answer.
+
+Page elements (path [action] "text"):
+` + pathListing.String() + `
+Rules:
+- Find the element path that matches the user's request, then call act(path, "click").
+- The path encodes WHERE the element is: /browser/header/ = top, /browser/main/ = content, /browser/footer/ = bottom.
+- For type: act(path, "type", "search text").
+- If not found, say so.`
+
+			nav.OverrideSystemPrompt(semanticPrompt)
 
 			start := time.Now()
 			action, textResp, navErr := nav.HandleIntent(ctx, tc.Intent, false)
@@ -119,8 +161,18 @@ func TestE2E_Fast(t *testing.T) {
 			if navErr != nil {
 				r.got = "ERR"
 			} else if action != nil {
-				r.got = action.MacheID
-				r.pass = action.MacheID == tc.ExpectMacheID
+				// The model acts on semantic paths or mache-IDs.
+				// Try resolving semantic path → mache-ID via projection.
+				gotID := action.MacheID
+				if resolved := proj.MacheID(gotID); resolved != "" {
+					gotID = resolved
+				}
+				// Also try if model used the path field
+				if resolved := proj.MacheID(action.Path); resolved != "" {
+					gotID = resolved
+				}
+				r.got = gotID
+				r.pass = gotID == tc.ExpectMacheID
 			} else if textResp != "" {
 				r.got = "text:" + truncIntent(textResp, 20)
 			} else {

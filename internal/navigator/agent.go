@@ -344,7 +344,11 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 	}
 
 	// Pre-fill a tree dump so the model sees the full filesystem structure upfront.
-	treeDump := a.buildTreeDump()
+	// Skip when system prompt is overridden — the override provides its own page context.
+	treeDump := ""
+	if a.systemPromptOverride == "" {
+		treeDump = a.buildTreeDump()
+	}
 
 	// Inject section hints (previously successful actions) if available.
 	a.sectionMu.RLock()
