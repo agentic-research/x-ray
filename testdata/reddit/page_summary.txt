@@ -1,2 +1,9 @@
 Interactive Elements:
-ID: mache-0 | Tag: a | Text: "File a ticket"
+ID: mache-0 | Parent: none | Tag: div | Role: div | Text: ".theme-light,:root{--rem360:22.5rem;--rem320:20rem;--rem192:12rem;--rem144:9r..." | Bounds: 0.0125,0.0222,0.9750,0.4704 | Path: div
+ID: mache-1 | Parent: mache-0 | Tag: div | Role: div | Text: "You've been blocked by network security.If you think you've been blocked by m..." | Bounds: 0.0125,0.0222,0.9750,0.4704 | Path: div > div.items-center.flex
+ID: mache-2 | Parent: mache-1 | Tag: div | Role: div | Text: "You've been blocked by network security.If you think you've been blocked by m..." | Bounds: 0.0125,0.3481,0.9750,0.1444 | Path: div > div.items-center.flex > div.items-center.flex
+ID: mache-3 | Parent: mache-2 | Tag: div | Role: div | Text: "You've been blocked by network security.If you think you've been blocked by m..." | Bounds: 0.3750,0.3481,0.2500,0.1296 | Path: div > div.items-center.flex > div.items-center.flex > div.items-center.flex
+ID: mache-4 | Parent: mache-3 | Tag: div | Role: div | Text: "If you think you've been blocked by mistake, file a ticket below and we'll lo..." | Bounds: 0.3750,0.3741,0.2500,0.1037 | Path: div.items-center.flex > div.items-center.flex > div.items-center.flex > div.text-16.text-neutral-content-weak
+ID: mache-5 | Parent: mache-4 | Tag: div | Role: div | Text: "If you think you've been blocked by mistake, file a ticket below and we'll lo..." | Bounds: 0.3750,0.3741,0.2500,0.1037 | Path: div.items-center.flex > div.items-center.flex > div.text-16.text-neutral-content-weak > div.pt-md
+ID: mache-6 | Parent: mache-5 | Tag: div | Role: div | Text: "File a ticket" | Bounds: 0.3750,0.4259,0.2500,0.0519 | Path: div.items-center.flex > div.text-16.text-neutral-content-weak > div.pt-md > div.flex.justify-center
+ID: mache-7 | Parent: mache-6 | Tag: a | Role: link | Text: "File a ticket" | Bounds: 0.4722,0.4407,0.0557,0.0370 | Path: div.text-16.text-neutral-content-weak > div.pt-md > div.flex.justify-center > a.items-center.justify-center

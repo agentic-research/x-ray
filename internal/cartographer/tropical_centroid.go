@@ -88,11 +88,11 @@ func tropicalRefineZones(zones []zone, elements []element, cells []CairnGridCell
 	}
 
 	// Compute zone centroids from grid cell features
-	stalks := computeZoneStalks(zones, elements, cells, gridSize)
+	ss := computeZoneStalks(zones, elements, cells, gridSize)
 	centroids := make([][CairnNumDims]float64, len(zones))
 	bounds := make([][4]float64, len(zones))
 
-	for i, stalk := range stalks {
+	for i, stalk := range ss.Stalks {
 		if len(stalk) == CairnNumDims {
 			for d := 0; d < CairnNumDims; d++ {
 				centroids[i][d] = stalk[d]

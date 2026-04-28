@@ -1,0 +1,722 @@
+Interactive Elements:
+ID: mache-0 | Parent: none | Tag: ul | Role: ul | Text: "  " | Bounds: 0.0010,-0.2963,0.9979,0.0000 | Path: ul.a11y-menu
+ID: mache-1 | Parent: mache-0 | Tag: a | Role: link | Text: "Skip to main content" | Bounds: 0.0010,-0.2963,0.9979,0.0459 | Path: ul.a11y-menu > li > a
+ID: mache-2 | Parent: mache-0 | Tag: a | Role: link | Text: "Skip to search" | Bounds: 0.0010,-0.2963,0.9979,0.0459 | Path: ul.a11y-menu > li > a
+ID: mache-3 | Parent: none | Tag: header | Role: banner | Text: "   " | Bounds: 0.0000,0.0843,1.0000,0.0907 | Path: header.page-layout__header
+ID: mache-4 | Parent: mache-3 | Tag: nav | Role: navigation | Text: "    " | Bounds: 0.0000,0.0843,1.0000,0.0611 | Path: header.page-layout__header > nav.navigation
+ID: mache-5 | Parent: mache-4 | Tag: div | Role: div | Text: " " | Bounds: 0.1302,0.0963,0.0516,0.0370 | Path: header.page-layout__header > nav.navigation > div.navigation__logo
+ID: mache-6 | Parent: mache-5 | Tag: a | Role: link | Text: " " | Bounds: 0.1302,0.0963,0.0516,0.0370 | Path: header.page-layout__header > nav.navigation > div.navigation__logo > a.logo
+ID: mache-7 | Parent: mache-4 | Tag: button | Role: button | Text: "Toggle navigation" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: header.page-layout__header > nav.navigation > button.navigation__button
+ID: mache-8 | Parent: mache-4 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: header.page-layout__header > nav.navigation > div.navigation__popup
+ID: mache-9 | Parent: mache-8 | Tag: div | Role: div | Text: " " | Bounds: 0.2771,0.0977,0.4265,0.0343 | Path: header.page-layout__header > nav.navigation > div.navigation__popup > div.navigation__menu
+ID: mache-10 | Parent: mache-9 | Tag: nav | Role: navigation | Text: " " | Bounds: 0.2771,0.0977,0.4265,0.0343 | Path: nav.navigation > div.navigation__popup > div.navigation__menu > nav.menu
+ID: mache-11 | Parent: mache-10 | Tag: div | Role: div | Text: " " | Bounds: 0.2771,0.0977,0.0458,0.0343 | Path: div.navigation__popup > div.navigation__menu > nav.menu > div.menu__tab
+ID: mache-12 | Parent: mache-11 | Tag: button | Role: button | Text: " " | Bounds: 0.2771,0.0977,0.0458,0.0343 | Path: nav.menu > div.menu__tab > mdn-dropdown > button.menu__tab-button
+ID: mache-13 | Parent: mache-11 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: nav.menu > div.menu__tab > mdn-dropdown > div.menu__panel
+ID: mache-14 | Parent: mache-13 | Tag: a | Role: link | Text: "HTML: Markup language" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: mdn-dropdown > div.menu__panel > p.menu__panel-title > a
+ID: mache-15 | Parent: mache-13 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__tab > mdn-dropdown > div.menu__panel > div.menu__panel-content
+ID: mache-16 | Parent: mache-15 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-17 | Parent: mache-16 | Tag: a | Role: link | Text: "Elements" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-18 | Parent: mache-16 | Tag: a | Role: link | Text: "Global attributes" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-19 | Parent: mache-16 | Tag: a | Role: link | Text: "Attributes" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-20 | Parent: mache-16 | Tag: a | Role: link | Text: "See all HTML references" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-21 | Parent: mache-15 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-22 | Parent: mache-21 | Tag: a | Role: link | Text: "Responsive images" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-23 | Parent: mache-21 | Tag: a | Role: link | Text: "HTML cheatsheet" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-24 | Parent: mache-21 | Tag: a | Role: link | Text: "Date & time formats" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-25 | Parent: mache-21 | Tag: a | Role: link | Text: "See all HTML guides" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-26 | Parent: mache-15 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-27 | Parent: mache-26 | Tag: a | Role: link | Text: "SVG" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-28 | Parent: mache-26 | Tag: a | Role: link | Text: "MathML" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-29 | Parent: mache-26 | Tag: a | Role: link | Text: "XML" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-30 | Parent: mache-10 | Tag: div | Role: div | Text: " " | Bounds: 0.3229,0.0977,0.0388,0.0343 | Path: div.navigation__popup > div.navigation__menu > nav.menu > div.menu__tab
+ID: mache-31 | Parent: mache-30 | Tag: button | Role: button | Text: " " | Bounds: 0.3229,0.0977,0.0388,0.0343 | Path: nav.menu > div.menu__tab > mdn-dropdown > button.menu__tab-button
+ID: mache-32 | Parent: mache-30 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: nav.menu > div.menu__tab > mdn-dropdown > div.menu__panel
+ID: mache-33 | Parent: mache-32 | Tag: a | Role: link | Text: "CSS: Styling language" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: mdn-dropdown > div.menu__panel > p.menu__panel-title > a
+ID: mache-34 | Parent: mache-32 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__tab > mdn-dropdown > div.menu__panel > div.menu__panel-content
+ID: mache-35 | Parent: mache-34 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-36 | Parent: mache-35 | Tag: a | Role: link | Text: "Properties" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-37 | Parent: mache-35 | Tag: a | Role: link | Text: "Selectors" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-38 | Parent: mache-35 | Tag: a | Role: link | Text: "At-rules" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-39 | Parent: mache-35 | Tag: a | Role: link | Text: "Values" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-40 | Parent: mache-35 | Tag: a | Role: link | Text: "See all CSS references" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-41 | Parent: mache-34 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-42 | Parent: mache-41 | Tag: a | Role: link | Text: "Box model" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-43 | Parent: mache-41 | Tag: a | Role: link | Text: "Animations" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-44 | Parent: mache-41 | Tag: a | Role: link | Text: "Flexbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-45 | Parent: mache-41 | Tag: a | Role: link | Text: "Colors" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-46 | Parent: mache-41 | Tag: a | Role: link | Text: "See all CSS guides" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-47 | Parent: mache-34 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-48 | Parent: mache-47 | Tag: a | Role: link | Text: "Column layouts" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-49 | Parent: mache-47 | Tag: a | Role: link | Text: "Centering an element" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-50 | Parent: mache-47 | Tag: a | Role: link | Text: "Card component" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-51 | Parent: mache-47 | Tag: a | Role: link | Text: "See all…" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-52 | Parent: mache-10 | Tag: div | Role: div | Text: " " | Bounds: 0.3617,0.0977,0.0635,0.0343 | Path: div.navigation__popup > div.navigation__menu > nav.menu > div.menu__tab
+ID: mache-53 | Parent: mache-52 | Tag: button | Role: button | Text: " " | Bounds: 0.3617,0.0977,0.0635,0.0343 | Path: nav.menu > div.menu__tab > mdn-dropdown > button.menu__tab-button
+ID: mache-54 | Parent: mache-52 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: nav.menu > div.menu__tab > mdn-dropdown > div.menu__panel
+ID: mache-55 | Parent: mache-54 | Tag: a | Role: link | Text: "JavaScript: Scripting language" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: mdn-dropdown > div.menu__panel > p.menu__panel-title > a
+ID: mache-56 | Parent: mache-54 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__tab > mdn-dropdown > div.menu__panel > div.menu__panel-content
+ID: mache-57 | Parent: mache-56 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-58 | Parent: mache-57 | Tag: a | Role: link | Text: "Standard built-in objects" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-59 | Parent: mache-57 | Tag: a | Role: link | Text: "Expressions & operators" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-60 | Parent: mache-57 | Tag: a | Role: link | Text: "Statements & declarations" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-61 | Parent: mache-57 | Tag: a | Role: link | Text: "Functions" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-62 | Parent: mache-57 | Tag: a | Role: link | Text: "See all JavaScript references" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-63 | Parent: mache-56 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-64 | Parent: mache-63 | Tag: a | Role: link | Text: "Control flow & error handing" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-65 | Parent: mache-63 | Tag: a | Role: link | Text: "Loops and iteration" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-66 | Parent: mache-63 | Tag: a | Role: link | Text: "Working with objects" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-67 | Parent: mache-63 | Tag: a | Role: link | Text: "Using classes" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-68 | Parent: mache-63 | Tag: a | Role: link | Text: "See all JavaScript guides" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-69 | Parent: mache-10 | Tag: div | Role: div | Text: " " | Bounds: 0.4252,0.0977,0.0610,0.0343 | Path: div.navigation__popup > div.navigation__menu > nav.menu > div.menu__tab
+ID: mache-70 | Parent: mache-69 | Tag: button | Role: button | Text: " " | Bounds: 0.4252,0.0977,0.0610,0.0343 | Path: nav.menu > div.menu__tab > mdn-dropdown > button.menu__tab-button
+ID: mache-71 | Parent: mache-69 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: nav.menu > div.menu__tab > mdn-dropdown > div.menu__panel
+ID: mache-72 | Parent: mache-71 | Tag: a | Role: link | Text: "Web APIs: Programming interfaces" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: mdn-dropdown > div.menu__panel > p.menu__panel-title > a
+ID: mache-73 | Parent: mache-71 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__tab > mdn-dropdown > div.menu__panel > div.menu__panel-content
+ID: mache-74 | Parent: mache-73 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-75 | Parent: mache-74 | Tag: a | Role: link | Text: "File system API" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-76 | Parent: mache-74 | Tag: a | Role: link | Text: "Fetch API" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-77 | Parent: mache-74 | Tag: a | Role: link | Text: "Geolocation API" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-78 | Parent: mache-74 | Tag: a | Role: link | Text: "HTML DOM API" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-79 | Parent: mache-74 | Tag: a | Role: link | Text: "Push API" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-80 | Parent: mache-74 | Tag: a | Role: link | Text: "Service worker API" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-81 | Parent: mache-74 | Tag: a | Role: link | Text: "See all Web API guides" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-82 | Parent: mache-73 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-83 | Parent: mache-82 | Tag: a | Role: link | Text: "Using the Web animation API" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-84 | Parent: mache-82 | Tag: a | Role: link | Text: "Using the Fetch API" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-85 | Parent: mache-82 | Tag: a | Role: link | Text: "Working with the History API" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-86 | Parent: mache-82 | Tag: a | Role: link | Text: "Using the Web speech API" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-87 | Parent: mache-82 | Tag: a | Role: link | Text: "Using web workers" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-88 | Parent: mache-10 | Tag: div | Role: div | Text: " " | Bounds: 0.4861,0.0977,0.0323,0.0343 | Path: div.navigation__popup > div.navigation__menu > nav.menu > div.menu__tab
+ID: mache-89 | Parent: mache-88 | Tag: button | Role: button | Text: " " | Bounds: 0.4861,0.0977,0.0323,0.0343 | Path: nav.menu > div.menu__tab > mdn-dropdown > button.menu__tab-button
+ID: mache-90 | Parent: mache-88 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: nav.menu > div.menu__tab > mdn-dropdown > div.menu__panel
+ID: mache-91 | Parent: mache-90 | Tag: a | Role: link | Text: "All web technology" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: mdn-dropdown > div.menu__panel > p.menu__panel-title > a
+ID: mache-92 | Parent: mache-90 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__tab > mdn-dropdown > div.menu__panel > div.menu__panel-content
+ID: mache-93 | Parent: mache-92 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-94 | Parent: mache-93 | Tag: a | Role: link | Text: "Accessibility" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-95 | Parent: mache-93 | Tag: a | Role: link | Text: "HTTP" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-96 | Parent: mache-93 | Tag: a | Role: link | Text: "URI" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-97 | Parent: mache-93 | Tag: a | Role: link | Text: "Web extensions" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-98 | Parent: mache-93 | Tag: a | Role: link | Text: "WebAssembly" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-99 | Parent: mache-93 | Tag: a | Role: link | Text: "WebDriver" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-100 | Parent: mache-93 | Tag: a | Role: link | Text: "See all web technology references" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-101 | Parent: mache-92 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-102 | Parent: mache-101 | Tag: a | Role: link | Text: "Media" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-103 | Parent: mache-101 | Tag: a | Role: link | Text: "Performance" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-104 | Parent: mache-101 | Tag: a | Role: link | Text: "Privacy" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-105 | Parent: mache-101 | Tag: a | Role: link | Text: "Security" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-106 | Parent: mache-101 | Tag: a | Role: link | Text: "Progressive web apps" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-107 | Parent: mache-10 | Tag: div | Role: div | Text: " " | Bounds: 0.5184,0.0977,0.0558,0.0343 | Path: div.navigation__popup > div.navigation__menu > nav.menu > div.menu__tab
+ID: mache-108 | Parent: mache-107 | Tag: button | Role: button | Text: " " | Bounds: 0.5184,0.0977,0.0558,0.0343 | Path: nav.menu > div.menu__tab > mdn-dropdown > button.menu__tab-button
+ID: mache-109 | Parent: mache-107 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: nav.menu > div.menu__tab > mdn-dropdown > div.menu__panel
+ID: mache-110 | Parent: mache-109 | Tag: a | Role: link | Text: "Learn web development" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: mdn-dropdown > div.menu__panel > p.menu__panel-title > a
+ID: mache-111 | Parent: mache-109 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__tab > mdn-dropdown > div.menu__panel > div.menu__panel-content
+ID: mache-112 | Parent: mache-111 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-113 | Parent: mache-112 | Tag: a | Role: link | Text: "Getting started modules" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-114 | Parent: mache-112 | Tag: a | Role: link | Text: "Core modules" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-115 | Parent: mache-112 | Tag: a | Role: link | Text: "MDN Curriculum" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-116 | Parent: mache-112 | Tag: a | Role: link | Text: "Check out the video course from Scrimba, our partner" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a.external
+ID: mache-117 | Parent: mache-111 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-118 | Parent: mache-117 | Tag: a | Role: link | Text: "Structuring content with HTML module" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-119 | Parent: mache-111 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-120 | Parent: mache-119 | Tag: a | Role: link | Text: "CSS styling basics module" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-121 | Parent: mache-119 | Tag: a | Role: link | Text: "CSS layout module" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-122 | Parent: mache-111 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > dl > dd > ul
+ID: mache-123 | Parent: mache-122 | Tag: a | Role: link | Text: "Dynamic scripting with JavaScript module" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dd > ul > li > a
+ID: mache-124 | Parent: mache-10 | Tag: div | Role: div | Text: " " | Bounds: 0.5743,0.0977,0.0547,0.0343 | Path: div.navigation__popup > div.navigation__menu > nav.menu > div.menu__tab
+ID: mache-125 | Parent: mache-124 | Tag: button | Role: button | Text: " " | Bounds: 0.5743,0.0977,0.0547,0.0343 | Path: nav.menu > div.menu__tab > mdn-dropdown > button.menu__tab-button
+ID: mache-126 | Parent: mache-124 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: nav.menu > div.menu__tab > mdn-dropdown > div.menu__panel
+ID: mache-127 | Parent: mache-126 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__tab > mdn-dropdown > div.menu__panel > div.menu__panel-content
+ID: mache-128 | Parent: mache-127 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: mdn-dropdown > div.menu__panel > div.menu__panel-content > ul
+ID: mache-129 | Parent: mache-128 | Tag: a | Role: link | Text: "Playground" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a.menu__panel-icon
+ID: mache-130 | Parent: mache-128 | Tag: a | Role: link | Text: "HTTP Observatory" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a.menu__panel-icon
+ID: mache-131 | Parent: mache-127 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: mdn-dropdown > div.menu__panel > div.menu__panel-content > ul
+ID: mache-132 | Parent: mache-131 | Tag: a | Role: link | Text: "Border-image generator" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a
+ID: mache-133 | Parent: mache-131 | Tag: a | Role: link | Text: "Border-radius generator" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a
+ID: mache-134 | Parent: mache-131 | Tag: a | Role: link | Text: "Box-shadow generator" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a
+ID: mache-135 | Parent: mache-131 | Tag: a | Role: link | Text: "Color format converter" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a
+ID: mache-136 | Parent: mache-131 | Tag: a | Role: link | Text: "Color mixer" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a
+ID: mache-137 | Parent: mache-131 | Tag: a | Role: link | Text: "Shape generator" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a
+ID: mache-138 | Parent: mache-10 | Tag: div | Role: div | Text: " " | Bounds: 0.6289,0.0977,0.0454,0.0343 | Path: div.navigation__popup > div.navigation__menu > nav.menu > div.menu__tab
+ID: mache-139 | Parent: mache-138 | Tag: button | Role: button | Text: " " | Bounds: 0.6289,0.0977,0.0454,0.0343 | Path: nav.menu > div.menu__tab > mdn-dropdown > button.menu__tab-button
+ID: mache-140 | Parent: mache-138 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: nav.menu > div.menu__tab > mdn-dropdown > div.menu__panel
+ID: mache-141 | Parent: mache-140 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__tab > mdn-dropdown > div.menu__panel > div.menu__panel-content
+ID: mache-142 | Parent: mache-141 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: mdn-dropdown > div.menu__panel > div.menu__panel-content > ul
+ID: mache-143 | Parent: mache-142 | Tag: a | Role: link | Text: "About MDN" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a.menu__panel-icon
+ID: mache-144 | Parent: mache-142 | Tag: a | Role: link | Text: "Advertise with us" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a.menu__panel-icon
+ID: mache-145 | Parent: mache-141 | Tag: ul | Role: ul | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: mdn-dropdown > div.menu__panel > div.menu__panel-content > ul
+ID: mache-146 | Parent: mache-145 | Tag: a | Role: link | Text: "Community" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a.menu__panel-icon
+ID: mache-147 | Parent: mache-145 | Tag: a | Role: link | Text: "MDN on GitHub" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.menu__panel-content > ul > li > a.menu__panel-icon.external
+ID: mache-148 | Parent: mache-10 | Tag: div | Role: div | Text: " " | Bounds: 0.6743,0.1037,0.0292,0.0222 | Path: div.navigation__popup > div.navigation__menu > nav.menu > div.menu__tab
+ID: mache-149 | Parent: mache-148 | Tag: a | Role: link | Text: "Blog" | Bounds: 0.6743,0.0981,0.0292,0.0333 | Path: div.navigation__menu > nav.menu > div.menu__tab > a.menu__tab-link
+ID: mache-150 | Parent: mache-3 | Tag: div | Role: div | Text: "     " | Bounds: 0.0000,0.1454,1.0000,0.0296 | Path: header.page-layout__header > div.breadcrumbs-bar
+ID: mache-151 | Parent: mache-150 | Tag: ol | Role: ol | Text: "  " | Bounds: 0.1333,0.1472,0.0757,0.0259 | Path: header.page-layout__header > div.breadcrumbs-bar > ol.breadcrumbs
+ID: mache-152 | Parent: mache-151 | Tag: a | Role: link | Text: "Web" | Bounds: 0.1344,0.1491,0.0176,0.0222 | Path: div.breadcrumbs-bar > ol.breadcrumbs > li > a
+ID: mache-153 | Parent: mache-151 | Tag: a | Role: link | Text: "JavaScript" | Bounds: 0.1666,0.1491,0.0414,0.0222 | Path: div.breadcrumbs-bar > ol.breadcrumbs > li > a
+ID: mache-154 | Parent: none | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.1750,1.0000,3.5523 | Path: div.page-layout__main
+ID: mache-155 | Parent: mache-154 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.1750,1.0000,3.5523 | Path: div.page-layout__main > div.layout__2-sidebars-inline.reference-layout
+ID: mache-156 | Parent: mache-155 | Tag: main | Role: main | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.page-layout__main > div.layout__2-sidebars-inline.reference-layout > main.layout__content
+ID: mache-157 | Parent: mache-156 | Tag: div | Role: div | Text: "   " | Bounds: 0.3000,0.1750,0.4000,0.9231 | Path: div.page-layout__main > div.layout__2-sidebars-inline.reference-layout > main.layout__content > div.layout__header.reference-layout__header
+ID: mache-158 | Parent: mache-157 | Tag: h1 | Role: heading | Text: "JavaScript" | Bounds: 0.3000,0.1898,0.4000,0.0463 | Path: div.layout__2-sidebars-inline.reference-layout > main.layout__content > div.layout__header.reference-layout__header > h1
+ID: mache-159 | Parent: mache-157 | Tag: section | Role: region | Text: "        " | Bounds: 0.3000,0.2509,0.4000,0.8324 | Path: div.layout__2-sidebars-inline.reference-layout > main.layout__content > div.layout__header.reference-layout__header > section.content-section
+ID: mache-160 | Parent: mache-159 | Tag: a | Role: link | Text: "just-in-time compiled" | Bounds: 0.4837,0.2546,0.0833,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-161 | Parent: mache-159 | Tag: a | Role: link | Text: "first-class functions" | Bounds: 0.3000,0.2806,0.0778,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-162 | Parent: mache-159 | Tag: a | Role: link | Text: "many non-browser environments" | Bounds: 0.3000,0.2806,0.3964,0.0444 | Path: div.layout__header.reference-layout__header > section.content-section > p > a.external
+ID: mache-163 | Parent: mache-159 | Tag: a | Role: link | Text: "Node.js" | Bounds: 0.4765,0.3065,0.0297,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-164 | Parent: mache-159 | Tag: a | Role: link | Text: "Apache CouchDB" | Bounds: 0.5109,0.3065,0.0796,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a.external
+ID: mache-165 | Parent: mache-159 | Tag: a | Role: link | Text: "Adobe Acrobat" | Bounds: 0.6097,0.3065,0.0691,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a.external
+ID: mache-166 | Parent: mache-159 | Tag: a | Role: link | Text: "prototype-based" | Bounds: 0.3593,0.3324,0.0657,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-167 | Parent: mache-159 | Tag: a | Role: link | Text: "garbage-collected" | Bounds: 0.4297,0.3324,0.0725,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-168 | Parent: mache-159 | Tag: a | Role: link | Text: "dynamic" | Bounds: 0.5068,0.3324,0.0332,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-169 | Parent: mache-159 | Tag: a | Role: link | Text: "eval" | Bounds: 0.4848,0.4250,0.0232,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-170 | Parent: mache-159 | Tag: a | Role: link | Text: "for...in" | Bounds: 0.6120,0.4250,0.0422,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-171 | Parent: mache-159 | Tag: a | Role: link | Text: "utilities" | Bounds: 0.3000,0.4519,0.0627,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-172 | Parent: mache-159 | Tag: a | Role: link | Text: "toString()" | Bounds: 0.3696,0.4787,0.0517,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-173 | Parent: mache-159 | Tag: a | Role: link | Text: "APIs" | Bounds: 0.5223,0.5463,0.0189,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-174 | Parent: mache-159 | Tag: a | Role: link | Text: "Web APIs" | Bounds: 0.3163,0.5722,0.0389,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-175 | Parent: mache-159 | Tag: a | Role: link | Text: "DOM" | Bounds: 0.3744,0.5722,0.0198,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-176 | Parent: mache-159 | Tag: a | Role: link | Text: "ECMAScript Language Specification" | Bounds: 0.4447,0.6130,0.1518,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a.external
+ID: mache-177 | Parent: mache-159 | Tag: a | Role: link | Text: "ECMAScript Internationalization API specification" | Bounds: 0.3000,0.6389,0.2048,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a.external
+ID: mache-178 | Parent: mache-159 | Tag: a | Role: link | Text: "proposals for new ECMAScript features" | Bounds: 0.3000,0.6648,0.3846,0.0444 | Path: div.layout__header.reference-layout__header > section.content-section > p > a.external
+ID: mache-179 | Parent: mache-159 | Tag: a | Role: link | Text: "stages" | Bounds: 0.3000,0.7167,0.3987,0.0444 | Path: div.layout__header.reference-layout__header > section.content-section > p > a.external
+ID: mache-180 | Parent: mache-159 | Tag: a | Role: link | Text: "Java programming language" | Bounds: 0.4392,0.7833,0.1220,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a.external
+ID: mache-181 | Parent: mache-159 | Tag: a | Role: link | Text: "ECMAScript" | Bounds: 0.5305,0.9019,0.0472,0.0185 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-182 | Parent: mache-159 | Tag: ul | Role: ul | Text: "  " | Bounds: 0.3000,0.9648,0.4000,0.0519 | Path: main.layout__content > div.layout__header.reference-layout__header > section.content-section > ul
+ID: mache-183 | Parent: mache-182 | Tag: a | Role: link | Text: "JavaScript guide" | Bounds: 0.3382,0.9685,0.0655,0.0185 | Path: section.content-section > ul > li > a
+ID: mache-184 | Parent: mache-182 | Tag: a | Role: link | Text: "JavaScript reference" | Bounds: 0.3382,0.9944,0.0813,0.0185 | Path: section.content-section > ul > li > a
+ID: mache-185 | Parent: mache-159 | Tag: a | Role: link | Text: "JavaScript technologies overview" | Bounds: 0.3000,1.0352,0.3676,0.0444 | Path: div.layout__header.reference-layout__header > section.content-section > p > a
+ID: mache-186 | Parent: mache-156 | Tag: aside | Role: complementary | Text: "  " | Bounds: 0.7167,0.1750,0.1583,0.9093 | Path: div.page-layout__main > div.layout__2-sidebars-inline.reference-layout > main.layout__content > aside.layout__right-sidebar.reference-layout__toc
+ID: mache-187 | Parent: mache-186 | Tag: nav | Role: navigation | Text: "  " | Bounds: 0.7250,0.1750,0.0850,0.1556 | Path: div.layout__2-sidebars-inline.reference-layout > main.layout__content > aside.layout__right-sidebar.reference-layout__toc > nav.reference-toc
+ID: mache-188 | Parent: mache-187 | Tag: h2 | Role: heading | Text: "In this article" | Bounds: 0.7250,0.1750,0.0850,0.0667 | Path: main.layout__content > aside.layout__right-sidebar.reference-layout__toc > nav.reference-toc > h2
+ID: mache-189 | Parent: mache-187 | Tag: ul | Role: ul | Text: " " | Bounds: 0.7250,0.2417,0.0850,0.0889 | Path: main.layout__content > aside.layout__right-sidebar.reference-layout__toc > nav.reference-toc > ul
+ID: mache-190 | Parent: mache-189 | Tag: a | Role: link | Text: "Beginner's tutorials" | Bounds: 0.7260,0.2417,0.0840,0.0296 | Path: nav.reference-toc > ul > li > a
+ID: mache-191 | Parent: mache-189 | Tag: a | Role: link | Text: "JavaScript guides" | Bounds: 0.7260,0.2713,0.0782,0.0296 | Path: nav.reference-toc > ul > li > a
+ID: mache-192 | Parent: mache-189 | Tag: a | Role: link | Text: "Reference" | Bounds: 0.7260,0.3009,0.0482,0.0296 | Path: nav.reference-toc > ul > li > a
+ID: mache-193 | Parent: mache-156 | Tag: div | Role: div | Text: "  " | Bounds: 0.3000,1.0981,0.4000,2.6292 | Path: div.page-layout__main > div.layout__2-sidebars-inline.reference-layout > main.layout__content > div.layout__body.reference-layout__body
+ID: mache-194 | Parent: mache-193 | Tag: section | Role: region | Text: "   " | Bounds: 0.3000,1.1130,0.4000,0.4815 | Path: div.layout__2-sidebars-inline.reference-layout > main.layout__content > div.layout__body.reference-layout__body > section.content-section
+ID: mache-195 | Parent: mache-194 | Tag: h2 | Role: heading | Text: "Beginner's tutorials" | Bounds: 0.3000,1.1130,0.4000,0.0370 | Path: main.layout__content > div.layout__body.reference-layout__body > section.content-section > h2.heading
+ID: mache-196 | Parent: mache-195 | Tag: a | Role: link | Text: "Beginner's tutorials" | Bounds: 0.3000,1.1130,0.1383,0.0361 | Path: div.layout__body.reference-layout__body > section.content-section > h2.heading > a.heading-anchor
+ID: mache-197 | Parent: mache-194 | Tag: a | Role: link | Text: "learn web development core modules" | Bounds: 0.3167,1.1685,0.1472,0.0185 | Path: div.layout__body.reference-layout__body > section.content-section > p > a
+ID: mache-198 | Parent: mache-194 | Tag: a | Role: link | Text: "Your first website: Adding interactivity" | Bounds: 0.3000,1.2352,0.1483,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-199 | Parent: mache-194 | Tag: a | Role: link | Text: "Dynamic scripting with JavaScript" | Bounds: 0.3000,1.3352,0.1327,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-200 | Parent: mache-194 | Tag: a | Role: link | Text: "JavaScript frameworks and libraries" | Bounds: 0.3000,1.4352,0.1406,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-201 | Parent: mache-193 | Tag: section | Role: region | Text: "  " | Bounds: 0.3000,1.6093,0.4000,0.0370 | Path: div.layout__2-sidebars-inline.reference-layout > main.layout__content > div.layout__body.reference-layout__body > section.content-section
+ID: mache-202 | Parent: mache-201 | Tag: h2 | Role: heading | Text: "JavaScript guides" | Bounds: 0.3000,1.6093,0.4000,0.0370 | Path: main.layout__content > div.layout__body.reference-layout__body > section.content-section > h2.heading
+ID: mache-203 | Parent: mache-202 | Tag: a | Role: link | Text: "JavaScript guides" | Bounds: 0.3000,1.6093,0.1288,0.0361 | Path: div.layout__body.reference-layout__body > section.content-section > h2.heading > a.heading-anchor
+ID: mache-204 | Parent: mache-193 | Tag: section | Role: region | Text: "  " | Bounds: 0.3000,1.6611,0.4000,0.1278 | Path: div.layout__2-sidebars-inline.reference-layout > main.layout__content > div.layout__body.reference-layout__body > section.content-section
+ID: mache-205 | Parent: mache-204 | Tag: h3 | Role: heading | Text: "Fundamental language guides" | Bounds: 0.3000,1.6611,0.4000,0.0278 | Path: main.layout__content > div.layout__body.reference-layout__body > section.content-section > h3.heading
+ID: mache-206 | Parent: mache-205 | Tag: a | Role: link | Text: "Fundamental language guides" | Bounds: 0.3000,1.6611,0.1702,0.0269 | Path: div.layout__body.reference-layout__body > section.content-section > h3.heading > a.heading-anchor
+ID: mache-207 | Parent: mache-204 | Tag: a | Role: link | Text: "JavaScript Guide" | Bounds: 0.3000,1.7074,0.0667,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-208 | Parent: mache-193 | Tag: section | Role: region | Text: "  " | Bounds: 0.3000,1.8037,0.4000,0.8296 | Path: div.layout__2-sidebars-inline.reference-layout > main.layout__content > div.layout__body.reference-layout__body > section.content-section
+ID: mache-209 | Parent: mache-208 | Tag: h3 | Role: heading | Text: "Intermediate" | Bounds: 0.3000,1.8037,0.4000,0.0278 | Path: main.layout__content > div.layout__body.reference-layout__body > section.content-section > h3.heading
+ID: mache-210 | Parent: mache-209 | Tag: a | Role: link | Text: "Intermediate" | Bounds: 0.3000,1.8037,0.0724,0.0269 | Path: div.layout__body.reference-layout__body > section.content-section > h3.heading > a.heading-anchor
+ID: mache-211 | Parent: mache-208 | Tag: a | Role: link | Text: "Advanced JavaScript objects" | Bounds: 0.3000,1.8500,0.1140,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-212 | Parent: mache-208 | Tag: a | Role: link | Text: "Asynchronous JavaScript" | Bounds: 0.3000,1.9759,0.0999,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-213 | Parent: mache-208 | Tag: a | Role: link | Text: "asynchronous" | Bounds: 0.4372,2.0093,0.0551,0.0185 | Path: dl > dd > p > a
+ID: mache-214 | Parent: mache-208 | Tag: a | Role: link | Text: "Client-side web APIs" | Bounds: 0.3000,2.0759,0.0826,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-215 | Parent: mache-208 | Tag: a | Role: link | Text: "JavaScript language overview" | Bounds: 0.3000,2.1759,0.1176,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-216 | Parent: mache-208 | Tag: a | Role: link | Text: "JavaScript data structures" | Bounds: 0.3000,2.2759,0.1026,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-217 | Parent: mache-208 | Tag: a | Role: link | Text: "Equality comparisons and sameness" | Bounds: 0.3000,2.3500,0.1427,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-218 | Parent: mache-208 | Tag: a | Role: link | Text: "Object.is()" | Bounds: 0.4153,2.4102,0.0564,0.0185 | Path: dl > dd > p > a
+ID: mache-219 | Parent: mache-208 | Tag: a | Role: link | Text: "Enumerability and ownership of properties" | Bounds: 0.3000,2.4519,0.1657,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-220 | Parent: mache-208 | Tag: a | Role: link | Text: "Closures" | Bounds: 0.3000,2.5519,0.0345,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-221 | Parent: mache-193 | Tag: section | Role: region | Text: "  " | Bounds: 0.3000,2.6481,0.4000,0.1759 | Path: div.layout__2-sidebars-inline.reference-layout > main.layout__content > div.layout__body.reference-layout__body > section.content-section
+ID: mache-222 | Parent: mache-221 | Tag: h3 | Role: heading | Text: "Advanced" | Bounds: 0.3000,2.6481,0.4000,0.0278 | Path: main.layout__content > div.layout__body.reference-layout__body > section.content-section > h3.heading
+ID: mache-223 | Parent: mache-222 | Tag: a | Role: link | Text: "Advanced" | Bounds: 0.3000,2.6481,0.0571,0.0269 | Path: div.layout__body.reference-layout__body > section.content-section > h3.heading > a.heading-anchor
+ID: mache-224 | Parent: mache-221 | Tag: a | Role: link | Text: "Inheritance and the prototype chain" | Bounds: 0.3000,2.6944,0.1404,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-225 | Parent: mache-221 | Tag: a | Role: link | Text: "Memory Management" | Bounds: 0.3000,2.7685,0.0859,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-226 | Parent: mache-193 | Tag: section | Role: region | Text: "   " | Bounds: 0.3000,2.8389,0.4000,0.5296 | Path: div.layout__2-sidebars-inline.reference-layout > main.layout__content > div.layout__body.reference-layout__body > section.content-section
+ID: mache-227 | Parent: mache-226 | Tag: h2 | Role: heading | Text: "Reference" | Bounds: 0.3000,2.8389,0.4000,0.0370 | Path: main.layout__content > div.layout__body.reference-layout__body > section.content-section > h2.heading
+ID: mache-228 | Parent: mache-227 | Tag: a | Role: link | Text: "Reference" | Bounds: 0.3000,2.8389,0.0739,0.0361 | Path: div.layout__body.reference-layout__body > section.content-section > h2.heading > a.heading-anchor
+ID: mache-229 | Parent: mache-226 | Tag: a | Role: link | Text: "JavaScript reference" | Bounds: 0.3849,2.8944,0.0813,0.0185 | Path: div.layout__body.reference-layout__body > section.content-section > p > a
+ID: mache-230 | Parent: mache-226 | Tag: a | Role: link | Text: "Standard objects" | Bounds: 0.3000,2.9352,0.0661,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-231 | Parent: mache-226 | Tag: a | Role: link | Text: "Array" | Bounds: 0.4569,2.9685,0.0279,0.0185 | Path: dl > dd > p > a
+ID: mache-232 | Parent: mache-226 | Tag: a | Role: link | Text: "Boolean" | Bounds: 0.4895,2.9685,0.0374,0.0185 | Path: dl > dd > p > a
+ID: mache-233 | Parent: mache-226 | Tag: a | Role: link | Text: "Error" | Bounds: 0.5316,2.9685,0.0279,0.0185 | Path: dl > dd > p > a
+ID: mache-234 | Parent: mache-226 | Tag: a | Role: link | Text: "Function" | Bounds: 0.5641,2.9685,0.0422,0.0185 | Path: dl > dd > p > a
+ID: mache-235 | Parent: mache-226 | Tag: a | Role: link | Text: "JSON" | Bounds: 0.6110,2.9685,0.0232,0.0185 | Path: dl > dd > p > a
+ID: mache-236 | Parent: mache-226 | Tag: a | Role: link | Text: "Math" | Bounds: 0.6388,2.9685,0.0232,0.0185 | Path: dl > dd > p > a
+ID: mache-237 | Parent: mache-226 | Tag: a | Role: link | Text: "Number" | Bounds: 0.3083,2.9954,0.0327,0.0185 | Path: dl > dd > p > a
+ID: mache-238 | Parent: mache-226 | Tag: a | Role: link | Text: "Object" | Bounds: 0.3457,2.9954,0.0327,0.0185 | Path: dl > dd > p > a
+ID: mache-239 | Parent: mache-226 | Tag: a | Role: link | Text: "RegExp" | Bounds: 0.3830,2.9954,0.0327,0.0185 | Path: dl > dd > p > a
+ID: mache-240 | Parent: mache-226 | Tag: a | Role: link | Text: "String" | Bounds: 0.4203,2.9954,0.0327,0.0185 | Path: dl > dd > p > a
+ID: mache-241 | Parent: mache-226 | Tag: a | Role: link | Text: "Map" | Bounds: 0.4576,2.9954,0.0184,0.0185 | Path: dl > dd > p > a
+ID: mache-242 | Parent: mache-226 | Tag: a | Role: link | Text: "Set" | Bounds: 0.4807,2.9954,0.0184,0.0185 | Path: dl > dd > p > a
+ID: mache-243 | Parent: mache-226 | Tag: a | Role: link | Text: "WeakMap" | Bounds: 0.5038,2.9954,0.0374,0.0185 | Path: dl > dd > p > a
+ID: mache-244 | Parent: mache-226 | Tag: a | Role: link | Text: "WeakSet" | Bounds: 0.5459,2.9954,0.0374,0.0185 | Path: dl > dd > p > a
+ID: mache-245 | Parent: mache-226 | Tag: a | Role: link | Text: "Expressions and operators" | Bounds: 0.3000,3.0370,0.1040,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-246 | Parent: mache-226 | Tag: a | Role: link | Text: "instanceof" | Bounds: 0.5314,3.0704,0.0517,0.0185 | Path: dl > dd > p > a
+ID: mache-247 | Parent: mache-226 | Tag: a | Role: link | Text: "typeof" | Bounds: 0.5878,3.0704,0.0327,0.0185 | Path: dl > dd > p > a
+ID: mache-248 | Parent: mache-226 | Tag: a | Role: link | Text: "new" | Bounds: 0.6251,3.0704,0.0184,0.0185 | Path: dl > dd > p > a
+ID: mache-249 | Parent: mache-226 | Tag: a | Role: link | Text: "this" | Bounds: 0.6482,3.0704,0.0232,0.0185 | Path: dl > dd > p > a
+ID: mache-250 | Parent: mache-226 | Tag: a | Role: link | Text: "operator precedence" | Bounds: 0.3083,3.0972,0.0822,0.0185 | Path: dl > dd > p > a
+ID: mache-251 | Parent: mache-226 | Tag: a | Role: link | Text: "Statements and declarations" | Bounds: 0.3000,3.1380,0.1114,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-252 | Parent: mache-226 | Tag: a | Role: link | Text: "do-while" | Bounds: 0.3517,3.1713,0.0422,0.0185 | Path: dl > dd > p > a
+ID: mache-253 | Parent: mache-226 | Tag: a | Role: link | Text: "for-in" | Bounds: 0.3985,3.1713,0.0327,0.0185 | Path: dl > dd > p > a
+ID: mache-254 | Parent: mache-226 | Tag: a | Role: link | Text: "for-of" | Bounds: 0.4359,3.1713,0.0327,0.0185 | Path: dl > dd > p > a
+ID: mache-255 | Parent: mache-226 | Tag: a | Role: link | Text: "try-catch" | Bounds: 0.4732,3.1713,0.0469,0.0185 | Path: dl > dd > p > a
+ID: mache-256 | Parent: mache-226 | Tag: a | Role: link | Text: "let" | Bounds: 0.5248,3.1713,0.0184,0.0185 | Path: dl > dd > p > a
+ID: mache-257 | Parent: mache-226 | Tag: a | Role: link | Text: "var" | Bounds: 0.5479,3.1713,0.0184,0.0185 | Path: dl > dd > p > a
+ID: mache-258 | Parent: mache-226 | Tag: a | Role: link | Text: "const" | Bounds: 0.5709,3.1713,0.0279,0.0185 | Path: dl > dd > p > a
+ID: mache-259 | Parent: mache-226 | Tag: a | Role: link | Text: "if-else" | Bounds: 0.6035,3.1713,0.0374,0.0185 | Path: dl > dd > p > a
+ID: mache-260 | Parent: mache-226 | Tag: a | Role: link | Text: "switch" | Bounds: 0.6456,3.1713,0.0327,0.0185 | Path: dl > dd > p > a
+ID: mache-261 | Parent: mache-226 | Tag: a | Role: link | Text: "Functions" | Bounds: 0.3000,3.2389,0.0380,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-262 | Parent: mache-226 | Tag: a | Role: link | Text: "Classes" | Bounds: 0.3000,3.3130,0.0308,0.0185 | Path: section.content-section > dl > dt > a
+ID: mache-263 | Parent: mache-193 | Tag: section | Role: region | Text: " " | Bounds: 0.3000,3.3981,0.4000,0.2551 | Path: div.layout__2-sidebars-inline.reference-layout > main.layout__content > div.layout__body.reference-layout__body > section.content-section.article-footer
+ID: mache-264 | Parent: mache-263 | Tag: div | Role: div | Text: "      " | Bounds: 0.3089,3.4139,0.3823,0.2236 | Path: main.layout__content > div.layout__body.reference-layout__body > section.content-section.article-footer > div.article-footer__inner
+ID: mache-265 | Parent: mache-264 | Tag: h2 | Role: heading | Text: "Help improve MDN" | Bounds: 0.3089,3.4139,0.3823,0.0370 | Path: div.layout__body.reference-layout__body > section.content-section.article-footer > div.article-footer__inner > h2
+ID: mache-266 | Parent: mache-264 | Tag: a | Role: link | Text: "Learn how to contribute" | Bounds: 0.3089,3.5338,0.0931,0.0185 | Path: div.layout__body.reference-layout__body > section.content-section.article-footer > div.article-footer__inner > a.article-footer__contribute
+ID: mache-267 | Parent: mache-264 | Tag: a | Role: link | Text: "MDN contributors" | Bounds: 0.4929,3.5894,0.0694,0.0185 | Path: section.content-section.article-footer > div.article-footer__inner > p.article-footer__last-modified > a
+ID: mache-268 | Parent: mache-264 | Tag: div | Role: div | Text: " • " | Bounds: 0.3089,3.6116,0.3823,0.0259 | Path: div.layout__body.reference-layout__body > section.content-section.article-footer > div.article-footer__inner > div.article-footer__links
+ID: mache-269 | Parent: mache-268 | Tag: a | Role: link | Text: "View this page on GitHub" | Bounds: 0.3089,3.6153,0.1092,0.0185 | Path: section.content-section.article-footer > div.article-footer__inner > div.article-footer__links > a.external
+ID: mache-270 | Parent: mache-268 | Tag: a | Role: link | Text: "Report a problem with this content" | Bounds: 0.4274,3.6153,0.1447,0.0185 | Path: section.content-section.article-footer > div.article-footer__inner > div.article-footer__links > a.external
+ID: mache-271 | Parent: mache-155 | Tag: aside | Role: complementary | Text: " " | Bounds: 0.1250,0.1750,0.1583,0.9093 | Path: div.page-layout__main > div.layout__2-sidebars-inline.reference-layout > aside.layout__left-sidebar
+ID: mache-272 | Parent: mache-271 | Tag: nav | Role: navigation | Text: "  " | Bounds: 0.1333,0.1750,0.1417,0.6404 | Path: div.page-layout__main > div.layout__2-sidebars-inline.reference-layout > aside.layout__left-sidebar > nav.left-sidebar
+ID: mache-273 | Parent: mache-272 | Tag: div | Role: div | Text: "JavaScriptTutorials and guidesJavaScript GuideIntroductionGrammar and typesCo..." | Bounds: 0.1333,0.2450,0.1417,0.5259 | Path: div.layout__2-sidebars-inline.reference-layout > aside.layout__left-sidebar > nav.left-sidebar > div.left-sidebar__content
+ID: mache-274 | Parent: mache-273 | Tag: ol | Role: ol | Text: "JavaScriptTutorials and guidesJavaScript GuideIntroductionGrammar and typesCo..." | Bounds: 0.1333,0.2450,0.1417,0.5259 | Path: aside.layout__left-sidebar > nav.left-sidebar > div.left-sidebar__content > ol
+ID: mache-275 | Parent: mache-274 | Tag: a | Role: link | Text: "JavaScript" | Bounds: 0.1333,0.2450,0.0428,0.0296 | Path: ol > li.section > em > a
+ID: mache-276 | Parent: mache-274 | Tag: a | Role: link | Text: "JavaScript Guide" | Bounds: 0.1417,0.3265,0.0667,0.0296 | Path: li > details > summary > a
+ID: mache-277 | Parent: mache-274 | Tag: ol | Role: ol | Text: "IntroductionGrammar and typesControl flow and error handlingLoops and iterati..." | Bounds: 0.1417,0.3561,0.1333,0.6963 | Path: ol > li > details > ol
+ID: mache-278 | Parent: mache-277 | Tag: a | Role: link | Text: "Introduction" | Bounds: 0.1458,0.3561,0.0483,0.0296 | Path: details > ol > li > a
+ID: mache-279 | Parent: mache-277 | Tag: a | Role: link | Text: "Grammar and types" | Bounds: 0.1458,0.3931,0.0771,0.0296 | Path: details > ol > li > a
+ID: mache-280 | Parent: mache-277 | Tag: a | Role: link | Text: "Control flow and error handling" | Bounds: 0.1458,0.4302,0.1220,0.0296 | Path: details > ol > li > a
+ID: mache-281 | Parent: mache-277 | Tag: a | Role: link | Text: "Loops and iteration" | Bounds: 0.1458,0.4672,0.0749,0.0296 | Path: details > ol > li > a
+ID: mache-282 | Parent: mache-277 | Tag: a | Role: link | Text: "Functions" | Bounds: 0.1458,0.5043,0.0380,0.0296 | Path: details > ol > li > a
+ID: mache-283 | Parent: mache-277 | Tag: a | Role: link | Text: "Expressions and operators" | Bounds: 0.1458,0.5413,0.1040,0.0296 | Path: details > ol > li > a
+ID: mache-284 | Parent: mache-277 | Tag: a | Role: link | Text: "Numbers and strings" | Bounds: 0.1458,0.5783,0.0814,0.0296 | Path: details > ol > li > a
+ID: mache-285 | Parent: mache-277 | Tag: a | Role: link | Text: "Representing dates & times" | Bounds: 0.1458,0.6154,0.1065,0.0296 | Path: details > ol > li > a
+ID: mache-286 | Parent: mache-277 | Tag: a | Role: link | Text: "Regular expressions" | Bounds: 0.1458,0.6524,0.0791,0.0296 | Path: details > ol > li > a
+ID: mache-287 | Parent: mache-277 | Tag: a | Role: link | Text: "Indexed collections" | Bounds: 0.1458,0.6894,0.0771,0.0296 | Path: details > ol > li > a
+ID: mache-288 | Parent: mache-277 | Tag: a | Role: link | Text: "Keyed collections" | Bounds: 0.1458,0.7265,0.0690,0.0296 | Path: details > ol > li > a
+ID: mache-289 | Parent: mache-277 | Tag: a | Role: link | Text: "Working with objects" | Bounds: 0.1458,0.7635,0.0819,0.0296 | Path: details > ol > li > a
+ID: mache-290 | Parent: mache-277 | Tag: a | Role: link | Text: "Using classes" | Bounds: 0.1458,0.8005,0.0542,0.0296 | Path: details > ol > li > a
+ID: mache-291 | Parent: mache-277 | Tag: a | Role: link | Text: "Using promises" | Bounds: 0.1458,0.8376,0.0605,0.0296 | Path: details > ol > li > a
+ID: mache-292 | Parent: mache-277 | Tag: a | Role: link | Text: "JavaScript typed arrays" | Bounds: 0.1458,0.8746,0.0929,0.0296 | Path: details > ol > li > a
+ID: mache-293 | Parent: mache-277 | Tag: a | Role: link | Text: "Iterators and generators" | Bounds: 0.1458,0.9117,0.0954,0.0296 | Path: details > ol > li > a
+ID: mache-294 | Parent: mache-277 | Tag: a | Role: link | Text: "Resource management" | Bounds: 0.1458,0.9487,0.0900,0.0296 | Path: details > ol > li > a
+ID: mache-295 | Parent: mache-277 | Tag: a | Role: link | Text: "Internationalization" | Bounds: 0.1458,0.9857,0.0757,0.0296 | Path: details > ol > li > a
+ID: mache-296 | Parent: mache-277 | Tag: a | Role: link | Text: "JavaScript modules" | Bounds: 0.1458,1.0228,0.0772,0.0296 | Path: details > ol > li > a
+ID: mache-297 | Parent: mache-274 | Tag: ol | Role: ol | Text: "Language overviewJavaScript data structuresEquality comparisons and samenessE..." | Bounds: 0.1417,0.3931,0.1333,0.2222 | Path: ol > li > details > ol
+ID: mache-298 | Parent: mache-297 | Tag: a | Role: link | Text: "Language overview" | Bounds: 0.1458,0.3931,0.0763,0.0296 | Path: details > ol > li > a
+ID: mache-299 | Parent: mache-297 | Tag: a | Role: link | Text: "JavaScript data structures" | Bounds: 0.1458,0.4302,0.1026,0.0296 | Path: details > ol > li > a
+ID: mache-300 | Parent: mache-297 | Tag: a | Role: link | Text: "Equality comparisons and sameness" | Bounds: 0.1458,0.4672,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-301 | Parent: mache-297 | Tag: a | Role: link | Text: "Enumerability and ownership of properties" | Bounds: 0.1458,0.5265,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-302 | Parent: mache-297 | Tag: a | Role: link | Text: "Closures" | Bounds: 0.1458,0.5857,0.0345,0.0296 | Path: details > ol > li > a
+ID: mache-303 | Parent: mache-274 | Tag: ol | Role: ol | Text: "Inheritance and the prototype chainMeta programmingMemory Management" | Bounds: 0.1417,0.4302,0.1333,0.1259 | Path: ol > li > details > ol
+ID: mache-304 | Parent: mache-303 | Tag: a | Role: link | Text: "Inheritance and the prototype chain" | Bounds: 0.1458,0.4302,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-305 | Parent: mache-303 | Tag: a | Role: link | Text: "Meta programming" | Bounds: 0.1458,0.4894,0.0742,0.0296 | Path: details > ol > li > a
+ID: mache-306 | Parent: mache-303 | Tag: a | Role: link | Text: "Memory Management" | Bounds: 0.1458,0.5265,0.0859,0.0296 | Path: details > ol > li > a
+ID: mache-307 | Parent: mache-274 | Tag: a | Role: link | Text: "References" | Bounds: 0.1333,0.4450,0.0454,0.0296 | Path: div.left-sidebar__content > ol > li.section > a
+ID: mache-308 | Parent: mache-274 | Tag: a | Role: link | Text: "Built-in objects" | Bounds: 0.1417,0.4820,0.0584,0.0296 | Path: li > details > summary > a
+ID: mache-309 | Parent: mache-274 | Tag: ol | Role: ol | Text: "AggregateErrorArrayArrayBufferAsyncDisposableStackAsyncFunctionAsyncGenerator..." | Bounds: 0.1417,0.5117,0.1333,2.7333 | Path: ol > li > details > ol
+ID: mache-310 | Parent: mache-309 | Tag: a | Role: link | Text: "AggregateError" | Bounds: 0.1458,0.5117,0.0599,0.0296 | Path: details > ol > li > a
+ID: mache-311 | Parent: mache-309 | Tag: a | Role: link | Text: "Array" | Bounds: 0.1458,0.5487,0.0211,0.0296 | Path: details > ol > li > a
+ID: mache-312 | Parent: mache-309 | Tag: a | Role: link | Text: "ArrayBuffer" | Bounds: 0.1458,0.5857,0.0449,0.0296 | Path: details > ol > li > a
+ID: mache-313 | Parent: mache-309 | Tag: a | Role: link | Text: "AsyncDisposableStack" | Bounds: 0.1458,0.6228,0.0896,0.0296 | Path: details > ol > li > a
+ID: mache-314 | Parent: mache-309 | Tag: a | Role: link | Text: "AsyncFunction" | Bounds: 0.1458,0.6598,0.0579,0.0296 | Path: details > ol > li > a
+ID: mache-315 | Parent: mache-309 | Tag: a | Role: link | Text: "AsyncGenerator" | Bounds: 0.1458,0.6968,0.0634,0.0296 | Path: details > ol > li > a
+ID: mache-316 | Parent: mache-309 | Tag: a | Role: link | Text: "AsyncGeneratorFunction" | Bounds: 0.1458,0.7339,0.0971,0.0296 | Path: details > ol > li > a
+ID: mache-317 | Parent: mache-309 | Tag: a | Role: link | Text: "AsyncIterator" | Bounds: 0.1458,0.7709,0.0538,0.0296 | Path: details > ol > li > a
+ID: mache-318 | Parent: mache-309 | Tag: a | Role: link | Text: "Atomics" | Bounds: 0.1458,0.8080,0.0314,0.0296 | Path: details > ol > li > a
+ID: mache-319 | Parent: mache-309 | Tag: a | Role: link | Text: "BigInt" | Bounds: 0.1458,0.8450,0.0237,0.0296 | Path: details > ol > li > a
+ID: mache-320 | Parent: mache-309 | Tag: a | Role: link | Text: "BigInt64Array" | Bounds: 0.1458,0.8820,0.0553,0.0296 | Path: details > ol > li > a
+ID: mache-321 | Parent: mache-309 | Tag: a | Role: link | Text: "BigUint64Array" | Bounds: 0.1458,0.9191,0.0599,0.0296 | Path: details > ol > li > a
+ID: mache-322 | Parent: mache-309 | Tag: a | Role: link | Text: "Boolean" | Bounds: 0.1458,0.9561,0.0319,0.0296 | Path: details > ol > li > a
+ID: mache-323 | Parent: mache-309 | Tag: a | Role: link | Text: "DataView" | Bounds: 0.1458,0.9931,0.0367,0.0296 | Path: details > ol > li > a
+ID: mache-324 | Parent: mache-309 | Tag: a | Role: link | Text: "Date" | Bounds: 0.1458,1.0302,0.0181,0.0296 | Path: details > ol > li > a
+ID: mache-325 | Parent: mache-309 | Tag: a | Role: link | Text: "decodeURI()" | Bounds: 0.1458,1.0672,0.0505,0.0296 | Path: details > ol > li > a
+ID: mache-326 | Parent: mache-309 | Tag: a | Role: link | Text: "decodeURIComponent()" | Bounds: 0.1458,1.1043,0.0961,0.0296 | Path: details > ol > li > a
+ID: mache-327 | Parent: mache-309 | Tag: a | Role: link | Text: "DisposableStack" | Bounds: 0.1458,1.1413,0.0653,0.0296 | Path: details > ol > li > a
+ID: mache-328 | Parent: mache-309 | Tag: a | Role: link | Text: "encodeURI()" | Bounds: 0.1458,1.1783,0.0503,0.0296 | Path: details > ol > li > a
+ID: mache-329 | Parent: mache-309 | Tag: a | Role: link | Text: "encodeURIComponent()" | Bounds: 0.1458,1.2154,0.0959,0.0296 | Path: details > ol > li > a
+ID: mache-330 | Parent: mache-309 | Tag: a | Role: link | Text: "Error" | Bounds: 0.1458,1.2524,0.0192,0.0296 | Path: details > ol > li > a
+ID: mache-331 | Parent: mache-309 | Tag: a | Role: link | Text: "escape()" | Bounds: 0.1458,1.2894,0.0454,0.0296 | Path: details > ol > li > a
+ID: mache-332 | Parent: mache-309 | Tag: a | Role: link | Text: "eval()" | Bounds: 0.1458,1.3265,0.0221,0.0296 | Path: details > ol > li > a
+ID: mache-333 | Parent: mache-309 | Tag: a | Role: link | Text: "EvalError" | Bounds: 0.1458,1.3635,0.0357,0.0296 | Path: details > ol > li > a
+ID: mache-334 | Parent: mache-309 | Tag: a | Role: link | Text: "FinalizationRegistry" | Bounds: 0.1458,1.4005,0.0763,0.0296 | Path: details > ol > li > a
+ID: mache-335 | Parent: mache-309 | Tag: a | Role: link | Text: "Float16Array" | Bounds: 0.1458,1.4376,0.0490,0.0296 | Path: details > ol > li > a
+ID: mache-336 | Parent: mache-309 | Tag: a | Role: link | Text: "Float32Array" | Bounds: 0.1458,1.4746,0.0507,0.0296 | Path: details > ol > li > a
+ID: mache-337 | Parent: mache-309 | Tag: a | Role: link | Text: "Float64Array" | Bounds: 0.1458,1.5117,0.0510,0.0296 | Path: details > ol > li > a
+ID: mache-338 | Parent: mache-309 | Tag: a | Role: link | Text: "Function" | Bounds: 0.1458,1.5487,0.0336,0.0296 | Path: details > ol > li > a
+ID: mache-339 | Parent: mache-309 | Tag: a | Role: link | Text: "Generator" | Bounds: 0.1458,1.5857,0.0391,0.0296 | Path: details > ol > li > a
+ID: mache-340 | Parent: mache-309 | Tag: a | Role: link | Text: "GeneratorFunction" | Bounds: 0.1458,1.6228,0.0728,0.0296 | Path: details > ol > li > a
+ID: mache-341 | Parent: mache-309 | Tag: a | Role: link | Text: "globalThis" | Bounds: 0.1458,1.6598,0.0407,0.0296 | Path: details > ol > li > a
+ID: mache-342 | Parent: mache-309 | Tag: a | Role: link | Text: "Infinity" | Bounds: 0.1458,1.6968,0.0279,0.0296 | Path: details > ol > li > a
+ID: mache-343 | Parent: mache-309 | Tag: a | Role: link | Text: "Int8Array" | Bounds: 0.1458,1.7339,0.0374,0.0296 | Path: details > ol > li > a
+ID: mache-344 | Parent: mache-309 | Tag: a | Role: link | Text: "Int16Array" | Bounds: 0.1458,1.7709,0.0408,0.0296 | Path: details > ol > li > a
+ID: mache-345 | Parent: mache-309 | Tag: a | Role: link | Text: "Int32Array" | Bounds: 0.1458,1.8080,0.0425,0.0296 | Path: details > ol > li > a
+ID: mache-346 | Parent: mache-309 | Tag: a | Role: link | Text: "InternalError" | Bounds: 0.1458,1.8450,0.0610,0.0296 | Path: details > ol > li > a
+ID: mache-347 | Parent: mache-309 | Tag: a | Role: link | Text: "Intl" | Bounds: 0.1458,1.8820,0.0134,0.0296 | Path: details > ol > li > a
+ID: mache-348 | Parent: mache-309 | Tag: a | Role: link | Text: "isFinite()" | Bounds: 0.1458,1.9191,0.0335,0.0296 | Path: details > ol > li > a
+ID: mache-349 | Parent: mache-309 | Tag: a | Role: link | Text: "isNaN()" | Bounds: 0.1458,1.9561,0.0294,0.0296 | Path: details > ol > li > a
+ID: mache-350 | Parent: mache-309 | Tag: a | Role: link | Text: "Iterator" | Bounds: 0.1458,1.9931,0.0295,0.0296 | Path: details > ol > li > a
+ID: mache-351 | Parent: mache-309 | Tag: a | Role: link | Text: "JSON" | Bounds: 0.1458,2.0302,0.0226,0.0296 | Path: details > ol > li > a
+ID: mache-352 | Parent: mache-309 | Tag: a | Role: link | Text: "Map" | Bounds: 0.1458,2.0672,0.0172,0.0296 | Path: details > ol > li > a
+ID: mache-353 | Parent: mache-309 | Tag: a | Role: link | Text: "Math" | Bounds: 0.1458,2.1043,0.0197,0.0296 | Path: details > ol > li > a
+ID: mache-354 | Parent: mache-309 | Tag: a | Role: link | Text: "NaN" | Bounds: 0.1458,2.1413,0.0171,0.0296 | Path: details > ol > li > a
+ID: mache-355 | Parent: mache-309 | Tag: a | Role: link | Text: "Number" | Bounds: 0.1458,2.1783,0.0314,0.0296 | Path: details > ol > li > a
+ID: mache-356 | Parent: mache-309 | Tag: a | Role: link | Text: "Object" | Bounds: 0.1458,2.2154,0.0257,0.0296 | Path: details > ol > li > a
+ID: mache-357 | Parent: mache-309 | Tag: a | Role: link | Text: "parseFloat()" | Bounds: 0.1458,2.2524,0.0474,0.0296 | Path: details > ol > li > a
+ID: mache-358 | Parent: mache-309 | Tag: a | Role: link | Text: "parseInt()" | Bounds: 0.1458,2.2894,0.0392,0.0296 | Path: details > ol > li > a
+ID: mache-359 | Parent: mache-309 | Tag: a | Role: link | Text: "Promise" | Bounds: 0.1458,2.3265,0.0316,0.0296 | Path: details > ol > li > a
+ID: mache-360 | Parent: mache-309 | Tag: a | Role: link | Text: "Proxy" | Bounds: 0.1458,2.3635,0.0222,0.0296 | Path: details > ol > li > a
+ID: mache-361 | Parent: mache-309 | Tag: a | Role: link | Text: "RangeError" | Bounds: 0.1458,2.4005,0.0439,0.0296 | Path: details > ol > li > a
+ID: mache-362 | Parent: mache-309 | Tag: a | Role: link | Text: "ReferenceError" | Bounds: 0.1458,2.4376,0.0590,0.0296 | Path: details > ol > li > a
+ID: mache-363 | Parent: mache-309 | Tag: a | Role: link | Text: "Reflect" | Bounds: 0.1458,2.4746,0.0274,0.0296 | Path: details > ol > li > a
+ID: mache-364 | Parent: mache-309 | Tag: a | Role: link | Text: "RegExp" | Bounds: 0.1458,2.5117,0.0297,0.0296 | Path: details > ol > li > a
+ID: mache-365 | Parent: mache-309 | Tag: a | Role: link | Text: "Set" | Bounds: 0.1458,2.5487,0.0128,0.0296 | Path: details > ol > li > a
+ID: mache-366 | Parent: mache-309 | Tag: a | Role: link | Text: "SharedArrayBuffer" | Bounds: 0.1458,2.5857,0.0726,0.0296 | Path: details > ol > li > a
+ID: mache-367 | Parent: mache-309 | Tag: a | Role: link | Text: "String" | Bounds: 0.1458,2.6228,0.0231,0.0296 | Path: details > ol > li > a
+ID: mache-368 | Parent: mache-309 | Tag: a | Role: link | Text: "SuppressedError" | Bounds: 0.1458,2.6598,0.0659,0.0296 | Path: details > ol > li > a
+ID: mache-369 | Parent: mache-309 | Tag: a | Role: link | Text: "Symbol" | Bounds: 0.1458,2.6968,0.0295,0.0296 | Path: details > ol > li > a
+ID: mache-370 | Parent: mache-309 | Tag: a | Role: link | Text: "SyntaxError" | Bounds: 0.1458,2.7339,0.0459,0.0296 | Path: details > ol > li > a
+ID: mache-371 | Parent: mache-309 | Tag: a | Role: link | Text: "Temporal" | Bounds: 0.1458,2.7709,0.0367,0.0296 | Path: details > ol > li > a
+ID: mache-372 | Parent: mache-309 | Tag: a | Role: link | Text: "TypedArray" | Bounds: 0.1458,2.8080,0.0455,0.0296 | Path: details > ol > li > a
+ID: mache-373 | Parent: mache-309 | Tag: a | Role: link | Text: "TypeError" | Bounds: 0.1458,2.8450,0.0385,0.0296 | Path: details > ol > li > a
+ID: mache-374 | Parent: mache-309 | Tag: a | Role: link | Text: "Uint8Array" | Bounds: 0.1458,2.8820,0.0420,0.0296 | Path: details > ol > li > a
+ID: mache-375 | Parent: mache-309 | Tag: a | Role: link | Text: "Uint8ClampedArray" | Bounds: 0.1458,2.9191,0.0772,0.0296 | Path: details > ol > li > a
+ID: mache-376 | Parent: mache-309 | Tag: a | Role: link | Text: "Uint16Array" | Bounds: 0.1458,2.9561,0.0454,0.0296 | Path: details > ol > li > a
+ID: mache-377 | Parent: mache-309 | Tag: a | Role: link | Text: "Uint32Array" | Bounds: 0.1458,2.9931,0.0470,0.0296 | Path: details > ol > li > a
+ID: mache-378 | Parent: mache-309 | Tag: a | Role: link | Text: "undefined" | Bounds: 0.1458,3.0302,0.0394,0.0296 | Path: details > ol > li > a
+ID: mache-379 | Parent: mache-309 | Tag: a | Role: link | Text: "unescape()" | Bounds: 0.1458,3.0672,0.0552,0.0296 | Path: details > ol > li > a
+ID: mache-380 | Parent: mache-309 | Tag: a | Role: link | Text: "URIError" | Bounds: 0.1458,3.1043,0.0343,0.0296 | Path: details > ol > li > a
+ID: mache-381 | Parent: mache-309 | Tag: a | Role: link | Text: "WeakMap" | Bounds: 0.1458,3.1413,0.0390,0.0296 | Path: details > ol > li > a
+ID: mache-382 | Parent: mache-309 | Tag: a | Role: link | Text: "WeakRef" | Bounds: 0.1458,3.1783,0.0349,0.0296 | Path: details > ol > li > a
+ID: mache-383 | Parent: mache-309 | Tag: a | Role: link | Text: "WeakSet" | Bounds: 0.1458,3.2154,0.0347,0.0296 | Path: details > ol > li > a
+ID: mache-384 | Parent: mache-274 | Tag: a | Role: link | Text: "Expressions & operators" | Bounds: 0.1417,0.5191,0.0947,0.0296 | Path: li > details > summary > a
+ID: mache-385 | Parent: mache-274 | Tag: ol | Role: ol | Text: "Addition (+)Addition assignment (+=)Assignment (=)async function expressionas..." | Bounds: 0.1417,0.5487,0.1333,2.8074 | Path: ol > li > details > ol
+ID: mache-386 | Parent: mache-385 | Tag: a | Role: link | Text: "Addition (+)" | Bounds: 0.1458,0.5487,0.0461,0.0296 | Path: details > ol > li > a
+ID: mache-387 | Parent: mache-385 | Tag: a | Role: link | Text: "Addition assignment (+=)" | Bounds: 0.1458,0.5857,0.0988,0.0296 | Path: details > ol > li > a
+ID: mache-388 | Parent: mache-385 | Tag: a | Role: link | Text: "Assignment (=)" | Bounds: 0.1458,0.6228,0.0598,0.0296 | Path: details > ol > li > a
+ID: mache-389 | Parent: mache-385 | Tag: a | Role: link | Text: "async function expression" | Bounds: 0.1458,0.6598,0.1024,0.0296 | Path: details > ol > li > a
+ID: mache-390 | Parent: mache-385 | Tag: a | Role: link | Text: "async function* expression" | Bounds: 0.1458,0.6968,0.1065,0.0296 | Path: details > ol > li > a
+ID: mache-391 | Parent: mache-385 | Tag: a | Role: link | Text: "await" | Bounds: 0.1458,0.7339,0.0207,0.0296 | Path: details > ol > li > a
+ID: mache-392 | Parent: mache-385 | Tag: a | Role: link | Text: "Bitwise AND (&)" | Bounds: 0.1458,0.7709,0.0620,0.0296 | Path: details > ol > li > a
+ID: mache-393 | Parent: mache-385 | Tag: a | Role: link | Text: "Bitwise AND assignment (&=)" | Bounds: 0.1458,0.8080,0.1148,0.0296 | Path: details > ol > li > a
+ID: mache-394 | Parent: mache-385 | Tag: a | Role: link | Text: "Bitwise NOT (~)" | Bounds: 0.1458,0.8450,0.0619,0.0296 | Path: details > ol > li > a
+ID: mache-395 | Parent: mache-385 | Tag: a | Role: link | Text: "Bitwise OR (|)" | Bounds: 0.1458,0.8820,0.0532,0.0296 | Path: details > ol > li > a
+ID: mache-396 | Parent: mache-385 | Tag: a | Role: link | Text: "Bitwise OR assignment (|=)" | Bounds: 0.1458,0.9191,0.1060,0.0296 | Path: details > ol > li > a
+ID: mache-397 | Parent: mache-385 | Tag: a | Role: link | Text: "Bitwise XOR (^)" | Bounds: 0.1458,0.9561,0.0597,0.0296 | Path: details > ol > li > a
+ID: mache-398 | Parent: mache-385 | Tag: a | Role: link | Text: "Bitwise XOR assignment (^=)" | Bounds: 0.1458,0.9931,0.1125,0.0296 | Path: details > ol > li > a
+ID: mache-399 | Parent: mache-385 | Tag: a | Role: link | Text: "class expression" | Bounds: 0.1458,1.0302,0.0651,0.0296 | Path: details > ol > li > a
+ID: mache-400 | Parent: mache-385 | Tag: a | Role: link | Text: "Comma operator (,)" | Bounds: 0.1458,1.0672,0.0763,0.0296 | Path: details > ol > li > a
+ID: mache-401 | Parent: mache-385 | Tag: a | Role: link | Text: "Conditional (ternary) operator" | Bounds: 0.1458,1.1043,0.1162,0.0296 | Path: details > ol > li > a
+ID: mache-402 | Parent: mache-385 | Tag: a | Role: link | Text: "Decrement (--)" | Bounds: 0.1458,1.1413,0.0588,0.0296 | Path: details > ol > li > a
+ID: mache-403 | Parent: mache-385 | Tag: a | Role: link | Text: "delete" | Bounds: 0.1458,1.1783,0.0243,0.0296 | Path: details > ol > li > a
+ID: mache-404 | Parent: mache-385 | Tag: a | Role: link | Text: "Destructuring" | Bounds: 0.1458,1.2154,0.0533,0.0296 | Path: details > ol > li > a
+ID: mache-405 | Parent: mache-385 | Tag: a | Role: link | Text: "Division (/)" | Bounds: 0.1458,1.2524,0.0420,0.0296 | Path: details > ol > li > a
+ID: mache-406 | Parent: mache-385 | Tag: a | Role: link | Text: "Division assignment (/=)" | Bounds: 0.1458,1.2894,0.0947,0.0296 | Path: details > ol > li > a
+ID: mache-407 | Parent: mache-385 | Tag: a | Role: link | Text: "Equality (==)" | Bounds: 0.1458,1.3265,0.0506,0.0296 | Path: details > ol > li > a
+ID: mache-408 | Parent: mache-385 | Tag: a | Role: link | Text: "Exponentiation (**)" | Bounds: 0.1458,1.3635,0.0745,0.0296 | Path: details > ol > li > a
+ID: mache-409 | Parent: mache-385 | Tag: a | Role: link | Text: "Exponentiation assignment (**=)" | Bounds: 0.1458,1.4005,0.1273,0.0296 | Path: details > ol > li > a
+ID: mache-410 | Parent: mache-385 | Tag: a | Role: link | Text: "function expression" | Bounds: 0.1458,1.4376,0.0768,0.0296 | Path: details > ol > li > a
+ID: mache-411 | Parent: mache-385 | Tag: a | Role: link | Text: "function* expression" | Bounds: 0.1458,1.4746,0.0810,0.0296 | Path: details > ol > li > a
+ID: mache-412 | Parent: mache-385 | Tag: a | Role: link | Text: "Greater than (>)" | Bounds: 0.1458,1.5117,0.0624,0.0296 | Path: details > ol > li > a
+ID: mache-413 | Parent: mache-385 | Tag: a | Role: link | Text: "Greater than or equal (>=)" | Bounds: 0.1458,1.5487,0.1022,0.0296 | Path: details > ol > li > a
+ID: mache-414 | Parent: mache-385 | Tag: a | Role: link | Text: "Grouping operator ( )" | Bounds: 0.1458,1.5857,0.0821,0.0296 | Path: details > ol > li > a
+ID: mache-415 | Parent: mache-385 | Tag: a | Role: link | Text: "import.meta" | Bounds: 0.1458,1.6228,0.0470,0.0296 | Path: details > ol > li > a
+ID: mache-416 | Parent: mache-385 | Tag: ol | Role: ol | Text: "import.meta.resolve()" | Bounds: 0.1458,1.6524,0.1292,0.0296 | Path: details > ol > li > ol
+ID: mache-417 | Parent: mache-416 | Tag: a | Role: link | Text: "import.meta.resolve()" | Bounds: 0.1500,1.6524,0.0838,0.0296 | Path: li > ol > li > a
+ID: mache-418 | Parent: mache-385 | Tag: a | Role: link | Text: "import()" | Bounds: 0.1458,1.6894,0.0312,0.0296 | Path: details > ol > li > a
+ID: mache-419 | Parent: mache-385 | Tag: a | Role: link | Text: "in" | Bounds: 0.1458,1.7265,0.0069,0.0296 | Path: details > ol > li > a
+ID: mache-420 | Parent: mache-385 | Tag: a | Role: link | Text: "Increment (++)" | Bounds: 0.1458,1.7635,0.0599,0.0296 | Path: details > ol > li > a
+ID: mache-421 | Parent: mache-385 | Tag: a | Role: link | Text: "Inequality (!=)" | Bounds: 0.1458,1.8005,0.0557,0.0296 | Path: details > ol > li > a
+ID: mache-422 | Parent: mache-385 | Tag: a | Role: link | Text: "instanceof" | Bounds: 0.1458,1.8376,0.0410,0.0296 | Path: details > ol > li > a
+ID: mache-423 | Parent: mache-385 | Tag: a | Role: link | Text: "Left shift (<<)" | Bounds: 0.1458,1.8746,0.0532,0.0296 | Path: details > ol > li > a
+ID: mache-424 | Parent: mache-385 | Tag: a | Role: link | Text: "Left shift assignment (<<=)" | Bounds: 0.1458,1.9117,0.1059,0.0296 | Path: details > ol > li > a
+ID: mache-425 | Parent: mache-385 | Tag: a | Role: link | Text: "Less than (<)" | Bounds: 0.1458,1.9487,0.0514,0.0296 | Path: details > ol > li > a
+ID: mache-426 | Parent: mache-385 | Tag: a | Role: link | Text: "Less than or equal (<=)" | Bounds: 0.1458,1.9857,0.0912,0.0296 | Path: details > ol > li > a
+ID: mache-427 | Parent: mache-385 | Tag: a | Role: link | Text: "Logical AND (&&)" | Bounds: 0.1458,2.0228,0.0676,0.0296 | Path: details > ol > li > a
+ID: mache-428 | Parent: mache-385 | Tag: a | Role: link | Text: "Logical AND assignment (&&=)" | Bounds: 0.1458,2.0598,0.1203,0.0296 | Path: details > ol > li > a
+ID: mache-429 | Parent: mache-385 | Tag: a | Role: link | Text: "Logical NOT (!)" | Bounds: 0.1458,2.0968,0.0590,0.0296 | Path: details > ol > li > a
+ID: mache-430 | Parent: mache-385 | Tag: a | Role: link | Text: "Logical OR (||)" | Bounds: 0.1458,2.1339,0.0561,0.0296 | Path: details > ol > li > a
+ID: mache-431 | Parent: mache-385 | Tag: a | Role: link | Text: "Logical OR assignment (||=)" | Bounds: 0.1458,2.1709,0.1089,0.0296 | Path: details > ol > li > a
+ID: mache-432 | Parent: mache-385 | Tag: a | Role: link | Text: "Multiplication (*)" | Bounds: 0.1458,2.2080,0.0648,0.0296 | Path: details > ol > li > a
+ID: mache-433 | Parent: mache-385 | Tag: a | Role: link | Text: "Multiplication assignment (*=)" | Bounds: 0.1458,2.2450,0.1175,0.0296 | Path: details > ol > li > a
+ID: mache-434 | Parent: mache-385 | Tag: a | Role: link | Text: "new" | Bounds: 0.1458,2.2820,0.0163,0.0296 | Path: details > ol > li > a
+ID: mache-435 | Parent: mache-385 | Tag: a | Role: link | Text: "new.target" | Bounds: 0.1458,2.3191,0.0410,0.0296 | Path: details > ol > li > a
+ID: mache-436 | Parent: mache-385 | Tag: a | Role: link | Text: "null" | Bounds: 0.1458,2.3561,0.0143,0.0296 | Path: details > ol > li > a
+ID: mache-437 | Parent: mache-385 | Tag: a | Role: link | Text: "Nullish coalescing assignment (??=)" | Bounds: 0.1458,2.3931,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-438 | Parent: mache-385 | Tag: a | Role: link | Text: "Nullish coalescing operator (??)" | Bounds: 0.1458,2.4524,0.1238,0.0296 | Path: details > ol > li > a
+ID: mache-439 | Parent: mache-385 | Tag: a | Role: link | Text: "Object initializer" | Bounds: 0.1458,2.4894,0.0627,0.0296 | Path: details > ol > li > a
+ID: mache-440 | Parent: mache-385 | Tag: a | Role: link | Text: "Operator precedence" | Bounds: 0.1458,2.5265,0.0836,0.0296 | Path: details > ol > li > a
+ID: mache-441 | Parent: mache-385 | Tag: a | Role: link | Text: "Optional chaining (?.)" | Bounds: 0.1458,2.5635,0.0831,0.0296 | Path: details > ol > li > a
+ID: mache-442 | Parent: mache-385 | Tag: a | Role: link | Text: "Property accessors" | Bounds: 0.1458,2.6005,0.0761,0.0296 | Path: details > ol > li > a
+ID: mache-443 | Parent: mache-385 | Tag: a | Role: link | Text: "Remainder (%)" | Bounds: 0.1458,2.6376,0.0581,0.0296 | Path: details > ol > li > a
+ID: mache-444 | Parent: mache-385 | Tag: a | Role: link | Text: "Remainder assignment (%=)" | Bounds: 0.1458,2.6746,0.1108,0.0296 | Path: details > ol > li > a
+ID: mache-445 | Parent: mache-385 | Tag: a | Role: link | Text: "Right shift (>>)" | Bounds: 0.1458,2.7117,0.0582,0.0296 | Path: details > ol > li > a
+ID: mache-446 | Parent: mache-385 | Tag: a | Role: link | Text: "Right shift assignment (>>=)" | Bounds: 0.1458,2.7487,0.1110,0.0296 | Path: details > ol > li > a
+ID: mache-447 | Parent: mache-385 | Tag: a | Role: link | Text: "Spread syntax (...)" | Bounds: 0.1458,2.7857,0.0713,0.0296 | Path: details > ol > li > a
+ID: mache-448 | Parent: mache-385 | Tag: a | Role: link | Text: "Strict equality (===)" | Bounds: 0.1458,2.8228,0.0788,0.0296 | Path: details > ol > li > a
+ID: mache-449 | Parent: mache-385 | Tag: a | Role: link | Text: "Strict inequality (!==)" | Bounds: 0.1458,2.8598,0.0825,0.0296 | Path: details > ol > li > a
+ID: mache-450 | Parent: mache-385 | Tag: a | Role: link | Text: "Subtraction (-)" | Bounds: 0.1458,2.8968,0.0570,0.0296 | Path: details > ol > li > a
+ID: mache-451 | Parent: mache-385 | Tag: a | Role: link | Text: "Subtraction assignment (-=)" | Bounds: 0.1458,2.9339,0.1098,0.0296 | Path: details > ol > li > a
+ID: mache-452 | Parent: mache-385 | Tag: a | Role: link | Text: "super" | Bounds: 0.1458,2.9709,0.0222,0.0296 | Path: details > ol > li > a
+ID: mache-453 | Parent: mache-385 | Tag: a | Role: link | Text: "this" | Bounds: 0.1458,3.0080,0.0139,0.0296 | Path: details > ol > li > a
+ID: mache-454 | Parent: mache-385 | Tag: a | Role: link | Text: "typeof" | Bounds: 0.1458,3.0450,0.0254,0.0296 | Path: details > ol > li > a
+ID: mache-455 | Parent: mache-385 | Tag: a | Role: link | Text: "Unary negation (-)" | Bounds: 0.1458,3.0820,0.0719,0.0296 | Path: details > ol > li > a
+ID: mache-456 | Parent: mache-385 | Tag: a | Role: link | Text: "Unary plus (+)" | Bounds: 0.1458,3.1191,0.0562,0.0296 | Path: details > ol > li > a
+ID: mache-457 | Parent: mache-385 | Tag: a | Role: link | Text: "Unsigned right shift (>>>)" | Bounds: 0.1458,3.1561,0.1010,0.0296 | Path: details > ol > li > a
+ID: mache-458 | Parent: mache-385 | Tag: a | Role: link | Text: "Unsigned right shift assignment (>>>=)" | Bounds: 0.1458,3.1931,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-459 | Parent: mache-385 | Tag: a | Role: link | Text: "void operator" | Bounds: 0.1458,3.2524,0.0520,0.0296 | Path: details > ol > li > a
+ID: mache-460 | Parent: mache-385 | Tag: a | Role: link | Text: "yield" | Bounds: 0.1458,3.2894,0.0186,0.0296 | Path: details > ol > li > a
+ID: mache-461 | Parent: mache-385 | Tag: a | Role: link | Text: "yield*" | Bounds: 0.1458,3.3265,0.0228,0.0296 | Path: details > ol > li > a
+ID: mache-462 | Parent: mache-274 | Tag: a | Role: link | Text: "Statements & declarations" | Bounds: 0.1417,0.5561,0.1021,0.0296 | Path: li > details > summary > a
+ID: mache-463 | Parent: mache-274 | Tag: ol | Role: ol | Text: "async functionasync function*await usingBlock statementbreakclassconstcontinu..." | Bounds: 0.1417,0.5857,0.1333,1.1704 | Path: ol > li > details > ol
+ID: mache-464 | Parent: mache-463 | Tag: a | Role: link | Text: "async function" | Bounds: 0.1458,0.5857,0.0576,0.0296 | Path: details > ol > li > a
+ID: mache-465 | Parent: mache-463 | Tag: a | Role: link | Text: "async function*" | Bounds: 0.1458,0.6228,0.0617,0.0296 | Path: details > ol > li > a
+ID: mache-466 | Parent: mache-463 | Tag: a | Role: link | Text: "await using" | Bounds: 0.1458,0.6598,0.0442,0.0296 | Path: details > ol > li > a
+ID: mache-467 | Parent: mache-463 | Tag: a | Role: link | Text: "Block statement" | Bounds: 0.1458,0.6968,0.0630,0.0296 | Path: details > ol > li > a
+ID: mache-468 | Parent: mache-463 | Tag: a | Role: link | Text: "break" | Bounds: 0.1458,0.7339,0.0221,0.0296 | Path: details > ol > li > a
+ID: mache-469 | Parent: mache-463 | Tag: a | Role: link | Text: "class" | Bounds: 0.1458,0.7709,0.0203,0.0296 | Path: details > ol > li > a
+ID: mache-470 | Parent: mache-463 | Tag: a | Role: link | Text: "const" | Bounds: 0.1458,0.8080,0.0216,0.0296 | Path: details > ol > li > a
+ID: mache-471 | Parent: mache-463 | Tag: a | Role: link | Text: "continue" | Bounds: 0.1458,0.8450,0.0338,0.0296 | Path: details > ol > li > a
+ID: mache-472 | Parent: mache-463 | Tag: a | Role: link | Text: "debugger" | Bounds: 0.1458,0.8820,0.0379,0.0296 | Path: details > ol > li > a
+ID: mache-473 | Parent: mache-463 | Tag: a | Role: link | Text: "do...while" | Bounds: 0.1458,0.9191,0.0376,0.0296 | Path: details > ol > li > a
+ID: mache-474 | Parent: mache-463 | Tag: a | Role: link | Text: "Empty statement" | Bounds: 0.1458,0.9561,0.0660,0.0296 | Path: details > ol > li > a
+ID: mache-475 | Parent: mache-463 | Tag: a | Role: link | Text: "export" | Bounds: 0.1458,0.9931,0.0251,0.0296 | Path: details > ol > li > a
+ID: mache-476 | Parent: mache-463 | Tag: a | Role: link | Text: "Expression statement" | Bounds: 0.1458,1.0302,0.0840,0.0296 | Path: details > ol > li > a
+ID: mache-477 | Parent: mache-463 | Tag: a | Role: link | Text: "for" | Bounds: 0.1458,1.0672,0.0108,0.0296 | Path: details > ol > li > a
+ID: mache-478 | Parent: mache-463 | Tag: a | Role: link | Text: "for await...of" | Bounds: 0.1458,1.1043,0.0489,0.0296 | Path: details > ol > li > a
+ID: mache-479 | Parent: mache-463 | Tag: a | Role: link | Text: "for...in" | Bounds: 0.1458,1.1413,0.0242,0.0296 | Path: details > ol > li > a
+ID: mache-480 | Parent: mache-463 | Tag: a | Role: link | Text: "for...of" | Bounds: 0.1458,1.1783,0.0253,0.0296 | Path: details > ol > li > a
+ID: mache-481 | Parent: mache-463 | Tag: a | Role: link | Text: "function" | Bounds: 0.1458,1.2154,0.0320,0.0296 | Path: details > ol > li > a
+ID: mache-482 | Parent: mache-463 | Tag: a | Role: link | Text: "function*" | Bounds: 0.1458,1.2524,0.0362,0.0296 | Path: details > ol > li > a
+ID: mache-483 | Parent: mache-463 | Tag: a | Role: link | Text: "if...else" | Bounds: 0.1458,1.2894,0.0278,0.0296 | Path: details > ol > li > a
+ID: mache-484 | Parent: mache-463 | Tag: a | Role: link | Text: "import" | Bounds: 0.1458,1.3265,0.0252,0.0296 | Path: details > ol > li > a
+ID: mache-485 | Parent: mache-463 | Tag: ol | Role: ol | Text: "Import attributes" | Bounds: 0.1458,1.3561,0.1292,0.0296 | Path: details > ol > li > ol
+ID: mache-486 | Parent: mache-485 | Tag: a | Role: link | Text: "Import attributes" | Bounds: 0.1500,1.3561,0.0660,0.0296 | Path: li > ol > li > a
+ID: mache-487 | Parent: mache-463 | Tag: a | Role: link | Text: "Labeled statement" | Bounds: 0.1458,1.3931,0.0724,0.0296 | Path: details > ol > li > a
+ID: mache-488 | Parent: mache-463 | Tag: a | Role: link | Text: "let" | Bounds: 0.1458,1.4302,0.0097,0.0296 | Path: details > ol > li > a
+ID: mache-489 | Parent: mache-463 | Tag: a | Role: link | Text: "return" | Bounds: 0.1458,1.4672,0.0235,0.0296 | Path: details > ol > li > a
+ID: mache-490 | Parent: mache-463 | Tag: a | Role: link | Text: "switch" | Bounds: 0.1458,1.5043,0.0253,0.0296 | Path: details > ol > li > a
+ID: mache-491 | Parent: mache-463 | Tag: a | Role: link | Text: "throw" | Bounds: 0.1458,1.5413,0.0221,0.0296 | Path: details > ol > li > a
+ID: mache-492 | Parent: mache-463 | Tag: a | Role: link | Text: "try...catch" | Bounds: 0.1458,1.5783,0.0389,0.0296 | Path: details > ol > li > a
+ID: mache-493 | Parent: mache-463 | Tag: a | Role: link | Text: "using" | Bounds: 0.1458,1.6154,0.0212,0.0296 | Path: details > ol > li > a
+ID: mache-494 | Parent: mache-463 | Tag: a | Role: link | Text: "var" | Bounds: 0.1458,1.6524,0.0123,0.0296 | Path: details > ol > li > a
+ID: mache-495 | Parent: mache-463 | Tag: a | Role: link | Text: "while" | Bounds: 0.1458,1.6894,0.0206,0.0296 | Path: details > ol > li > a
+ID: mache-496 | Parent: mache-463 | Tag: a | Role: link | Text: "with" | Bounds: 0.1458,1.7265,0.0273,0.0296 | Path: details > ol > li > a
+ID: mache-497 | Parent: mache-274 | Tag: a | Role: link | Text: "Functions" | Bounds: 0.1417,0.5931,0.0380,0.0296 | Path: li > details > summary > a
+ID: mache-498 | Parent: mache-274 | Tag: ol | Role: ol | Text: "Arrow function expressionsDefault parametersgetMethod definitionsRest paramet..." | Bounds: 0.1417,0.6228,0.1333,0.3556 | Path: ol > li > details > ol
+ID: mache-499 | Parent: mache-498 | Tag: a | Role: link | Text: "Arrow function expressions" | Bounds: 0.1458,0.6228,0.1069,0.0296 | Path: details > ol > li > a
+ID: mache-500 | Parent: mache-498 | Tag: a | Role: link | Text: "Default parameters" | Bounds: 0.1458,0.6598,0.0747,0.0296 | Path: details > ol > li > a
+ID: mache-501 | Parent: mache-498 | Tag: a | Role: link | Text: "get" | Bounds: 0.1458,0.6968,0.0126,0.0296 | Path: details > ol > li > a
+ID: mache-502 | Parent: mache-498 | Tag: a | Role: link | Text: "Method definitions" | Bounds: 0.1458,0.7339,0.0729,0.0296 | Path: details > ol > li > a
+ID: mache-503 | Parent: mache-498 | Tag: a | Role: link | Text: "Rest parameters" | Bounds: 0.1458,0.7709,0.0639,0.0296 | Path: details > ol > li > a
+ID: mache-504 | Parent: mache-498 | Tag: a | Role: link | Text: "set" | Bounds: 0.1458,0.8080,0.0119,0.0296 | Path: details > ol > li > a
+ID: mache-505 | Parent: mache-498 | Tag: a | Role: link | Text: "The arguments object" | Bounds: 0.1458,0.8450,0.0854,0.0296 | Path: details > ol > li > a
+ID: mache-506 | Parent: mache-498 | Tag: ol | Role: ol | Text: "[Symbol.iterator]()calleelength" | Bounds: 0.1458,0.8746,0.1292,0.1037 | Path: details > ol > li > ol
+ID: mache-507 | Parent: mache-506 | Tag: a | Role: link | Text: "[Symbol.iterator]()" | Bounds: 0.1500,0.8746,0.0717,0.0296 | Path: li > ol > li > a
+ID: mache-508 | Parent: mache-506 | Tag: a | Role: link | Text: "callee" | Bounds: 0.1500,0.9117,0.0344,0.0296 | Path: li > ol > li > a
+ID: mache-509 | Parent: mache-506 | Tag: a | Role: link | Text: "length" | Bounds: 0.1500,0.9487,0.0245,0.0296 | Path: li > ol > li > a
+ID: mache-510 | Parent: mache-274 | Tag: a | Role: link | Text: "Classes" | Bounds: 0.1417,0.6302,0.0308,0.0296 | Path: li > details > summary > a
+ID: mache-511 | Parent: mache-274 | Tag: ol | Role: ol | Text: "constructorextendsPrivate elementsPublic class fieldsstaticStatic initializat..." | Bounds: 0.1417,0.6598,0.1333,0.2148 | Path: ol > li > details > ol
+ID: mache-512 | Parent: mache-511 | Tag: a | Role: link | Text: "constructor" | Bounds: 0.1458,0.6598,0.0450,0.0296 | Path: details > ol > li > a
+ID: mache-513 | Parent: mache-511 | Tag: a | Role: link | Text: "extends" | Bounds: 0.1458,0.6968,0.0310,0.0296 | Path: details > ol > li > a
+ID: mache-514 | Parent: mache-511 | Tag: a | Role: link | Text: "Private elements" | Bounds: 0.1458,0.7339,0.0651,0.0296 | Path: details > ol > li > a
+ID: mache-515 | Parent: mache-511 | Tag: a | Role: link | Text: "Public class fields" | Bounds: 0.1458,0.7709,0.0705,0.0296 | Path: details > ol > li > a
+ID: mache-516 | Parent: mache-511 | Tag: a | Role: link | Text: "static" | Bounds: 0.1458,0.8080,0.0212,0.0296 | Path: details > ol > li > a
+ID: mache-517 | Parent: mache-511 | Tag: a | Role: link | Text: "Static initialization blocks" | Bounds: 0.1458,0.8450,0.0986,0.0296 | Path: details > ol > li > a
+ID: mache-518 | Parent: mache-274 | Tag: a | Role: link | Text: "Regular expressions" | Bounds: 0.1417,0.6672,0.0791,0.0296 | Path: li > details > summary > a
+ID: mache-519 | Parent: mache-274 | Tag: ol | Role: ol | Text: "Backreference: \1, \2Capturing group: (...)Character class escape: \d, \D, \w..." | Bounds: 0.1417,0.6968,0.1333,0.7926 | Path: ol > li > details > ol
+ID: mache-520 | Parent: mache-519 | Tag: a | Role: link | Text: "Backreference: \1, \2" | Bounds: 0.1458,0.6968,0.0802,0.0296 | Path: details > ol > li > a
+ID: mache-521 | Parent: mache-519 | Tag: a | Role: link | Text: "Capturing group: (...)" | Bounds: 0.1458,0.7339,0.0813,0.0296 | Path: details > ol > li > a
+ID: mache-522 | Parent: mache-519 | Tag: a | Role: link | Text: "Character class escape: \d, \D, \w, \W, \s, \S" | Bounds: 0.1458,0.7709,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-523 | Parent: mache-519 | Tag: a | Role: link | Text: "Character class: [...], [^...]" | Bounds: 0.1458,0.8302,0.0992,0.0296 | Path: details > ol > li > a
+ID: mache-524 | Parent: mache-519 | Tag: a | Role: link | Text: "Character escape: \n, \u{...}" | Bounds: 0.1458,0.8672,0.1084,0.0296 | Path: details > ol > li > a
+ID: mache-525 | Parent: mache-519 | Tag: a | Role: link | Text: "Disjunction: |" | Bounds: 0.1458,0.9043,0.0507,0.0296 | Path: details > ol > li > a
+ID: mache-526 | Parent: mache-519 | Tag: a | Role: link | Text: "Input boundary assertion: ^, $" | Bounds: 0.1458,0.9413,0.1164,0.0296 | Path: details > ol > li > a
+ID: mache-527 | Parent: mache-519 | Tag: a | Role: link | Text: "Literal character: a, b" | Bounds: 0.1458,0.9783,0.0826,0.0296 | Path: details > ol > li > a
+ID: mache-528 | Parent: mache-519 | Tag: a | Role: link | Text: "Lookahead assertion: (?=...), (?!...)" | Bounds: 0.1458,1.0154,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-529 | Parent: mache-519 | Tag: a | Role: link | Text: "Lookbehind assertion: (?<=...), (?<!...)" | Bounds: 0.1458,1.0746,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-530 | Parent: mache-519 | Tag: a | Role: link | Text: "Modifier: (?ims-ims:...)" | Bounds: 0.1458,1.1339,0.0876,0.0296 | Path: details > ol > li > a
+ID: mache-531 | Parent: mache-519 | Tag: a | Role: link | Text: "Named backreference: \k<name>" | Bounds: 0.1458,1.1709,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-532 | Parent: mache-519 | Tag: a | Role: link | Text: "Named capturing group: (?<name>...)" | Bounds: 0.1458,1.2302,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-533 | Parent: mache-519 | Tag: a | Role: link | Text: "Non-capturing group: (?:...)" | Bounds: 0.1458,1.2894,0.1065,0.0296 | Path: details > ol > li > a
+ID: mache-534 | Parent: mache-519 | Tag: a | Role: link | Text: "Quantifier: *, +, ?, {n}, {n,}, {n,m}" | Bounds: 0.1458,1.3265,0.1267,0.0296 | Path: details > ol > li > a
+ID: mache-535 | Parent: mache-519 | Tag: a | Role: link | Text: "Unicode character class escape: \p{...}, \P{...}" | Bounds: 0.1458,1.3635,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-536 | Parent: mache-519 | Tag: a | Role: link | Text: "Wildcard: ." | Bounds: 0.1458,1.4228,0.0418,0.0296 | Path: details > ol > li > a
+ID: mache-537 | Parent: mache-519 | Tag: a | Role: link | Text: "Word boundary assertion: \b, \B" | Bounds: 0.1458,1.4598,0.1243,0.0296 | Path: details > ol > li > a
+ID: mache-538 | Parent: mache-274 | Tag: a | Role: link | Text: "Errors" | Bounds: 0.1417,0.7043,0.0235,0.0296 | Path: li > details > summary > a
+ID: mache-539 | Parent: mache-274 | Tag: ol | Role: ol | Text: "AggregateError: No Promise in Promise.any was resolvedError: Permission denie..." | Bounds: 0.1417,0.7339,0.1333,8.4667 | Path: ol > li > details > ol
+ID: mache-540 | Parent: mache-539 | Tag: a | Role: link | Text: "AggregateError: No Promise in Promise.any was resolved" | Bounds: 0.1458,0.7339,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-541 | Parent: mache-539 | Tag: a | Role: link | Text: "Error: Permission denied to access property "x"" | Bounds: 0.1458,0.7931,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-542 | Parent: mache-539 | Tag: a | Role: link | Text: "InternalError: too much recursion" | Bounds: 0.1458,0.8524,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-543 | Parent: mache-539 | Tag: a | Role: link | Text: "RangeError: argument is not a valid code point" | Bounds: 0.1458,0.9117,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-544 | Parent: mache-539 | Tag: a | Role: link | Text: "RangeError: BigInt division by zero" | Bounds: 0.1458,0.9709,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-545 | Parent: mache-539 | Tag: a | Role: link | Text: "RangeError: BigInt negative exponent" | Bounds: 0.1458,1.0302,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-546 | Parent: mache-539 | Tag: a | Role: link | Text: "RangeError: form must be one of 'NFC', 'NFD', 'NFKC', or 'NFKD'" | Bounds: 0.1458,1.0894,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-547 | Parent: mache-539 | Tag: a | Role: link | Text: "RangeError: invalid array length" | Bounds: 0.1458,1.1487,0.1230,0.0296 | Path: details > ol > li > a
+ID: mache-548 | Parent: mache-539 | Tag: a | Role: link | Text: "RangeError: invalid date" | Bounds: 0.1458,1.1857,0.0933,0.0296 | Path: details > ol > li > a
+ID: mache-549 | Parent: mache-539 | Tag: a | Role: link | Text: "RangeError: precision is out of range" | Bounds: 0.1458,1.2228,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-550 | Parent: mache-539 | Tag: a | Role: link | Text: "RangeError: radix must be an integer" | Bounds: 0.1458,1.2820,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-551 | Parent: mache-539 | Tag: a | Role: link | Text: "RangeError: repeat count must be less than infinity" | Bounds: 0.1458,1.3413,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-552 | Parent: mache-539 | Tag: a | Role: link | Text: "RangeError: repeat count must be non-negative" | Bounds: 0.1458,1.4005,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-553 | Parent: mache-539 | Tag: a | Role: link | Text: "RangeError: x can't be converted to BigInt because it isn't an integer" | Bounds: 0.1458,1.4598,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-554 | Parent: mache-539 | Tag: a | Role: link | Text: "ReferenceError: "x" is not defined" | Bounds: 0.1458,1.5413,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-555 | Parent: mache-539 | Tag: a | Role: link | Text: "ReferenceError: assignment to undeclared variable "x"" | Bounds: 0.1458,1.6005,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-556 | Parent: mache-539 | Tag: a | Role: link | Text: "ReferenceError: can't access lexical declaration 'X' before initialization" | Bounds: 0.1458,1.6598,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-557 | Parent: mache-539 | Tag: a | Role: link | Text: "ReferenceError: must call super constructor before using 'this' in derived cl..." | Bounds: 0.1458,1.7413,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-558 | Parent: mache-539 | Tag: a | Role: link | Text: "ReferenceError: super() called twice in derived class constructor" | Bounds: 0.1458,1.8228,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-559 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: 'arguments'/'eval' can't be defined or assigned to in strict mod..." | Bounds: 0.1458,1.9043,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-560 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: "0"-prefixed octal literals are deprecated" | Bounds: 0.1458,1.9857,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-561 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: "use strict" not allowed in function with non-simple parameters" | Bounds: 0.1458,2.0450,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-562 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: "x" is a reserved identifier" | Bounds: 0.1458,2.1265,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-563 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: \ at end of pattern" | Bounds: 0.1458,2.1857,0.1209,0.0296 | Path: details > ol > li > a
+ID: mache-564 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: a declaration in the head of a for-of loop can't have an initial..." | Bounds: 0.1458,2.2228,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-565 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: applying the 'delete' operator to an unqualified name is deprecated" | Bounds: 0.1458,2.3043,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-566 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: arguments is not valid in fields" | Bounds: 0.1458,2.3857,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-567 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: await is only valid in async functions, async generators and mod..." | Bounds: 0.1458,2.4450,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-568 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: await/yield expression can't be used in parameter" | Bounds: 0.1458,2.5265,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-569 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: cannot use ?? unparenthesized within || and && expressions" | Bounds: 0.1458,2.6080,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-570 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: character class escape cannot be used in class range in regular ..." | Bounds: 0.1458,2.6894,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-571 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: continue must be inside loop" | Bounds: 0.1458,2.7709,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-572 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: duplicate capture group name in regular expression" | Bounds: 0.1458,2.8302,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-573 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: duplicate formal argument x" | Bounds: 0.1458,2.9117,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-574 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: for-in loop head declarations may not have initializers" | Bounds: 0.1458,2.9709,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-575 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: function statement requires a name" | Bounds: 0.1458,3.0524,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-576 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: functions cannot be labelled" | Bounds: 0.1458,3.1117,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-577 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: getter and setter for private name #x should either be both stat..." | Bounds: 0.1458,3.1709,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-578 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: getter functions must have no arguments" | Bounds: 0.1458,3.2524,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-579 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: identifier starts immediately after numeric literal" | Bounds: 0.1458,3.3117,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-580 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: illegal character" | Bounds: 0.1458,3.3709,0.1133,0.0296 | Path: details > ol > li > a
+ID: mache-581 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: import declarations may only appear at top level of a module" | Bounds: 0.1458,3.4080,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-582 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: incomplete quantifier in regular expression" | Bounds: 0.1458,3.4894,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-583 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid assignment left-hand side" | Bounds: 0.1458,3.5487,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-584 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid BigInt syntax" | Bounds: 0.1458,3.6080,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-585 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid capture group name in regular expression" | Bounds: 0.1458,3.6672,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-586 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid character in class in regular expression" | Bounds: 0.1458,3.7487,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-587 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid class set operation in regular expression" | Bounds: 0.1458,3.8080,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-588 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid decimal escape in regular expression" | Bounds: 0.1458,3.8672,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-589 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid identity escape in regular expression" | Bounds: 0.1458,3.9265,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-590 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid named capture reference in regular expression" | Bounds: 0.1458,3.9857,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-591 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid property name in regular expression" | Bounds: 0.1458,4.0672,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-592 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid range in character class" | Bounds: 0.1458,4.1265,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-593 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid regexp group" | Bounds: 0.1458,4.1857,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-594 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid regular expression flag "x"" | Bounds: 0.1458,4.2450,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-595 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: invalid unicode escape in regular expression" | Bounds: 0.1458,4.3043,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-596 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: JSON.parse: bad parsing" | Bounds: 0.1458,4.3635,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-597 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: label not found" | Bounds: 0.1458,4.4228,0.1094,0.0296 | Path: details > ol > li > a
+ID: mache-598 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: missing : after property id" | Bounds: 0.1458,4.4598,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-599 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: missing ) after argument list" | Bounds: 0.1458,4.5191,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-600 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: missing ) after condition" | Bounds: 0.1458,4.5783,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-601 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: missing ] after element list" | Bounds: 0.1458,4.6376,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-602 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: missing } after function body" | Bounds: 0.1458,4.6968,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-603 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: missing } after property list" | Bounds: 0.1458,4.7561,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-604 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: missing = in const declaration" | Bounds: 0.1458,4.8154,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-605 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: missing formal parameter" | Bounds: 0.1458,4.8746,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-606 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: missing name after . operator" | Bounds: 0.1458,4.9339,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-607 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: missing variable name" | Bounds: 0.1458,4.9931,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-608 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: negated character class with strings in regular expression" | Bounds: 0.1458,5.0524,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-609 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: new keyword cannot be used with an optional chain" | Bounds: 0.1458,5.1339,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-610 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: nothing to repeat" | Bounds: 0.1458,5.2154,0.1172,0.0296 | Path: details > ol > li > a
+ID: mache-611 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: numbers out of order in {} quantifier." | Bounds: 0.1458,5.2524,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-612 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: octal escape sequences can't be used in untagged template litera..." | Bounds: 0.1458,5.3117,0.1292,0.0963 | Path: details > ol > li > a
+ID: mache-613 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: parameter after rest parameter" | Bounds: 0.1458,5.4154,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-614 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: private fields can't be deleted" | Bounds: 0.1458,5.4746,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-615 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: property name __proto__ appears more than once in object literal" | Bounds: 0.1458,5.5339,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-616 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: raw bracket is not allowed in regular expression with unicode flag" | Bounds: 0.1458,5.6154,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-617 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: redeclaration of formal parameter "x"" | Bounds: 0.1458,5.6968,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-618 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: reference to undeclared private field or method #x" | Bounds: 0.1458,5.7561,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-619 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: rest parameter may not have a default" | Bounds: 0.1458,5.8376,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-620 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: return not in function" | Bounds: 0.1458,5.8968,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-621 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: setter functions must have one argument" | Bounds: 0.1458,5.9561,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-622 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: string literal contains an unescaped line break" | Bounds: 0.1458,6.0154,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-623 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: super() is only valid in derived class constructors" | Bounds: 0.1458,6.0968,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-624 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: tagged template cannot be used with optional chain" | Bounds: 0.1458,6.1561,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-625 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: Unexpected '#' used outside of class body" | Bounds: 0.1458,6.2376,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-626 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: Unexpected token" | Bounds: 0.1458,6.2968,0.1218,0.0296 | Path: details > ol > li > a
+ID: mache-627 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: unlabeled break must be inside loop or switch" | Bounds: 0.1458,6.3339,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-628 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: unparenthesized unary expression can't appear on the left-hand s..." | Bounds: 0.1458,6.3931,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-629 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: use of super property/member accesses only valid within methods ..." | Bounds: 0.1458,6.4746,0.1292,0.0963 | Path: details > ol > li > a
+ID: mache-630 | Parent: mache-539 | Tag: a | Role: link | Text: "SyntaxError: Using //@ to indicate sourceURL pragmas is deprecated. Use //# i..." | Bounds: 0.1458,6.5783,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-631 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: 'caller', 'callee', and 'arguments' properties may not be accessed" | Bounds: 0.1458,6.6598,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-632 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: 'x' is not iterable" | Bounds: 0.1458,6.7413,0.1075,0.0296 | Path: details > ol > li > a
+ID: mache-633 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: "x" is (not) "y"" | Bounds: 0.1458,6.7783,0.0994,0.0296 | Path: details > ol > li > a
+ID: mache-634 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: "x" is not a constructor" | Bounds: 0.1458,6.8154,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-635 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: "x" is not a function" | Bounds: 0.1458,6.8746,0.1201,0.0296 | Path: details > ol > li > a
+ID: mache-636 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: "x" is not a non-null object" | Bounds: 0.1458,6.9117,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-637 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: "x" is read-only" | Bounds: 0.1458,6.9709,0.1042,0.0296 | Path: details > ol > li > a
+ID: mache-638 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: already executing generator" | Bounds: 0.1458,7.0080,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-639 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: BigInt value can't be serialized in JSON" | Bounds: 0.1458,7.0672,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-640 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: calling a builtin X constructor without new is forbidden" | Bounds: 0.1458,7.1265,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-641 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: can't access/set private field or method: object is not the right ..." | Bounds: 0.1458,7.2080,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-642 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: can't assign to property "x" on "y": not an object" | Bounds: 0.1458,7.2894,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-643 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: can't convert BigInt to number" | Bounds: 0.1458,7.3709,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-644 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: can't convert x to BigInt" | Bounds: 0.1458,7.4302,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-645 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: can't define property "x": "obj" is not extensible" | Bounds: 0.1458,7.4894,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-646 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: can't delete non-configurable array element" | Bounds: 0.1458,7.5487,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-647 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: can't redefine non-configurable property "x"" | Bounds: 0.1458,7.6080,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-648 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: can't set prototype of this object" | Bounds: 0.1458,7.6672,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-649 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: can't set prototype: it would cause a prototype chain cycle" | Bounds: 0.1458,7.7265,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-650 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: cannot use 'in' operator to search for 'x' in 'y'" | Bounds: 0.1458,7.8080,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-651 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: class constructors must be invoked with 'new'" | Bounds: 0.1458,7.8672,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-652 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: cyclic object value" | Bounds: 0.1458,7.9265,0.1159,0.0296 | Path: details > ol > li > a
+ID: mache-653 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: derived class constructor returned invalid value x" | Bounds: 0.1458,7.9635,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-654 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: getting private setter-only property" | Bounds: 0.1458,8.0450,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-655 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: Initializing an object twice is an error with private fields/methods" | Bounds: 0.1458,8.1043,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-656 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: invalid 'instanceof' operand 'x'" | Bounds: 0.1458,8.1857,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-657 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: invalid Array.prototype.sort argument" | Bounds: 0.1458,8.2450,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-658 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: invalid assignment to const "x"" | Bounds: 0.1458,8.3043,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-659 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: Iterator/AsyncIterator constructor can't be used directly" | Bounds: 0.1458,8.3635,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-660 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: matchAll/replaceAll must be called with a global RegExp" | Bounds: 0.1458,8.4450,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-661 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: More arguments needed" | Bounds: 0.1458,8.5265,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-662 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: null/undefined has no properties" | Bounds: 0.1458,8.5857,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-663 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: property "x" is non-configurable and can't be deleted" | Bounds: 0.1458,8.6450,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-664 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: Reduce of empty array with no initial value" | Bounds: 0.1458,8.7265,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-665 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: setting getter-only property "x"" | Bounds: 0.1458,8.7857,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-666 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: WeakSet key/WeakMap value 'x' must be an object or an unregistered..." | Bounds: 0.1458,8.8450,0.1292,0.0963 | Path: details > ol > li > a
+ID: mache-667 | Parent: mache-539 | Tag: a | Role: link | Text: "TypeError: X.prototype.y called on incompatible type" | Bounds: 0.1458,8.9487,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-668 | Parent: mache-539 | Tag: a | Role: link | Text: "URIError: malformed URI sequence" | Bounds: 0.1458,9.0080,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-669 | Parent: mache-539 | Tag: a | Role: link | Text: "Warning: -file- is being assigned a //# sourceMappingURL, but already has one" | Bounds: 0.1458,9.0672,0.1292,0.0741 | Path: details > ol > li > a
+ID: mache-670 | Parent: mache-539 | Tag: a | Role: link | Text: "Warning: unreachable code after return statement" | Bounds: 0.1458,9.1487,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-671 | Parent: mache-274 | Tag: ol | Role: ol | Text: "JavaScript technologies overviewExecution modelLexical grammarIteration proto..." | Bounds: 0.1417,0.7709,0.1333,0.3111 | Path: ol > li > details > ol
+ID: mache-672 | Parent: mache-671 | Tag: a | Role: link | Text: "JavaScript technologies overview" | Bounds: 0.1458,0.7709,0.1292,0.0519 | Path: details > ol > li > a
+ID: mache-673 | Parent: mache-671 | Tag: a | Role: link | Text: "Execution model" | Bounds: 0.1458,0.8302,0.0649,0.0296 | Path: details > ol > li > a
+ID: mache-674 | Parent: mache-671 | Tag: a | Role: link | Text: "Lexical grammar" | Bounds: 0.1458,0.8672,0.0648,0.0296 | Path: details > ol > li > a
+ID: mache-675 | Parent: mache-671 | Tag: a | Role: link | Text: "Iteration protocols" | Bounds: 0.1458,0.9043,0.0725,0.0296 | Path: details > ol > li > a
+ID: mache-676 | Parent: mache-671 | Tag: a | Role: link | Text: "Strict mode" | Bounds: 0.1458,0.9413,0.0450,0.0296 | Path: details > ol > li > a
+ID: mache-677 | Parent: mache-671 | Tag: a | Role: link | Text: "Template literals" | Bounds: 0.1458,0.9783,0.0645,0.0296 | Path: details > ol > li > a
+ID: mache-678 | Parent: mache-671 | Tag: a | Role: link | Text: "Trailing commas" | Bounds: 0.1458,1.0154,0.0642,0.0296 | Path: details > ol > li > a
+ID: mache-679 | Parent: mache-671 | Tag: a | Role: link | Text: "Deprecated features" | Bounds: 0.1458,1.0524,0.0799,0.0296 | Path: details > ol > li > a
+ID: mache-680 | Parent: none | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,3.7273,1.0000,0.4981 | Path: div.page-layout__footer
+ID: mache-681 | Parent: mache-680 | Tag: footer | Role: contentinfo | Text: "  " | Bounds: 0.0000,3.8106,1.0000,0.4148 | Path: div.page-layout__footer > footer.footer
+ID: mache-682 | Parent: mache-681 | Tag: div | Role: div | Text: "     " | Bounds: 0.0000,3.8116,1.0000,0.2796 | Path: div.page-layout__footer > footer.footer > div.footer__mdn
+ID: mache-683 | Parent: mache-682 | Tag: div | Role: div | Text: "  " | Bounds: 0.1333,3.8412,0.2833,0.0593 | Path: div.page-layout__footer > footer.footer > div.footer__mdn > div.footer__intro
+ID: mache-684 | Parent: mache-683 | Tag: a | Role: link | Text: "MDN logo" | Bounds: 0.1333,3.8412,0.0432,0.0222 | Path: footer.footer > div.footer__mdn > div.footer__intro > a.footer__logo
+ID: mache-685 | Parent: mache-682 | Tag: ul | Role: ul | Text: "     " | Bounds: 0.1333,3.9884,0.2833,0.0222 | Path: div.page-layout__footer > footer.footer > div.footer__mdn > ul.footer__socials
+ID: mache-686 | Parent: mache-685 | Tag: a | Role: link | Text: "MDN on GitHub" | Bounds: 0.1333,3.9884,0.0125,0.0222 | Path: div.footer__mdn > ul.footer__socials > li > a
+ID: mache-687 | Parent: mache-685 | Tag: a | Role: link | Text: "MDN on Bluesky" | Bounds: 0.1521,3.9884,0.0125,0.0222 | Path: div.footer__mdn > ul.footer__socials > li > a
+ID: mache-688 | Parent: mache-685 | Tag: a | Role: link | Text: "MDN on X" | Bounds: 0.1708,3.9884,0.0125,0.0222 | Path: div.footer__mdn > ul.footer__socials > li > a
+ID: mache-689 | Parent: mache-685 | Tag: a | Role: link | Text: "MDN on Mastodon" | Bounds: 0.1896,3.9884,0.0125,0.0222 | Path: div.footer__mdn > ul.footer__socials > li > a
+ID: mache-690 | Parent: mache-685 | Tag: a | Role: link | Text: "MDN blog RSS feed" | Bounds: 0.2083,3.9884,0.0125,0.0222 | Path: div.footer__mdn > ul.footer__socials > li > a
+ID: mache-691 | Parent: mache-682 | Tag: ul | Role: ul | Text: "      " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.footer__mdn > dl.footer__links > dd > ul
+ID: mache-692 | Parent: mache-691 | Tag: a | Role: link | Text: "About" | Bounds: 0.4250,3.8819,0.0233,0.0185 | Path: dd > ul > li > a
+ID: mache-693 | Parent: mache-691 | Tag: a | Role: link | Text: "Blog" | Bounds: 0.4250,3.9153,0.0176,0.0185 | Path: dd > ul > li > a
+ID: mache-694 | Parent: mache-691 | Tag: a | Role: link | Text: "Mozilla careers" | Bounds: 0.4250,3.9486,0.0725,0.0185 | Path: dd > ul > li > a.external
+ID: mache-695 | Parent: mache-691 | Tag: a | Role: link | Text: "Advertise with us" | Bounds: 0.4250,3.9819,0.0674,0.0185 | Path: dd > ul > li > a
+ID: mache-696 | Parent: mache-691 | Tag: a | Role: link | Text: "MDN Plus" | Bounds: 0.4250,4.0153,0.0388,0.0185 | Path: dd > ul > li > a
+ID: mache-697 | Parent: mache-691 | Tag: a | Role: link | Text: "Product help" | Bounds: 0.4250,4.0486,0.0626,0.0185 | Path: dd > ul > li > a.external
+ID: mache-698 | Parent: mache-682 | Tag: ul | Role: ul | Text: "     " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.footer__mdn > dl.footer__links > dd > ul
+ID: mache-699 | Parent: mache-698 | Tag: a | Role: link | Text: "MDN Community" | Bounds: 0.5750,3.8819,0.0669,0.0185 | Path: dd > ul > li > a
+ID: mache-700 | Parent: mache-698 | Tag: a | Role: link | Text: "Community resources" | Bounds: 0.5750,3.9153,0.0860,0.0185 | Path: dd > ul > li > a
+ID: mache-701 | Parent: mache-698 | Tag: a | Role: link | Text: "Writing guidelines" | Bounds: 0.5750,3.9486,0.0701,0.0185 | Path: dd > ul > li > a
+ID: mache-702 | Parent: mache-698 | Tag: a | Role: link | Text: "MDN Discord" | Bounds: 0.5750,3.9819,0.0648,0.0185 | Path: dd > ul > li > a.external
+ID: mache-703 | Parent: mache-698 | Tag: a | Role: link | Text: "MDN on GitHub" | Bounds: 0.5750,4.0153,0.0739,0.0185 | Path: dd > ul > li > a.external
+ID: mache-704 | Parent: mache-682 | Tag: ul | Role: ul | Text: "      " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.footer__mdn > dl.footer__links > dd > ul
+ID: mache-705 | Parent: mache-704 | Tag: a | Role: link | Text: "Web technologies" | Bounds: 0.7250,3.8819,0.0701,0.0185 | Path: dd > ul > li > a
+ID: mache-706 | Parent: mache-704 | Tag: a | Role: link | Text: "Learn web development" | Bounds: 0.7250,3.9153,0.0942,0.0185 | Path: dd > ul > li > a
+ID: mache-707 | Parent: mache-704 | Tag: a | Role: link | Text: "Guides" | Bounds: 0.7250,3.9486,0.0273,0.0185 | Path: dd > ul > li > a
+ID: mache-708 | Parent: mache-704 | Tag: a | Role: link | Text: "Tutorials" | Bounds: 0.7250,3.9819,0.0336,0.0185 | Path: dd > ul > li > a
+ID: mache-709 | Parent: mache-704 | Tag: a | Role: link | Text: "Glossary" | Bounds: 0.7250,4.0153,0.0345,0.0185 | Path: dd > ul > li > a
+ID: mache-710 | Parent: mache-704 | Tag: a | Role: link | Text: "Hacks blog" | Bounds: 0.7250,4.0486,0.0567,0.0185 | Path: dd > ul > li > a.external
+ID: mache-711 | Parent: mache-681 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,4.0912,1.0000,0.1343 | Path: div.page-layout__footer > footer.footer > div.footer__mozilla
+ID: mache-712 | Parent: mache-711 | Tag: a | Role: link | Text: "Mozilla logo" | Bounds: 0.1333,4.1144,0.0667,0.0278 | Path: div.page-layout__footer > footer.footer > div.footer__mozilla > a.footer__logo
+ID: mache-713 | Parent: mache-711 | Tag: ul | Role: ul | Text: "    " | Bounds: 0.2125,4.1144,0.3912,0.0296 | Path: div.page-layout__footer > footer.footer > div.footer__mozilla > ul
+ID: mache-714 | Parent: mache-713 | Tag: a | Role: link | Text: "Website Privacy Notice" | Bounds: 0.2125,4.1199,0.1007,0.0185 | Path: div.footer__mozilla > ul > li > a.external
+ID: mache-715 | Parent: mache-713 | Tag: a | Role: link | Text: "Telemetry Settings" | Bounds: 0.3216,4.1199,0.0836,0.0185 | Path: div.footer__mozilla > ul > li > a.external
+ID: mache-716 | Parent: mache-713 | Tag: a | Role: link | Text: "Legal" | Bounds: 0.4135,4.1199,0.0319,0.0185 | Path: div.footer__mozilla > ul > li > a.external
+ID: mache-717 | Parent: mache-713 | Tag: a | Role: link | Text: "Community Participation Guidelines" | Bounds: 0.4537,4.1199,0.1500,0.0185 | Path: div.footer__mozilla > ul > li > a.external
+ID: mache-718 | Parent: mache-711 | Tag: a | Role: link | Text: "Mozilla Corporation’s" | Bounds: 0.1524,4.1606,0.0824,0.0185 | Path: footer.footer > div.footer__mozilla > p > a
+ID: mache-719 | Parent: mache-711 | Tag: a | Role: link | Text: "Mozilla Foundation" | Bounds: 0.3352,4.1606,0.0738,0.0185 | Path: footer.footer > div.footer__mozilla > p > a
+ID: mache-720 | Parent: mache-711 | Tag: a | Role: link | Text: "a Creative Commons license" | Bounds: 0.5385,4.1829,0.1117,0.0185 | Path: footer.footer > div.footer__mozilla > p > a

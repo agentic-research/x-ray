@@ -51,20 +51,24 @@ func TestComputeZoneStalks(t *testing.T) {
 		{rootIdx: 2, elems: []int{2}},
 	}
 
-	stalks := computeZoneStalks(zones, elements, cells, 2)
+	ss := computeZoneStalks(zones, elements, cells, 2)
 
-	if len(stalks) != 2 {
-		t.Fatalf("expected 2 stalks, got %d", len(stalks))
+	if len(ss.Stalks) != 2 {
+		t.Fatalf("expected 2 stalks, got %d", len(ss.Stalks))
 	}
 
-	// Zone 0: both elements map to cell (0,0) → stalk should be cell (0,0) features
-	if math.Abs(stalks[0][0]-0.5) > 0.01 {
-		t.Errorf("zone 0 stalk[0] = %.3f, want ~0.5", stalks[0][0])
+	// With James-Stein shrinkage, small zones get pulled toward global mean.
+	// Zone 0 has 2 elements (less shrinkage), zone 1 has 1 element (more shrinkage).
+	// The exact values depend on shrinkage but both should be non-zero.
+	if ss.Stalks[0][0] == 0 {
+		t.Errorf("zone 0 stalk[0] should be non-zero")
 	}
-
-	// Zone 1: element maps to cell (1,0) → stalk should be cell (1,0) features
-	if math.Abs(stalks[1][0]-0.2) > 0.01 {
-		t.Errorf("zone 1 stalk[0] = %.3f, want ~0.2", stalks[1][0])
+	if ss.Stalks[1][0] == 0 {
+		t.Errorf("zone 1 stalk[0] should be non-zero")
+	}
+	// Zone 1 (1 element) should be shrunk more toward global mean than zone 0 (2 elements)
+	if ss.Lambda[1] < ss.Lambda[0] {
+		t.Errorf("zone 1 (n=1) should have higher λ than zone 0 (n=2): λ1=%.3f, λ0=%.3f", ss.Lambda[1], ss.Lambda[0])
 	}
 }
 

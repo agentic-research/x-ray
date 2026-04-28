@@ -1,0 +1,1129 @@
+uid=1_0 RootWebArea "Hacker News" url="https://news.ycombinator.com/"
+  uid=1_1 ignored
+    uid=1_2 ignored
+      uid=1_3 ignored
+        uid=1_4 LayoutTable
+          uid=1_5 ignored
+            uid=1_6 LayoutTableRow
+              uid=1_7 LayoutTableCell "Hacker Newsnew | past | comments | ask | show | jobs | submit login"
+                uid=1_8 LayoutTable
+                  uid=1_9 ignored
+                    uid=1_10 LayoutTableRow
+                      uid=1_11 LayoutTableCell
+                        uid=1_12 link url="https://news.ycombinator.com/"
+                          uid=1_13 image url="https://news.ycombinator.com/y18.svg"
+                      uid=1_14 LayoutTableCell "Hacker Newsnew | past | comments | ask | show | jobs | submit"
+                        uid=1_15 link "Hacker News" url="https://news.ycombinator.com/news"
+                          uid=1_16 StaticText "Hacker News"
+                        uid=1_17 link "new" url="https://news.ycombinator.com/newest"
+                          uid=1_18 StaticText "new"
+                        uid=1_19 StaticText " | "
+                        uid=1_20 link "past" url="https://news.ycombinator.com/front"
+                          uid=1_21 StaticText "past"
+                        uid=1_22 StaticText " | "
+                        uid=1_23 link "comments" url="https://news.ycombinator.com/newcomments"
+                          uid=1_24 StaticText "comments"
+                        uid=1_25 StaticText " | "
+                        uid=1_26 link "ask" url="https://news.ycombinator.com/ask"
+                          uid=1_27 StaticText "ask"
+                        uid=1_28 StaticText " | "
+                        uid=1_29 link "show" url="https://news.ycombinator.com/show"
+                          uid=1_30 StaticText "show"
+                        uid=1_31 StaticText " | "
+                        uid=1_32 link "jobs" url="https://news.ycombinator.com/jobs"
+                          uid=1_33 StaticText "jobs"
+                        uid=1_34 StaticText " | "
+                        uid=1_35 link "submit" url="https://news.ycombinator.com/submit"
+                          uid=1_36 StaticText "submit"
+                      uid=1_37 LayoutTableCell "login"
+                        uid=1_38 link "login" url="https://news.ycombinator.com/login?goto=news"
+                          uid=1_39 StaticText "login"
+            uid=1_40 LayoutTableRow
+            uid=1_41 LayoutTableRow
+              uid=1_42 LayoutTableCell
+                uid=1_43 table
+                  uid=1_44 ignored
+                    uid=1_45 row
+                      uid=1_46 cell "1."
+                        uid=1_47 StaticText "1."
+                      uid=1_48 cell
+                        uid=1_49 generic
+                          uid=1_50 link url="https://news.ycombinator.com/vote?id=47346091&how=up&goto=news"
+                            uid=1_51 generic description="upvote"
+                      uid=1_52 cell "Iran-Backed Hackers Claim Wiper Attack on Medtech Firm Stryker (krebsonsecurity.com)"
+                        uid=1_53 link "Iran-Backed Hackers Claim Wiper Attack on Medtech Firm Stryker" url="https://krebsonsecurity.com/2026/03/iran-backed-hackers-claim-wiper-attack-on-medtech-firm-stryker/"
+                          uid=1_54 StaticText "Iran-Backed Hackers Claim Wiper Attack on Medtech Firm Stryker"
+                        uid=1_55 StaticText " ("
+                        uid=1_56 link "krebsonsecurity.com" url="https://news.ycombinator.com/from?site=krebsonsecurity.com"
+                          uid=1_57 StaticText "krebsonsecurity.com"
+                        uid=1_58 StaticText ")"
+                    uid=1_59 row
+                      uid=1_60 cell
+                      uid=1_61 cell "45 points by 2bluesc 1 hour ago | hide | 1 comment"
+                        uid=1_62 generic
+                          uid=1_63 StaticText "45 points"
+                        uid=1_64 StaticText " by "
+                        uid=1_65 link "2bluesc" url="https://news.ycombinator.com/user?id=2bluesc"
+                          uid=1_66 StaticText "2bluesc"
+                        uid=1_67 StaticText " "
+                        uid=1_68 generic description="2026-03-12T03:29:28 1773286168"
+                          uid=1_69 link "1 hour ago" url="https://news.ycombinator.com/item?id=47346091"
+                            uid=1_70 StaticText "1 hour ago"
+                        uid=1_71 StaticText " "
+                        uid=1_72 generic
+                        uid=1_73 StaticText "| "
+                        uid=1_74 link "hide" url="https://news.ycombinator.com/hide?id=47346091&goto=news"
+                          uid=1_75 StaticText "hide"
+                        uid=1_76 StaticText " | "
+                        uid=1_77 link "1 comment" url="https://news.ycombinator.com/item?id=47346091"
+                          uid=1_78 StaticText "1 comment"
+                    uid=1_79 row
+                    uid=1_80 row
+                      uid=1_81 cell "2."
+                        uid=1_82 StaticText "2."
+                      uid=1_83 cell
+                        uid=1_84 generic
+                          uid=1_85 link url="https://news.ycombinator.com/vote?id=47344548&how=up&goto=news"
+                            uid=1_86 generic description="upvote"
+                      uid=1_87 cell "Show HN: s@: decentralized social networking over static sites (satproto.org)"
+                        uid=1_88 link "Show HN: s@: decentralized social networking over static sites" url="http://satproto.org/"
+                          uid=1_89 StaticText "Show HN: s@: decentralized social networking over static sites"
+                        uid=1_90 StaticText " ("
+                        uid=1_91 link "satproto.org" url="https://news.ycombinator.com/from?site=satproto.org"
+                          uid=1_92 StaticText "satproto.org"
+                        uid=1_93 StaticText ")"
+                    uid=1_94 row
+                      uid=1_95 cell
+                      uid=1_96 cell "119 points by remywang 4 hours ago | hide | 44 comments"
+                        uid=1_97 generic
+                          uid=1_98 StaticText "119 points"
+                        uid=1_99 StaticText " by "
+                        uid=1_100 link "remywang" url="https://news.ycombinator.com/user?id=remywang"
+                          uid=1_101 StaticText "remywang"
+                        uid=1_102 StaticText " "
+                        uid=1_103 generic description="2026-03-12T00:22:19 1773274939"
+                          uid=1_104 link "4 hours ago" url="https://news.ycombinator.com/item?id=47344548"
+                            uid=1_105 StaticText "4 hours ago"
+                        uid=1_106 StaticText " "
+                        uid=1_107 generic
+                        uid=1_108 StaticText "| "
+                        uid=1_109 link "hide" url="https://news.ycombinator.com/hide?id=47344548&goto=news"
+                          uid=1_110 StaticText "hide"
+                        uid=1_111 StaticText " | "
+                        uid=1_112 link "44 comments" url="https://news.ycombinator.com/item?id=47344548"
+                          uid=1_113 StaticText "44 comments"
+                    uid=1_114 row
+                    uid=1_115 row
+                      uid=1_116 cell "3."
+                        uid=1_117 StaticText "3."
+                      uid=1_118 cell
+                        uid=1_119 generic
+                          uid=1_120 link url="https://news.ycombinator.com/vote?id=47336989&how=up&goto=news"
+                            uid=1_121 generic description="upvote"
+                      uid=1_122 cell "Temporal: The 9-year journey to fix time in JavaScript (bloomberg.github.io)"
+                        uid=1_123 link "Temporal: The 9-year journey to fix time in JavaScript" url="https://bloomberg.github.io/js-blog/post/temporal/"
+                          uid=1_124 StaticText "Temporal: The 9-year journey to fix time in JavaScript"
+                        uid=1_125 StaticText " ("
+                        uid=1_126 link "bloomberg.github.io" url="https://news.ycombinator.com/from?site=bloomberg.github.io"
+                          uid=1_127 StaticText "bloomberg.github.io"
+                        uid=1_128 StaticText ")"
+                    uid=1_129 row
+                      uid=1_130 cell
+                      uid=1_131 cell "574 points by robpalmer 13 hours ago | hide | 194 comments"
+                        uid=1_132 generic
+                          uid=1_133 StaticText "574 points"
+                        uid=1_134 StaticText " by "
+                        uid=1_135 link "robpalmer" url="https://news.ycombinator.com/user?id=robpalmer"
+                          uid=1_136 StaticText "robpalmer"
+                        uid=1_137 StaticText " "
+                        uid=1_138 generic description="2026-03-11T15:35:50 1773243350"
+                          uid=1_139 link "13 hours ago" url="https://news.ycombinator.com/item?id=47336989"
+                            uid=1_140 StaticText "13 hours ago"
+                        uid=1_141 StaticText " "
+                        uid=1_142 generic
+                        uid=1_143 StaticText "| "
+                        uid=1_144 link "hide" url="https://news.ycombinator.com/hide?id=47336989&goto=news"
+                          uid=1_145 StaticText "hide"
+                        uid=1_146 StaticText " | "
+                        uid=1_147 link "194 comments" url="https://news.ycombinator.com/item?id=47336989"
+                          uid=1_148 StaticText "194 comments"
+                    uid=1_149 row
+                    uid=1_150 row
+                      uid=1_151 cell "4."
+                        uid=1_152 StaticText "4."
+                      uid=1_153 cell
+                        uid=1_154 generic
+                          uid=1_155 link url="https://news.ycombinator.com/vote?id=47341645&how=up&goto=news"
+                            uid=1_156 generic description="upvote"
+                      uid=1_157 cell "Many SWE-bench-Passing PRs would not be merged (metr.org)"
+                        uid=1_158 link "Many SWE-bench-Passing PRs would not be merged" url="https://metr.org/notes/2026-03-10-many-swe-bench-passing-prs-would-not-be-merged-into-main/"
+                          uid=1_159 StaticText "Many SWE-bench-Passing PRs would not be merged"
+                        uid=1_160 StaticText " ("
+                        uid=1_161 link "metr.org" url="https://news.ycombinator.com/from?site=metr.org"
+                          uid=1_162 StaticText "metr.org"
+                        uid=1_163 StaticText ")"
+                    uid=1_164 row
+                      uid=1_165 cell
+                      uid=1_166 cell "176 points by mustaphah 7 hours ago | hide | 66 comments"
+                        uid=1_167 generic
+                          uid=1_168 StaticText "176 points"
+                        uid=1_169 StaticText " by "
+                        uid=1_170 link "mustaphah" url="https://news.ycombinator.com/user?id=mustaphah"
+                          uid=1_171 StaticText "mustaphah"
+                        uid=1_172 StaticText " "
+                        uid=1_173 generic description="2026-03-11T20:56:52 1773262612"
+                          uid=1_174 link "7 hours ago" url="https://news.ycombinator.com/item?id=47341645"
+                            uid=1_175 StaticText "7 hours ago"
+                        uid=1_176 StaticText " "
+                        uid=1_177 generic
+                        uid=1_178 StaticText "| "
+                        uid=1_179 link "hide" url="https://news.ycombinator.com/hide?id=47341645&goto=news"
+                          uid=1_180 StaticText "hide"
+                        uid=1_181 StaticText " | "
+                        uid=1_182 link "66 comments" url="https://news.ycombinator.com/item?id=47341645"
+                          uid=1_183 StaticText "66 comments"
+                    uid=1_184 row
+                    uid=1_185 row
+                      uid=1_186 cell "5."
+                        uid=1_187 StaticText "5."
+                      uid=1_188 cell
+                        uid=1_189 generic
+                          uid=1_190 link url="https://news.ycombinator.com/vote?id=47296568&how=up&goto=news"
+                            uid=1_191 generic description="upvote"
+                      uid=1_192 cell "Tested: How Many Times Can a DVD±RW Be Rewritten? Methodology and Results (goughlui.com)"
+                        uid=1_193 link "Tested: How Many Times Can a DVD±RW Be Rewritten? Methodology and Results" url="https://goughlui.com/2026/03/07/tested-how-many-times-can-a-dvd%C2%B1rw-be-rewritten-part-2-methodology-results/"
+                          uid=1_194 StaticText "Tested: How Many Times Can a DVD±RW Be Rewritten? Methodology and Results"
+                        uid=1_195 StaticText " ("
+                        uid=1_196 link "goughlui.com" url="https://news.ycombinator.com/from?site=goughlui.com"
+                          uid=1_197 StaticText "goughlui.com"
+                        uid=1_198 StaticText ")"
+                    uid=1_199 row
+                      uid=1_200 cell
+                      uid=1_201 cell "80 points by giuliomagnifico 4 hours ago | hide | 7 comments"
+                        uid=1_202 generic
+                          uid=1_203 StaticText "80 points"
+                        uid=1_204 StaticText " by "
+                        uid=1_205 link "giuliomagnifico" url="https://news.ycombinator.com/user?id=giuliomagnifico"
+                          uid=1_206 StaticText "giuliomagnifico"
+                        uid=1_207 StaticText " "
+                        uid=1_208 generic description="2026-03-08T11:44:56 1772970296"
+                          uid=1_209 link "4 hours ago" url="https://news.ycombinator.com/item?id=47296568"
+                            uid=1_210 StaticText "4 hours ago"
+                        uid=1_211 StaticText " "
+                        uid=1_212 generic
+                        uid=1_213 StaticText "| "
+                        uid=1_214 link "hide" url="https://news.ycombinator.com/hide?id=47296568&goto=news"
+                          uid=1_215 StaticText "hide"
+                        uid=1_216 StaticText " | "
+                        uid=1_217 link "7 comments" url="https://news.ycombinator.com/item?id=47296568"
+                          uid=1_218 StaticText "7 comments"
+                    uid=1_219 row
+                    uid=1_220 row
+                      uid=1_221 cell "6."
+                        uid=1_222 StaticText "6."
+                      uid=1_223 cell
+                        uid=1_224 generic
+                          uid=1_225 link url="https://news.ycombinator.com/vote?id=47331811&how=up&goto=news"
+                            uid=1_226 generic description="upvote"
+                      uid=1_227 cell "Making WebAssembly a first-class language on the Web (hacks.mozilla.org)"
+                        uid=1_228 link "Making WebAssembly a first-class language on the Web" url="https://hacks.mozilla.org/2026/02/making-webassembly-a-first-class-language-on-the-web/"
+                          uid=1_229 StaticText "Making WebAssembly a first-class language on the Web"
+                        uid=1_230 StaticText " ("
+                        uid=1_231 link "hacks.mozilla.org" url="https://news.ycombinator.com/from?site=hacks.mozilla.org"
+                          uid=1_232 StaticText "hacks.mozilla.org"
+                        uid=1_233 StaticText ")"
+                    uid=1_234 row
+                      uid=1_235 cell
+                      uid=1_236 cell "466 points by mikece 14 hours ago | hide | 160 comments"
+                        uid=1_237 generic
+                          uid=1_238 StaticText "466 points"
+                        uid=1_239 StaticText " by "
+                        uid=1_240 link "mikece" url="https://news.ycombinator.com/user?id=mikece"
+                          uid=1_241 StaticText "mikece"
+                        uid=1_242 StaticText " "
+                        uid=1_243 generic description="2026-03-11T04:44:46 1773204286"
+                          uid=1_244 link "14 hours ago" url="https://news.ycombinator.com/item?id=47331811"
+                            uid=1_245 StaticText "14 hours ago"
+                        uid=1_246 StaticText " "
+                        uid=1_247 generic
+                        uid=1_248 StaticText "| "
+                        uid=1_249 link "hide" url="https://news.ycombinator.com/hide?id=47331811&goto=news"
+                          uid=1_250 StaticText "hide"
+                        uid=1_251 StaticText " | "
+                        uid=1_252 link "160 comments" url="https://news.ycombinator.com/item?id=47331811"
+                          uid=1_253 StaticText "160 comments"
+                    uid=1_254 row
+                    uid=1_255 row
+                      uid=1_256 cell "7."
+                        uid=1_257 StaticText "7."
+                      uid=1_258 cell
+                        uid=1_259 generic
+                          uid=1_260 link url="https://news.ycombinator.com/vote?id=47340079&how=up&goto=news"
+                            uid=1_261 generic description="upvote"
+                      uid=1_262 cell "Don't post generated/AI-edited comments. HN is for conversation between humans (news.ycombinator.com)"
+                        uid=1_263 link "Don't post generated/AI-edited comments. HN is for conversation between humans" url="https://news.ycombinator.com/newsguidelines.html#generated"
+                          uid=1_264 StaticText "Don't post generated/AI-edited comments. HN is for conversation between humans"
+                        uid=1_265 StaticText " ("
+                        uid=1_266 link "news.ycombinator.com" url="https://news.ycombinator.com/from?site=news.ycombinator.com"
+                          uid=1_267 StaticText "news.ycombinator.com"
+                        uid=1_268 StaticText ")"
+                    uid=1_269 row
+                      uid=1_270 cell
+                      uid=1_271 cell "3080 points by usefulposter 9 hours ago | hide | 1165 comments"
+                        uid=1_272 generic
+                          uid=1_273 StaticText "3080 points"
+                        uid=1_274 StaticText " by "
+                        uid=1_275 link "usefulposter" url="https://news.ycombinator.com/user?id=usefulposter"
+                          uid=1_276 StaticText "usefulposter"
+                        uid=1_277 StaticText " "
+                        uid=1_278 generic description="2026-03-11T19:29:29 1773257369"
+                          uid=1_279 link "9 hours ago" url="https://news.ycombinator.com/item?id=47340079"
+                            uid=1_280 StaticText "9 hours ago"
+                        uid=1_281 StaticText " "
+                        uid=1_282 generic
+                        uid=1_283 StaticText "| "
+                        uid=1_284 link "hide" url="https://news.ycombinator.com/hide?id=47340079&goto=news"
+                          uid=1_285 StaticText "hide"
+                        uid=1_286 StaticText " | "
+                        uid=1_287 link "1165 comments" url="https://news.ycombinator.com/item?id=47340079"
+                          uid=1_288 StaticText "1165 comments"
+                    uid=1_289 row
+                    uid=1_290 row
+                      uid=1_291 cell "8."
+                        uid=1_292 StaticText "8."
+                      uid=1_293 cell
+                        uid=1_294 generic
+                          uid=1_295 link url="https://news.ycombinator.com/vote?id=47339164&how=up&goto=news"
+                            uid=1_296 generic description="upvote"
+                      uid=1_297 cell "I was interviewed by an AI bot for a job (theverge.com)"
+                        uid=1_298 link "I was interviewed by an AI bot for a job" url="https://www.theverge.com/featured-video/892850/i-was-interviewed-by-an-ai-bot-for-a-job"
+                          uid=1_299 StaticText "I was interviewed by an AI bot for a job"
+                        uid=1_300 StaticText " ("
+                        uid=1_301 link "theverge.com" url="https://news.ycombinator.com/from?site=theverge.com"
+                          uid=1_302 StaticText "theverge.com"
+                        uid=1_303 StaticText ")"
+                    uid=1_304 row
+                      uid=1_305 cell
+                      uid=1_306 cell "204 points by speckx 10 hours ago | hide | 208 comments"
+                        uid=1_307 generic
+                          uid=1_308 StaticText "204 points"
+                        uid=1_309 StaticText " by "
+                        uid=1_310 link "speckx" url="https://news.ycombinator.com/user?id=speckx"
+                          uid=1_311 StaticText "speckx"
+                        uid=1_312 StaticText " "
+                        uid=1_313 generic description="2026-03-11T18:17:30 1773253050"
+                          uid=1_314 link "10 hours ago" url="https://news.ycombinator.com/item?id=47339164"
+                            uid=1_315 StaticText "10 hours ago"
+                        uid=1_316 StaticText " "
+                        uid=1_317 generic
+                        uid=1_318 StaticText "| "
+                        uid=1_319 link "hide" url="https://news.ycombinator.com/hide?id=47339164&goto=news"
+                          uid=1_320 StaticText "hide"
+                        uid=1_321 StaticText " | "
+                        uid=1_322 link "208 comments" url="https://news.ycombinator.com/item?id=47339164"
+                          uid=1_323 StaticText "208 comments"
+                    uid=1_324 row
+                    uid=1_325 row
+                      uid=1_326 cell "9."
+                        uid=1_327 StaticText "9."
+                      uid=1_328 cell
+                        uid=1_329 generic
+                          uid=1_330 link url="https://news.ycombinator.com/vote?id=47296630&how=up&goto=news"
+                            uid=1_331 generic description="upvote"
+                      uid=1_332 cell "About memory pressure, lock contention, and Data-oriented Design (mnt.io)"
+                        uid=1_333 link "About memory pressure, lock contention, and Data-oriented Design" url="https://mnt.io/articles/about-memory-pressure-lock-contention-and-data-oriented-design/"
+                          uid=1_334 StaticText "About memory pressure, lock contention, and Data-oriented Design"
+                        uid=1_335 StaticText " ("
+                        uid=1_336 link "mnt.io" url="https://news.ycombinator.com/from?site=mnt.io"
+                          uid=1_337 StaticText "mnt.io"
+                        uid=1_338 StaticText ")"
+                    uid=1_339 row
+                      uid=1_340 cell
+                      uid=1_341 cell "24 points by vinhnx 3 hours ago | hide | discuss"
+                        uid=1_342 generic
+                          uid=1_343 StaticText "24 points"
+                        uid=1_344 StaticText " by "
+                        uid=1_345 link "vinhnx" url="https://news.ycombinator.com/user?id=vinhnx"
+                          uid=1_346 StaticText "vinhnx"
+                        uid=1_347 StaticText " "
+                        uid=1_348 generic description="2026-03-08T11:59:11 1772971151"
+                          uid=1_349 link "3 hours ago" url="https://news.ycombinator.com/item?id=47296630"
+                            uid=1_350 StaticText "3 hours ago"
+                        uid=1_351 StaticText " "
+                        uid=1_352 generic
+                        uid=1_353 StaticText "| "
+                        uid=1_354 link "hide" url="https://news.ycombinator.com/hide?id=47296630&goto=news"
+                          uid=1_355 StaticText "hide"
+                        uid=1_356 StaticText " | "
+                        uid=1_357 link "discuss" url="https://news.ycombinator.com/item?id=47296630"
+                          uid=1_358 StaticText "discuss"
+                    uid=1_359 row
+                    uid=1_360 row
+                      uid=1_361 cell "10."
+                        uid=1_362 StaticText "10."
+                      uid=1_363 cell
+                        uid=1_364 generic
+                          uid=1_365 link url="https://news.ycombinator.com/vote?id=47343927&how=up&goto=news"
+                            uid=1_366 generic description="upvote"
+                      uid=1_367 cell "Show HN: A context-aware permission guard for Claude Code (github.com/manuelschipper)"
+                        uid=1_368 link "Show HN: A context-aware permission guard for Claude Code" url="https://github.com/manuelschipper/nah/"
+                          uid=1_369 StaticText "Show HN: A context-aware permission guard for Claude Code"
+                        uid=1_370 StaticText " ("
+                        uid=1_371 link "github.com/manuelschipper" url="https://news.ycombinator.com/from?site=github.com/manuelschipper"
+                          uid=1_372 StaticText "github.com/manuelschipper"
+                        uid=1_373 StaticText ")"
+                    uid=1_374 row
+                      uid=1_375 cell
+                      uid=1_376 cell "64 points by schipperai 5 hours ago | hide | 31 comments"
+                        uid=1_377 generic
+                          uid=1_378 StaticText "64 points"
+                        uid=1_379 StaticText " by "
+                        uid=1_380 link "schipperai" url="https://news.ycombinator.com/user?id=schipperai"
+                          uid=1_381 StaticText "schipperai"
+                        uid=1_382 StaticText " "
+                        uid=1_383 generic description="2026-03-11T23:26:25 1773271585"
+                          uid=1_384 link "5 hours ago" url="https://news.ycombinator.com/item?id=47343927"
+                            uid=1_385 StaticText "5 hours ago"
+                        uid=1_386 StaticText " "
+                        uid=1_387 generic
+                        uid=1_388 StaticText "| "
+                        uid=1_389 link "hide" url="https://news.ycombinator.com/hide?id=47343927&goto=news"
+                          uid=1_390 StaticText "hide"
+                        uid=1_391 StaticText " | "
+                        uid=1_392 link "31 comments" url="https://news.ycombinator.com/item?id=47343927"
+                          uid=1_393 StaticText "31 comments"
+                    uid=1_394 row
+                    uid=1_395 row
+                      uid=1_396 cell "11."
+                        uid=1_397 StaticText "11."
+                      uid=1_398 cell
+                        uid=1_399 generic
+                          uid=1_400 link url="https://news.ycombinator.com/vote?id=47345393&how=up&goto=news"
+                            uid=1_401 generic description="upvote"
+                      uid=1_402 cell "DHS Contracts Explorer – Hacked data from the Office of Industry Partnership (micahflee.github.io)"
+                        uid=1_403 link "DHS Contracts Explorer – Hacked data from the Office of Industry Partnership" url="https://micahflee.github.io/ice-contracts/"
+                          uid=1_404 StaticText "DHS Contracts Explorer – Hacked data from the Office of Industry Partnership"
+                        uid=1_405 StaticText " ("
+                        uid=1_406 link "micahflee.github.io" url="https://news.ycombinator.com/from?site=micahflee.github.io"
+                          uid=1_407 StaticText "micahflee.github.io"
+                        uid=1_408 StaticText ")"
+                    uid=1_409 row
+                      uid=1_410 cell
+                      uid=1_411 cell "199 points by peq42 2 hours ago | hide | 38 comments"
+                        uid=1_412 generic
+                          uid=1_413 StaticText "199 points"
+                        uid=1_414 StaticText " by "
+                        uid=1_415 link "peq42" url="https://news.ycombinator.com/user?id=peq42"
+                          uid=1_416 StaticText "peq42"
+                        uid=1_417 StaticText " "
+                        uid=1_418 generic description="2026-03-12T02:03:01 1773280981"
+                          uid=1_419 link "2 hours ago" url="https://news.ycombinator.com/item?id=47345393"
+                            uid=1_420 StaticText "2 hours ago"
+                        uid=1_421 StaticText " "
+                        uid=1_422 generic
+                        uid=1_423 StaticText "| "
+                        uid=1_424 link "hide" url="https://news.ycombinator.com/hide?id=47345393&goto=news"
+                          uid=1_425 StaticText "hide"
+                        uid=1_426 StaticText " | "
+                        uid=1_427 link "38 comments" url="https://news.ycombinator.com/item?id=47345393"
+                          uid=1_428 StaticText "38 comments"
+                    uid=1_429 row
+                    uid=1_430 row
+                      uid=1_431 cell "12."
+                        uid=1_432 StaticText "12."
+                      uid=1_433 cell
+                        uid=1_434 generic
+                          uid=1_435 link url="https://news.ycombinator.com/vote?id=47336476&how=up&goto=news"
+                            uid=1_436 generic description="upvote"
+                      uid=1_437 cell "Google closes deal to acquire Wiz (wiz.io)"
+                        uid=1_438 link "Google closes deal to acquire Wiz" url="https://www.wiz.io/blog/google-closes-deal-to-acquire-wiz"
+                          uid=1_439 StaticText "Google closes deal to acquire Wiz"
+                        uid=1_440 StaticText " ("
+                        uid=1_441 link "wiz.io" url="https://news.ycombinator.com/from?site=wiz.io"
+                          uid=1_442 StaticText "wiz.io"
+                        uid=1_443 StaticText ")"
+                    uid=1_444 row
+                      uid=1_445 cell
+                      uid=1_446 cell "253 points by aldarisbm 13 hours ago | hide | 163 comments"
+                        uid=1_447 generic
+                          uid=1_448 StaticText "253 points"
+                        uid=1_449 StaticText " by "
+                        uid=1_450 link "aldarisbm" url="https://news.ycombinator.com/user?id=aldarisbm"
+                          uid=1_451 StaticText "aldarisbm"
+                        uid=1_452 StaticText " "
+                        uid=1_453 generic description="2026-03-11T14:58:20 1773241100"
+                          uid=1_454 link "13 hours ago" url="https://news.ycombinator.com/item?id=47336476"
+                            uid=1_455 StaticText "13 hours ago"
+                        uid=1_456 StaticText " "
+                        uid=1_457 generic
+                        uid=1_458 StaticText "| "
+                        uid=1_459 link "hide" url="https://news.ycombinator.com/hide?id=47336476&goto=news"
+                          uid=1_460 StaticText "hide"
+                        uid=1_461 StaticText " | "
+                        uid=1_462 link "163 comments" url="https://news.ycombinator.com/item?id=47336476"
+                          uid=1_463 StaticText "163 comments"
+                    uid=1_464 row
+                    uid=1_465 row
+                      uid=1_466 cell "13."
+                        uid=1_467 StaticText "13."
+                      uid=1_468 cell
+                        uid=1_469 generic
+                          uid=1_470 link url="https://news.ycombinator.com/vote?id=47337607&how=up&goto=news"
+                            uid=1_471 generic description="upvote"
+                      uid=1_472 cell "Show HN: I built a tool that watches webpages and exposes changes as RSS (sitespy.app)"
+                        uid=1_473 link "Show HN: I built a tool that watches webpages and exposes changes as RSS" url="https://sitespy.app/"
+                          uid=1_474 StaticText "Show HN: I built a tool that watches webpages and exposes changes as RSS"
+                        uid=1_475 StaticText " ("
+                        uid=1_476 link "sitespy.app" url="https://news.ycombinator.com/from?site=sitespy.app"
+                          uid=1_477 StaticText "sitespy.app"
+                        uid=1_478 StaticText ")"
+                    uid=1_479 row
+                      uid=1_480 cell
+                      uid=1_481 cell "203 points by vkuprin 11 hours ago | hide | 49 comments"
+                        uid=1_482 generic
+                          uid=1_483 StaticText "203 points"
+                        uid=1_484 StaticText " by "
+                        uid=1_485 link "vkuprin" url="https://news.ycombinator.com/user?id=vkuprin"
+                          uid=1_486 StaticText "vkuprin"
+                        uid=1_487 StaticText " "
+                        uid=1_488 generic description="2026-03-11T16:21:06 1773246066"
+                          uid=1_489 link "11 hours ago" url="https://news.ycombinator.com/item?id=47337607"
+                            uid=1_490 StaticText "11 hours ago"
+                        uid=1_491 StaticText " "
+                        uid=1_492 generic
+                        uid=1_493 StaticText "| "
+                        uid=1_494 link "hide" url="https://news.ycombinator.com/hide?id=47337607&goto=news"
+                          uid=1_495 StaticText "hide"
+                        uid=1_496 StaticText " | "
+                        uid=1_497 link "49 comments" url="https://news.ycombinator.com/item?id=47337607"
+                          uid=1_498 StaticText "49 comments"
+                    uid=1_499 row
+                    uid=1_500 row
+                      uid=1_501 cell "14."
+                        uid=1_502 StaticText "14."
+                      uid=1_503 cell
+                        uid=1_504 generic
+                          uid=1_505 link url="https://news.ycombinator.com/vote?id=47334293&how=up&goto=news"
+                            uid=1_506 generic description="upvote"
+                      uid=1_507 cell "The MacBook Neo (daringfireball.net)"
+                        uid=1_508 link "The MacBook Neo" url="https://daringfireball.net/2026/03/the_macbook_neo"
+                          uid=1_509 StaticText "The MacBook Neo"
+                        uid=1_510 StaticText " ("
+                        uid=1_511 link "daringfireball.net" url="https://news.ycombinator.com/from?site=daringfireball.net"
+                          uid=1_512 StaticText "daringfireball.net"
+                        uid=1_513 StaticText ")"
+                    uid=1_514 row
+                      uid=1_515 cell
+                      uid=1_516 cell "457 points by etothet 15 hours ago | hide | 758 comments"
+                        uid=1_517 generic
+                          uid=1_518 StaticText "457 points"
+                        uid=1_519 StaticText " by "
+                        uid=1_520 link "etothet" url="https://news.ycombinator.com/user?id=etothet"
+                          uid=1_521 StaticText "etothet"
+                        uid=1_522 StaticText " "
+                        uid=1_523 generic description="2026-03-11T11:37:24 1773229044"
+                          uid=1_524 link "15 hours ago" url="https://news.ycombinator.com/item?id=47334293"
+                            uid=1_525 StaticText "15 hours ago"
+                        uid=1_526 StaticText " "
+                        uid=1_527 generic
+                        uid=1_528 StaticText "| "
+                        uid=1_529 link "hide" url="https://news.ycombinator.com/hide?id=47334293&goto=news"
+                          uid=1_530 StaticText "hide"
+                        uid=1_531 StaticText " | "
+                        uid=1_532 link "758 comments" url="https://news.ycombinator.com/item?id=47334293"
+                          uid=1_533 StaticText "758 comments"
+                    uid=1_534 row
+                    uid=1_535 row
+                      uid=1_536 cell "15."
+                        uid=1_537 StaticText "15."
+                      uid=1_538 cell
+                        uid=1_539 generic
+                          uid=1_540 link url="https://news.ycombinator.com/vote?id=47335349&how=up&goto=news"
+                            uid=1_541 generic description="upvote"
+                      uid=1_542 cell "Entities enabling scientific fraud at scale (2025) (doi.org)"
+                        uid=1_543 link "Entities enabling scientific fraud at scale (2025)" url="https://doi.org/10.1073/pnas.2420092122"
+                          uid=1_544 StaticText "Entities enabling scientific fraud at scale (2025)"
+                        uid=1_545 StaticText " ("
+                        uid=1_546 link "doi.org" url="https://news.ycombinator.com/from?site=doi.org"
+                          uid=1_547 StaticText "doi.org"
+                        uid=1_548 StaticText ")"
+                    uid=1_549 row
+                      uid=1_550 cell
+                      uid=1_551 cell "271 points by peyton 15 hours ago | hide | 190 comments"
+                        uid=1_552 generic
+                          uid=1_553 StaticText "271 points"
+                        uid=1_554 StaticText " by "
+                        uid=1_555 link "peyton" url="https://news.ycombinator.com/user?id=peyton"
+                          uid=1_556 StaticText "peyton"
+                        uid=1_557 StaticText " "
+                        uid=1_558 generic description="2026-03-11T13:32:12 1773235932"
+                          uid=1_559 link "15 hours ago" url="https://news.ycombinator.com/item?id=47335349"
+                            uid=1_560 StaticText "15 hours ago"
+                        uid=1_561 StaticText " "
+                        uid=1_562 generic
+                        uid=1_563 StaticText "| "
+                        uid=1_564 link "hide" url="https://news.ycombinator.com/hide?id=47335349&goto=news"
+                          uid=1_565 StaticText "hide"
+                        uid=1_566 StaticText " | "
+                        uid=1_567 link "190 comments" url="https://news.ycombinator.com/item?id=47335349"
+                          uid=1_568 StaticText "190 comments"
+                    uid=1_569 row
+                    uid=1_570 row
+                      uid=1_571 cell "16."
+                        uid=1_572 StaticText "16."
+                      uid=1_573 cell
+                        uid=1_574 generic
+                          uid=1_575 link url="https://news.ycombinator.com/vote?id=47334694&how=up&goto=news"
+                            uid=1_576 generic description="upvote"
+                      uid=1_577 cell "BitNet: 100B Param 1-Bit model for local CPUs (github.com/microsoft)"
+                        uid=1_578 link "BitNet: 100B Param 1-Bit model for local CPUs" url="https://github.com/microsoft/BitNet"
+                          uid=1_579 StaticText "BitNet: 100B Param 1-Bit model for local CPUs"
+                        uid=1_580 StaticText " ("
+                        uid=1_581 link "github.com/microsoft" url="https://news.ycombinator.com/from?site=github.com/microsoft"
+                          uid=1_582 StaticText "github.com/microsoft"
+                        uid=1_583 StaticText ")"
+                    uid=1_584 row
+                      uid=1_585 cell
+                      uid=1_586 cell "319 points by redm 16 hours ago | hide | 159 comments"
+                        uid=1_587 generic
+                          uid=1_588 StaticText "319 points"
+                        uid=1_589 StaticText " by "
+                        uid=1_590 link "redm" url="https://news.ycombinator.com/user?id=redm"
+                          uid=1_591 StaticText "redm"
+                        uid=1_592 StaticText " "
+                        uid=1_593 generic description="2026-03-11T12:27:15 1773232035"
+                          uid=1_594 link "16 hours ago" url="https://news.ycombinator.com/item?id=47334694"
+                            uid=1_595 StaticText "16 hours ago"
+                        uid=1_596 StaticText " "
+                        uid=1_597 generic
+                        uid=1_598 StaticText "| "
+                        uid=1_599 link "hide" url="https://news.ycombinator.com/hide?id=47334694&goto=news"
+                          uid=1_600 StaticText "hide"
+                        uid=1_601 StaticText " | "
+                        uid=1_602 link "159 comments" url="https://news.ycombinator.com/item?id=47334694"
+                          uid=1_603 StaticText "159 comments"
+                    uid=1_604 row
+                    uid=1_605 row
+                      uid=1_606 cell "17."
+                        uid=1_607 StaticText "17."
+                      uid=1_608 cell
+                        uid=1_609 generic
+                          uid=1_610 link url="https://news.ycombinator.com/vote?id=47296461&how=up&goto=news"
+                            uid=1_611 generic description="upvote"
+                      uid=1_612 cell "CNN Explainer – Learn Convolutional Neural Network in Your Browser (2020) (poloclub.github.io)"
+                        uid=1_613 link "CNN Explainer – Learn Convolutional Neural Network in Your Browser (2020)" url="https://poloclub.github.io/cnn-explainer/"
+                          uid=1_614 StaticText "CNN Explainer – Learn Convolutional Neural Network in Your Browser (2020)"
+                        uid=1_615 StaticText " ("
+                        uid=1_616 link "poloclub.github.io" url="https://news.ycombinator.com/from?site=poloclub.github.io"
+                          uid=1_617 StaticText "poloclub.github.io"
+                        uid=1_618 StaticText ")"
+                    uid=1_619 row
+                      uid=1_620 cell
+                      uid=1_621 cell "39 points by vismit2000 5 hours ago | hide | 2 comments"
+                        uid=1_622 generic
+                          uid=1_623 StaticText "39 points"
+                        uid=1_624 StaticText " by "
+                        uid=1_625 link "vismit2000" url="https://news.ycombinator.com/user?id=vismit2000"
+                          uid=1_626 StaticText "vismit2000"
+                        uid=1_627 StaticText " "
+                        uid=1_628 generic description="2026-03-08T11:22:42 1772968962"
+                          uid=1_629 link "5 hours ago" url="https://news.ycombinator.com/item?id=47296461"
+                            uid=1_630 StaticText "5 hours ago"
+                        uid=1_631 StaticText " "
+                        uid=1_632 generic
+                        uid=1_633 StaticText "| "
+                        uid=1_634 link "hide" url="https://news.ycombinator.com/hide?id=47296461&goto=news"
+                          uid=1_635 StaticText "hide"
+                        uid=1_636 StaticText " | "
+                        uid=1_637 link "2 comments" url="https://news.ycombinator.com/item?id=47296461"
+                          uid=1_638 StaticText "2 comments"
+                    uid=1_639 row
+                    uid=1_640 row
+                      uid=1_641 cell "18."
+                        uid=1_642 StaticText "18."
+                      uid=1_643 cell
+                        uid=1_644 generic
+                          uid=1_645 link url="https://news.ycombinator.com/vote?id=47343935&how=up&goto=news"
+                            uid=1_646 generic description="upvote"
+                      uid=1_647 cell "Show HN: Autoresearch@home (ensue-network.ai)"
+                        uid=1_648 link "Show HN: Autoresearch@home" url="https://www.ensue-network.ai/autoresearch"
+                          uid=1_649 StaticText "Show HN: Autoresearch@home"
+                        uid=1_650 StaticText " ("
+                        uid=1_651 link "ensue-network.ai" url="https://news.ycombinator.com/from?site=ensue-network.ai"
+                          uid=1_652 StaticText "ensue-network.ai"
+                        uid=1_653 StaticText ")"
+                    uid=1_654 row
+                      uid=1_655 cell
+                      uid=1_656 cell "52 points by austinbaggio 5 hours ago | hide | 10 comments"
+                        uid=1_657 generic
+                          uid=1_658 StaticText "52 points"
+                        uid=1_659 StaticText " by "
+                        uid=1_660 link "austinbaggio" url="https://news.ycombinator.com/user?id=austinbaggio"
+                          uid=1_661 StaticText "austinbaggio"
+                        uid=1_662 StaticText " "
+                        uid=1_663 generic description="2026-03-11T23:27:18 1773271638"
+                          uid=1_664 link "5 hours ago" url="https://news.ycombinator.com/item?id=47343935"
+                            uid=1_665 StaticText "5 hours ago"
+                        uid=1_666 StaticText " "
+                        uid=1_667 generic
+                        uid=1_668 StaticText "| "
+                        uid=1_669 link "hide" url="https://news.ycombinator.com/hide?id=47343935&goto=news"
+                          uid=1_670 StaticText "hide"
+                        uid=1_671 StaticText " | "
+                        uid=1_672 link "10 comments" url="https://news.ycombinator.com/item?id=47343935"
+                          uid=1_673 StaticText "10 comments"
+                    uid=1_674 row
+                    uid=1_675 row
+                      uid=1_676 cell "19."
+                        uid=1_677 StaticText "19."
+                      uid=1_678 cell
+                        uid=1_679 generic
+                          uid=1_680 link url="https://news.ycombinator.com/vote?id=47296963&how=up&goto=news"
+                            uid=1_681 generic description="upvote"
+                      uid=1_682 cell "Challenging the Single-Responsibility Principle (kiss-and-solid.com)"
+                        uid=1_683 link "Challenging the Single-Responsibility Principle" url="https://kiss-and-solid.com/blog/keep-it-simple"
+                          uid=1_684 StaticText "Challenging the Single-Responsibility Principle"
+                        uid=1_685 StaticText " ("
+                        uid=1_686 link "kiss-and-solid.com" url="https://news.ycombinator.com/from?site=kiss-and-solid.com"
+                          uid=1_687 StaticText "kiss-and-solid.com"
+                        uid=1_688 StaticText ")"
+                    uid=1_689 row
+                      uid=1_690 cell
+                      uid=1_691 cell "12 points by WolfOliver 3 hours ago | hide | 8 comments"
+                        uid=1_692 generic
+                          uid=1_693 StaticText "12 points"
+                        uid=1_694 StaticText " by "
+                        uid=1_695 link "WolfOliver" url="https://news.ycombinator.com/user?id=WolfOliver"
+                          uid=1_696 StaticText "WolfOliver"
+                        uid=1_697 StaticText " "
+                        uid=1_698 generic description="2026-03-08T12:59:47 1772974787"
+                          uid=1_699 link "3 hours ago" url="https://news.ycombinator.com/item?id=47296963"
+                            uid=1_700 StaticText "3 hours ago"
+                        uid=1_701 StaticText " "
+                        uid=1_702 generic
+                        uid=1_703 StaticText "| "
+                        uid=1_704 link "hide" url="https://news.ycombinator.com/hide?id=47296963&goto=news"
+                          uid=1_705 StaticText "hide"
+                        uid=1_706 StaticText " | "
+                        uid=1_707 link "8 comments" url="https://news.ycombinator.com/item?id=47296963"
+                          uid=1_708 StaticText "8 comments"
+                    uid=1_709 row
+                    uid=1_710 row
+                      uid=1_711 cell "20."
+                        uid=1_712 StaticText "20."
+                      uid=1_713 cell
+                        uid=1_714 generic
+                          uid=1_715 link url="https://news.ycombinator.com/vote?id=47300785&how=up&goto=news"
+                            uid=1_716 generic description="upvote"
+                      uid=1_717 cell "What Happens After You Die? (2016) (lamag.com)"
+                        uid=1_718 link "What Happens After You Die? (2016)" url="https://lamag.com/news/the-end/"
+                          uid=1_719 StaticText "What Happens After You Die? (2016)"
+                        uid=1_720 StaticText " ("
+                        uid=1_721 link "lamag.com" url="https://news.ycombinator.com/from?site=lamag.com"
+                          uid=1_722 StaticText "lamag.com"
+                        uid=1_723 StaticText ")"
+                    uid=1_724 row
+                      uid=1_725 cell
+                      uid=1_726 cell "7 points by NaOH 1 hour ago | hide | 1 comment"
+                        uid=1_727 generic
+                          uid=1_728 StaticText "7 points"
+                        uid=1_729 StaticText " by "
+                        uid=1_730 link "NaOH" url="https://news.ycombinator.com/user?id=NaOH"
+                          uid=1_731 StaticText "NaOH"
+                        uid=1_732 StaticText " "
+                        uid=1_733 generic description="2026-03-08T20:01:19 1773000079"
+                          uid=1_734 link "1 hour ago" url="https://news.ycombinator.com/item?id=47300785"
+                            uid=1_735 StaticText "1 hour ago"
+                        uid=1_736 StaticText " "
+                        uid=1_737 generic
+                        uid=1_738 StaticText "| "
+                        uid=1_739 link "hide" url="https://news.ycombinator.com/hide?id=47300785&goto=news"
+                          uid=1_740 StaticText "hide"
+                        uid=1_741 StaticText " | "
+                        uid=1_742 link "1 comment" url="https://news.ycombinator.com/item?id=47300785"
+                          uid=1_743 StaticText "1 comment"
+                    uid=1_744 row
+                    uid=1_745 row
+                      uid=1_746 cell "21."
+                        uid=1_747 StaticText "21."
+                      uid=1_748 cell
+                        uid=1_749 generic
+                          uid=1_750 link url="https://news.ycombinator.com/vote?id=47337249&how=up&goto=news"
+                            uid=1_751 generic description="upvote"
+                      uid=1_752 cell "Show HN: Klaus – OpenClaw on a VM, batteries included (klausai.com)"
+                        uid=1_753 link "Show HN: Klaus – OpenClaw on a VM, batteries included" url="https://klausai.com/"
+                          uid=1_754 StaticText "Show HN: Klaus – OpenClaw on a VM, batteries included"
+                        uid=1_755 StaticText " ("
+                        uid=1_756 link "klausai.com" url="https://news.ycombinator.com/from?site=klausai.com"
+                          uid=1_757 StaticText "klausai.com"
+                        uid=1_758 StaticText ")"
+                    uid=1_759 row
+                      uid=1_760 cell
+                      uid=1_761 cell "134 points by robthompson2018 12 hours ago | hide | 69 comments"
+                        uid=1_762 generic
+                          uid=1_763 StaticText "134 points"
+                        uid=1_764 StaticText " by "
+                        uid=1_765 link "robthompson2018" url="https://news.ycombinator.com/user?id=robthompson2018"
+                          uid=1_766 StaticText "robthompson2018"
+                        uid=1_767 StaticText " "
+                        uid=1_768 generic description="2026-03-11T15:54:23 1773244463"
+                          uid=1_769 link "12 hours ago" url="https://news.ycombinator.com/item?id=47337249"
+                            uid=1_770 StaticText "12 hours ago"
+                        uid=1_771 StaticText " "
+                        uid=1_772 generic
+                        uid=1_773 StaticText "| "
+                        uid=1_774 link "hide" url="https://news.ycombinator.com/hide?id=47337249&goto=news"
+                          uid=1_775 StaticText "hide"
+                        uid=1_776 StaticText " | "
+                        uid=1_777 link "69 comments" url="https://news.ycombinator.com/item?id=47337249"
+                          uid=1_778 StaticText "69 comments"
+                    uid=1_779 row
+                    uid=1_780 row
+                      uid=1_781 cell "22."
+                        uid=1_782 StaticText "22."
+                      uid=1_783 cell
+                        uid=1_784 image url="https://news.ycombinator.com/s.gif"
+                      uid=1_785 cell "Meticulous (YC S21) is hiring to redefine software dev (ashbyhq.com)"
+                        uid=1_786 link "Meticulous (YC S21) is hiring to redefine software dev" url="https://jobs.ashbyhq.com/meticulous/3197ae3d-bb26-4750-9ed7-b830f640515e"
+                          uid=1_787 StaticText "Meticulous (YC S21) is hiring to redefine software dev"
+                        uid=1_788 StaticText " ("
+                        uid=1_789 link "ashbyhq.com" url="https://news.ycombinator.com/from?site=ashbyhq.com"
+                          uid=1_790 StaticText "ashbyhq.com"
+                        uid=1_791 StaticText ")"
+                    uid=1_792 row
+                      uid=1_793 cell
+                      uid=1_794 cell "7 hours ago | hide"
+                        uid=1_795 generic description="2026-03-11T21:01:42 1773262902"
+                          uid=1_796 link "7 hours ago" url="https://news.ycombinator.com/item?id=47341760"
+                            uid=1_797 StaticText "7 hours ago"
+                        uid=1_798 StaticText " | "
+                        uid=1_799 link "hide" url="https://news.ycombinator.com/hide?id=47341760&goto=news"
+                          uid=1_800 StaticText "hide"
+                    uid=1_801 row
+                    uid=1_802 row
+                      uid=1_803 cell "23."
+                        uid=1_804 StaticText "23."
+                      uid=1_805 cell
+                        uid=1_806 generic
+                          uid=1_807 link url="https://news.ycombinator.com/vote?id=47319520&how=up&goto=news"
+                            uid=1_808 generic description="upvote"
+                      uid=1_809 cell "5,200 holes carved into a Peruvian mountain left by an ancient economy (newatlas.com)"
+                        uid=1_810 link "5,200 holes carved into a Peruvian mountain left by an ancient economy" url="https://newatlas.com/environment/5-200-holes-peruvian-mountain/"
+                          uid=1_811 StaticText "5,200 holes carved into a Peruvian mountain left by an ancient economy"
+                        uid=1_812 StaticText " ("
+                        uid=1_813 link "newatlas.com" url="https://news.ycombinator.com/from?site=newatlas.com"
+                          uid=1_814 StaticText "newatlas.com"
+                        uid=1_815 StaticText ")"
+                    uid=1_816 row
+                      uid=1_817 cell
+                      uid=1_818 cell "110 points by defrost 11 hours ago | hide | 54 comments"
+                        uid=1_819 generic
+                          uid=1_820 StaticText "110 points"
+                        uid=1_821 StaticText " by "
+                        uid=1_822 link "defrost" url="https://news.ycombinator.com/user?id=defrost"
+                          uid=1_823 StaticText "defrost"
+                        uid=1_824 StaticText " "
+                        uid=1_825 generic description="2026-03-10T05:58:56 1773122336"
+                          uid=1_826 link "11 hours ago" url="https://news.ycombinator.com/item?id=47319520"
+                            uid=1_827 StaticText "11 hours ago"
+                        uid=1_828 StaticText " "
+                        uid=1_829 generic
+                        uid=1_830 StaticText "| "
+                        uid=1_831 link "hide" url="https://news.ycombinator.com/hide?id=47319520&goto=news"
+                          uid=1_832 StaticText "hide"
+                        uid=1_833 StaticText " | "
+                        uid=1_834 link "54 comments" url="https://news.ycombinator.com/item?id=47319520"
+                          uid=1_835 StaticText "54 comments"
+                    uid=1_836 row
+                    uid=1_837 row
+                      uid=1_838 cell "24."
+                        uid=1_839 StaticText "24."
+                      uid=1_840 cell
+                        uid=1_841 generic
+                          uid=1_842 link url="https://news.ycombinator.com/vote?id=47341845&how=up&goto=news"
+                            uid=1_843 generic description="upvote"
+                      uid=1_844 cell "Britain is ejecting hereditary nobles from Parliament after 700 years (apnews.com)"
+                        uid=1_845 link "Britain is ejecting hereditary nobles from Parliament after 700 years" url="https://apnews.com/article/uk-house-of-lords-hereditary-peers-expelled-535df8781dd01e8970acda1dca99d3d4"
+                          uid=1_846 StaticText "Britain is ejecting hereditary nobles from Parliament after 700 years"
+                        uid=1_847 StaticText " ("
+                        uid=1_848 link "apnews.com" url="https://news.ycombinator.com/from?site=apnews.com"
+                          uid=1_849 StaticText "apnews.com"
+                        uid=1_850 StaticText ")"
+                    uid=1_851 row
+                      uid=1_852 cell
+                      uid=1_853 cell "212 points by divbzero 7 hours ago | hide | 211 comments"
+                        uid=1_854 generic
+                          uid=1_855 StaticText "212 points"
+                        uid=1_856 StaticText " by "
+                        uid=1_857 link "divbzero" url="https://news.ycombinator.com/user?id=divbzero"
+                          uid=1_858 StaticText "divbzero"
+                        uid=1_859 StaticText " "
+                        uid=1_860 generic description="2026-03-11T21:06:06 1773263166"
+                          uid=1_861 link "7 hours ago" url="https://news.ycombinator.com/item?id=47341845"
+                            uid=1_862 StaticText "7 hours ago"
+                        uid=1_863 StaticText " "
+                        uid=1_864 generic
+                        uid=1_865 StaticText "| "
+                        uid=1_866 link "hide" url="https://news.ycombinator.com/hide?id=47341845&goto=news"
+                          uid=1_867 StaticText "hide"
+                        uid=1_868 StaticText " | "
+                        uid=1_869 link "211 comments" url="https://news.ycombinator.com/item?id=47341845"
+                          uid=1_870 StaticText "211 comments"
+                    uid=1_871 row
+                    uid=1_872 row
+                      uid=1_873 cell "25."
+                        uid=1_874 StaticText "25."
+                      uid=1_875 cell
+                        uid=1_876 generic
+                          uid=1_877 link url="https://news.ycombinator.com/vote?id=47343156&how=up&goto=news"
+                            uid=1_878 generic description="upvote"
+                      uid=1_879 cell "Atlassian to cut roughly 1,600 jobs in pivot to AI (reuters.com)"
+                        uid=1_880 link "Atlassian to cut roughly 1,600 jobs in pivot to AI" url="https://www.reuters.com/technology/atlassian-lay-off-about-1600-people-pivot-ai-2026-03-11/"
+                          uid=1_881 StaticText "Atlassian to cut roughly 1,600 jobs in pivot to AI"
+                        uid=1_882 StaticText " ("
+                        uid=1_883 link "reuters.com" url="https://news.ycombinator.com/from?site=reuters.com"
+                          uid=1_884 StaticText "reuters.com"
+                        uid=1_885 StaticText ")"
+                    uid=1_886 row
+                      uid=1_887 cell
+                      uid=1_888 cell "160 points by jp0d 6 hours ago | hide | 224 comments"
+                        uid=1_889 generic
+                          uid=1_890 StaticText "160 points"
+                        uid=1_891 StaticText " by "
+                        uid=1_892 link "jp0d" url="https://news.ycombinator.com/user?id=jp0d"
+                          uid=1_893 StaticText "jp0d"
+                        uid=1_894 StaticText " "
+                        uid=1_895 generic description="2026-03-11T22:29:42 1773268182"
+                          uid=1_896 link "6 hours ago" url="https://news.ycombinator.com/item?id=47343156"
+                            uid=1_897 StaticText "6 hours ago"
+                        uid=1_898 StaticText " "
+                        uid=1_899 generic
+                        uid=1_900 StaticText "| "
+                        uid=1_901 link "hide" url="https://news.ycombinator.com/hide?id=47343156&goto=news"
+                          uid=1_902 StaticText "hide"
+                        uid=1_903 StaticText " | "
+                        uid=1_904 link "224 comments" url="https://news.ycombinator.com/item?id=47343156"
+                          uid=1_905 StaticText "224 comments"
+                    uid=1_906 row
+                    uid=1_907 row
+                      uid=1_908 cell "26."
+                        uid=1_909 StaticText "26."
+                      uid=1_910 cell
+                        uid=1_911 generic
+                          uid=1_912 link url="https://news.ycombinator.com/vote?id=47328071&how=up&goto=news"
+                            uid=1_913 generic description="upvote"
+                      uid=1_914 cell "Against vibes: When is a generative model useful (williamjbowman.com)"
+                        uid=1_915 link "Against vibes: When is a generative model useful" url="https://www.williamjbowman.com/blog/2026/03/05/against-vibes-when-is-a-generative-model-useful/"
+                          uid=1_916 StaticText "Against vibes: When is a generative model useful"
+                        uid=1_917 StaticText " ("
+                        uid=1_918 link "williamjbowman.com" url="https://news.ycombinator.com/from?site=williamjbowman.com"
+                          uid=1_919 StaticText "williamjbowman.com"
+                        uid=1_920 StaticText ")"
+                    uid=1_921 row
+                      uid=1_922 cell
+                      uid=1_923 cell "64 points by takira 6 hours ago | hide | 10 comments"
+                        uid=1_924 generic
+                          uid=1_925 StaticText "64 points"
+                        uid=1_926 StaticText " by "
+                        uid=1_927 link "takira" url="https://news.ycombinator.com/user?id=takira"
+                          uid=1_928 StaticText "takira"
+                        uid=1_929 StaticText " "
+                        uid=1_930 generic description="2026-03-10T19:59:39 1773172779"
+                          uid=1_931 link "6 hours ago" url="https://news.ycombinator.com/item?id=47328071"
+                            uid=1_932 StaticText "6 hours ago"
+                        uid=1_933 StaticText " "
+                        uid=1_934 generic
+                        uid=1_935 StaticText "| "
+                        uid=1_936 link "hide" url="https://news.ycombinator.com/hide?id=47328071&goto=news"
+                          uid=1_937 StaticText "hide"
+                        uid=1_938 StaticText " | "
+                        uid=1_939 link "10 comments" url="https://news.ycombinator.com/item?id=47328071"
+                          uid=1_940 StaticText "10 comments"
+                    uid=1_941 row
+                    uid=1_942 row
+                      uid=1_943 cell "27."
+                        uid=1_944 StaticText "27."
+                      uid=1_945 cell
+                        uid=1_946 generic
+                          uid=1_947 link url="https://news.ycombinator.com/vote?id=47334982&how=up&goto=news"
+                            uid=1_948 generic description="upvote"
+                      uid=1_949 cell "Swiss e-voting pilot can't count 2,048 ballots after decryption failure (theregister.com)"
+                        uid=1_950 link "Swiss e-voting pilot can't count 2,048 ballots after decryption failure" url="https://www.theregister.com/2026/03/11/swiss_evote_usb_snafu/"
+                          uid=1_951 StaticText "Swiss e-voting pilot can't count 2,048 ballots after decryption failure"
+                        uid=1_952 StaticText " ("
+                        uid=1_953 link "theregister.com" url="https://news.ycombinator.com/from?site=theregister.com"
+                          uid=1_954 StaticText "theregister.com"
+                        uid=1_955 StaticText ")"
+                    uid=1_956 row
+                      uid=1_957 cell
+                      uid=1_958 cell "175 points by jjgreen 15 hours ago | hide | 381 comments"
+                        uid=1_959 generic
+                          uid=1_960 StaticText "175 points"
+                        uid=1_961 StaticText " by "
+                        uid=1_962 link "jjgreen" url="https://news.ycombinator.com/user?id=jjgreen"
+                          uid=1_963 StaticText "jjgreen"
+                        uid=1_964 StaticText " "
+                        uid=1_965 generic description="2026-03-11T12:57:41 1773233861"
+                          uid=1_966 link "15 hours ago" url="https://news.ycombinator.com/item?id=47334982"
+                            uid=1_967 StaticText "15 hours ago"
+                        uid=1_968 StaticText " "
+                        uid=1_969 generic
+                        uid=1_970 StaticText "| "
+                        uid=1_971 link "hide" url="https://news.ycombinator.com/hide?id=47334982&goto=news"
+                          uid=1_972 StaticText "hide"
+                        uid=1_973 StaticText " | "
+                        uid=1_974 link "381 comments" url="https://news.ycombinator.com/item?id=47334982"
+                          uid=1_975 StaticText "381 comments"
+                    uid=1_976 row
+                    uid=1_977 row
+                      uid=1_978 cell "28."
+                        uid=1_979 StaticText "28."
+                      uid=1_980 cell
+                        uid=1_981 generic
+                          uid=1_982 link url="https://news.ycombinator.com/vote?id=47342139&how=up&goto=news"
+                            uid=1_983 generic description="upvote"
+                      uid=1_984 cell "Preliminary data from a longitudinal AI impact study (getdx.com)"
+                        uid=1_985 link "Preliminary data from a longitudinal AI impact study" url="https://newsletter.getdx.com/p/ai-productivity-gains-are-10-not"
+                          uid=1_986 StaticText "Preliminary data from a longitudinal AI impact study"
+                        uid=1_987 StaticText " ("
+                        uid=1_988 link "getdx.com" url="https://news.ycombinator.com/from?site=getdx.com"
+                          uid=1_989 StaticText "getdx.com"
+                        uid=1_990 StaticText ")"
+                    uid=1_991 row
+                      uid=1_992 cell
+                      uid=1_993 cell "40 points by donutshop 7 hours ago | hide | 33 comments"
+                        uid=1_994 generic
+                          uid=1_995 StaticText "40 points"
+                        uid=1_996 StaticText " by "
+                        uid=1_997 link "donutshop" url="https://news.ycombinator.com/user?id=donutshop"
+                          uid=1_998 StaticText "donutshop"
+                        uid=1_999 StaticText " "
+                        uid=1_1000 generic description="2026-03-11T21:23:24 1773264204"
+                          uid=1_1001 link "7 hours ago" url="https://news.ycombinator.com/item?id=47342139"
+                            uid=1_1002 StaticText "7 hours ago"
+                        uid=1_1003 StaticText " "
+                        uid=1_1004 generic
+                        uid=1_1005 StaticText "| "
+                        uid=1_1006 link "hide" url="https://news.ycombinator.com/hide?id=47342139&goto=news"
+                          uid=1_1007 StaticText "hide"
+                        uid=1_1008 StaticText " | "
+                        uid=1_1009 link "33 comments" url="https://news.ycombinator.com/item?id=47342139"
+                          uid=1_1010 StaticText "33 comments"
+                    uid=1_1011 row
+                    uid=1_1012 row
+                      uid=1_1013 cell "29."
+                        uid=1_1014 StaticText "29."
+                      uid=1_1015 cell
+                        uid=1_1016 generic
+                          uid=1_1017 link url="https://news.ycombinator.com/vote?id=47344999&how=up&goto=news"
+                            uid=1_1018 generic description="upvote"
+                      uid=1_1019 cell "How much of HN is AI? (lcamtuf.substack.com)"
+                        uid=1_1020 link "How much of HN is AI?" url="https://lcamtuf.substack.com/p/how-much-of-hn-is-ai"
+                          uid=1_1021 StaticText "How much of HN is AI?"
+                        uid=1_1022 StaticText " ("
+                        uid=1_1023 link "lcamtuf.substack.com" url="https://news.ycombinator.com/from?site=lcamtuf.substack.com"
+                          uid=1_1024 StaticText "lcamtuf.substack.com"
+                        uid=1_1025 StaticText ")"
+                    uid=1_1026 row
+                      uid=1_1027 cell
+                      uid=1_1028 cell "79 points by surprisetalk 3 hours ago | hide | 36 comments"
+                        uid=1_1029 generic
+                          uid=1_1030 StaticText "79 points"
+                        uid=1_1031 StaticText " by "
+                        uid=1_1032 link "surprisetalk" url="https://news.ycombinator.com/user?id=surprisetalk"
+                          uid=1_1033 StaticText "surprisetalk"
+                        uid=1_1034 StaticText " "
+                        uid=1_1035 generic description="2026-03-12T01:15:40 1773278140"
+                          uid=1_1036 link "3 hours ago" url="https://news.ycombinator.com/item?id=47344999"
+                            uid=1_1037 StaticText "3 hours ago"
+                        uid=1_1038 StaticText " "
+                        uid=1_1039 generic
+                        uid=1_1040 StaticText "| "
+                        uid=1_1041 link "hide" url="https://news.ycombinator.com/hide?id=47344999&goto=news"
+                          uid=1_1042 StaticText "hide"
+                        uid=1_1043 StaticText " | "
+                        uid=1_1044 link "36 comments" url="https://news.ycombinator.com/item?id=47344999"
+                          uid=1_1045 StaticText "36 comments"
+                    uid=1_1046 row
+                    uid=1_1047 row
+                      uid=1_1048 cell "30."
+                        uid=1_1049 StaticText "30."
+                      uid=1_1050 cell
+                        uid=1_1051 generic
+                          uid=1_1052 link url="https://news.ycombinator.com/vote?id=47339223&how=up&goto=news"
+                            uid=1_1053 generic description="upvote"
+                      uid=1_1054 cell "Personal Computer by Perplexity (perplexity.ai)"
+                        uid=1_1055 link "Personal Computer by Perplexity" url="https://www.perplexity.ai/personal-computer-waitlist"
+                          uid=1_1056 StaticText "Personal Computer by Perplexity"
+                        uid=1_1057 StaticText " ("
+                        uid=1_1058 link "perplexity.ai" url="https://news.ycombinator.com/from?site=perplexity.ai"
+                          uid=1_1059 StaticText "perplexity.ai"
+                        uid=1_1060 StaticText ")"
+                    uid=1_1061 row
+                      uid=1_1062 cell
+                      uid=1_1063 cell "133 points by josephwegner 10 hours ago | hide | 109 comments"
+                        uid=1_1064 generic
+                          uid=1_1065 StaticText "133 points"
+                        uid=1_1066 StaticText " by "
+                        uid=1_1067 link "josephwegner" url="https://news.ycombinator.com/user?id=josephwegner"
+                          uid=1_1068 StaticText "josephwegner"
+                        uid=1_1069 StaticText " "
+                        uid=1_1070 generic description="2026-03-11T18:22:21 1773253341"
+                          uid=1_1071 link "10 hours ago" url="https://news.ycombinator.com/item?id=47339223"
+                            uid=1_1072 StaticText "10 hours ago"
+                        uid=1_1073 StaticText " "
+                        uid=1_1074 generic
+                        uid=1_1075 StaticText "| "
+                        uid=1_1076 link "hide" url="https://news.ycombinator.com/hide?id=47339223&goto=news"
+                          uid=1_1077 StaticText "hide"
+                        uid=1_1078 StaticText " | "
+                        uid=1_1079 link "109 comments" url="https://news.ycombinator.com/item?id=47339223"
+                          uid=1_1080 StaticText "109 comments"
+                    uid=1_1081 row
+                    uid=1_1082 row
+                    uid=1_1083 row
+                      uid=1_1084 cell
+                      uid=1_1085 cell "More"
+                        uid=1_1086 link "More" url="https://news.ycombinator.com/?p=2"
+                          uid=1_1087 StaticText "More"
+            uid=1_1088 LayoutTableRow
+              uid=1_1089 LayoutTableCell " Guidelines | FAQ | Lists | API | Security | Legal | Apply to YC | Contact Search: "
+                uid=1_1090 image url="https://news.ycombinator.com/s.gif"
+                uid=1_1091 LayoutTable
+                  uid=1_1092 ignored
+                    uid=1_1093 LayoutTableRow
+                      uid=1_1094 LayoutTableCell
+                uid=1_1095 LineBreak "
+"
+                uid=1_1096 ignored
+                  uid=1_1097 link "Guidelines" url="https://news.ycombinator.com/newsguidelines.html"
+                    uid=1_1098 StaticText "Guidelines"
+                  uid=1_1099 StaticText " | "
+                  uid=1_1100 link "FAQ" url="https://news.ycombinator.com/newsfaq.html"
+                    uid=1_1101 StaticText "FAQ"
+                  uid=1_1102 StaticText " | "
+                  uid=1_1103 link "Lists" url="https://news.ycombinator.com/lists"
+                    uid=1_1104 StaticText "Lists"
+                  uid=1_1105 StaticText " | "
+                  uid=1_1106 link "API" url="https://github.com/HackerNews/API"
+                    uid=1_1107 StaticText "API"
+                  uid=1_1108 StaticText " | "
+                  uid=1_1109 link "Security" url="https://news.ycombinator.com/security.html"
+                    uid=1_1110 StaticText "Security"
+                  uid=1_1111 StaticText " | "
+                  uid=1_1112 link "Legal" url="https://www.ycombinator.com/legal/"
+                    uid=1_1113 StaticText "Legal"
+                  uid=1_1114 StaticText " | "
+                  uid=1_1115 link "Apply to YC" url="https://www.ycombinator.com/apply/"
+                    uid=1_1116 StaticText "Apply to YC"
+                  uid=1_1117 StaticText " | "
+                  uid=1_1118 link "Contact" url="mailto:hn@ycombinator.com"
+                    uid=1_1119 StaticText "Contact"
+                  uid=1_1120 LineBreak "
+"
+                  uid=1_1121 LineBreak "
+"
+                  uid=1_1122 generic
+                    uid=1_1123 StaticText "Search: "
+                    uid=1_1124 textbox
+                      uid=1_1125 generic

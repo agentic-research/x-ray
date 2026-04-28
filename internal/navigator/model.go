@@ -70,13 +70,17 @@ func (o *OllamaGenerator) GenerateContent(ctx context.Context, model string, his
 	tools := o.convertTools(config)
 
 	reqBody := map[string]any{
-		"model":           model,
-		"messages":        messages,
-		"response_format": map[string]string{"type": "json_object"},
+		"model":    model,
+		"messages": messages,
 	}
 	o.Ollama.Apply(reqBody)
 	if len(tools) > 0 {
+		// When tools are provided, let the server's chat template (--jinja)
+		// handle output formatting. Don't force json_object response_format
+		// as it conflicts with tool calling templates (e.g., Gemma 4).
 		reqBody["tools"] = tools
+	} else {
+		reqBody["response_format"] = map[string]string{"type": "json_object"}
 	}
 	if config != nil && config.Temperature != nil {
 		reqBody["temperature"] = *config.Temperature

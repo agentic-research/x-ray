@@ -1,0 +1,127 @@
+Interactive Elements:
+ID: mache-0 | Parent: none | Tag: a | Text: "Skip to content" | Path: div.logged-in > div.position-relative > a.p-3
+ID: mache-1 | Parent: mache-102 | Tag: button | Text: "" | Path: div.styles-module__left__Fylw7 > div > button.prc-Button-ButtonBase-9n-Xk
+ID: mache-2 | Parent: mache-102 | Tag: a | Text: "" | Path: div.prc-Stack-Stack-UQ9k6 > div.styles-module__left__Fylw7 > a.prc-Button-ButtonBase-9n-Xk
+ID: mache-3 | Parent: mache-102 | Tag: a | Text: "Dashboard" | Path: ol.prc-Breadcrumbs-BreadcrumbsList-BKjpe > li.prc-Breadcrumbs-ItemWrapper-k0NLn > a.styles-module__contextCrumb__IzGIq
+ID: mache-4 | Parent: mache-102 | Tag: a | Text: "Type / to search" | Path: div.Search-module__searchButtonGroup__aetw5 > div > a.prc-Button-ButtonBase-9n-Xk
+ID: mache-5 | Parent: mache-102 | Tag: button | Text: "" | Path: div.prc-Stack-Stack-UQ9k6 > div.styles-module__center__R3QRv > button.prc-Button-ButtonBase-9n-Xk
+ID: mache-6 | Parent: mache-102 | Tag: input | Text: "type" | Path: qbsearch-input.search-input > div.search-input-container > input.js-site-search-type-field
+ID: mache-7 | Parent: mache-103 | Tag: input | Text: "query-builder-test" | Path: div.QueryBuilder-StyledInputContainer > div.QueryBuilder-InputWrapper > input.FormControl-input
+ID: mache-8 | Parent: mache-103 | Tag: button | Text: "" | Path: div.QueryBuilder-StyledInput > span > button.Button
+ID: mache-9 | Parent: mache-102 | Tag: a | Text: "Search syntax tips" | Path: div.search-suggestions > div.d-flex > a.Link
+ID: mache-10 | Parent: mache-102 | Tag: button | Text: "Give feedback" | Path: div.search-suggestions > div.d-flex > button.Button--link
+ID: mache-11 | Parent: mache-102 | Tag: button | Text: "" | Path: div.Overlay-headerContentWrap > div.Overlay-actionWrap > button.close-button
+ID: mache-12 | Parent: mache-104 | Tag: input | Text: "authenticity_token" | Path: div.Overlay-body > form > input
+ID: mache-14 | Parent: mache-104 | Tag: input | Text: "include_email" | Path: div.Overlay-body > form > input.form-control
+ID: mache-15 | Parent: mache-102 | Tag: button | Text: "Cancel" | Path: dialog.Overlay > div.Overlay-footer > button.btn
+ID: mache-16 | Parent: mache-102 | Tag: button | Text: "Submit feedback" | Path: dialog.Overlay > div.Overlay-footer > button.btn-primary
+ID: mache-17 | Parent: mache-102 | Tag: button | Text: "" | Path: div.Overlay-headerContentWrap > div.Overlay-actionWrap > button.close-button
+ID: mache-18 | Parent: mache-105 | Tag: input | Text: "authenticity_token" | Path: div.create-custom-scope-form > form > input
+ID: mache-19 | Parent: mache-105 | Tag: input | Text: "custom_scope_id" | Path: div.create-custom-scope-form > form > input
+ID: mache-20 | Parent: mache-105 | Tag: input | Text: "github-ruby" | Path: div.form-group > auto-check > input.form-control
+ID: mache-21 | Parent: mache-105 | Tag: input | Text: "input" | Path: div.form-group > auto-check > input
+ID: mache-22 | Parent: mache-105 | Tag: input | Text: "(repo:mona/a OR repo:mona/b) AND lang:python" | Path: form > div.form-group > input.form-control
+ID: mache-23 | Parent: mache-105 | Tag: a | Text: "documentation" | Path: form > p.text-small > a.Link--inTextBlock
+ID: mache-24 | Parent: mache-102 | Tag: button | Text: "Cancel" | Path: dialog.Overlay > div.Overlay-footer > button.btn
+ID: mache-25 | Parent: mache-102 | Tag: button | Text: "Create saved search" | Path: dialog.Overlay > div.Overlay-footer > button.btn-primary
+ID: mache-26 | Parent: mache-102 | Tag: input | Text: "input" | Path: div.styles-module__center__R3QRv > div.d-none > input.js-data-jump-to-suggestions-path-csrf
+ID: mache-27 | Parent: mache-102 | Tag: a | Text: "" | Path: div.prc-ButtonGroup-ButtonGroup-vFUrY > div > a.prc-Button-ButtonBase-9n-Xk
+ID: mache-28 | Parent: mache-102 | Tag: button | Text: "" | Path: div.prc-ButtonGroup-ButtonGroup-vFUrY > div > button.prc-Button-ButtonBase-9n-Xk
+ID: mache-29 | Parent: mache-102 | Tag: button | Text: "" | Path: div.styles-module__right__mlBQg > div.hide-sm > button.prc-Button-ButtonBase-9n-Xk
+ID: mache-30 | Parent: mache-102 | Tag: a | Text: "" | Path: div.styles-module__right__mlBQg > div.hide-sm > a.prc-Button-ButtonBase-9n-Xk
+ID: mache-31 | Parent: mache-102 | Tag: a | Text: "" | Path: div.styles-module__right__mlBQg > div.hide-sm > a.prc-Button-ButtonBase-9n-Xk
+ID: mache-32 | Parent: mache-102 | Tag: a | Text: "" | Path: div.styles-module__right__mlBQg > div.hide-sm > a.prc-Button-ButtonBase-9n-Xk
+ID: mache-33 | Parent: mache-102 | Tag: a | Text: "" | Path: div.prc-Stack-Stack-UQ9k6 > div.styles-module__right__mlBQg > a.prc-Button-ButtonBase-9n-Xk
+ID: mache-34 | Parent: mache-102 | Tag: button | Text: "" | Path: div.styles-module__right__mlBQg > div.GlobalNavUserMenu-module__container__NaVIt > button.prc-Button-ButtonBase-9n-Xk
+ID: mache-35 | Parent: none | Tag: input | Text: "type" | Path: qbsearch-input.search-input > div.search-input-container > input.js-site-search-type-field
+ID: mache-36 | Parent: mache-106 | Tag: input | Text: "query-builder-test" | Path: div.QueryBuilder-StyledInputContainer > div.QueryBuilder-InputWrapper > input.FormControl-input
+ID: mache-37 | Parent: mache-106 | Tag: button | Text: "" | Path: div.QueryBuilder-StyledInput > span > button.Button
+ID: mache-38 | Parent: none | Tag: a | Text: "Search syntax tips" | Path: div.search-suggestions > div.d-flex > a.Link
+ID: mache-39 | Parent: none | Tag: button | Text: "Give feedback" | Path: div.search-suggestions > div.d-flex > button.Button--link
+ID: mache-40 | Parent: none | Tag: button | Text: "" | Path: div.Overlay-headerContentWrap > div.Overlay-actionWrap > button.close-button
+ID: mache-41 | Parent: mache-107 | Tag: input | Text: "authenticity_token" | Path: div.Overlay-body > form > input
+ID: mache-43 | Parent: mache-107 | Tag: input | Text: "include_email" | Path: div.Overlay-body > form > input.form-control
+ID: mache-44 | Parent: none | Tag: button | Text: "Cancel" | Path: dialog.Overlay > div.Overlay-footer > button.btn
+ID: mache-45 | Parent: none | Tag: button | Text: "Submit feedback" | Path: dialog.Overlay > div.Overlay-footer > button.btn-primary
+ID: mache-46 | Parent: none | Tag: button | Text: "" | Path: div.Overlay-headerContentWrap > div.Overlay-actionWrap > button.close-button
+ID: mache-47 | Parent: mache-108 | Tag: input | Text: "authenticity_token" | Path: div.create-custom-scope-form > form > input
+ID: mache-48 | Parent: mache-108 | Tag: input | Text: "custom_scope_id" | Path: div.create-custom-scope-form > form > input
+ID: mache-49 | Parent: mache-108 | Tag: input | Text: "github-ruby" | Path: div.form-group > auto-check > input.form-control
+ID: mache-50 | Parent: mache-108 | Tag: input | Text: "input" | Path: div.form-group > auto-check > input
+ID: mache-51 | Parent: mache-108 | Tag: input | Text: "(repo:mona/a OR repo:mona/b) AND lang:python" | Path: form > div.form-group > input.form-control
+ID: mache-52 | Parent: mache-108 | Tag: a | Text: "documentation" | Path: form > p.text-small > a.Link--inTextBlock
+ID: mache-53 | Parent: none | Tag: button | Text: "Cancel" | Path: dialog.Overlay > div.Overlay-footer > button.btn
+ID: mache-54 | Parent: none | Tag: button | Text: "Create saved search" | Path: dialog.Overlay > div.Overlay-footer > button.btn-primary
+ID: mache-55 | Parent: none | Tag: input | Text: "input" | Path: div.position-relative > div.js-global-bar > input.js-data-jump-to-suggestions-path-csrf
+ID: mache-56 | Parent: none | Tag: a | Text: "Reload" | Path: div.js-stale-session-flash > span.js-stale-session-flash-signed-in > a.Link--inTextBlock
+ID: mache-57 | Parent: none | Tag: a | Text: "Reload" | Path: div.js-stale-session-flash > span.js-stale-session-flash-signed-out > a.Link--inTextBlock
+ID: mache-58 | Parent: none | Tag: a | Text: "Reload" | Path: div.js-stale-session-flash > span.js-stale-session-flash-switched > a.Link--inTextBlock
+ID: mache-59 | Parent: none | Tag: button | Text: "" | Path: div.position-relative > div.js-stale-session-flash > button.Button
+ID: mache-60 | Parent: mache-109 | Tag: button | Text: "jamestexas" | Path: select-panel > dialog-helper > button.Button--invisible
+ID: mache-61 | Parent: mache-109 | Tag: button | Text: "" | Path: div.Overlay-headerContentWrap > div.Overlay-actionWrap > button.close-button
+ID: mache-62 | Parent: mache-109 | Tag: a | Text: "Please reload this page" | Path: div.blankslate > p.color-fg-muted > a.Link--inTextBlock
+ID: mache-63 | Parent: mache-109 | Tag: a | Text: "Manage organizations" | Path: dialog.Overlay > div.Overlay-footer > a.Button--secondary
+ID: mache-64 | Parent: mache-109 | Tag: a | Text: "Create organization" | Path: dialog.Overlay > div.Overlay-footer > a.Button--secondary
+ID: mache-65 | Parent: mache-110 | Tag: button | Text: "jamestexas" | Path: select-panel > dialog-helper > button.Button--invisible
+ID: mache-66 | Parent: mache-110 | Tag: button | Text: "" | Path: div.Overlay-headerContentWrap > div.Overlay-actionWrap > button.close-button
+ID: mache-67 | Parent: mache-110 | Tag: a | Text: "Please reload this page" | Path: div.blankslate > p.color-fg-muted > a.Link--inTextBlock
+ID: mache-68 | Parent: mache-110 | Tag: a | Text: "Manage organizations" | Path: dialog.Overlay > div.Overlay-footer > a.Button--secondary
+ID: mache-69 | Parent: mache-110 | Tag: a | Text: "Create organization" | Path: dialog.Overlay > div.Overlay-footer > a.Button--secondary
+ID: mache-70 | Parent: mache-110 | Tag: a | Text: "Please reload this page" | Path: div.blankslate > p.color-fg-muted > a.Link--inTextBlock
+ID: mache-72 | Parent: mache-112 | Tag: button | Text: "Ask" | Path: div.ChatInput-module__mode__NL1lh > div.d-flex > button.prc-Button-ButtonBase-9n-Xk
+ID: mache-73 | Parent: mache-112 | Tag: button | Text: "All repositories" | Path: div.ChatInput-module__toolbar__GgrRy > div.ChatInput-module__extra__SMO8K > button.prc-Button-ButtonBase-9n-Xk
+ID: mache-74 | Parent: mache-112 | Tag: button | Text: "" | Path: div.ChatInput-module__toolbar__GgrRy > div.ChatInput-module__extra__SMO8K > button.prc-Button-ButtonBase-9n-Xk
+ID: mache-75 | Parent: mache-112 | Tag: button | Text: "" | Path: div.ChatInput-module__actions__sh8XX > div.ChatInput-module__toolbarButtons__Mqs1z > button.prc-Button-ButtonBase-9n-Xk
+ID: mache-76 | Parent: mache-111 | Tag: input | Text: "input" | Path: div.ChatInput-module__container__KgJ7p > div > input
+ID: mache-77 | Parent: mache-113 | Tag: button | Text: "Task" | Path: ul.CommandStarters-module__list__KFS6N > li > button.CommandPill-module__button__AvnQL
+ID: mache-78 | Parent: mache-113 | Tag: button | Text: "Create issue" | Path: ul.CommandStarters-module__list__KFS6N > li > button.CommandPill-module__button__AvnQL
+ID: mache-79 | Parent: mache-113 | Tag: button | Text: "Spark" | Path: ul.CommandStarters-module__list__KFS6N > li > button.CommandPill-module__button__AvnQL
+ID: mache-80 | Parent: mache-113 | Tag: button | Text: "Git" | Path: ul.CommandStarters-module__list__KFS6N > li > button.StarterPill-module__container__Lj4wi
+ID: mache-81 | Parent: mache-113 | Tag: button | Text: "Pull requests" | Path: ul.CommandStarters-module__list__KFS6N > li > button.StarterPill-module__container__Lj4wi
+ID: mache-82 | Parent: mache-111 | Tag: a | Text: "Please reload this page" | Path: div.blankslate > p.color-fg-muted > a.Link--inTextBlock
+ID: mache-83 | Parent: mache-111 | Tag: summary | Text: "Filter0" | Path: details-toggle > details.js-feed-filter-menu > summary.hx_rsm-trigger
+ID: mache-85 | Parent: mache-111 | Tag: button | Text: "" | Path: div.d-flex > div.hide-xl > button.Button
+ID: mache-86 | Parent: mache-111 | Tag: button | Text: "" | Path: div.Overlay-headerContentWrap > div.Overlay-actionWrap > button.close-button
+ID: mache-87 | Parent: mache-111 | Tag: a | Text: "Please reload this page" | Path: div.blankslate > p.color-fg-muted > a.Link--inTextBlock
+ID: mache-88 | Parent: mache-111 | Tag: a | Text: "Reload this page" | Path: div.blankslate > p.color-fg-muted > a.Link--inTextBlock
+ID: mache-89 | Parent: mache-111 | Tag: a | Text: "Please reload this page" | Path: div.blankslate > p.color-fg-muted > a.Link--inTextBlock
+ID: mache-90 | Parent: mache-114 | Tag: a | Text: "" | Path: div.d-flex > div.d-flex > a.footer-octicon
+ID: mache-91 | Parent: mache-116 | Tag: a | Text: "Terms" | Path: ul.list-style-none > li.mx-2 > a.Link--secondary
+ID: mache-92 | Parent: mache-116 | Tag: a | Text: "Privacy" | Path: ul.list-style-none > li.mx-2 > a.Link--secondary
+ID: mache-93 | Parent: mache-116 | Tag: a | Text: "Security" | Path: ul.list-style-none > li.mx-2 > a.Link--secondary
+ID: mache-94 | Parent: mache-116 | Tag: a | Text: "Status" | Path: ul.list-style-none > li.mx-2 > a.Link--secondary
+ID: mache-95 | Parent: mache-116 | Tag: a | Text: "Community" | Path: ul.list-style-none > li.mx-2 > a.Link--secondary
+ID: mache-96 | Parent: mache-116 | Tag: a | Text: "Docs" | Path: ul.list-style-none > li.mx-2 > a.Link--secondary
+ID: mache-97 | Parent: mache-116 | Tag: a | Text: "Contact" | Path: ul.list-style-none > li.mx-2 > a.Link--secondary
+ID: mache-98 | Parent: mache-116 | Tag: button | Text: "Manage cookies" | Path: li.mx-2 > cookie-consent-link > button.Link--secondary
+ID: mache-99 | Parent: mache-116 | Tag: button | Text: "Do not share my personal information" | Path: li.mx-2 > cookie-consent-link > button.Link--secondary
+ID: mache-100 | Parent: none | Tag: a | Text: "Please reload this page" | Path: div.blankslate > p.color-fg-muted > a.Link--inTextBlock
+ID: mache-101 | Parent: none | Tag: button | Text: "" | Path: div.logged-in > div.ajax-error-message > button.flash-close
+ID: mache-102 | Parent: none | Tag: header | Text: "Open menuHomepage (g then d) gGthen dDDashboardType / to sea" | Path: react-partial.loaded > div > header.GlobalNav
+ID: mache-103 | Parent: mache-102 | Tag: form | Text: "Search Clear" | Path: div > div.search-suggestions > form
+ID: mache-104 | Parent: mache-102 | Tag: form | Text: "We read every piece of feedback, and take your input very se" | Path: scrollable-region > div.Overlay-body > form
+ID: mache-105 | Parent: mache-102 | Tag: form | Text: "Name Query To see all available qualifiers, see our document" | Path: div.Overlay-body > div.create-custom-scope-form > form
+ID: mache-106 | Parent: none | Tag: form | Text: "Search Clear" | Path: div > div.search-suggestions > form
+ID: mache-107 | Parent: none | Tag: form | Text: "We read every piece of feedback, and take your input very se" | Path: scrollable-region > div.Overlay-body > form
+ID: mache-108 | Parent: none | Tag: form | Text: "Name Query To see all available qualifiers, see our document" | Path: div.Overlay-body > div.create-custom-scope-form > form
+ID: mache-109 | Parent: none | Tag: aside | Text: "jamestexas Go to organization dashboard Sorry, something wen" | Path: div.application-main > div.color-bg-default > aside.hide-xl
+ID: mache-110 | Parent: none | Tag: aside | Text: "jamestexas Go to organization dashboard Sorry, something wen" | Path: div.color-bg-default > div.d-md-flex > aside.feed-left-sidebar
+ID: mache-111 | Parent: none | Tag: main | Text: "Dashboard Home {"props":{"searchWorkerFilePath":"/assets-cdn" | Path: div.pt-4 > div.overflow-x-hidden > main.flex-auto
+ID: mache-112 | Parent: mache-111 | Tag: form | Text: "AskAll repositoriesAdd files, and spacesSend now(enter) ente" | Path: div.ChatInput-module__container__KgJ7p > div > form.ChatInput-module__chatForm__YoMl2
+ID: mache-113 | Parent: mache-111 | Tag: ul | Text: "TaskCreate issueSparkGitPull requests" | Path: div.CopilotChatInputPartial-module__inputContainer__ULM7D > div.CommandStarters-module__container__TvPD1 > ul.CommandStarters-module__list__KFS6N
+ID: mache-114 | Parent: none | Tag: footer | Text: "Footer © 2026 GitHub, Inc. Footer navigation Terms Privacy S" | Path: div.pt-4 > div.overflow-x-hidden > footer.footer
+ID: mache-115 | Parent: mache-114 | Tag: nav | Text: "Footer navigation Terms Privacy Security Status Community Do" | Path: footer.footer > div.d-flex > nav
+ID: mache-116 | Parent: mache-115 | Tag: ul | Text: "Terms Privacy Security Status Community Docs Contact Manage " | Path: div.d-flex > nav > ul.list-style-none
+ID: mache-117 | Parent: mache-111 | Tag: button | Text: "" | Path: feed-filter.overflow-hidden > div.SelectMenu-header > button.SelectMenu-closeButton
+ID: mache-118 | Parent: mache-111 | Tag: input | Text: "Announcements" | Path: label.d-flex > div.d-flex > input
+ID: mache-119 | Parent: mache-111 | Tag: input | Text: "Releases" | Path: label.d-flex > div.d-flex > input
+ID: mache-120 | Parent: mache-111 | Tag: input | Text: "Sponsors" | Path: label.d-flex > div.d-flex > input
+ID: mache-121 | Parent: mache-111 | Tag: input | Text: "Stars" | Path: label.d-flex > div.d-flex > input
+ID: mache-122 | Parent: mache-111 | Tag: input | Text: "Repositories" | Path: label.d-flex > div.d-flex > input
+ID: mache-123 | Parent: mache-111 | Tag: input | Text: "RepositoryActivity" | Path: label.d-flex > div.d-flex > input
+ID: mache-124 | Parent: mache-111 | Tag: input | Text: "Follows" | Path: label.d-flex > div.d-flex > input
+ID: mache-125 | Parent: mache-111 | Tag: input | Text: "Recommendations" | Path: label.d-flex > div.d-flex > input
+ID: mache-126 | Parent: mache-111 | Tag: input | Text: "StarredRelationships" | Path: label.d-flex > div.d-flex > input.mt-1
+ID: mache-127 | Parent: mache-111 | Tag: input | Text: "input" | Path: feed-filter.overflow-hidden > div.p-2 > input
+ID: mache-128 | Parent: mache-111 | Tag: button | Text: "Reset to default" | Path: feed-filter.overflow-hidden > div.p-2 > button.Button--invisible
+ID: mache-129 | Parent: mache-111 | Tag: button | Text: "Save" | Path: feed-filter.overflow-hidden > div.p-2 > button.Button--primary

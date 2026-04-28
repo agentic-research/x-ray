@@ -1,0 +1,10 @@
+{
+  "sites": {
+    "shopping": "http://localhost:7770",
+    "shopping_admin": "http://localhost:7780",
+    "reddit": "http://localhost:9999",
+    "gitlab": "http://localhost:8023",
+    "wikipedia": "http://localhost:8888",
+    "map": "http://localhost:3000"
+  }
+}

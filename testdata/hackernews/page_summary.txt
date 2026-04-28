@@ -1,231 +1,233 @@
 Interactive Elements:
-ID: mache-0 | Tag: a | Text: ""
-ID: mache-1 | Tag: a | Text: "Hacker News"
-ID: mache-2 | Tag: a | Text: "new"
-ID: mache-3 | Tag: a | Text: "past"
-ID: mache-4 | Tag: a | Text: "comments"
-ID: mache-5 | Tag: a | Text: "ask"
-ID: mache-6 | Tag: a | Text: "show"
-ID: mache-7 | Tag: a | Text: "jobs"
-ID: mache-8 | Tag: a | Text: "submit"
-ID: mache-9 | Tag: a | Text: "login"
-ID: mache-10 | Tag: a | Text: ""
-ID: mache-11 | Tag: a | Text: "I built Timeframe, our family e-paper dashboard"
-ID: mache-12 | Tag: a | Text: "hawksley.org"
-ID: mache-13 | Tag: a | Text: "saeedesmaili"
-ID: mache-14 | Tag: a | Text: "3 hours ago"
-ID: mache-15 | Tag: a | Text: "hide"
-ID: mache-16 | Tag: a | Text: "96 comments"
-ID: mache-17 | Tag: a | Text: ""
-ID: mache-18 | Tag: a | Text: "Global Intelligence Crisis"
-ID: mache-19 | Tag: a | Text: "citriniresearch.com"
-ID: mache-20 | Tag: a | Text: "tin7in"
-ID: mache-21 | Tag: a | Text: "1 hour ago"
-ID: mache-22 | Tag: a | Text: "hide"
-ID: mache-23 | Tag: a | Text: "34 comments"
-ID: mache-24 | Tag: a | Text: ""
-ID: mache-25 | Tag: a | Text: "Loops is a federated, open-source TikTok"
-ID: mache-26 | Tag: a | Text: "joinloops.org"
-ID: mache-27 | Tag: a | Text: "Gooblebrai"
-ID: mache-28 | Tag: a | Text: "3 hours ago"
-ID: mache-29 | Tag: a | Text: "hide"
-ID: mache-30 | Tag: a | Text: "64 comments"
-ID: mache-31 | Tag: a | Text: ""
-ID: mache-32 | Tag: a | Text: "Attention Media ≠ Social Networks"
-ID: mache-33 | Tag: a | Text: "susam.net"
-ID: mache-34 | Tag: a | Text: "susam"
-ID: mache-35 | Tag: a | Text: "10 hours ago"
-ID: mache-36 | Tag: a | Text: "hide"
-ID: mache-37 | Tag: a | Text: "214 comments"
-ID: mache-38 | Tag: a | Text: ""
-ID: mache-39 | Tag: a | Text: "Six Math Essentials"
-ID: mache-40 | Tag: a | Text: "terrytao.wordpress.com"
-ID: mache-41 | Tag: a | Text: "digital55"
-ID: mache-42 | Tag: a | Text: "3 hours ago"
-ID: mache-43 | Tag: a | Text: "hide"
-ID: mache-44 | Tag: a | Text: "3 comments"
-ID: mache-45 | Tag: a | Text: ""
-ID: mache-46 | Tag: a | Text: "Show HN: Local-First Linux MicroVMs for macOS"
-ID: mache-47 | Tag: a | Text: "shuru.run"
-ID: mache-48 | Tag: a | Text: "harshdoesdev"
-ID: mache-49 | Tag: a | Text: "3 hours ago"
-ID: mache-50 | Tag: a | Text: "hide"
-ID: mache-51 | Tag: a | Text: "23 comments"
-ID: mache-52 | Tag: a | Text: ""
-ID: mache-53 | Tag: a | Text: "Linuxulator on FreeBSD Feels Like Magic"
-ID: mache-54 | Tag: a | Text: "hayzam.com"
-ID: mache-55 | Tag: a | Text: "vermaden"
-ID: mache-56 | Tag: a | Text: "3 hours ago"
-ID: mache-57 | Tag: a | Text: "hide"
-ID: mache-58 | Tag: a | Text: "20 comments"
-ID: mache-59 | Tag: a | Text: ""
-ID: mache-60 | Tag: a | Text: "Fix your tools"
-ID: mache-61 | Tag: a | Text: "ochagavia.nl"
-ID: mache-62 | Tag: a | Text: "vinhnx"
-ID: mache-63 | Tag: a | Text: "6 hours ago"
-ID: mache-64 | Tag: a | Text: "hide"
-ID: mache-65 | Tag: a | Text: "59 comments"
-ID: mache-66 | Tag: a | Text: ""
-ID: mache-67 | Tag: a | Text: "Show HN: CIA World Factbook Archive (1990–2025), searchable "
-ID: mache-68 | Tag: a | Text: "cia-factbook-archive.fly.dev"
-ID: mache-69 | Tag: a | Text: "MilkMp"
-ID: mache-70 | Tag: a | Text: "1 hour ago"
-ID: mache-71 | Tag: a | Text: "hide"
-ID: mache-72 | Tag: a | Text: "3 comments"
-ID: mache-73 | Tag: a | Text: ""
-ID: mache-74 | Tag: a | Text: "Hello Worg, the Org-Mode Community"
-ID: mache-75 | Tag: a | Text: "orgmode.org"
-ID: mache-76 | Tag: a | Text: "dargscisyhp"
-ID: mache-77 | Tag: a | Text: "5 hours ago"
-ID: mache-78 | Tag: a | Text: "hide"
-ID: mache-79 | Tag: a | Text: "10 comments"
-ID: mache-80 | Tag: a | Text: ""
-ID: mache-81 | Tag: a | Text: "Music Discovery"
-ID: mache-82 | Tag: a | Text: "secondtrack.co"
-ID: mache-83 | Tag: a | Text: "eriatarka"
-ID: mache-84 | Tag: a | Text: "1 hour ago"
-ID: mache-85 | Tag: a | Text: "hide"
-ID: mache-86 | Tag: a | Text: "18 comments"
-ID: mache-87 | Tag: a | Text: ""
-ID: mache-88 | Tag: a | Text: "Write-Only Code"
-ID: mache-89 | Tag: a | Text: "heavybit.com"
-ID: mache-90 | Tag: a | Text: "PretzelFisch"
-ID: mache-91 | Tag: a | Text: "3 hours ago"
-ID: mache-92 | Tag: a | Text: "hide"
-ID: mache-93 | Tag: a | Text: "35 comments"
-ID: mache-94 | Tag: a | Text: ""
-ID: mache-95 | Tag: a | Text: "What is a database transaction?"
-ID: mache-96 | Tag: a | Text: "planetscale.com"
-ID: mache-97 | Tag: a | Text: "0x54MUR41"
-ID: mache-98 | Tag: a | Text: "10 hours ago"
-ID: mache-99 | Tag: a | Text: "hide"
-ID: mache-100 | Tag: a | Text: "47 comments"
-ID: mache-101 | Tag: a | Text: ""
-ID: mache-102 | Tag: a | Text: "Fresh File Explorer – VS Code extension for navigating recen"
-ID: mache-103 | Tag: a | Text: "github.com/frehu"
-ID: mache-104 | Tag: a | Text: "frehu"
-ID: mache-105 | Tag: a | Text: "4 hours ago"
-ID: mache-106 | Tag: a | Text: "hide"
-ID: mache-107 | Tag: a | Text: "15 comments"
-ID: mache-108 | Tag: a | Text: ""
-ID: mache-109 | Tag: a | Text: "Emulated Windows 3.11 in the Browser"
-ID: mache-110 | Tag: a | Text: "pieter.com"
-ID: mache-111 | Tag: a | Text: "jalev"
-ID: mache-112 | Tag: a | Text: "5 hours ago"
-ID: mache-113 | Tag: a | Text: "hide"
-ID: mache-114 | Tag: a | Text: "16 comments"
-ID: mache-115 | Tag: a | Text: ""
-ID: mache-116 | Tag: a | Text: "Xweather Live – Interactive global vector weather map"
-ID: mache-117 | Tag: a | Text: "xweather.com"
-ID: mache-118 | Tag: a | Text: "unstyledcontent"
-ID: mache-119 | Tag: a | Text: "7 hours ago"
-ID: mache-120 | Tag: a | Text: "hide"
-ID: mache-121 | Tag: a | Text: "27 comments"
-ID: mache-122 | Tag: a | Text: ""
-ID: mache-123 | Tag: a | Text: "Algolia Hacker News Search GitHub Project Archived"
-ID: mache-124 | Tag: a | Text: "github.com/algolia"
-ID: mache-125 | Tag: a | Text: "maguszin"
-ID: mache-126 | Tag: a | Text: "1 hour ago"
-ID: mache-127 | Tag: a | Text: "hide"
-ID: mache-128 | Tag: a | Text: "discuss"
-ID: mache-129 | Tag: a | Text: ""
-ID: mache-130 | Tag: a | Text: "Show HN: 3D Mahjong, Built in CSS"
-ID: mache-131 | Tag: a | Text: "voxjong.com"
-ID: mache-132 | Tag: a | Text: "rofko"
-ID: mache-133 | Tag: a | Text: "6 hours ago"
-ID: mache-134 | Tag: a | Text: "hide"
-ID: mache-135 | Tag: a | Text: "40 comments"
-ID: mache-136 | Tag: a | Text: ""
-ID: mache-137 | Tag: a | Text: "Git's Magic Files"
-ID: mache-138 | Tag: a | Text: "nesbitt.io"
-ID: mache-139 | Tag: a | Text: "chmaynard"
-ID: mache-140 | Tag: a | Text: "8 hours ago"
-ID: mache-141 | Tag: a | Text: "hide"
-ID: mache-142 | Tag: a | Text: "26 comments"
-ID: mache-143 | Tag: a | Text: ""
-ID: mache-144 | Tag: a | Text: "In World Without BlackBerry, Physical Keyboards on Phones Ar"
-ID: mache-145 | Tag: a | Text: "cnet.com"
-ID: mache-146 | Tag: a | Text: "thunderbong"
-ID: mache-147 | Tag: a | Text: "2 hours ago"
-ID: mache-148 | Tag: a | Text: "hide"
-ID: mache-149 | Tag: a | Text: "14 comments"
-ID: mache-150 | Tag: a | Text: ""
-ID: mache-151 | Tag: a | Text: "Procedural Tron"
-ID: mache-152 | Tag: a | Text: "tripgeo.com"
-ID: mache-153 | Tag: a | Text: "tripgeo"
-ID: mache-154 | Tag: a | Text: "2 hours ago"
-ID: mache-155 | Tag: a | Text: "hide"
-ID: mache-156 | Tag: a | Text: "4 comments"
-ID: mache-157 | Tag: a | Text: ""
-ID: mache-158 | Tag: a | Text: "Symplex, an open-source protocol semantic negotiation betwee"
-ID: mache-159 | Tag: a | Text: "github.com/olserra"
-ID: mache-160 | Tag: a | Text: "olserra"
-ID: mache-161 | Tag: a | Text: "3 hours ago"
-ID: mache-162 | Tag: a | Text: "hide"
-ID: mache-163 | Tag: a | Text: "12 comments"
-ID: mache-164 | Tag: a | Text: ""
-ID: mache-165 | Tag: a | Text: "Black-White Array: fast, ordered and based on with O(log N) "
-ID: mache-166 | Tag: a | Text: "github.com/dronnix"
-ID: mache-167 | Tag: a | Text: "platzhirsch"
-ID: mache-168 | Tag: a | Text: "3 hours ago"
-ID: mache-169 | Tag: a | Text: "hide"
-ID: mache-170 | Tag: a | Text: "1 comment"
-ID: mache-171 | Tag: a | Text: ""
-ID: mache-172 | Tag: a | Text: "The Geometry of Tostitos Scoops"
-ID: mache-173 | Tag: a | Text: "zocomputer.io"
-ID: mache-174 | Tag: a | Text: "kousun12"
-ID: mache-175 | Tag: a | Text: "2 hours ago"
-ID: mache-176 | Tag: a | Text: "hide"
-ID: mache-177 | Tag: a | Text: "1 comment"
-ID: mache-178 | Tag: a | Text: ""
-ID: mache-179 | Tag: a | Text: "Back to FreeBSD: Part 1"
-ID: mache-180 | Tag: a | Text: "hypha.pub"
-ID: mache-181 | Tag: a | Text: "enz"
-ID: mache-182 | Tag: a | Text: "15 hours ago"
-ID: mache-183 | Tag: a | Text: "hide"
-ID: mache-184 | Tag: a | Text: "91 comments"
-ID: mache-185 | Tag: a | Text: ""
-ID: mache-186 | Tag: a | Text: "NanoClaw Moved from Apple Containers to Docker"
-ID: mache-187 | Tag: a | Text: "twitter.com/gavriel_cohen"
-ID: mache-188 | Tag: a | Text: "simplesort"
-ID: mache-189 | Tag: a | Text: "3 hours ago"
-ID: mache-190 | Tag: a | Text: "hide"
-ID: mache-191 | Tag: a | Text: "55 comments"
-ID: mache-192 | Tag: a | Text: ""
-ID: mache-193 | Tag: a | Text: "An Unbothered Jimmy Wales Calls Grokipedia a 'Cartoon Imitat"
-ID: mache-194 | Tag: a | Text: "gizmodo.com"
-ID: mache-195 | Tag: a | Text: "rbanffy"
-ID: mache-196 | Tag: a | Text: "3 hours ago"
-ID: mache-197 | Tag: a | Text: "hide"
-ID: mache-198 | Tag: a | Text: "51 comments"
-ID: mache-199 | Tag: a | Text: ""
-ID: mache-200 | Tag: a | Text: "Monkey Patching in VBA"
-ID: mache-201 | Tag: a | Text: "ecp-solutions.github.io"
-ID: mache-202 | Tag: a | Text: "n013"
-ID: mache-203 | Tag: a | Text: "9 hours ago"
-ID: mache-204 | Tag: a | Text: "hide"
-ID: mache-205 | Tag: a | Text: "5 comments"
-ID: mache-206 | Tag: a | Text: ""
-ID: mache-207 | Tag: a | Text: "We hid backdoors in ~40MB binaries and asked AI + Ghidra to "
-ID: mache-208 | Tag: a | Text: "quesma.com"
-ID: mache-209 | Tag: a | Text: "jakozaur"
-ID: mache-210 | Tag: a | Text: "7 hours ago"
-ID: mache-211 | Tag: a | Text: "hide"
-ID: mache-212 | Tag: a | Text: "86 comments"
-ID: mache-213 | Tag: a | Text: ""
-ID: mache-214 | Tag: a | Text: "Show HN: Data Studio – Open-Source Data Notebooks"
-ID: mache-215 | Tag: a | Text: "github.com/dataspren-analytics"
-ID: mache-216 | Tag: a | Text: "alx-net"
-ID: mache-217 | Tag: a | Text: "4 hours ago"
-ID: mache-218 | Tag: a | Text: "hide"
-ID: mache-219 | Tag: a | Text: "2 comments"
-ID: mache-220 | Tag: a | Text: "More"
-ID: mache-221 | Tag: a | Text: "Guidelines"
-ID: mache-222 | Tag: a | Text: "FAQ"
-ID: mache-223 | Tag: a | Text: "Lists"
-ID: mache-224 | Tag: a | Text: "API"
-ID: mache-225 | Tag: a | Text: "Security"
-ID: mache-226 | Tag: a | Text: "Legal"
-ID: mache-227 | Tag: a | Text: "Apply to YC"
-ID: mache-228 | Tag: a | Text: "Contact"
-ID: mache-229 | Tag: input | Text: "q"
+ID: mache-0 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0796,0.0093,0.0104,0.0185 | Path: tbody > tr > td > a
+ID: mache-1 | Parent: none | Tag: a | Role: link | Text: "Hacker News" | Bounds: 0.0926,0.0111,0.0510,0.0148 | Path: td > span.pagetop > b.hnname > a
+ID: mache-2 | Parent: none | Tag: a | Role: link | Text: "new" | Bounds: 0.1462,0.0111,0.0142,0.0148 | Path: tr > td > span.pagetop > a
+ID: mache-3 | Parent: none | Tag: a | Role: link | Text: "past" | Bounds: 0.1685,0.0111,0.0149,0.0148 | Path: tr > td > span.pagetop > a
+ID: mache-4 | Parent: none | Tag: a | Role: link | Text: "comments" | Bounds: 0.1914,0.0111,0.0362,0.0148 | Path: tr > td > span.pagetop > a
+ID: mache-5 | Parent: none | Tag: a | Role: link | Text: "ask" | Bounds: 0.2357,0.0111,0.0119,0.0148 | Path: tr > td > span.pagetop > a
+ID: mache-6 | Parent: none | Tag: a | Role: link | Text: "show" | Bounds: 0.2556,0.0111,0.0179,0.0148 | Path: tr > td > span.pagetop > a
+ID: mache-7 | Parent: none | Tag: a | Role: link | Text: "jobs" | Bounds: 0.2816,0.0111,0.0146,0.0148 | Path: tr > td > span.pagetop > a
+ID: mache-8 | Parent: none | Tag: a | Role: link | Text: "submit" | Bounds: 0.3041,0.0111,0.0237,0.0148 | Path: tr > td > span.pagetop > a
+ID: mache-9 | Parent: none | Tag: a | Role: link | Text: "login" | Bounds: 0.9016,0.0111,0.0167,0.0148 | Path: tr > td > span.pagetop > a
+ID: mache-10 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.0417,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-11 | Parent: none | Tag: a | Role: link | Text: "Microsoft and OpenAI end their exclusive and revenue-sharing deal" | Bounds: 0.0972,0.0403,0.2353,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-12 | Parent: none | Tag: a | Role: link | Text: "bloomberg.com" | Bounds: 0.3370,0.0421,0.0434,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-13 | Parent: none | Tag: a | Role: link | Text: "helsinkiandrew" | Bounds: 0.1323,0.0565,0.0364,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-14 | Parent: none | Tag: a | Role: link | Text: "7 hours ago" | Bounds: 0.1705,0.0565,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-15 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.2052,0.0565,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-16 | Parent: none | Tag: a | Role: link | Text: "503 comments" | Bounds: 0.2212,0.0565,0.0363,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-17 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.0741,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-18 | Parent: none | Tag: a | Role: link | Text: "Easyduino: Open Source PCB Devboards for KiCad" | Bounds: 0.0972,0.0727,0.1764,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-19 | Parent: none | Tag: a | Role: link | Text: "github.com/hanqaqa" | Bounds: 0.2780,0.0745,0.0578,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-20 | Parent: none | Tag: a | Role: link | Text: "Hanqaqa" | Bounds: 0.1323,0.0889,0.0215,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-21 | Parent: none | Tag: a | Role: link | Text: "2 hours ago" | Bounds: 0.1556,0.0889,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-22 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1903,0.0889,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-23 | Parent: none | Tag: a | Role: link | Text: "10 comments" | Bounds: 0.2063,0.0889,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-24 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.1065,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-25 | Parent: none | Tag: a | Role: link | Text: "“Why not just use Lean?”" | Bounds: 0.0972,0.1051,0.0884,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-26 | Parent: none | Tag: a | Role: link | Text: "lawrencecpaulson.github.io" | Bounds: 0.1901,0.1069,0.0758,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-27 | Parent: none | Tag: a | Role: link | Text: "ibobev" | Bounds: 0.1323,0.1213,0.0161,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-28 | Parent: none | Tag: a | Role: link | Text: "6 hours ago" | Bounds: 0.1501,0.1213,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-29 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1849,0.1213,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-30 | Parent: none | Tag: a | Role: link | Text: "125 comments" | Bounds: 0.2008,0.1213,0.0363,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-31 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.1389,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-32 | Parent: none | Tag: a | Role: link | Text: "Networking changes coming in macOS 27" | Bounds: 0.0972,0.1375,0.1456,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-33 | Parent: none | Tag: a | Role: link | Text: "eclecticlight.co" | Bounds: 0.2473,0.1394,0.0410,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-34 | Parent: none | Tag: a | Role: link | Text: "pvtmert" | Bounds: 0.1323,0.1537,0.0194,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-35 | Parent: none | Tag: a | Role: link | Text: "4 hours ago" | Bounds: 0.1535,0.1537,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-36 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1882,0.1537,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-37 | Parent: none | Tag: a | Role: link | Text: "118 comments" | Bounds: 0.2042,0.1537,0.0363,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-38 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.1713,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-39 | Parent: none | Tag: a | Role: link | Text: "China blocks Meta's acquisition of AI startup Manus" | Bounds: 0.0972,0.1699,0.1798,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-40 | Parent: none | Tag: a | Role: link | Text: "cnbc.com" | Bounds: 0.2815,0.1718,0.0264,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-41 | Parent: none | Tag: a | Role: link | Text: "yakkomajuri" | Bounds: 0.1323,0.1861,0.0302,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-42 | Parent: none | Tag: a | Role: link | Text: "2 hours ago" | Bounds: 0.1642,0.1861,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-43 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1989,0.1861,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-44 | Parent: none | Tag: a | Role: link | Text: "61 comments" | Bounds: 0.2149,0.1861,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-45 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.2037,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-46 | Parent: none | Tag: a | Role: link | Text: "Super ZSNES – GPU Powered SNES Emulator" | Bounds: 0.0972,0.2023,0.1582,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-47 | Parent: none | Tag: a | Role: link | Text: "zsnes.com" | Bounds: 0.2598,0.2042,0.0292,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-48 | Parent: none | Tag: a | Role: link | Text: "haunter" | Bounds: 0.1323,0.2185,0.0190,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-49 | Parent: none | Tag: a | Role: link | Text: "2 hours ago" | Bounds: 0.1531,0.2185,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-50 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1878,0.2185,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-51 | Parent: none | Tag: a | Role: link | Text: "25 comments" | Bounds: 0.2038,0.2185,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-52 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.2361,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-53 | Parent: none | Tag: a | Role: link | Text: "The woes of sanitizing SVGs" | Bounds: 0.0972,0.2347,0.0984,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-54 | Parent: none | Tag: a | Role: link | Text: "muffin.ink" | Bounds: 0.2000,0.2366,0.0282,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-55 | Parent: none | Tag: a | Role: link | Text: "varun_ch" | Bounds: 0.1323,0.2509,0.0226,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-56 | Parent: none | Tag: a | Role: link | Text: "4 hours ago" | Bounds: 0.1566,0.2509,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-57 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1914,0.2509,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-58 | Parent: none | Tag: a | Role: link | Text: "51 comments" | Bounds: 0.2074,0.2509,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-59 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.2685,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-60 | Parent: none | Tag: a | Role: link | Text: "The Quiet Resurgence of RF Engineering" | Bounds: 0.0972,0.2671,0.1408,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-61 | Parent: none | Tag: a | Role: link | Text: "atempleton.bearblog.dev" | Bounds: 0.2424,0.2690,0.0700,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-62 | Parent: none | Tag: a | Role: link | Text: "merlinq" | Bounds: 0.1292,0.2833,0.0185,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-63 | Parent: none | Tag: a | Role: link | Text: "3 hours ago" | Bounds: 0.1494,0.2833,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-64 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1841,0.2833,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-65 | Parent: none | Tag: a | Role: link | Text: "14 comments" | Bounds: 0.2001,0.2833,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-66 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.3009,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-67 | Parent: none | Tag: a | Role: link | Text: "4TB of voice samples just stolen from 40k AI contractors at Mercor" | Bounds: 0.0972,0.2995,0.2343,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-68 | Parent: none | Tag: a | Role: link | Text: "oravys.com" | Bounds: 0.3359,0.3014,0.0321,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-69 | Parent: none | Tag: a | Role: link | Text: "Oravys" | Bounds: 0.1323,0.3157,0.0170,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-70 | Parent: none | Tag: a | Role: link | Text: "10 hours ago" | Bounds: 0.1510,0.3157,0.0322,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-71 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1888,0.3157,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-72 | Parent: none | Tag: a | Role: link | Text: "134 comments" | Bounds: 0.2048,0.3157,0.0363,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-73 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.3333,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-74 | Parent: none | Tag: a | Role: link | Text: "Magic by Return of Post: How Mail Order Delivered the Occult" | Bounds: 0.0972,0.3319,0.2151,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-75 | Parent: none | Tag: a | Role: link | Text: "publicdomainreview.org" | Bounds: 0.3167,0.3338,0.0663,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-76 | Parent: none | Tag: a | Role: link | Text: "Vigier" | Bounds: 0.1292,0.3481,0.0140,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-77 | Parent: none | Tag: a | Role: link | Text: "2 hours ago" | Bounds: 0.1449,0.3481,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-78 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1797,0.3481,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-79 | Parent: none | Tag: a | Role: link | Text: "3 comments" | Bounds: 0.1956,0.3481,0.0302,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-80 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.3657,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-81 | Parent: none | Tag: a | Role: link | Text: "Spanish archaeologists discover trove of ancient shipwrecks in Bay of Gibraltar" | Bounds: 0.0972,0.3644,0.2755,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-82 | Parent: none | Tag: a | Role: link | Text: "theguardian.com" | Bounds: 0.3771,0.3662,0.0472,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-83 | Parent: none | Tag: a | Role: link | Text: "1659447091" | Bounds: 0.1292,0.3806,0.0309,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-84 | Parent: none | Tag: a | Role: link | Text: "1 hour ago" | Bounds: 0.1618,0.3806,0.0266,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-85 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1940,0.3806,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-86 | Parent: none | Tag: a | Role: link | Text: "discuss" | Bounds: 0.2100,0.3806,0.0176,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-87 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.3981,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-88 | Parent: none | Tag: a | Role: link | Text: "Men who stare at walls" | Bounds: 0.0972,0.3968,0.0802,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-89 | Parent: none | Tag: a | Role: link | Text: "alexselimov.com" | Bounds: 0.1818,0.3986,0.0459,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-90 | Parent: none | Tag: a | Role: link | Text: "aselimov3" | Bounds: 0.1323,0.4130,0.0246,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-91 | Parent: none | Tag: a | Role: link | Text: "9 hours ago" | Bounds: 0.1586,0.4130,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-92 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1934,0.4130,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-93 | Parent: none | Tag: a | Role: link | Text: "167 comments" | Bounds: 0.2094,0.4130,0.0363,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-94 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.4306,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-95 | Parent: none | Tag: a | Role: link | Text: "GitHub Copilot is moving to usage-based billing" | Bounds: 0.0972,0.4292,0.1659,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-96 | Parent: none | Tag: a | Role: link | Text: "github.blog" | Bounds: 0.2676,0.4310,0.0314,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-97 | Parent: none | Tag: a | Role: link | Text: "frizlab" | Bounds: 0.1323,0.4454,0.0149,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-98 | Parent: none | Tag: a | Role: link | Text: "4 hours ago" | Bounds: 0.1490,0.4454,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-99 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1837,0.4454,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-100 | Parent: none | Tag: a | Role: link | Text: "307 comments" | Bounds: 0.1997,0.4454,0.0363,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-101 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.4630,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-102 | Parent: none | Tag: a | Role: link | Text: "Show HN: OSS Agent I built topped the TerminalBench on Gemini-3-flash-preview" | Bounds: 0.0972,0.4616,0.2875,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-103 | Parent: none | Tag: a | Role: link | Text: "github.com/dirac-run" | Bounds: 0.3892,0.4634,0.0592,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-104 | Parent: none | Tag: a | Role: link | Text: "GodelNumbering" | Bounds: 0.1323,0.4778,0.0408,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-105 | Parent: none | Tag: a | Role: link | Text: "7 hours ago" | Bounds: 0.1749,0.4778,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-106 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.2096,0.4778,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-107 | Parent: none | Tag: a | Role: link | Text: "100 comments" | Bounds: 0.2256,0.4778,0.0363,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-108 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.4954,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-109 | Parent: none | Tag: a | Role: link | Text: "United Wizards of the Coast" | Bounds: 0.0972,0.4940,0.0973,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-110 | Parent: none | Tag: a | Role: link | Text: "unitedwizardsofthecoast.com" | Bounds: 0.1990,0.4958,0.0812,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-111 | Parent: none | Tag: a | Role: link | Text: "d4mi3n" | Bounds: 0.1323,0.5102,0.0183,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-112 | Parent: none | Tag: a | Role: link | Text: "1 hour ago" | Bounds: 0.1524,0.5102,0.0266,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-113 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1846,0.5102,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-114 | Parent: none | Tag: a | Role: link | Text: "106 comments" | Bounds: 0.2005,0.5102,0.0363,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-115 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.5278,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-116 | Parent: none | Tag: a | Role: link | Text: "Pgbackrest is no longer being maintained" | Bounds: 0.0972,0.5264,0.1444,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-117 | Parent: none | Tag: a | Role: link | Text: "github.com/pgbackrest" | Bounds: 0.2461,0.5282,0.0645,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-118 | Parent: none | Tag: a | Role: link | Text: "c0l0" | Bounds: 0.1323,0.5426,0.0101,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-119 | Parent: none | Tag: a | Role: link | Text: "9 hours ago" | Bounds: 0.1441,0.5426,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-120 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1788,0.5426,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-121 | Parent: none | Tag: a | Role: link | Text: "190 comments" | Bounds: 0.1948,0.5426,0.0363,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-122 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.5602,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-123 | Parent: none | Tag: a | Role: link | Text: "Adding a team was the wrong strategic decision" | Bounds: 0.0972,0.5588,0.1675,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-124 | Parent: none | Tag: a | Role: link | Text: "aleixmorgadas.dev" | Bounds: 0.2692,0.5606,0.0527,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-125 | Parent: none | Tag: a | Role: link | Text: "milkglass" | Bounds: 0.1292,0.5750,0.0226,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-126 | Parent: none | Tag: a | Role: link | Text: "4 hours ago" | Bounds: 0.1535,0.5750,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-127 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1883,0.5750,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-128 | Parent: none | Tag: a | Role: link | Text: "15 comments" | Bounds: 0.2043,0.5750,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-129 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.5926,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-130 | Parent: none | Tag: a | Role: link | Text: "Decoupled DiLoCo: Resilient, Distributed AI Training at Scale" | Bounds: 0.0972,0.5912,0.2120,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-131 | Parent: none | Tag: a | Role: link | Text: "deepmind.google" | Bounds: 0.3137,0.5931,0.0479,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-132 | Parent: none | Tag: a | Role: link | Text: "metadat" | Bounds: 0.1292,0.6074,0.0203,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-133 | Parent: none | Tag: a | Role: link | Text: "3 hours ago" | Bounds: 0.1513,0.6074,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-134 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1860,0.6074,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-135 | Parent: none | Tag: a | Role: link | Text: "3 comments" | Bounds: 0.2020,0.6074,0.0302,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-136 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.6250,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-137 | Parent: none | Tag: a | Role: link | Text: "US Supreme Court reviews police use of cell location data" | Bounds: 0.0972,0.6236,0.2020,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-138 | Parent: none | Tag: a | Role: link | Text: "nytimes.com" | Bounds: 0.3036,0.6255,0.0357,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-139 | Parent: none | Tag: a | Role: link | Text: "unethical_ban" | Bounds: 0.1323,0.6398,0.0343,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-140 | Parent: none | Tag: a | Role: link | Text: "4 hours ago" | Bounds: 0.1683,0.6398,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-141 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.2030,0.6398,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-142 | Parent: none | Tag: a | Role: link | Text: "107 comments" | Bounds: 0.2190,0.6398,0.0363,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-143 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.6574,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-144 | Parent: none | Tag: a | Role: link | Text: "Fully Featured Audio DSP Firmware for the Raspberry Pi Pico" | Bounds: 0.0972,0.6560,0.2114,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-145 | Parent: none | Tag: a | Role: link | Text: "github.com/weeblabs" | Bounds: 0.3131,0.6579,0.0596,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-146 | Parent: none | Tag: a | Role: link | Text: "BoingBoomTschak" | Bounds: 0.1323,0.6722,0.0442,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-147 | Parent: none | Tag: a | Role: link | Text: "10 hours ago" | Bounds: 0.1782,0.6722,0.0322,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-148 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.2160,0.6722,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-149 | Parent: none | Tag: a | Role: link | Text: "58 comments" | Bounds: 0.2320,0.6722,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-150 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.6898,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-151 | Parent: none | Tag: a | Role: link | Text: "U.S. companies back Sam Altman's World ID even as much of the world pushes back" | Bounds: 0.0972,0.6884,0.2977,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-152 | Parent: none | Tag: a | Role: link | Text: "restofworld.org" | Bounds: 0.3994,0.6903,0.0426,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-153 | Parent: none | Tag: a | Role: link | Text: "kelnos" | Bounds: 0.1292,0.7046,0.0156,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-154 | Parent: none | Tag: a | Role: link | Text: "50 minutes ago" | Bounds: 0.1465,0.7046,0.0380,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-155 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1902,0.7046,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-156 | Parent: none | Tag: a | Role: link | Text: "9 comments" | Bounds: 0.2062,0.7046,0.0302,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-157 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.7222,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-158 | Parent: none | Tag: a | Role: link | Text: "FDA approves first gene therapy for treatment of genetic hearing loss" | Bounds: 0.0972,0.7208,0.2435,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-159 | Parent: none | Tag: a | Role: link | Text: "fda.gov" | Bounds: 0.3452,0.7227,0.0208,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-160 | Parent: none | Tag: a | Role: link | Text: "JeanKage" | Bounds: 0.1323,0.7370,0.0232,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-161 | Parent: none | Tag: a | Role: link | Text: "10 hours ago" | Bounds: 0.1572,0.7370,0.0322,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-162 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1950,0.7370,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-163 | Parent: none | Tag: a | Role: link | Text: "69 comments" | Bounds: 0.2110,0.7370,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-164 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.7546,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-165 | Parent: none | Tag: a | Role: link | Text: "Our principles" | Bounds: 0.0972,0.7532,0.0484,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-166 | Parent: none | Tag: a | Role: link | Text: "openai.com" | Bounds: 0.1500,0.7551,0.0322,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-167 | Parent: none | Tag: a | Role: link | Text: "tosh" | Bounds: 0.1292,0.7694,0.0105,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-168 | Parent: none | Tag: a | Role: link | Text: "1 hour ago" | Bounds: 0.1414,0.7694,0.0266,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-169 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1736,0.7694,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-170 | Parent: none | Tag: a | Role: link | Text: "45 comments" | Bounds: 0.1896,0.7694,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-171 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.7870,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-172 | Parent: none | Tag: a | Role: link | Text: "L123: A Lotus 1-2-3–style terminal spreadsheet with modern Excel compatibility" | Bounds: 0.0972,0.7856,0.2819,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-173 | Parent: none | Tag: a | Role: link | Text: "github.com/duane1024" | Bounds: 0.3836,0.7875,0.0651,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-174 | Parent: none | Tag: a | Role: link | Text: "duane1024" | Bounds: 0.1261,0.8019,0.0274,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-175 | Parent: none | Tag: a | Role: link | Text: "32 minutes ago" | Bounds: 0.1552,0.8019,0.0380,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-176 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1989,0.8019,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-177 | Parent: none | Tag: a | Role: link | Text: "discuss" | Bounds: 0.2148,0.8019,0.0176,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-178 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.8194,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-179 | Parent: none | Tag: a | Role: link | Text: "Flipdiscs" | Bounds: 0.0972,0.8181,0.0292,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-180 | Parent: none | Tag: a | Role: link | Text: "flipdisc.io" | Bounds: 0.1309,0.8199,0.0261,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-181 | Parent: none | Tag: a | Role: link | Text: "skogstokig" | Bounds: 0.1323,0.8343,0.0260,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-182 | Parent: none | Tag: a | Role: link | Text: "17 hours ago" | Bounds: 0.1600,0.8343,0.0322,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-183 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1978,0.8343,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-184 | Parent: none | Tag: a | Role: link | Text: "85 comments" | Bounds: 0.2138,0.8343,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-185 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.8519,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-186 | Parent: none | Tag: a | Role: link | Text: "Supreme Court to hear arguments in landmark Roundup weedkiller case" | Bounds: 0.0972,0.8505,0.2532,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-187 | Parent: none | Tag: a | Role: link | Text: "nytimes.com" | Bounds: 0.3549,0.8523,0.0357,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-188 | Parent: none | Tag: a | Role: link | Text: "mikhael" | Bounds: 0.1292,0.8667,0.0192,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-189 | Parent: none | Tag: a | Role: link | Text: "4 hours ago" | Bounds: 0.1501,0.8667,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-190 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1848,0.8667,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-191 | Parent: none | Tag: a | Role: link | Text: "73 comments" | Bounds: 0.2008,0.8667,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-192 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.8843,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-193 | Parent: none | Tag: a | Role: link | Text: "Show HN: Utilyze – an open source GPU monitoring tool more accurate than nvtop" | Bounds: 0.0972,0.8829,0.2895,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-194 | Parent: none | Tag: a | Role: link | Text: "systalyze.com" | Bounds: 0.3911,0.8847,0.0393,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-195 | Parent: none | Tag: a | Role: link | Text: "ManyaGhobadi" | Bounds: 0.1292,0.8991,0.0358,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-196 | Parent: none | Tag: a | Role: link | Text: "5 hours ago" | Bounds: 0.1668,0.8991,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-197 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.2015,0.8991,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-198 | Parent: none | Tag: a | Role: link | Text: "11 comments" | Bounds: 0.2175,0.8991,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-199 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.9167,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-200 | Parent: none | Tag: a | Role: link | Text: "Quarkdown – Markdown with Superpowers" | Bounds: 0.0972,0.9153,0.1498,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-201 | Parent: none | Tag: a | Role: link | Text: "quarkdown.com" | Bounds: 0.2515,0.9171,0.0445,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-202 | Parent: none | Tag: a | Role: link | Text: "amai" | Bounds: 0.1323,0.9315,0.0119,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-203 | Parent: none | Tag: a | Role: link | Text: "11 hours ago" | Bounds: 0.1459,0.9315,0.0322,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-204 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1838,0.9315,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-205 | Parent: none | Tag: a | Role: link | Text: "60 comments" | Bounds: 0.1997,0.9315,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-206 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.9491,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-207 | Parent: none | Tag: a | Role: link | Text: "Den stora Älgvandringen – The great moose migration (live)" | Bounds: 0.0972,0.9477,0.2110,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-208 | Parent: none | Tag: a | Role: link | Text: "svtplay.se" | Bounds: 0.3126,0.9495,0.0276,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-209 | Parent: none | Tag: a | Role: link | Text: "donjoe" | Bounds: 0.1292,0.9639,0.0166,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-210 | Parent: none | Tag: a | Role: link | Text: "6 hours ago" | Bounds: 0.1475,0.9639,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-211 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1822,0.9639,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-212 | Parent: none | Tag: a | Role: link | Text: "8 comments" | Bounds: 0.1982,0.9639,0.0302,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-213 | Parent: none | Tag: a | Role: link | Text: "" | Bounds: 0.0899,0.9815,0.0073,0.0093 | Path: tr.athing.submission > td.votelinks > center > a
+ID: mache-214 | Parent: none | Tag: a | Role: link | Text: "GitHub is having issues now" | Bounds: 0.0972,0.9801,0.0981,0.0148 | Path: tr.athing.submission > td.title > span.titleline > a
+ID: mache-215 | Parent: none | Tag: a | Role: link | Text: "githubstatus.com" | Bounds: 0.1997,0.9819,0.0483,0.0120 | Path: td.title > span.titleline > span.sitebit.comhead > a
+ID: mache-216 | Parent: none | Tag: a | Role: link | Text: "SenHeng" | Bounds: 0.1323,0.9963,0.0219,0.0102 | Path: tr > td.subtext > span.subline > a.hnuser
+ID: mache-217 | Parent: none | Tag: a | Role: link | Text: "2 hours ago" | Bounds: 0.1560,0.9963,0.0291,0.0102 | Path: td.subtext > span.subline > span.age > a
+ID: mache-218 | Parent: none | Tag: a | Role: link | Text: "hide" | Bounds: 0.1907,0.9963,0.0103,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-219 | Parent: none | Tag: a | Role: link | Text: "88 comments" | Bounds: 0.2067,0.9963,0.0332,0.0102 | Path: tr > td.subtext > span.subline > a
+ID: mache-220 | Parent: none | Tag: a | Role: link | Text: "More" | Bounds: 0.0972,1.0204,0.0172,0.0148 | Path: tbody > tr > td.title > a.morelink
+ID: mache-221 | Parent: none | Tag: a | Role: link | Text: "Consider applying for YC's Summer 2026 batch! Applications are open till May 4" | Bounds: 0.3601,1.0611,0.2799,0.0148 | Path: tr > td > center > a
+ID: mache-222 | Parent: none | Tag: a | Role: link | Text: "Guidelines" | Bounds: 0.4009,1.0907,0.0289,0.0120 | Path: td > center > span.yclinks > a
+ID: mache-223 | Parent: none | Tag: a | Role: link | Text: "FAQ" | Bounds: 0.4362,1.0907,0.0111,0.0120 | Path: td > center > span.yclinks > a
+ID: mache-224 | Parent: none | Tag: a | Role: link | Text: "Lists" | Bounds: 0.4537,1.0907,0.0126,0.0120 | Path: td > center > span.yclinks > a
+ID: mache-225 | Parent: none | Tag: a | Role: link | Text: "API" | Bounds: 0.4727,1.0907,0.0095,0.0120 | Path: td > center > span.yclinks > a
+ID: mache-226 | Parent: none | Tag: a | Role: link | Text: "Security" | Bounds: 0.4886,1.0907,0.0229,0.0120 | Path: td > center > span.yclinks > a
+ID: mache-227 | Parent: none | Tag: a | Role: link | Text: "Legal" | Bounds: 0.5179,1.0907,0.0147,0.0120 | Path: td > center > span.yclinks > a
+ID: mache-228 | Parent: none | Tag: a | Role: link | Text: "Apply to YC" | Bounds: 0.5390,1.0907,0.0323,0.0120 | Path: td > center > span.yclinks > a
+ID: mache-229 | Parent: none | Tag: a | Role: link | Text: "Contact" | Bounds: 0.5778,1.0907,0.0214,0.0120 | Path: td > center > span.yclinks > a
+ID: mache-230 | Parent: none | Tag: form | Role: form | Text: "Search:" | Bounds: 0.0785,1.1176,0.8429,0.0194 | Path: tr > td > center > form
+ID: mache-231 | Parent: mache-230 | Tag: input | Role: textbox | Text: "text" | Bounds: 0.4760,1.1176,0.0776,0.0194 | Path: td > center > form > input

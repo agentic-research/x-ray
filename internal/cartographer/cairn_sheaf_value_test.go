@@ -136,9 +136,9 @@ func TestSheafFolding_WithVisualFeatures(t *testing.T) {
 	t.Logf("sheaf fold: %d zones", len(sheafZones))
 
 	// Compute stalks to show the visual signal
-	stalks := computeZoneStalks(zones, elements, cells, gridSize)
+	ss := computeZoneStalks(zones, elements, cells, gridSize)
 	allZero := true
-	for _, s := range stalks {
+	for _, s := range ss.Stalks {
 		for _, v := range s {
 			if v != 0 {
 				allZero = false
@@ -147,7 +147,7 @@ func TestSheafFolding_WithVisualFeatures(t *testing.T) {
 		}
 	}
 	t.Logf("stalks all zero: %v", allZero)
-	for i, s := range stalks {
+	for i, s := range ss.Stalks {
 		if len(zones[i].elems) > 0 {
 			t.Logf("  zone %d (%d elems): luma=%.2f horiz=%.2f vert=%.2f diag=%.2f",
 				i, len(zones[i].elems), s[0], s[5], s[6], s[7])
@@ -315,8 +315,8 @@ func TestSheafVsBaseline_MergeDecision(t *testing.T) {
 	}
 
 	// Log stalks for visual inspection
-	stalks := computeZoneStalks(zones, elements, cells, gridSize)
-	for i, s := range stalks {
+	ss2 := computeZoneStalks(zones, elements, cells, gridSize)
+	for i, s := range ss2.Stalks {
 		if i < len(zones) {
 			t.Logf("  zone %d %q: luma=%.2f horiz=%.2f vert=%.2f diag=%.2f",
 				i, names[min(i, len(names)-1)], s[0], s[5], s[6], s[7])

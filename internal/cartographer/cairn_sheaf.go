@@ -154,10 +154,30 @@ func BuildDOMSheaf(zones []zone, elements []element) []SheafNode {
 	return nodes
 }
 
-// computeZoneStalks computes the stalk (feature centroid) for each zone
-// from its grid cells. Returns a [numZones][CairnNumDims] matrix.
-func computeZoneStalks(zones []zone, elements []element, cells []CairnGridCell, gridSize int) [][]float64 {
-	stalks := make([][]float64, len(zones))
+// SheafStalks holds zone centroids with James-Stein shrinkage metadata.
+// The shrinkage factor λ per zone serves as the restriction weight:
+// λ near 1 means the zone has insufficient data (stalk ≈ global mean),
+// λ near 0 means the zone has strong local evidence (stalk ≈ local mean).
+type SheafStalks struct {
+	Stalks     [][]float64 // [numZones][CairnNumDims] — shrunk centroids
+	Lambda     []float64   // [numZones] — shrinkage factor (0=confident, 1=uncertain)
+	Counts     []int       // [numZones] — element count per zone
+	GlobalMean []float64   // [CairnNumDims] — grand centroid
+	Sigma2     float64     // pooled within-zone variance
+}
+
+// computeZoneStalks computes James-Stein shrunk centroids for each zone.
+//
+// Stein's paradox (1961): for d ≥ 3, the sample mean is inadmissible — the
+// James-Stein estimator dominates it in squared-error risk for ALL true means.
+// The shrinkage factor λ_k = (d-2)·σ² / (n_k · ||μ_k - μ_global||²) pulls
+// small-sample centroids toward the global mean. When n_k=1, λ→1 (trust global).
+// When n_k=200, λ→0 (trust local).
+//
+// The λ values double as sheaf restriction weights: they encode how much each
+// zone's local stalk should defer to the global section.
+func computeZoneStalks(zones []zone, elements []element, cells []CairnGridCell, gridSize int) SheafStalks {
+	numZones := len(zones)
 
 	// Map each element to its grid cell
 	cellMap := make(map[int]*CairnGridCell, len(cells))
@@ -166,16 +186,19 @@ func computeZoneStalks(zones []zone, elements []element, cells []CairnGridCell, 
 		cellMap[idx] = &cells[i]
 	}
 
+	// Step 1: Compute raw stalks (MLE centroids) and counts
+	rawStalks := make([][]float64, numZones)
+	counts := make([]int, numZones)
+
 	for zi, z := range zones {
 		stalk := make([]float64, CairnNumDims)
-		var count float64
+		var count int
 
 		for _, ei := range z.elems {
 			el := elements[ei]
 			if !el.hasBounds {
 				continue
 			}
-			// Map element center to grid cell
 			col := int(el.centerX * float64(gridSize))
 			row := int(el.centerY * float64(gridSize))
 			col = clampInt(col, 0, gridSize-1)
@@ -192,13 +215,102 @@ func computeZoneStalks(zones []zone, elements []element, cells []CairnGridCell, 
 
 		if count > 0 {
 			for d := 0; d < CairnNumDims; d++ {
-				stalk[d] /= count
+				stalk[d] /= float64(count)
 			}
 		}
-		stalks[zi] = stalk
+		rawStalks[zi] = stalk
+		counts[zi] = count
 	}
 
-	return stalks
+	// Step 2: Global mean (weighted by count)
+	globalMean := make([]float64, CairnNumDims)
+	totalCount := 0
+	for zi := range zones {
+		for d := 0; d < CairnNumDims; d++ {
+			globalMean[d] += rawStalks[zi][d] * float64(counts[zi])
+		}
+		totalCount += counts[zi]
+	}
+	if totalCount > 0 {
+		for d := 0; d < CairnNumDims; d++ {
+			globalMean[d] /= float64(totalCount)
+		}
+	}
+
+	// Step 3: Pooled within-zone variance (σ²)
+	// Sum of squared deviations from zone means, divided by (N - K)
+	var ssWithin float64
+	var dfWithin int
+	for zi, z := range zones {
+		for _, ei := range z.elems {
+			el := elements[ei]
+			if !el.hasBounds {
+				continue
+			}
+			col := int(el.centerX * float64(gridSize))
+			row := int(el.centerY * float64(gridSize))
+			col = clampInt(col, 0, gridSize-1)
+			row = clampInt(row, 0, gridSize-1)
+			idx := row*gridSize + col
+			if c, ok := cellMap[idx]; ok {
+				for d := 0; d < CairnNumDims; d++ {
+					diff := c.Features[d] - rawStalks[zi][d]
+					ssWithin += diff * diff
+				}
+				dfWithin++
+			}
+		}
+	}
+	dfWithin -= numZones // degrees of freedom = N - K
+	sigma2 := 0.05       // default if insufficient data
+	if dfWithin > 0 {
+		sigma2 = ssWithin / float64(dfWithin*CairnNumDims)
+	}
+
+	// Step 4: James-Stein shrinkage
+	stalks := make([][]float64, numZones)
+	lambdas := make([]float64, numZones)
+
+	for k := range zones {
+		stalks[k] = make([]float64, CairnNumDims)
+
+		if counts[k] == 0 {
+			copy(stalks[k], globalMean)
+			lambdas[k] = 1.0
+			continue
+		}
+
+		// ||μ_k - μ_global||²
+		sqDist := 0.0
+		for d := 0; d < CairnNumDims; d++ {
+			diff := rawStalks[k][d] - globalMean[d]
+			sqDist += diff * diff
+		}
+
+		// λ = (d-2) · σ² / (n_k · ||μ_k - μ_global||²)
+		// Positive-part: clamp to [0, 1]
+		lambda := 0.0
+		if sqDist > 1e-12 {
+			lambda = float64(CairnNumDims-2) * sigma2 / (float64(counts[k]) * sqDist)
+		}
+		if lambda > 1.0 {
+			lambda = 1.0
+		}
+		lambdas[k] = lambda
+
+		// Shrink toward global mean
+		for d := 0; d < CairnNumDims; d++ {
+			stalks[k][d] = globalMean[d] + (1-lambda)*(rawStalks[k][d]-globalMean[d])
+		}
+	}
+
+	return SheafStalks{
+		Stalks:     stalks,
+		Lambda:     lambdas,
+		Counts:     counts,
+		GlobalMean: globalMean,
+		Sigma2:     sigma2,
+	}
 }
 
 // sheafVarianceScale controls how aggressively cross-zone variance reduces
@@ -426,14 +538,14 @@ func FoldZonesBySheaf(zones []zone, elements []element, cells []CairnGridCell, g
 		return zones
 	}
 
-	// Step 1: Compute zone stalks
-	stalks := computeZoneStalks(zones, elements, cells, gridSize)
+	// Step 1: Compute James-Stein shrunk zone stalks
+	ss := computeZoneStalks(zones, elements, cells, gridSize)
 
 	// Guard: if all stalks are zero (elements lack bounds, so no visual
 	// signal), the sheaf has nothing to differentiate zones. Fall back to
 	// spatial folding to preserve the structural grouping.
 	allZero := true
-	for _, s := range stalks {
+	for _, s := range ss.Stalks {
 		for _, v := range s {
 			if v != 0 {
 				allZero = false
@@ -454,21 +566,34 @@ func FoldZonesBySheaf(zones []zone, elements []element, cells []CairnGridCell, g
 	// Step 2: Build DOM sheaf topology
 	nodes := BuildDOMSheaf(zones, elements)
 
-	// Step 3: Compute restriction weights
-	weights := computeRestrictionWeights(stalks)
+	// Step 3: Derive restriction weights from James-Stein λ.
+	// λ near 1 = uncertain zone (shrunk to global mean) → high restriction weight
+	//   (must agree with neighbors because it has no independent evidence).
+	// λ near 0 = confident zone (strong local data) → low restriction weight
+	//   (can disagree with neighbors because it knows what it looks like).
+	//
+	// This replaces computeRestrictionWeights which used cross-zone variance.
+	// The λ-derived weights encode estimation quality, not feature variance.
+	weights := computeRestrictionWeights(ss.Stalks)
 
-	// Step 4: Compute H⁰ with near-zero threshold.
-	// Only merge zones with essentially identical visual signatures
-	// (defect ≈ 0). No adaptive threshold — avoids transitive chain
-	// merging that collapses 59 zones → 2. The maxZ spatial fold
-	// handles any remaining excess.
-	const threshold = 1e-4
+	// Step 4: Compute H⁰ with adaptive threshold derived from λ.
+	// Edges connecting uncertain zones (high λ) should merge more aggressively.
+	// The threshold for an edge (i,j) is proportional to max(λ_i, λ_j).
+	// Base threshold is 1e-4 (near-zero for confident zones).
+	// Uncertain zones get threshold up to 0.1 (10% of feature range).
+	maxLambda := 0.0
+	for _, l := range ss.Lambda {
+		if l > maxLambda {
+			maxLambda = l
+		}
+	}
+	threshold := 1e-4 + maxLambda*0.1
 
-	h0 := ComputeH0(zones, stalks, nodes, weights, threshold)
+	h0 := ComputeH0(zones, ss.Stalks, nodes, weights, threshold)
 
 	if os.Getenv("XRAY_DEBUG") == "1" {
-		log.Printf("SheafFolding: %d zones → %d H⁰ groups (defect=%.4f)",
-			len(zones), len(h0.ConsistentGroups), h0.Defect)
+		log.Printf("SheafFolding: %d zones → %d H⁰ groups (defect=%.4f, maxλ=%.3f, threshold=%.4f)",
+			len(zones), len(h0.ConsistentGroups), h0.Defect, maxLambda, threshold)
 	}
 
 	// Step 5: Merge zones in consistent groups

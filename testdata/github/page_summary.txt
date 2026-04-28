@@ -1,311 +1,599 @@
 Interactive Elements:
-ID: mache-0 | Tag: a | Text: "Skip to content"
-ID: mache-1 | Tag: button | Text: "Toggle navigation"
-ID: mache-2 | Tag: button | Text: ""
-ID: mache-3 | Tag: a | Text: "[SVG Icon]"
-ID: mache-4 | Tag: a | Text: "Sign in"
-ID: mache-5 | Tag: button | Text: "[SVG Icon]"
-ID: mache-6 | Tag: button | Text: "Platform[SVG Icon]"
-ID: mache-7 | Tag: a | Text: "[SVG Icon]GitHub CopilotWrite better code with AI"
-ID: mache-8 | Tag: a | Text: "[SVG Icon]GitHub SparkBuild and deploy intelligent apps"
-ID: mache-9 | Tag: a | Text: "[SVG Icon]GitHub ModelsManage and compare prompts"
-ID: mache-10 | Tag: a | Text: "[SVG Icon]MCP RegistryNewIntegrate external tools"
-ID: mache-11 | Tag: a | Text: "[SVG Icon]ActionsAutomate any workflow"
-ID: mache-12 | Tag: a | Text: "[SVG Icon]CodespacesInstant dev environments"
-ID: mache-13 | Tag: a | Text: "[SVG Icon]IssuesPlan and track work"
-ID: mache-14 | Tag: a | Text: "[SVG Icon]Code ReviewManage code changes"
-ID: mache-15 | Tag: a | Text: "[SVG Icon]GitHub Advanced SecurityFind and fix vulnerabiliti"
-ID: mache-16 | Tag: a | Text: "[SVG Icon]Code securitySecure your code as you build"
-ID: mache-17 | Tag: a | Text: "[SVG Icon]Secret protectionStop leaks before they start"
-ID: mache-18 | Tag: a | Text: "Why GitHub"
-ID: mache-19 | Tag: a | Text: "Documentation[SVG Icon]"
-ID: mache-20 | Tag: a | Text: "Blog[SVG Icon]"
-ID: mache-21 | Tag: a | Text: "Changelog[SVG Icon]"
-ID: mache-22 | Tag: a | Text: "Marketplace"
-ID: mache-23 | Tag: a | Text: "View all features[SVG Icon]"
-ID: mache-24 | Tag: button | Text: "Solutions[SVG Icon]"
-ID: mache-25 | Tag: a | Text: "Enterprises"
-ID: mache-26 | Tag: a | Text: "Small and medium teams"
-ID: mache-27 | Tag: a | Text: "Startups"
-ID: mache-28 | Tag: a | Text: "Nonprofits"
-ID: mache-29 | Tag: a | Text: "App Modernization"
-ID: mache-30 | Tag: a | Text: "DevSecOps"
-ID: mache-31 | Tag: a | Text: "DevOps"
-ID: mache-32 | Tag: a | Text: "CI/CD"
-ID: mache-33 | Tag: a | Text: "View all use cases[SVG Icon]"
-ID: mache-34 | Tag: a | Text: "Healthcare"
-ID: mache-35 | Tag: a | Text: "Financial services"
-ID: mache-36 | Tag: a | Text: "Manufacturing"
-ID: mache-37 | Tag: a | Text: "Government"
-ID: mache-38 | Tag: a | Text: "View all industries[SVG Icon]"
-ID: mache-39 | Tag: a | Text: "View all solutions[SVG Icon]"
-ID: mache-40 | Tag: button | Text: "Resources[SVG Icon]"
-ID: mache-41 | Tag: a | Text: "AI"
-ID: mache-42 | Tag: a | Text: "Software Development"
-ID: mache-43 | Tag: a | Text: "DevOps"
-ID: mache-44 | Tag: a | Text: "Security"
-ID: mache-45 | Tag: a | Text: "View all topics[SVG Icon]"
-ID: mache-46 | Tag: a | Text: "Customer stories"
-ID: mache-47 | Tag: a | Text: "Events & webinars"
-ID: mache-48 | Tag: a | Text: "Ebooks & reports"
-ID: mache-49 | Tag: a | Text: "Business insights"
-ID: mache-50 | Tag: a | Text: "GitHub Skills[SVG Icon]"
-ID: mache-51 | Tag: a | Text: "Documentation[SVG Icon]"
-ID: mache-52 | Tag: a | Text: "Customer support[SVG Icon]"
-ID: mache-53 | Tag: a | Text: "Community forum"
-ID: mache-54 | Tag: a | Text: "Trust center"
-ID: mache-55 | Tag: a | Text: "Partners"
-ID: mache-56 | Tag: button | Text: "Open Source[SVG Icon]"
-ID: mache-57 | Tag: a | Text: "[SVG Icon]GitHub SponsorsFund open source developers"
-ID: mache-58 | Tag: a | Text: "Security Lab[SVG Icon]"
-ID: mache-59 | Tag: a | Text: "Maintainer Community[SVG Icon]"
-ID: mache-60 | Tag: a | Text: "Accelerator"
-ID: mache-61 | Tag: a | Text: "Archive Program[SVG Icon]"
-ID: mache-62 | Tag: a | Text: "Topics"
-ID: mache-63 | Tag: a | Text: "Trending"
-ID: mache-64 | Tag: a | Text: "Collections"
-ID: mache-65 | Tag: button | Text: "Enterprise[SVG Icon]"
-ID: mache-66 | Tag: a | Text: "[SVG Icon]Enterprise platformAI-powered developer platform"
-ID: mache-67 | Tag: a | Text: "[SVG Icon]GitHub Advanced SecurityEnterprise-grade security "
-ID: mache-68 | Tag: a | Text: "[SVG Icon]Copilot for BusinessEnterprise-grade AI features"
-ID: mache-69 | Tag: a | Text: "[SVG Icon]Premium SupportEnterprise-grade 24/7 support"
-ID: mache-70 | Tag: a | Text: "Pricing"
-ID: mache-71 | Tag: button | Text: "[SVG Icon]
-
-        Search or jump to...
-
-"
-ID: mache-72 | Tag: input | Text: "type"
-ID: mache-73 | Tag: input | Text: "query-builder-test"
-ID: mache-74 | Tag: button | Text: "[SVG Icon]"
-ID: mache-75 | Tag: a | Text: "Search syntax tips"
-ID: mache-76 | Tag: button | Text: "[SVG Icon]"
-ID: mache-77 | Tag: input | Text: "authenticity_token"
-ID: mache-78 | Tag: textarea | Text: ""
-ID: mache-79 | Tag: input | Text: "include_email"
-ID: mache-80 | Tag: button | Text: "Cancel"
-ID: mache-81 | Tag: button | Text: "Submit feedback"
-ID: mache-82 | Tag: button | Text: "[SVG Icon]"
-ID: mache-83 | Tag: input | Text: "authenticity_token"
-ID: mache-84 | Tag: input | Text: "custom_scope_id"
-ID: mache-85 | Tag: input | Text: "custom_scope_name"
-ID: mache-86 | Tag: input | Text: "input"
-ID: mache-87 | Tag: input | Text: "custom_scope_query"
-ID: mache-88 | Tag: a | Text: "documentation"
-ID: mache-89 | Tag: button | Text: "Cancel"
-ID: mache-90 | Tag: button | Text: "Create saved search"
-ID: mache-91 | Tag: a | Text: "Sign in"
-ID: mache-92 | Tag: a | Text: "Sign up"
-ID: mache-93 | Tag: button | Text: "[SVG Icon]"
-ID: mache-94 | Tag: button | Text: "Resetting focus"
-ID: mache-95 | Tag: a | Text: "Reload"
-ID: mache-96 | Tag: a | Text: "Reload"
-ID: mache-97 | Tag: a | Text: "Reload"
-ID: mache-98 | Tag: button | Text: "[SVG Icon]"
-ID: mache-99 | Tag: a | Text: "Explore"
-ID: mache-100 | Tag: a | Text: "Topics"
-ID: mache-101 | Tag: a | Text: "Trending"
-ID: mache-102 | Tag: a | Text: "Collections"
-ID: mache-103 | Tag: a | Text: "Events"
-ID: mache-104 | Tag: a | Text: "GitHub Sponsors"
-ID: mache-105 | Tag: a | Text: "Repositories"
-ID: mache-106 | Tag: a | Text: "Developers"
-ID: mache-107 | Tag: summary | Text: "Spoken Language:
-
-
-        Any"
-ID: mache-108 | Tag: button | Text: "[SVG Icon]"
-ID: mache-109 | Tag: input | Text: "input"
-ID: mache-110 | Tag: a | Text: "Abkhazian"
-ID: mache-111 | Tag: a | Text: "Afar"
-ID: mache-112 | Tag: a | Text: "Afrikaans"
-ID: mache-113 | Tag: a | Text: "Akan"
-ID: mache-114 | Tag: a | Text: "Albanian"
-ID: mache-115 | Tag: a | Text: "Amharic"
-ID: mache-116 | Tag: a | Text: "Arabic"
-ID: mache-117 | Tag: a | Text: "Aragonese"
-ID: mache-118 | Tag: a | Text: "Armenian"
-ID: mache-119 | Tag: a | Text: "Assamese"
-ID: mache-120 | Tag: a | Text: "Avaric"
-ID: mache-121 | Tag: a | Text: "Avestan"
-ID: mache-122 | Tag: a | Text: "Aymara"
-ID: mache-123 | Tag: a | Text: "Azerbaijani"
-ID: mache-124 | Tag: a | Text: "Bambara"
-ID: mache-125 | Tag: a | Text: "Bashkir"
-ID: mache-126 | Tag: a | Text: "Basque"
-ID: mache-127 | Tag: a | Text: "Belarusian"
-ID: mache-128 | Tag: a | Text: "Bengali"
-ID: mache-129 | Tag: a | Text: "Bihari languages"
-ID: mache-130 | Tag: a | Text: "Bislama"
-ID: mache-131 | Tag: a | Text: "Bosnian"
-ID: mache-132 | Tag: a | Text: "Breton"
-ID: mache-133 | Tag: a | Text: "Bulgarian"
-ID: mache-134 | Tag: a | Text: "Burmese"
-ID: mache-135 | Tag: a | Text: "Catalan, Valencian"
-ID: mache-136 | Tag: a | Text: "Chamorro"
-ID: mache-137 | Tag: a | Text: "Chechen"
-ID: mache-138 | Tag: a | Text: "Chichewa, Chewa, Nyanja"
-ID: mache-139 | Tag: a | Text: "Chinese"
-ID: mache-140 | Tag: a | Text: "Chuvash"
-ID: mache-141 | Tag: a | Text: "Cornish"
-ID: mache-142 | Tag: a | Text: "Corsican"
-ID: mache-143 | Tag: a | Text: "Cree"
-ID: mache-144 | Tag: a | Text: "Croatian"
-ID: mache-145 | Tag: a | Text: "Czech"
-ID: mache-146 | Tag: a | Text: "Danish"
-ID: mache-147 | Tag: a | Text: "Divehi, Dhivehi, Maldivian"
-ID: mache-148 | Tag: a | Text: "Dutch, Flemish"
-ID: mache-149 | Tag: a | Text: "Dzongkha"
-ID: mache-150 | Tag: a | Text: "English"
-ID: mache-151 | Tag: a | Text: "Esperanto"
-ID: mache-152 | Tag: a | Text: "Estonian"
-ID: mache-153 | Tag: a | Text: "Ewe"
-ID: mache-154 | Tag: a | Text: "Faroese"
-ID: mache-155 | Tag: a | Text: "Fijian"
-ID: mache-156 | Tag: a | Text: "Finnish"
-ID: mache-157 | Tag: a | Text: "French"
-ID: mache-158 | Tag: a | Text: "Fulah"
-ID: mache-159 | Tag: a | Text: "Galician"
-ID: mache-160 | Tag: a | Text: "Georgian"
-ID: mache-161 | Tag: a | Text: "German"
-ID: mache-162 | Tag: a | Text: "Greek, Modern"
-ID: mache-163 | Tag: a | Text: "Guarani"
-ID: mache-164 | Tag: a | Text: "Gujarati"
-ID: mache-165 | Tag: a | Text: "Haitian, Haitian Creole"
-ID: mache-166 | Tag: a | Text: "Hausa"
-ID: mache-167 | Tag: a | Text: "Hebrew"
-ID: mache-168 | Tag: a | Text: "Herero"
-ID: mache-169 | Tag: a | Text: "Hindi"
-ID: mache-170 | Tag: a | Text: "Hiri Motu"
-ID: mache-171 | Tag: a | Text: "Hungarian"
-ID: mache-172 | Tag: a | Text: "Interlingua (International Auxil..."
-ID: mache-173 | Tag: a | Text: "Indonesian"
-ID: mache-174 | Tag: a | Text: "Interlingue, Occidental"
-ID: mache-175 | Tag: a | Text: "Irish"
-ID: mache-176 | Tag: a | Text: "Igbo"
-ID: mache-177 | Tag: a | Text: "Inupiaq"
-ID: mache-178 | Tag: a | Text: "Ido"
-ID: mache-179 | Tag: a | Text: "Icelandic"
-ID: mache-180 | Tag: a | Text: "Italian"
-ID: mache-181 | Tag: a | Text: "Inuktitut"
-ID: mache-182 | Tag: a | Text: "Japanese"
-ID: mache-183 | Tag: a | Text: "Javanese"
-ID: mache-184 | Tag: a | Text: "Kalaallisut, Greenlandic"
-ID: mache-185 | Tag: a | Text: "Kannada"
-ID: mache-186 | Tag: a | Text: "Kanuri"
-ID: mache-187 | Tag: a | Text: "Kashmiri"
-ID: mache-188 | Tag: a | Text: "Kazakh"
-ID: mache-189 | Tag: a | Text: "Central Khmer"
-ID: mache-190 | Tag: a | Text: "Kikuyu, Gikuyu"
-ID: mache-191 | Tag: a | Text: "Kinyarwanda"
-ID: mache-192 | Tag: a | Text: "Kirghiz, Kyrgyz"
-ID: mache-193 | Tag: a | Text: "Komi"
-ID: mache-194 | Tag: a | Text: "Kongo"
-ID: mache-195 | Tag: a | Text: "Korean"
-ID: mache-196 | Tag: a | Text: "Kurdish"
-ID: mache-197 | Tag: a | Text: "Kuanyama, Kwanyama"
-ID: mache-198 | Tag: a | Text: "Latin"
-ID: mache-199 | Tag: a | Text: "Luxembourgish, Letzeburgesch"
-ID: mache-200 | Tag: a | Text: "Ganda"
-ID: mache-201 | Tag: a | Text: "Limburgan, Limburger, Limburgish"
-ID: mache-202 | Tag: a | Text: "Lingala"
-ID: mache-203 | Tag: a | Text: "Lao"
-ID: mache-204 | Tag: a | Text: "Lithuanian"
-ID: mache-205 | Tag: a | Text: "Luba-Katanga"
-ID: mache-206 | Tag: a | Text: "Latvian"
-ID: mache-207 | Tag: a | Text: "Manx"
-ID: mache-208 | Tag: a | Text: "Macedonian"
-ID: mache-209 | Tag: a | Text: "Malagasy"
-ID: mache-210 | Tag: a | Text: "Malay"
-ID: mache-211 | Tag: a | Text: "Malayalam"
-ID: mache-212 | Tag: a | Text: "Maltese"
-ID: mache-213 | Tag: a | Text: "Maori"
-ID: mache-214 | Tag: a | Text: "Marathi"
-ID: mache-215 | Tag: a | Text: "Marshallese"
-ID: mache-216 | Tag: a | Text: "Mongolian"
-ID: mache-217 | Tag: a | Text: "Nauru"
-ID: mache-218 | Tag: a | Text: "Navajo, Navaho"
-ID: mache-219 | Tag: a | Text: "North Ndebele"
-ID: mache-220 | Tag: a | Text: "Nepali"
-ID: mache-221 | Tag: a | Text: "Ndonga"
-ID: mache-222 | Tag: a | Text: "Norwegian Bokmål"
-ID: mache-223 | Tag: a | Text: "Norwegian Nynorsk"
-ID: mache-224 | Tag: a | Text: "Norwegian"
-ID: mache-225 | Tag: a | Text: "Sichuan Yi, Nuosu"
-ID: mache-226 | Tag: a | Text: "South Ndebele"
-ID: mache-227 | Tag: a | Text: "Occitan"
-ID: mache-228 | Tag: a | Text: "Ojibwa"
-ID: mache-229 | Tag: a | Text: "Church Slavic, Old Slavonic, Chu..."
-ID: mache-230 | Tag: a | Text: "Oromo"
-ID: mache-231 | Tag: a | Text: "Oriya"
-ID: mache-232 | Tag: a | Text: "Ossetian, Ossetic"
-ID: mache-233 | Tag: a | Text: "Punjabi, Panjabi"
-ID: mache-234 | Tag: a | Text: "Pali"
-ID: mache-235 | Tag: a | Text: "Persian"
-ID: mache-236 | Tag: a | Text: "Polish"
-ID: mache-237 | Tag: a | Text: "Pashto, Pushto"
-ID: mache-238 | Tag: a | Text: "Portuguese"
-ID: mache-239 | Tag: a | Text: "Quechua"
-ID: mache-240 | Tag: a | Text: "Romansh"
-ID: mache-241 | Tag: a | Text: "Rundi"
-ID: mache-242 | Tag: a | Text: "Romanian, Moldavian, Moldovan"
-ID: mache-243 | Tag: a | Text: "Russian"
-ID: mache-244 | Tag: a | Text: "Sanskrit"
-ID: mache-245 | Tag: a | Text: "Sardinian"
-ID: mache-246 | Tag: a | Text: "Sindhi"
-ID: mache-247 | Tag: a | Text: "Northern Sami"
-ID: mache-248 | Tag: a | Text: "Samoan"
-ID: mache-249 | Tag: a | Text: "Sango"
-ID: mache-250 | Tag: a | Text: "Serbian"
-ID: mache-251 | Tag: a | Text: "Gaelic, Scottish Gaelic"
-ID: mache-252 | Tag: a | Text: "Shona"
-ID: mache-253 | Tag: a | Text: "Sinhala, Sinhalese"
-ID: mache-254 | Tag: a | Text: "Slovak"
-ID: mache-255 | Tag: a | Text: "Slovenian"
-ID: mache-256 | Tag: a | Text: "Somali"
-ID: mache-257 | Tag: a | Text: "Southern Sotho"
-ID: mache-258 | Tag: a | Text: "Spanish, Castilian"
-ID: mache-259 | Tag: a | Text: "Sundanese"
-ID: mache-260 | Tag: a | Text: "Swahili"
-ID: mache-261 | Tag: a | Text: "Swati"
-ID: mache-262 | Tag: a | Text: "Swedish"
-ID: mache-263 | Tag: a | Text: "Tamil"
-ID: mache-264 | Tag: a | Text: "Telugu"
-ID: mache-265 | Tag: a | Text: "Tajik"
-ID: mache-266 | Tag: a | Text: "Thai"
-ID: mache-267 | Tag: a | Text: "Tigrinya"
-ID: mache-268 | Tag: a | Text: "Tibetan"
-ID: mache-269 | Tag: a | Text: "Turkmen"
-ID: mache-270 | Tag: a | Text: "Tagalog"
-ID: mache-271 | Tag: a | Text: "Tswana"
-ID: mache-272 | Tag: a | Text: "Tonga (Tonga Islands)"
-ID: mache-273 | Tag: a | Text: "Turkish"
-ID: mache-274 | Tag: a | Text: "Tsonga"
-ID: mache-275 | Tag: a | Text: "Tatar"
-ID: mache-276 | Tag: a | Text: "Twi"
-ID: mache-277 | Tag: a | Text: "Tahitian"
-ID: mache-278 | Tag: a | Text: "Uighur, Uyghur"
-ID: mache-279 | Tag: a | Text: "Ukrainian"
-ID: mache-280 | Tag: a | Text: "Urdu"
-ID: mache-281 | Tag: a | Text: "Uzbek"
-ID: mache-282 | Tag: a | Text: "Venda"
-ID: mache-283 | Tag: a | Text: "Vietnamese"
-ID: mache-284 | Tag: a | Text: "Volapük"
-ID: mache-285 | Tag: a | Text: "Walloon"
-ID: mache-286 | Tag: a | Text: "Welsh"
-ID: mache-287 | Tag: a | Text: "Wolof"
-ID: mache-288 | Tag: a | Text: "Western Frisian"
-ID: mache-289 | Tag: a | Text: "Xhosa"
-ID: mache-290 | Tag: a | Text: "Yiddish"
-ID: mache-291 | Tag: a | Text: "Yoruba"
-ID: mache-292 | Tag: a | Text: "Zhuang, Chuang"
-ID: mache-293 | Tag: a | Text: "Zulu"
-ID: mache-294 | Tag: summary | Text: "Language:
+ID: mache-0 | Parent: none | Tag: div | Role: div | Text: "             " | Bounds: 0.0000,0.0000,1.0000,10.2299 | Path: div.logged-out.env-production
+ID: mache-1 | Parent: mache-0 | Tag: div | Role: div | Text: "            " | Bounds: 0.0000,0.0000,1.0000,0.0000 | Path: div.logged-out.env-production > div.position-relative.header-wrapper
+ID: mache-2 | Parent: mache-1 | Tag: a | Role: link | Text: "Skip to content" | Bounds: 0.0000,0.0000,0.0005,0.0009 | Path: div.logged-out.env-production > div.position-relative.header-wrapper > a.px-2.tmp-py-4
+ID: mache-3 | Parent: mache-1 | Tag: header | Role: banner | Text: "   " | Bounds: 0.0000,0.0000,1.0000,0.0667 | Path: div.logged-out.env-production > div.position-relative.header-wrapper > header.HeaderMktg.header-logged-out
+ID: mache-4 | Parent: mache-3 | Tag: h2 | Role: heading | Text: "Navigation Menu" | Bounds: 0.0000,0.0148,0.0005,0.0009 | Path: div.logged-out.env-production > div.position-relative.header-wrapper > header.HeaderMktg.header-logged-out > h2.sr-only
+ID: mache-5 | Parent: mache-3 | Tag: button | Role: button | Text: "Toggle navigation" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.logged-out.env-production > div.position-relative.header-wrapper > header.HeaderMktg.header-logged-out > button.HeaderMktg-backdrop.d-lg-none
+ID: mache-6 | Parent: mache-3 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0148,1.0000,0.0370 | Path: div.logged-out.env-production > div.position-relative.header-wrapper > header.HeaderMktg.header-logged-out > div.d-flex.flex-column
+ID: mache-7 | Parent: mache-6 | Tag: div | Role: div | Text: "   " | Bounds: 0.0167,0.0171,0.0250,0.0324 | Path: div.position-relative.header-wrapper > header.HeaderMktg.header-logged-out > div.d-flex.flex-column > div.d-flex.flex-justify-between
+ID: mache-8 | Parent: mache-7 | Tag: div | Role: div | Text: " " | Bounds: 0.0167,0.0333,0.0000,0.0000 | Path: header.HeaderMktg.header-logged-out > div.d-flex.flex-column > div.d-flex.flex-justify-between > div.flex-1
+ID: mache-9 | Parent: mache-8 | Tag: button | Role: button | Text: "Toggle navigation" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.d-flex.flex-column > div.d-flex.flex-justify-between > div.flex-1 > button.js-details-target.js-nav-padding-recalculate
+ID: mache-10 | Parent: mache-7 | Tag: a | Role: link | Text: "Homepage" | Bounds: 0.0167,0.0171,0.0167,0.0324 | Path: header.HeaderMktg.header-logged-out > div.d-flex.flex-column > div.d-flex.flex-justify-between > a.tmp-mr-lg-3.color-fg-inherit
+ID: mache-11 | Parent: mache-7 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: header.HeaderMktg.header-logged-out > div.d-flex.flex-column > div.d-flex.flex-justify-between > div.d-flex.flex-1
+ID: mache-12 | Parent: mache-11 | Tag: a | Role: link | Text: "Sign in" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.d-flex.flex-column > div.d-flex.flex-justify-between > div.d-flex.flex-1 > a.HeaderMenu-link.HeaderMenu-button
+ID: mache-13 | Parent: mache-6 | Tag: div | Role: div | Text: " " | Bounds: 0.0417,0.0148,0.9417,0.0370 | Path: div.position-relative.header-wrapper > header.HeaderMktg.header-logged-out > div.d-flex.flex-column > div.HeaderMenu.js-header-menu
+ID: mache-14 | Parent: mache-13 | Tag: div | Role: div | Text: "    " | Bounds: 0.0417,0.0148,0.9417,0.0370 | Path: header.HeaderMktg.header-logged-out > div.d-flex.flex-column > div.HeaderMenu.js-header-menu > div.HeaderMenu-wrapper.d-flex
+ID: mache-15 | Parent: mache-14 | Tag: div | Role: div | Text: "PlatformAI CODE CREATIONGitHub CopilotWrite better code with AIGitHub SparkBu..." | Bounds: 0.0417,0.0148,0.3309,0.0370 | Path: div.HeaderMenu.js-header-menu > div.HeaderMenu-wrapper.d-flex > react-partial.loaded > div
+ID: mache-16 | Parent: mache-15 | Tag: nav | Role: navigation | Text: "Global" | Bounds: 0.0417,0.0148,0.3309,0.0370 | Path: div.HeaderMenu-wrapper.d-flex > react-partial.loaded > div > nav.MarketingNavigation-module__nav__W0KYY
+ID: mache-17 | Parent: mache-16 | Tag: ul | Role: ul | Text: "PlatformAI CODE CREATIONGitHub CopilotWrite better code with AIGitHub SparkBu..." | Bounds: 0.0417,0.0148,0.3309,0.0370 | Path: react-partial.loaded > div > nav.MarketingNavigation-module__nav__W0KYY > ul.MarketingNavigation-module__list__tFbMb
+ID: mache-18 | Parent: mache-17 | Tag: div | Role: div | Text: "PlatformAI CODE CREATIONGitHub CopilotWrite better code with AIGitHub SparkBu..." | Bounds: 0.0417,0.0148,0.0524,0.0370 | Path: nav.MarketingNavigation-module__nav__W0KYY > ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container
+ID: mache-19 | Parent: mache-18 | Tag: button | Role: button | Text: "Platform" | Bounds: 0.0417,0.0148,0.0524,0.0370 | Path: ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container > button.NavDropdown-module__button__PEHWX.js-details-target
+ID: mache-20 | Parent: mache-18 | Tag: div | Role: div | Text: "AI CODE CREATIONGitHub CopilotWrite better code with AIGitHub SparkBuild and ..." | Bounds: 0.0445,0.0416,0.5575,0.3685 | Path: ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd
+ID: mache-21 | Parent: mache-20 | Tag: ul | Role: ul | Text: "AI CODE CREATIONGitHub CopilotWrite better code with AIGitHub SparkBuild and ..." | Bounds: 0.0445,0.0416,0.5575,0.3172 | Path: li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG
+ID: mache-22 | Parent: mache-21 | Tag: div | Role: div | Text: "AI CODE CREATIONGitHub CopilotWrite better code with AIGitHub SparkBuild and ..." | Bounds: 0.0610,0.0709,0.1294,0.2585 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-23 | Parent: mache-22 | Tag: ul | Role: ul | Text: "GitHub CopilotWrite better code with AIGitHub SparkBuild and deploy intellige..." | Bounds: 0.0610,0.1094,0.1294,0.2200 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-24 | Parent: mache-23 | Tag: a | Role: link | Text: "GitHub CopilotWrite better code with AI" | Bounds: 0.0610,0.1094,0.1294,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-25 | Parent: mache-23 | Tag: a | Role: link | Text: "GitHub SparkBuild and deploy intelligent apps" | Bounds: 0.0610,0.1690,0.1294,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-26 | Parent: mache-23 | Tag: a | Role: link | Text: "GitHub ModelsManage and compare prompts" | Bounds: 0.0610,0.2286,0.1294,0.0412 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-27 | Parent: mache-23 | Tag: a | Role: link | Text: "MCP RegistryNewIntegrate external tools" | Bounds: 0.0610,0.2882,0.1294,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-28 | Parent: mache-21 | Tag: div | Role: div | Text: "DEVELOPER WORKFLOWSActionsAutomate any workflowCodespacesInstant dev environm..." | Bounds: 0.2110,0.0709,0.1056,0.2585 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-29 | Parent: mache-28 | Tag: ul | Role: ul | Text: "ActionsAutomate any workflowCodespacesInstant dev environmentsIssuesPlan and ..." | Bounds: 0.2110,0.1094,0.1056,0.2200 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-30 | Parent: mache-29 | Tag: a | Role: link | Text: "ActionsAutomate any workflow" | Bounds: 0.2110,0.1094,0.1056,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-31 | Parent: mache-29 | Tag: a | Role: link | Text: "CodespacesInstant dev environments" | Bounds: 0.2110,0.1690,0.1056,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-32 | Parent: mache-29 | Tag: a | Role: link | Text: "IssuesPlan and track work" | Bounds: 0.2110,0.2286,0.1056,0.0412 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-33 | Parent: mache-29 | Tag: a | Role: link | Text: "Code ReviewManage code changes" | Bounds: 0.2110,0.2882,0.1056,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-34 | Parent: mache-21 | Tag: div | Role: div | Text: "APPLICATION SECURITYGitHub Advanced SecurityFind and fix vulnerabilitiesCode ..." | Bounds: 0.3372,0.0709,0.1246,0.2585 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-35 | Parent: mache-34 | Tag: ul | Role: ul | Text: "GitHub Advanced SecurityFind and fix vulnerabilitiesCode securitySecure your ..." | Bounds: 0.3372,0.1094,0.1246,0.1604 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-36 | Parent: mache-35 | Tag: a | Role: link | Text: "GitHub Advanced SecurityFind and fix vulnerabilities" | Bounds: 0.3372,0.1094,0.1246,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-37 | Parent: mache-35 | Tag: a | Role: link | Text: "Code securitySecure your code as you build" | Bounds: 0.3372,0.1690,0.1246,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-38 | Parent: mache-35 | Tag: a | Role: link | Text: "Secret protectionStop leaks before they start" | Bounds: 0.3372,0.2286,0.1246,0.0412 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-39 | Parent: mache-21 | Tag: div | Role: div | Text: "EXPLOREWhy GitHubDocumentationBlogChangelogMarketplace" | Bounds: 0.4824,0.0709,0.1031,0.2585 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ.NavGroup-module__hasSeparator__FnMrN
+ID: mache-40 | Parent: mache-39 | Tag: ul | Role: ul | Text: "Why GitHubDocumentationBlogChangelogMarketplace" | Bounds: 0.5035,0.1094,0.0820,0.1833 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ.NavGroup-module__hasSeparator__FnMrN > ul.NavGroup-module__list__UCOFy
+ID: mache-41 | Parent: mache-40 | Tag: a | Role: link | Text: "Why GitHub" | Bounds: 0.5035,0.1094,0.0820,0.0220 | Path: div.NavGroup-module__group__W8SqJ.NavGroup-module__hasSeparator__FnMrN > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-42 | Parent: mache-40 | Tag: a | Role: link | Text: "Documentation" | Bounds: 0.5035,0.1498,0.0820,0.0220 | Path: div.NavGroup-module__group__W8SqJ.NavGroup-module__hasSeparator__FnMrN > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-43 | Parent: mache-40 | Tag: a | Role: link | Text: "Blog" | Bounds: 0.5035,0.1901,0.0820,0.0220 | Path: div.NavGroup-module__group__W8SqJ.NavGroup-module__hasSeparator__FnMrN > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-44 | Parent: mache-40 | Tag: a | Role: link | Text: "Changelog" | Bounds: 0.5035,0.2304,0.0820,0.0220 | Path: div.NavGroup-module__group__W8SqJ.NavGroup-module__hasSeparator__FnMrN > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-45 | Parent: mache-40 | Tag: a | Role: link | Text: "Marketplace" | Bounds: 0.5035,0.2708,0.0820,0.0220 | Path: div.NavGroup-module__group__W8SqJ.NavGroup-module__hasSeparator__FnMrN > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-46 | Parent: mache-20 | Tag: div | Role: div | Text: "View all features" | Bounds: 0.0445,0.3588,0.5575,0.0513 | Path: li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd > div
+ID: mache-47 | Parent: mache-46 | Tag: a | Role: link | Text: "View all features" | Bounds: 0.0610,0.3734,0.5245,0.0220 | Path: div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd > div > a.NavLink-module__link__EG3d4
+ID: mache-48 | Parent: mache-17 | Tag: div | Role: div | Text: "SolutionsBY COMPANY SIZEEnterprisesSmall and medium teamsStartupsNonprofitsBY..." | Bounds: 0.0940,0.0148,0.0552,0.0370 | Path: nav.MarketingNavigation-module__nav__W0KYY > ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container
+ID: mache-49 | Parent: mache-48 | Tag: button | Role: button | Text: "Solutions" | Bounds: 0.0940,0.0148,0.0552,0.0370 | Path: ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container > button.NavDropdown-module__button__PEHWX.js-details-target
+ID: mache-50 | Parent: mache-48 | Tag: div | Role: div | Text: "BY COMPANY SIZEEnterprisesSmall and medium teamsStartupsNonprofitsBY USE CASE..." | Bounds: 0.0960,0.0416,0.3836,0.3318 | Path: ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd
+ID: mache-51 | Parent: mache-50 | Tag: ul | Role: ul | Text: "BY COMPANY SIZEEnterprisesSmall and medium teamsStartupsNonprofitsBY USE CASE..." | Bounds: 0.0960,0.0416,0.3836,0.2805 | Path: li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG
+ID: mache-52 | Parent: mache-51 | Tag: div | Role: div | Text: "BY COMPANY SIZEEnterprisesSmall and medium teamsStartupsNonprofits" | Bounds: 0.1125,0.0709,0.1031,0.2218 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-53 | Parent: mache-52 | Tag: ul | Role: ul | Text: "EnterprisesSmall and medium teamsStartupsNonprofits" | Bounds: 0.1125,0.1094,0.1031,0.1430 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-54 | Parent: mache-53 | Tag: a | Role: link | Text: "Enterprises" | Bounds: 0.1125,0.1094,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-55 | Parent: mache-53 | Tag: a | Role: link | Text: "Small and medium teams" | Bounds: 0.1125,0.1498,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-56 | Parent: mache-53 | Tag: a | Role: link | Text: "Startups" | Bounds: 0.1125,0.1901,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-57 | Parent: mache-53 | Tag: a | Role: link | Text: "Nonprofits" | Bounds: 0.1125,0.2304,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-58 | Parent: mache-51 | Tag: div | Role: div | Text: "BY USE CASEApp ModernizationDevSecOpsDevOpsCI/CDView all use cases" | Bounds: 0.2362,0.0709,0.1031,0.2218 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-59 | Parent: mache-58 | Tag: ul | Role: ul | Text: "App ModernizationDevSecOpsDevOpsCI/CDView all use cases" | Bounds: 0.2362,0.1094,0.1031,0.1833 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-60 | Parent: mache-59 | Tag: a | Role: link | Text: "App Modernization" | Bounds: 0.2362,0.1094,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-61 | Parent: mache-59 | Tag: a | Role: link | Text: "DevSecOps" | Bounds: 0.2362,0.1498,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-62 | Parent: mache-59 | Tag: a | Role: link | Text: "DevOps" | Bounds: 0.2362,0.1901,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-63 | Parent: mache-59 | Tag: a | Role: link | Text: "CI/CD" | Bounds: 0.2362,0.2304,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-64 | Parent: mache-59 | Tag: a | Role: link | Text: "View all use cases" | Bounds: 0.2362,0.2708,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-65 | Parent: mache-51 | Tag: div | Role: div | Text: "BY INDUSTRYHealthcareFinancial servicesManufacturingGovernmentView all indust..." | Bounds: 0.3600,0.0709,0.1031,0.2218 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-66 | Parent: mache-65 | Tag: ul | Role: ul | Text: "HealthcareFinancial servicesManufacturingGovernmentView all industries" | Bounds: 0.3600,0.1094,0.1031,0.1833 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-67 | Parent: mache-66 | Tag: a | Role: link | Text: "Healthcare" | Bounds: 0.3600,0.1094,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-68 | Parent: mache-66 | Tag: a | Role: link | Text: "Financial services" | Bounds: 0.3600,0.1498,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-69 | Parent: mache-66 | Tag: a | Role: link | Text: "Manufacturing" | Bounds: 0.3600,0.1901,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-70 | Parent: mache-66 | Tag: a | Role: link | Text: "Government" | Bounds: 0.3600,0.2304,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-71 | Parent: mache-66 | Tag: a | Role: link | Text: "View all industries" | Bounds: 0.3600,0.2708,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-72 | Parent: mache-50 | Tag: div | Role: div | Text: "View all solutions" | Bounds: 0.0960,0.3221,0.3836,0.0513 | Path: li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd > div
+ID: mache-73 | Parent: mache-72 | Tag: a | Role: link | Text: "View all solutions" | Bounds: 0.1125,0.3368,0.3506,0.0220 | Path: div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd > div > a.NavLink-module__link__EG3d4
+ID: mache-74 | Parent: mache-17 | Tag: div | Role: div | Text: "ResourcesEXPLORE BY TOPICAISoftware DevelopmentDevOpsSecurityView all topicsE..." | Bounds: 0.1493,0.0148,0.0599,0.0370 | Path: nav.MarketingNavigation-module__nav__W0KYY > ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container
+ID: mache-75 | Parent: mache-74 | Tag: button | Role: button | Text: "Resources" | Bounds: 0.1493,0.0148,0.0599,0.0370 | Path: ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container > button.NavDropdown-module__button__PEHWX.js-details-target
+ID: mache-76 | Parent: mache-74 | Tag: div | Role: div | Text: "EXPLORE BY TOPICAISoftware DevelopmentDevOpsSecurityView all topicsEXPLORE BY..." | Bounds: 0.1512,0.0416,0.3836,0.3318 | Path: ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd
+ID: mache-77 | Parent: mache-76 | Tag: ul | Role: ul | Text: "EXPLORE BY TOPICAISoftware DevelopmentDevOpsSecurityView all topicsEXPLORE BY..." | Bounds: 0.1512,0.0416,0.3836,0.2805 | Path: li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG
+ID: mache-78 | Parent: mache-77 | Tag: div | Role: div | Text: "EXPLORE BY TOPICAISoftware DevelopmentDevOpsSecurityView all topics" | Bounds: 0.1677,0.0709,0.1031,0.2218 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-79 | Parent: mache-78 | Tag: ul | Role: ul | Text: "AISoftware DevelopmentDevOpsSecurityView all topics" | Bounds: 0.1677,0.1094,0.1031,0.1833 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-80 | Parent: mache-79 | Tag: a | Role: link | Text: "AI" | Bounds: 0.1677,0.1094,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-81 | Parent: mache-79 | Tag: a | Role: link | Text: "Software Development" | Bounds: 0.1677,0.1498,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-82 | Parent: mache-79 | Tag: a | Role: link | Text: "DevOps" | Bounds: 0.1677,0.1901,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-83 | Parent: mache-79 | Tag: a | Role: link | Text: "Security" | Bounds: 0.1677,0.2304,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-84 | Parent: mache-79 | Tag: a | Role: link | Text: "View all topics" | Bounds: 0.1677,0.2708,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-85 | Parent: mache-77 | Tag: div | Role: div | Text: "EXPLORE BY TYPECustomer storiesEvents & webinarsEbooks & reportsBusiness insi..." | Bounds: 0.2914,0.0709,0.1031,0.2218 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-86 | Parent: mache-85 | Tag: ul | Role: ul | Text: "Customer storiesEvents & webinarsEbooks & reportsBusiness insightsGitHub Skills" | Bounds: 0.2914,0.1094,0.1031,0.1833 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-87 | Parent: mache-86 | Tag: a | Role: link | Text: "Customer stories" | Bounds: 0.2914,0.1094,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-88 | Parent: mache-86 | Tag: a | Role: link | Text: "Events & webinars" | Bounds: 0.2914,0.1498,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-89 | Parent: mache-86 | Tag: a | Role: link | Text: "Ebooks & reports" | Bounds: 0.2914,0.1901,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-90 | Parent: mache-86 | Tag: a | Role: link | Text: "Business insights" | Bounds: 0.2914,0.2304,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-91 | Parent: mache-86 | Tag: a | Role: link | Text: "GitHub Skills" | Bounds: 0.2914,0.2708,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-92 | Parent: mache-77 | Tag: div | Role: div | Text: "SUPPORT & SERVICESDocumentationCustomer supportCommunity forumTrust centerPar..." | Bounds: 0.4152,0.0709,0.1031,0.2218 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-93 | Parent: mache-92 | Tag: ul | Role: ul | Text: "DocumentationCustomer supportCommunity forumTrust centerPartners" | Bounds: 0.4152,0.1094,0.1031,0.1833 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-94 | Parent: mache-93 | Tag: a | Role: link | Text: "Documentation" | Bounds: 0.4152,0.1094,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-95 | Parent: mache-93 | Tag: a | Role: link | Text: "Customer support" | Bounds: 0.4152,0.1498,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-96 | Parent: mache-93 | Tag: a | Role: link | Text: "Community forum" | Bounds: 0.4152,0.1901,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-97 | Parent: mache-93 | Tag: a | Role: link | Text: "Trust center" | Bounds: 0.4152,0.2304,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-98 | Parent: mache-93 | Tag: a | Role: link | Text: "Partners" | Bounds: 0.4152,0.2708,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-99 | Parent: mache-76 | Tag: div | Role: div | Text: "View all resources" | Bounds: 0.1512,0.3221,0.3836,0.0513 | Path: li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd > div
+ID: mache-100 | Parent: mache-99 | Tag: a | Role: link | Text: "View all resources" | Bounds: 0.1677,0.3368,0.3506,0.0220 | Path: div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd > div > a.NavLink-module__link__EG3d4
+ID: mache-101 | Parent: mache-17 | Tag: div | Role: div | Text: "Open SourceCOMMUNITYGitHub SponsorsFund open source developersPROGRAMSSecurit..." | Bounds: 0.2092,0.0148,0.0696,0.0370 | Path: nav.MarketingNavigation-module__nav__W0KYY > ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container
+ID: mache-102 | Parent: mache-101 | Tag: button | Role: button | Text: "Open Source" | Bounds: 0.2092,0.0148,0.0696,0.0370 | Path: ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container > button.NavDropdown-module__button__PEHWX.js-details-target
+ID: mache-103 | Parent: mache-101 | Tag: div | Role: div | Text: "COMMUNITYGitHub SponsorsFund open source developersPROGRAMSSecurity LabMainta..." | Bounds: 0.2112,0.0416,0.4002,0.2805 | Path: ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd
+ID: mache-104 | Parent: mache-103 | Tag: ul | Role: ul | Text: "COMMUNITYGitHub SponsorsFund open source developersPROGRAMSSecurity LabMainta..." | Bounds: 0.2112,0.0416,0.4002,0.2805 | Path: li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG
+ID: mache-105 | Parent: mache-104 | Tag: div | Role: div | Text: "COMMUNITYGitHub SponsorsFund open source developers" | Bounds: 0.2277,0.0709,0.1197,0.2218 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-106 | Parent: mache-105 | Tag: ul | Role: ul | Text: "GitHub SponsorsFund open source developers" | Bounds: 0.2277,0.1094,0.1197,0.0413 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-107 | Parent: mache-106 | Tag: a | Role: link | Text: "GitHub SponsorsFund open source developers" | Bounds: 0.2277,0.1094,0.1197,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-108 | Parent: mache-104 | Tag: div | Role: div | Text: "PROGRAMSSecurity LabMaintainer CommunityAcceleratorGitHub StarsArchive Program" | Bounds: 0.3680,0.0709,0.1031,0.2218 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-109 | Parent: mache-108 | Tag: ul | Role: ul | Text: "Security LabMaintainer CommunityAcceleratorGitHub StarsArchive Program" | Bounds: 0.3680,0.1094,0.1031,0.1833 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-110 | Parent: mache-109 | Tag: a | Role: link | Text: "Security Lab" | Bounds: 0.3680,0.1094,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-111 | Parent: mache-109 | Tag: a | Role: link | Text: "Maintainer Community" | Bounds: 0.3680,0.1498,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-112 | Parent: mache-109 | Tag: a | Role: link | Text: "Accelerator" | Bounds: 0.3680,0.1901,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-113 | Parent: mache-109 | Tag: a | Role: link | Text: "GitHub Stars" | Bounds: 0.3680,0.2304,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-114 | Parent: mache-109 | Tag: a | Role: link | Text: "Archive Program" | Bounds: 0.3680,0.2708,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-115 | Parent: mache-104 | Tag: div | Role: div | Text: "REPOSITORIESTopicsTrendingCollections" | Bounds: 0.4917,0.0709,0.1031,0.2218 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-116 | Parent: mache-115 | Tag: ul | Role: ul | Text: "TopicsTrendingCollections" | Bounds: 0.4917,0.1094,0.1031,0.1027 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-117 | Parent: mache-116 | Tag: a | Role: link | Text: "Topics" | Bounds: 0.4917,0.1094,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-118 | Parent: mache-116 | Tag: a | Role: link | Text: "Trending" | Bounds: 0.4917,0.1498,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-119 | Parent: mache-116 | Tag: a | Role: link | Text: "Collections" | Bounds: 0.4917,0.1901,0.1031,0.0220 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-120 | Parent: mache-17 | Tag: div | Role: div | Text: "EnterpriseENTERPRISE SOLUTIONSEnterprise platformAI-powered developer platfor..." | Bounds: 0.2788,0.0148,0.0583,0.0370 | Path: nav.MarketingNavigation-module__nav__W0KYY > ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container
+ID: mache-121 | Parent: mache-120 | Tag: button | Role: button | Text: "Enterprise" | Bounds: 0.2788,0.0148,0.0583,0.0370 | Path: ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container > button.NavDropdown-module__button__PEHWX.js-details-target
+ID: mache-122 | Parent: mache-120 | Tag: div | Role: div | Text: "ENTERPRISE SOLUTIONSEnterprise platformAI-powered developer platformAVAILABLE..." | Bounds: 0.2804,0.0416,0.3135,0.2576 | Path: ul.MarketingNavigation-module__list__tFbMb > li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd
+ID: mache-123 | Parent: mache-122 | Tag: ul | Role: ul | Text: "ENTERPRISE SOLUTIONSEnterprise platformAI-powered developer platformAVAILABLE..." | Bounds: 0.2804,0.0416,0.3135,0.2576 | Path: li > div.NavDropdown-module__container__l2YeI.js-details-container > div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG
+ID: mache-124 | Parent: mache-123 | Tag: div | Role: div | Text: "ENTERPRISE SOLUTIONSEnterprise platformAI-powered developer platform" | Bounds: 0.2969,0.0709,0.1248,0.1989 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-125 | Parent: mache-124 | Tag: ul | Role: ul | Text: "Enterprise platformAI-powered developer platform" | Bounds: 0.2969,0.1094,0.1248,0.0413 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-126 | Parent: mache-125 | Tag: a | Role: link | Text: "Enterprise platformAI-powered developer platform" | Bounds: 0.2969,0.1094,0.1248,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-127 | Parent: mache-123 | Tag: div | Role: div | Text: "AVAILABLE ADD-ONSGitHub Advanced SecurityEnterprise-grade security featuresCo..." | Bounds: 0.4423,0.0709,0.1351,0.1989 | Path: div.NavDropdown-module__dropdown__xm1jd > ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ
+ID: mache-128 | Parent: mache-127 | Tag: ul | Role: ul | Text: "GitHub Advanced SecurityEnterprise-grade security featuresCopilot for Busines..." | Bounds: 0.4423,0.1094,0.1351,0.1604 | Path: ul.NavDropdown-module__list__zuCgG > li > div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy
+ID: mache-129 | Parent: mache-128 | Tag: a | Role: link | Text: "GitHub Advanced SecurityEnterprise-grade security features" | Bounds: 0.4423,0.1094,0.1351,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-130 | Parent: mache-128 | Tag: a | Role: link | Text: "Copilot for BusinessEnterprise-grade AI features" | Bounds: 0.4423,0.1690,0.1351,0.0413 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-131 | Parent: mache-128 | Tag: a | Role: link | Text: "Premium SupportEnterprise-grade 24/7 support" | Bounds: 0.4423,0.2286,0.1351,0.0412 | Path: div.NavGroup-module__group__W8SqJ > ul.NavGroup-module__list__UCOFy > li > a.NavLink-module__link__EG3d4
+ID: mache-132 | Parent: mache-17 | Tag: a | Role: link | Text: "Pricing" | Bounds: 0.3371,0.0148,0.0355,0.0370 | Path: nav.MarketingNavigation-module__nav__W0KYY > ul.MarketingNavigation-module__list__tFbMb > li > a.NavLink-module__link__EG3d4
+ID: mache-133 | Parent: mache-14 | Tag: div | Role: div | Text: "    " | Bounds: 0.3809,0.0148,0.6024,0.0370 | Path: div.d-flex.flex-column > div.HeaderMenu.js-header-menu > div.HeaderMenu-wrapper.d-flex > div.d-flex.flex-column
+ID: mache-134 | Parent: mache-133 | Tag: div | Role: div | Text: "   " | Bounds: 0.7301,0.0185,0.1667,0.0296 | Path: div.HeaderMenu-wrapper.d-flex > div.d-flex.flex-column > qbsearch-input.search-input > div.search-input-container.search-with-dialog
+ID: mache-135 | Parent: mache-134 | Tag: button | Role: button | Text: "Search or jump to…" | Bounds: 0.7306,0.0194,0.1656,0.0278 | Path: div.d-flex.flex-column > qbsearch-input.search-input > div.search-input-container.search-with-dialog > button.header-search-button.placeholder
+ID: mache-136 | Parent: mache-134 | Tag: input | Role: textbox | Text: "hidden" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.d-flex.flex-column > qbsearch-input.search-input > div.search-input-container.search-with-dialog > input.js-site-search-type-field
+ID: mache-137 | Parent: mache-134 | Tag: div | Role: div | Text: "Search code, repositories, users, issues, pull requests...
 
 
-        Any"
-ID: mache-295 | Tag: button | Text: "[SVG Icon]"
-ID: mache-296 | Tag: input | Text: "input"
-ID: mache-297 | Tag: a | Text: "Unknown languages"
-ID: mache-298 | Tag: a | Text: "1C Enterprise"
-ID: mache-299 | Tag: a | Text: "2-Dimensional Array"
+      ..." | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.d-flex.flex-column > qbsearch-input.search-input > div.search-input-container.search-with-dialog > div.Overlay--hidden
+ID: mache-138 | Parent: mache-137 | Tag: h1 | Role: heading | Text: "Search code, repositories, users, issues, pull requests..." | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.search-input-container.search-with-dialog > div.Overlay--hidden > modal-dialog.Overlay.Overlay--width-large > h1.sr-only
+ID: mache-139 | Parent: mache-137 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.search-input-container.search-with-dialog > div.Overlay--hidden > modal-dialog.Overlay.Overlay--width-large > div.Overlay-body.Overlay-body--paddingNone
+ID: mache-140 | Parent: mache-139 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay--hidden > modal-dialog.Overlay.Overlay--width-large > div.Overlay-body.Overlay-body--paddingNone > div
+ID: mache-141 | Parent: mache-140 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: modal-dialog.Overlay.Overlay--width-large > div.Overlay-body.Overlay-body--paddingNone > div > div.search-suggestions.position-fixed
+ID: mache-142 | Parent: mache-141 | Tag: form | Role: form | Text: "Search
+
+
+
+
+
+
+
+
+      ..." | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body.Overlay-body--paddingNone > div > div.search-suggestions.position-fixed > form
+ID: mache-143 | Parent: mache-142 | Tag: div | Role: div | Text: "                                      " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.search-suggestions.position-fixed > form > query-builder.QueryBuilder.search-query-builder > div.FormControl.FormControl--fullWidth
+ID: mache-144 | Parent: mache-143 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: form > query-builder.QueryBuilder.search-query-builder > div.FormControl.FormControl--fullWidth > div.QueryBuilder-StyledInput.width-fit
+ID: mache-145 | Parent: mache-144 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: query-builder.QueryBuilder.search-query-builder > div.FormControl.FormControl--fullWidth > div.QueryBuilder-StyledInput.width-fit > div.QueryBuilder-StyledInputContainer
+ID: mache-146 | Parent: mache-145 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.FormControl.FormControl--fullWidth > div.QueryBuilder-StyledInput.width-fit > div.QueryBuilder-StyledInputContainer > div.QueryBuilder-InputWrapper
+ID: mache-147 | Parent: mache-146 | Tag: input | Role: combobox | Text: "text" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.QueryBuilder-StyledInput.width-fit > div.QueryBuilder-StyledInputContainer > div.QueryBuilder-InputWrapper > input.FormControl-input.QueryBuilder-Input
+ID: mache-148 | Parent: mache-144 | Tag: button | Role: button | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.FormControl.FormControl--fullWidth > div.QueryBuilder-StyledInput.width-fit > span > button.Button.Button--iconOnly
+ID: mache-149 | Parent: mache-143 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: form > query-builder.QueryBuilder.search-query-builder > div.FormControl.FormControl--fullWidth > div.position-relative
+ID: mache-150 | Parent: mache-149 | Tag: ul | Role: listbox | Text: "Suggestions" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: query-builder.QueryBuilder.search-query-builder > div.FormControl.FormControl--fullWidth > div.position-relative > ul.ActionListWrap.QueryBuilder-ListWrap
+ID: mache-151 | Parent: mache-150 | Tag: h3 | Role: presentation | Text: " Explore " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.position-relative > ul.ActionListWrap.QueryBuilder-ListWrap > li.ActionList-sectionDivider > h3.ActionList-sectionDivider-title.QueryBuilder-sectionTitle
+ID: mache-152 | Parent: mache-141 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body.Overlay-body--paddingNone > div > div.search-suggestions.position-fixed > div.d-flex.flex-row
+ID: mache-153 | Parent: mache-152 | Tag: a | Role: link | Text: "Search syntax tips" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > div.search-suggestions.position-fixed > div.d-flex.flex-row > a.Link.color-fg-accent
+ID: mache-154 | Parent: mache-133 | Tag: div | Role: div | Text: "  " | Bounds: 0.7301,0.0481,0.1667,0.0000 | Path: div.HeaderMenu-wrapper.d-flex > div.d-flex.flex-column > qbsearch-input.search-input > div.color-fg-default
+ID: mache-155 | Parent: mache-154 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.color-fg-default > dialog-helper > dialog.Overlay.Overlay-whenNarrow > div.Overlay-header
+ID: mache-156 | Parent: mache-155 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog-helper > dialog.Overlay.Overlay-whenNarrow > div.Overlay-header > div.Overlay-headerContentWrap
+ID: mache-157 | Parent: mache-156 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog.Overlay.Overlay-whenNarrow > div.Overlay-header > div.Overlay-headerContentWrap > div.Overlay-titleWrap
+ID: mache-158 | Parent: mache-157 | Tag: h1 | Role: heading | Text: "Provide feedback" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-header > div.Overlay-headerContentWrap > div.Overlay-titleWrap > h1.Overlay-title
+ID: mache-159 | Parent: mache-156 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog.Overlay.Overlay-whenNarrow > div.Overlay-header > div.Overlay-headerContentWrap > div.Overlay-actionWrap
+ID: mache-160 | Parent: mache-159 | Tag: button | Role: button | Text: "Close" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-header > div.Overlay-headerContentWrap > div.Overlay-actionWrap > button.close-button.Overlay-closeButton
+ID: mache-161 | Parent: mache-154 | Tag: div | Role: div | Text: "We read every piece of feedback, and take your input very seriously.
+        ..." | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog-helper > dialog.Overlay.Overlay-whenNarrow > scrollable-region > div.Overlay-body
+ID: mache-162 | Parent: mache-161 | Tag: form | Role: form | Text: "    " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog.Overlay.Overlay-whenNarrow > scrollable-region > div.Overlay-body > form
+ID: mache-163 | Parent: mache-162 | Tag: input | Role: textbox | Text: "hidden" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: scrollable-region > div.Overlay-body > form > input
+ID: mache-164 | Parent: mache-162 | Tag: textarea | Role: textbox | Text: "" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: scrollable-region > div.Overlay-body > form > textarea.form-control.width-full
+ID: mache-165 | Parent: mache-162 | Tag: input | Role: textbox | Text: "Include my email address so I can be contacted" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: scrollable-region > div.Overlay-body > form > input.form-control.mr-2
+ID: mache-166 | Parent: mache-154 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.color-fg-default > dialog-helper > dialog.Overlay.Overlay-whenNarrow > div.Overlay-footer.Overlay-footer--alignEnd
+ID: mache-167 | Parent: mache-166 | Tag: button | Role: button | Text: "Cancel" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog-helper > dialog.Overlay.Overlay-whenNarrow > div.Overlay-footer.Overlay-footer--alignEnd > button.btn
+ID: mache-168 | Parent: mache-166 | Tag: button | Role: button | Text: "Submit feedback" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog-helper > dialog.Overlay.Overlay-whenNarrow > div.Overlay-footer.Overlay-footer--alignEnd > button.btn-primary.btn
+ID: mache-169 | Parent: mache-154 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: custom-scopes > dialog-helper > dialog.Overlay.Overlay-whenNarrow > div.Overlay-header.Overlay-header--divided
+ID: mache-170 | Parent: mache-169 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog-helper > dialog.Overlay.Overlay-whenNarrow > div.Overlay-header.Overlay-header--divided > div.Overlay-headerContentWrap
+ID: mache-171 | Parent: mache-170 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog.Overlay.Overlay-whenNarrow > div.Overlay-header.Overlay-header--divided > div.Overlay-headerContentWrap > div.Overlay-titleWrap
+ID: mache-172 | Parent: mache-171 | Tag: h1 | Role: heading | Text: "Saved searches" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-header.Overlay-header--divided > div.Overlay-headerContentWrap > div.Overlay-titleWrap > h1.Overlay-title
+ID: mache-173 | Parent: mache-171 | Tag: h2 | Role: heading | Text: "Use saved searches to filter your results more quickly" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-header.Overlay-header--divided > div.Overlay-headerContentWrap > div.Overlay-titleWrap > h2.Overlay-description
+ID: mache-174 | Parent: mache-170 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog.Overlay.Overlay-whenNarrow > div.Overlay-header.Overlay-header--divided > div.Overlay-headerContentWrap > div.Overlay-actionWrap
+ID: mache-175 | Parent: mache-174 | Tag: button | Role: button | Text: "Close" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-header.Overlay-header--divided > div.Overlay-headerContentWrap > div.Overlay-actionWrap > button.close-button.Overlay-closeButton
+ID: mache-176 | Parent: mache-154 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog-helper > dialog.Overlay.Overlay-whenNarrow > scrollable-region > div.Overlay-body
+ID: mache-177 | Parent: mache-176 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog.Overlay.Overlay-whenNarrow > scrollable-region > div.Overlay-body > div.create-custom-scope-form
+ID: mache-178 | Parent: mache-177 | Tag: form | Role: form | Text: "     " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: scrollable-region > div.Overlay-body > div.create-custom-scope-form > form
+ID: mache-179 | Parent: mache-178 | Tag: input | Role: textbox | Text: "hidden" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body > div.create-custom-scope-form > form > input
+ID: mache-180 | Parent: mache-178 | Tag: input | Role: textbox | Text: "hidden" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body > div.create-custom-scope-form > form > input
+ID: mache-181 | Parent: mache-178 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body > div.create-custom-scope-form > form > div.form-group
+ID: mache-182 | Parent: mache-181 | Tag: input | Role: textbox | Text: "text" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: form > div.form-group > auto-check > input.form-control
+ID: mache-183 | Parent: mache-181 | Tag: input | Role: textbox | Text: "hidden" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: form > div.form-group > auto-check > input
+ID: mache-184 | Parent: mache-178 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body > div.create-custom-scope-form > form > div.form-group
+ID: mache-185 | Parent: mache-184 | Tag: input | Role: textbox | Text: "text" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.create-custom-scope-form > form > div.form-group > input.form-control
+ID: mache-186 | Parent: mache-178 | Tag: a | Role: link | Text: "documentation" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.create-custom-scope-form > form > p.text-small.color-fg-muted > a.Link--inTextBlock
+ID: mache-187 | Parent: mache-154 | Tag: div | Role: div | Text: "  " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: custom-scopes > dialog-helper > dialog.Overlay.Overlay-whenNarrow > div.Overlay-footer.Overlay-footer--alignEnd
+ID: mache-188 | Parent: mache-187 | Tag: button | Role: button | Text: "Cancel" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog-helper > dialog.Overlay.Overlay-whenNarrow > div.Overlay-footer.Overlay-footer--alignEnd > button.btn
+ID: mache-189 | Parent: mache-187 | Tag: button | Role: button | Text: "Create saved search" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: dialog-helper > dialog.Overlay.Overlay-whenNarrow > div.Overlay-footer.Overlay-footer--alignEnd > button.btn-primary.btn
+ID: mache-190 | Parent: mache-133 | Tag: div | Role: div | Text: " " | Bounds: 0.8967,0.0185,0.0415,0.0296 | Path: div.HeaderMenu.js-header-menu > div.HeaderMenu-wrapper.d-flex > div.d-flex.flex-column > div.position-relative.HeaderMenu-link-wrap
+ID: mache-191 | Parent: mache-190 | Tag: a | Role: link | Text: "Sign in" | Bounds: 0.9030,0.0185,0.0352,0.0296 | Path: div.HeaderMenu-wrapper.d-flex > div.d-flex.flex-column > div.position-relative.HeaderMenu-link-wrap > a.HeaderMenu-link.HeaderMenu-link--sign-in
+ID: mache-192 | Parent: mache-133 | Tag: a | Role: link | Text: "Sign up" | Bounds: 0.9444,0.0185,0.0389,0.0296 | Path: div.HeaderMenu.js-header-menu > div.HeaderMenu-wrapper.d-flex > div.d-flex.flex-column > a.HeaderMenu-link.HeaderMenu-link--sign-up
+ID: mache-193 | Parent: mache-133 | Tag: button | Role: button | Text: "Resetting focus" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.HeaderMenu.js-header-menu > div.HeaderMenu-wrapper.d-flex > div.d-flex.flex-column > button.sr-only.js-header-menu-focus-trap
+ID: mache-194 | Parent: mache-1 | Tag: div | Role: div | Text: "     " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.logged-out.env-production > div.position-relative.header-wrapper > div.js-stale-session-flash.stale-session-flash
+ID: mache-195 | Parent: mache-194 | Tag: a | Role: link | Text: "Reload" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.position-relative.header-wrapper > div.js-stale-session-flash.stale-session-flash > span.js-stale-session-flash-signed-in > a.Link--inTextBlock
+ID: mache-196 | Parent: mache-194 | Tag: a | Role: link | Text: "Reload" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.position-relative.header-wrapper > div.js-stale-session-flash.stale-session-flash > span.js-stale-session-flash-signed-out > a.Link--inTextBlock
+ID: mache-197 | Parent: mache-194 | Tag: a | Role: link | Text: "Reload" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.position-relative.header-wrapper > div.js-stale-session-flash.stale-session-flash > span.js-stale-session-flash-switched > a.Link--inTextBlock
+ID: mache-198 | Parent: mache-194 | Tag: button | Role: button | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.logged-out.env-production > div.position-relative.header-wrapper > div.js-stale-session-flash.stale-session-flash > button.Button.Button--iconOnly
+ID: mache-199 | Parent: mache-0 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,1.0000,9.6743 | Path: div.logged-out.env-production > div.application-main
+ID: mache-200 | Parent: mache-199 | Tag: main | Role: main | Text: " " | Bounds: 0.0000,0.0000,1.0000,9.6743 | Path: div.logged-out.env-production > div.application-main > main.font-mktg
+ID: mache-201 | Parent: mache-200 | Tag: div | Role: div | Text: "Mona the Octocat, Copilot, and Ducky float jubilantly upward from behind the ..." | Bounds: 0.0000,0.0000,1.0000,9.6743 | Path: div.application-main > main.font-mktg > react-app.loaded > div
+ID: mache-202 | Parent: mache-201 | Tag: div | Role: div | Text: "Mona the Octocat, Copilot, and Ducky float jubilantly upward from behind the ..." | Bounds: 0.0000,0.0000,1.0000,9.6743 | Path: main.font-mktg > react-app.loaded > div > div
+ID: mache-203 | Parent: mache-202 | Tag: div | Role: div | Text: "Mona the Octocat, Copilot, and Ducky float jubilantly upward from behind the ..." | Bounds: 0.0000,0.0000,1.0000,9.6743 | Path: react-app.loaded > div > div > div.lp-Home
+ID: mache-204 | Parent: mache-203 | Tag: section | Role: region | Text: "Mona the Octocat, Copilot, and Ducky float jubilantly upward from behind the ..." | Bounds: 0.0000,0.0000,1.0000,1.7656 | Path: div > div > div.lp-Home > section
+ID: mache-205 | Parent: mache-204 | Tag: div | Role: div | Text: "Mona the Octocat, Copilot, and Ducky float jubilantly upward from behind the ..." | Bounds: 0.0000,0.0000,1.0000,1.4147 | Path: div > div.lp-Home > section > div.lp-Intro
+ID: mache-206 | Parent: mache-205 | Tag: div | Role: div | Text: "The future of building happens togetherTools and trends evolve, but collabora..." | Bounds: 0.0000,0.1519,1.0000,0.2780 | Path: div.lp-Home > section > div.lp-Intro > div.lp-IntroHero
+ID: mache-207 | Parent: mache-206 | Tag: section | Role: region | Text: "The future of building happens togetherTools and trends evolve, but collabora..." | Bounds: 0.2469,0.1519,0.5062,0.1965 | Path: section > div.lp-Intro > div.lp-IntroHero > section.Primer_Brand__Hero-module__Hero___EM3jf.lp-IntroHero-hero
+ID: mache-208 | Parent: mache-207 | Tag: div | Role: div | Text: "The future of building happens togetherTools and trends evolve, but collabora..." | Bounds: 0.2594,0.1519,0.4813,0.1965 | Path: div.lp-Intro > div.lp-IntroHero > section.Primer_Brand__Hero-module__Hero___EM3jf.lp-IntroHero-hero > div.Primer_Brand__Grid-module__Grid___q48mT
+ID: mache-209 | Parent: mache-208 | Tag: div | Role: div | Text: "The future of building happens togetherTools and trends evolve, but collabora..." | Bounds: 0.2594,0.1519,0.4813,0.1965 | Path: div.lp-IntroHero > section.Primer_Brand__Hero-module__Hero___EM3jf.lp-IntroHero-hero > div.Primer_Brand__Grid-module__Grid___q48mT > div
+ID: mache-210 | Parent: mache-209 | Tag: div | Role: div | Text: "The future of building happens togetherTools and trends evolve, but collabora..." | Bounds: 0.2594,0.1519,0.4813,0.1965 | Path: section.Primer_Brand__Hero-module__Hero___EM3jf.lp-IntroHero-hero > div.Primer_Brand__Grid-module__Grid___q48mT > div > div
+ID: mache-211 | Parent: mache-210 | Tag: h1 | Role: heading | Text: "The future of building happens together" | Bounds: 0.2594,0.1519,0.4813,0.1280 | Path: div.Primer_Brand__Grid-module__Grid___q48mT > div > div > h1
+ID: mache-212 | Parent: mache-206 | Tag: div | Role: div | Text: "Enter your emailSign up for GitHubTry GitHub Copilot" | Bounds: 0.3179,0.3780,0.3642,0.0519 | Path: section > div.lp-Intro > div.lp-IntroHero > div.CtaForm
+ID: mache-213 | Parent: mache-212 | Tag: form | Role: form | Text: "Sign up for GitHub" | Bounds: 0.3179,0.3780,0.2491,0.0519 | Path: div.lp-Intro > div.lp-IntroHero > div.CtaForm > form
+ID: mache-214 | Parent: mache-213 | Tag: input | Role: textbox | Text: "hidden" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.lp-IntroHero > div.CtaForm > form > input
+ID: mache-215 | Parent: mache-213 | Tag: section | Role: region | Text: "Enter your emailSign up for GitHub" | Bounds: 0.3179,0.3780,0.2491,0.0519 | Path: div.lp-IntroHero > div.CtaForm > form > section.CtaFormControl
+ID: mache-216 | Parent: mache-215 | Tag: div | Role: div | Text: "Enter your emailSign up for GitHub" | Bounds: 0.3179,0.3780,0.2491,0.0519 | Path: div.CtaForm > form > section.CtaFormControl > div.CtaFormControl-container
+ID: mache-217 | Parent: mache-216 | Tag: div | Role: div | Text: "Enter your email" | Bounds: 0.3200,0.3817,0.1365,0.0444 | Path: form > section.CtaFormControl > div.CtaFormControl-container > div.CtaFormControl-field-wrap
+ID: mache-218 | Parent: mache-217 | Tag: input | Role: textbox | Text: "email" | Bounds: 0.3205,0.3826,0.1354,0.0426 | Path: div.CtaFormControl-container > div.CtaFormControl-field-wrap > span > input.TextInput.CtaFormControl-input
+ID: mache-219 | Parent: mache-216 | Tag: button | Role: button | Text: "Sign up for GitHub" | Bounds: 0.4585,0.3817,0.1064,0.0444 | Path: form > section.CtaFormControl > div.CtaFormControl-container > button.CtaForm-primaryAction.CtaFormControl-button
+ID: mache-220 | Parent: mache-212 | Tag: a | Role: link | Text: "Try GitHub Copilot" | Bounds: 0.5753,0.3780,0.1068,0.0519 | Path: div.lp-Intro > div.lp-IntroHero > div.CtaForm > a.CtaForm-secondaryAction.CtaForm-nextToFormAction
+ID: mache-221 | Parent: mache-205 | Tag: div | Role: div | Text: "GitHub featuresA demonstration animation of a code editor using GitHub Copilo..." | Bounds: 0.1755,0.7630,0.6490,0.6517 | Path: div.lp-Home > section > div.lp-Intro > div.lp-HeroCarousel
+ID: mache-222 | Parent: mache-221 | Tag: h2 | Role: heading | Text: "GitHub features" | Bounds: 0.1755,0.7630,0.0005,0.0009 | Path: section > div.lp-Intro > div.lp-HeroCarousel > h2.visually-hidden
+ID: mache-223 | Parent: mache-221 | Tag: div | Role: div | Text: "" | Bounds: 0.1547,1.3554,0.6490,0.0407 | Path: section > div.lp-Intro > div.lp-HeroCarousel > div.lp-HeroCarousel-playButton
+ID: mache-224 | Parent: mache-223 | Tag: button | Role: button | Text: "Pause" | Bounds: 0.7807,1.3554,0.0229,0.0407 | Path: div.lp-Intro > div.lp-HeroCarousel > div.lp-HeroCarousel-playButton > button.PlayButton
+ID: mache-225 | Parent: mache-221 | Tag: div | Role: div | Text: "A demonstration animation of a code editor using GitHub Copilot Chat, where t..." | Bounds: 0.1755,0.7630,0.6490,0.6517 | Path: section > div.lp-Intro > div.lp-HeroCarousel > div.lp-HeroCarousel-container
+ID: mache-226 | Parent: mache-225 | Tag: div | Role: div | Text: "A demonstration animation of a code editor using GitHub Copilot Chat, where t..." | Bounds: 0.1755,0.7630,0.6490,0.6517 | Path: div.lp-Intro > div.lp-HeroCarousel > div.lp-HeroCarousel-container > div.lp-HeroCarousel-content
+ID: mache-227 | Parent: mache-226 | Tag: div | Role: div | Text: "A demonstration animation of a code editor using GitHub Copilot Chat, where t..." | Bounds: 0.1865,0.7824,0.6271,0.6323 | Path: div.lp-HeroCarousel > div.lp-HeroCarousel-container > div.lp-HeroCarousel-content > div.lp-HeroCarousel-visual
+ID: mache-228 | Parent: mache-227 | Tag: div | Role: div | Text: "A demonstration animation of a code editor using GitHub Copilot Chat, where t..." | Bounds: 0.1865,0.7824,0.0000,0.6323 | Path: div.lp-HeroCarousel-container > div.lp-HeroCarousel-content > div.lp-HeroCarousel-visual > div
+ID: mache-229 | Parent: mache-228 | Tag: video | Role: video | Text: "" | Bounds: 0.1865,0.7824,0.6271,0.6323 | Path: div.lp-HeroCarousel-content > div.lp-HeroCarousel-visual > div > video
+ID: mache-230 | Parent: mache-204 | Tag: div | Role: div | Text: "CodePlanCollaborateAutomateSecureCodeWrite, test, and fix code quickly with G..." | Bounds: 0.0000,1.4147,1.0000,0.2389 | Path: div > div.lp-Home > section > div.HeroCarouselControls
+ID: mache-231 | Parent: mache-230 | Tag: div | Role: div | Text: "CodePlanCollaborateAutomateSecureCode" | Bounds: 0.0125,1.4443,0.9750,0.0537 | Path: div.lp-Home > section > div.HeroCarouselControls > div.Toggle-wrapper
+ID: mache-232 | Parent: mache-231 | Tag: div | Role: tablist | Text: "CodePlanCollaborateAutomateSecure" | Bounds: 0.3219,1.4443,0.3563,0.0537 | Path: section > div.HeroCarouselControls > div.Toggle-wrapper > div.Toggle-container
+ID: mache-233 | Parent: mache-232 | Tag: div | Role: div | Text: "CodePlanCollaborateAutomateSecure" | Bounds: 0.3224,1.4452,0.3552,0.0519 | Path: div.HeroCarouselControls > div.Toggle-wrapper > div.Toggle-container > div.Toggle
+ID: mache-234 | Parent: mache-233 | Tag: button | Role: tab | Text: "Code" | Bounds: 0.3266,1.4526,0.0677,0.0370 | Path: div.Toggle-wrapper > div.Toggle-container > div.Toggle > button.Toggle-button.Toggle-button--selected
+ID: mache-235 | Parent: mache-233 | Tag: button | Role: tab | Text: "Plan" | Bounds: 0.3964,1.4526,0.0677,0.0370 | Path: div.Toggle-wrapper > div.Toggle-container > div.Toggle > button.Toggle-button
+ID: mache-236 | Parent: mache-233 | Tag: button | Role: tab | Text: "Collaborate" | Bounds: 0.4661,1.4526,0.0677,0.0370 | Path: div.Toggle-wrapper > div.Toggle-container > div.Toggle > button.Toggle-button
+ID: mache-237 | Parent: mache-233 | Tag: button | Role: tab | Text: "Automate" | Bounds: 0.5359,1.4526,0.0677,0.0370 | Path: div.Toggle-wrapper > div.Toggle-container > div.Toggle > button.Toggle-button
+ID: mache-238 | Parent: mache-233 | Tag: button | Role: tab | Text: "Secure" | Bounds: 0.6057,1.4526,0.0677,0.0370 | Path: div.Toggle-wrapper > div.Toggle-container > div.Toggle > button.Toggle-button
+ID: mache-239 | Parent: mache-231 | Tag: div | Role: div | Text: "Code" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: section > div.HeroCarouselControls > div.Toggle-wrapper > div.Toggle-menu--isHidden
+ID: mache-240 | Parent: mache-239 | Tag: div | Role: div | Text: "Code" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.HeroCarouselControls > div.Toggle-wrapper > div.Toggle-menu--isHidden > div
+ID: mache-241 | Parent: mache-240 | Tag: button | Role: button | Text: "Select a GitHub feature" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Toggle-wrapper > div.Toggle-menu--isHidden > div > button
+ID: mache-242 | Parent: mache-204 | Tag: div | Role: div | Text: "GitHub customersAmerican AirlinesDuolingoErnst and YoungFordInfoSysMercado Li..." | Bounds: 0.0000,1.6536,1.0000,0.1120 | Path: div > div.lp-Home > section > div
+ID: mache-243 | Parent: mache-242 | Tag: div | Role: div | Text: "GitHub customersAmerican AirlinesDuolingoErnst and YoungFordInfoSysMercado Li..." | Bounds: 0.0000,1.6536,1.0000,0.1120 | Path: div.lp-Home > section > div > div.tmp-pb-7.Logos-logoSuite
+ID: mache-244 | Parent: mache-243 | Tag: h2 | Role: heading | Text: "GitHub customers" | Bounds: 0.0000,1.6536,0.0005,0.0009 | Path: section > div > div.tmp-pb-7.Logos-logoSuite > h2.visually-hidden
+ID: mache-245 | Parent: mache-243 | Tag: div | Role: div | Text: "American AirlinesDuolingoErnst and YoungFordInfoSysMercado LibreMercedes-Benz..." | Bounds: 0.0000,1.6536,0.9896,0.0667 | Path: section > div > div.tmp-pb-7.Logos-logoSuite > div
+ID: mache-246 | Parent: mache-245 | Tag: button | Role: button | Text: "Pause animation" | Bounds: 0.9729,1.6869,0.0167,0.0296 | Path: div > div.tmp-pb-7.Logos-logoSuite > div > button
+ID: mache-247 | Parent: mache-203 | Tag: section | Role: region | Text: "Accelerate your entire workflowFrom your first line of code to final deployme..." | Bounds: 0.0000,1.7656,1.0000,2.2279 | Path: div > div > div.lp-Home > section.lp-Section
+ID: mache-248 | Parent: mache-247 | Tag: div | Role: div | Text: "Accelerate your entire workflowFrom your first line of code to final deployme..." | Bounds: 0.0000,1.7656,1.0000,2.2279 | Path: div > div.lp-Home > section.lp-Section > div.lp-SectionTemplate
+ID: mache-249 | Parent: mache-248 | Tag: div | Role: div | Text: "Accelerate your entire workflowFrom your first line of code to final deployme..." | Bounds: 0.0000,1.7656,1.0000,1.0542 | Path: div.lp-Home > section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock
+ID: mache-250 | Parent: mache-249 | Tag: div | Role: div | Text: "Accelerate your entire workflowFrom your first line of code to final deployme..." | Bounds: 0.1667,1.7656,0.6667,1.0533 | Path: section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content
+ID: mache-251 | Parent: mache-250 | Tag: div | Role: div | Text: "Accelerate your entire workflowFrom your first line of code to final deployme..." | Bounds: 0.1667,1.7656,0.6667,0.4439 | Path: div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionIntro
+ID: mache-252 | Parent: mache-251 | Tag: header | Role: banner | Text: "Accelerate your entire workflowFrom your first line of code to final deployme..." | Bounds: 0.1667,1.9943,0.6667,0.1411 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionIntro > header.lp-SectionIntro-content
+ID: mache-253 | Parent: mache-252 | Tag: h2 | Role: heading | Text: "Accelerate your entire workflow" | Bounds: 0.3497,2.0165,0.3005,0.0444 | Path: div.lp-SectionBlock-content > div.lp-SectionIntro > header.lp-SectionIntro-content > h2.lp-SectionIntro-heading
+ID: mache-254 | Parent: mache-250 | Tag: div | Role: div | Text: "A Copilot chat window with the 'Ask' mode enabled. The user switches from 'As..." | Bounds: 0.1667,2.2095,0.6667,0.6094 | Path: div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionHero
+ID: mache-255 | Parent: mache-254 | Tag: div | Role: div | Text: "" | Bounds: 0.1667,2.2095,0.6667,0.0000 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-glow
+ID: mache-256 | Parent: mache-255 | Tag: img | Role: img | Text: "" | Bounds: 0.3667,1.9789,0.2667,0.5764 | Path: div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-glow > img.particles
+ID: mache-257 | Parent: mache-254 | Tag: div | Role: div | Text: "" | Bounds: 0.1500,2.7596,0.6667,0.0407 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-playButton
+ID: mache-258 | Parent: mache-257 | Tag: button | Role: button | Text: "Pause video" | Bounds: 0.7937,2.7596,0.0229,0.0407 | Path: div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-playButton > button.PlayButton
+ID: mache-259 | Parent: mache-254 | Tag: div | Role: div | Text: "A Copilot chat window with the 'Ask' mode enabled. The user switches from 'As..." | Bounds: 0.1667,2.2095,0.6667,0.6094 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hidden
+ID: mache-260 | Parent: mache-259 | Tag: div | Role: div | Text: "A Copilot chat window with the 'Ask' mode enabled. The user switches from 'As..." | Bounds: 0.1667,2.2650,0.6667,0.6094 | Path: div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hidden > div.lp-SectionHero-visual
+ID: mache-261 | Parent: mache-260 | Tag: div | Role: div | Text: "A Copilot chat window with the 'Ask' mode enabled. The user switches from 'As..." | Bounds: 0.3776,2.3095,0.2448,0.5205 | Path: div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hidden > div.lp-SectionHero-visual > div.lp-SectionHero-visual-frame.lp-SectionHero-visual-frame--copilotUI
+ID: mache-262 | Parent: mache-261 | Tag: div | Role: div | Text: "A Copilot chat window with the 'Ask' mode enabled. The user switches from 'As..." | Bounds: 0.3823,2.3178,0.2354,0.5038 | Path: div.lp-SectionHero-content.lp-SectionHero-content--hidden > div.lp-SectionHero-visual > div.lp-SectionHero-visual-frame.lp-SectionHero-visual-frame--copilotUI > div
+ID: mache-263 | Parent: mache-262 | Tag: video | Role: video | Text: "" | Bounds: 0.3823,2.3178,0.2354,0.5038 | Path: div.lp-SectionHero-visual > div.lp-SectionHero-visual-frame.lp-SectionHero-visual-frame--copilotUI > div > video.lp-SectionHero-visual-media.lp-SectionHero-visual-media--current
+ID: mache-264 | Parent: mache-248 | Tag: div | Role: div | Text: "Your AI partner everywhere. Copilot is ready to work with you at each step of..." | Bounds: 0.0000,2.8198,1.0000,0.5266 | Path: div.lp-Home > section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock
+ID: mache-265 | Parent: mache-264 | Tag: div | Role: div | Text: "Your AI partner everywhere. Copilot is ready to work with you at each step of..." | Bounds: 0.1667,2.8198,0.6667,0.5257 | Path: section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines
+ID: mache-266 | Parent: mache-265 | Tag: div | Role: div | Text: "Your AI partner everywhere. Copilot is ready to work with you at each step of..." | Bounds: 0.1672,2.8198,0.6656,0.5257 | Path: div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid
+ID: mache-267 | Parent: mache-266 | Tag: div | Role: div | Text: "Your AI partner everywhere. Copilot is ready to work with you at each step of..." | Bounds: 0.1672,2.8198,0.3883,0.5257 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column
+ID: mache-268 | Parent: mache-267 | Tag: div | Role: div | Text: "Your AI partner everywhere. Copilot is ready to work with you at each step of..." | Bounds: 0.1672,2.8383,0.3878,0.2305 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-content
+ID: mache-269 | Parent: mache-268 | Tag: h3 | Role: heading | Text: "Your AI partner everywhere. Copilot is ready to work with you at each step of..." | Bounds: 0.1922,2.8976,0.3461,0.0570 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-content > h3
+ID: mache-270 | Parent: mache-268 | Tag: div | Role: div | Text: "Explore GitHub Copilot" | Bounds: 0.1922,2.9768,0.3461,0.0328 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-content > div
+ID: mache-271 | Parent: mache-270 | Tag: a | Role: link | Text: "Explore GitHub Copilot" | Bounds: 0.1922,2.9776,0.1130,0.0272 | Path: div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-content > div > a.Primer_Brand__Link-module__Link___lvKjM.lp-SectionTemplate-content-link
+ID: mache-272 | Parent: mache-266 | Tag: div | Role: div | Text: "Duolingo boosts developer speed by 25% with GitHub CopilotRead customer story..." | Bounds: 0.5555,2.8198,0.2773,0.5257 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column
+ID: mache-273 | Parent: mache-272 | Tag: div | Role: div | Text: "Duolingo boosts developer speed by 25% with GitHub CopilotRead customer story" | Bounds: 0.5555,2.8198,0.2773,0.2633 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-customer
+ID: mache-274 | Parent: mache-273 | Tag: div | Role: div | Text: "Duolingo boosts developer speed by 25% with GitHub CopilotRead customer story" | Bounds: 0.5805,2.8976,0.2273,0.1439 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-customer > div
+ID: mache-275 | Parent: mache-274 | Tag: img | Role: img | Text: "Duolingo" | Bounds: 0.5805,2.8976,0.0708,0.0296 | Path: div.lp-SectionTemplate-customer > div > span.lp-SectionTemplate-customer-logo > img
+ID: mache-276 | Parent: mache-274 | Tag: a | Role: link | Text: "Read customer story" | Bounds: 0.5805,3.0150,0.1036,0.0272 | Path: div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-customer > div > a.Primer_Brand__Link-module__Link___lvKjM.lp-SectionTemplate-customer-link
+ID: mache-277 | Parent: mache-272 | Tag: div | Role: div | Text: "2025 Gartner® Magic Quadrant™ for AI Code AssistantsRead industry report" | Bounds: 0.5555,3.0831,0.2773,0.2624 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-customer
+ID: mache-278 | Parent: mache-277 | Tag: div | Role: div | Text: "2025 Gartner® Magic Quadrant™ for AI Code AssistantsRead industry report" | Bounds: 0.5805,3.1609,0.2273,0.1439 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-customer > div
+ID: mache-279 | Parent: mache-278 | Tag: img | Role: img | Text: "Gartner" | Bounds: 0.5805,3.1609,0.0725,0.0296 | Path: div.lp-SectionTemplate-customer > div > span.lp-SectionTemplate-customer-logo > img
+ID: mache-280 | Parent: mache-278 | Tag: a | Role: link | Text: "Read industry report" | Bounds: 0.5805,3.2783,0.1019,0.0272 | Path: div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-customer > div > a.Primer_Brand__Link-module__Link___lvKjM.lp-SectionTemplate-customer-link
+ID: mache-281 | Parent: mache-248 | Tag: div | Role: div | Text: "Automate your path to productionShip faster with secure, reliable CI/CD.Explo..." | Bounds: 0.0000,3.3464,1.0000,0.6471 | Path: div.lp-Home > section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock
+ID: mache-282 | Parent: mache-281 | Tag: div | Role: div | Text: "Automate your path to productionShip faster with secure, reliable CI/CD.Explo..." | Bounds: 0.1667,3.3464,0.6667,0.6462 | Path: section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content
+ID: mache-283 | Parent: mache-282 | Tag: div | Role: div | Text: "Automate your path to productionShip faster with secure, reliable CI/CD.Explo..." | Bounds: 0.1667,3.3464,0.6667,0.6462 | Path: div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid
+ID: mache-284 | Parent: mache-283 | Tag: div | Role: div | Text: "" | Bounds: 0.5000,3.3464,0.4172,0.6462 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionVisual
+ID: mache-285 | Parent: mache-284 | Tag: img | Role: img | Text: "" | Bounds: 0.5000,3.3464,0.4167,0.6462 | Path: div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionVisual > img
+ID: mache-286 | Parent: mache-284 | Tag: img | Role: img | Text: "" | Bounds: 0.4896,3.3303,0.4375,0.6785 | Path: div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionVisual > img
+ID: mache-287 | Parent: mache-284 | Tag: img | Role: img | Text: "" | Bounds: 0.4896,3.3303,0.4375,0.6785 | Path: div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionVisual > img
+ID: mache-288 | Parent: mache-284 | Tag: img | Role: img | Text: "" | Bounds: 0.4896,3.3303,0.4375,0.6785 | Path: div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionVisual > img
+ID: mache-289 | Parent: mache-283 | Tag: div | Role: div | Text: "Automate your path to productionShip faster with secure, reliable CI/CD.Explo..." | Bounds: 0.1667,3.3464,0.3333,0.6462 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionWrapper
+ID: mache-290 | Parent: mache-289 | Tag: div | Role: div | Text: "Automate your path to productionShip faster with secure, reliable CI/CD.Explo..." | Bounds: 0.1917,3.4975,0.2833,0.1224 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionWrapper > dl.lp-Accordion > div.lp-AccordionItem
+ID: mache-291 | Parent: mache-290 | Tag: button | Role: button | Text: "Automate your path to production" | Bounds: 0.1917,3.4975,0.2833,0.0285 | Path: dl.lp-Accordion > div.lp-AccordionItem > dt > button.lp-AccordionDisclosure
+ID: mache-292 | Parent: mache-291 | Tag: div | Role: div | Text: "Automate your path to production" | Bounds: 0.1917,3.4975,0.2833,0.0285 | Path: div.lp-AccordionItem > dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary
+ID: mache-293 | Parent: mache-292 | Tag: h3 | Role: heading | Text: "Automate your path to production" | Bounds: 0.1917,3.4975,0.1831,0.0285 | Path: dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary > h3.lp-AccordionItem-heading
+ID: mache-294 | Parent: mache-290 | Tag: div | Role: div | Text: "Ship faster with secure, reliable CI/CD.Explore GitHub Actions" | Bounds: 0.1917,3.5297,0.2833,0.0707 | Path: dl.lp-Accordion > div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content
+ID: mache-295 | Parent: mache-294 | Tag: div | Role: div | Text: "Ship faster with secure, reliable CI/CD.Explore GitHub Actions" | Bounds: 0.1917,3.5297,0.2833,0.0707 | Path: div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent
+ID: mache-296 | Parent: mache-295 | Tag: a | Role: link | Text: "Explore GitHub Actions" | Bounds: 0.1917,3.5703,0.1146,0.0272 | Path: dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent > a.Primer_Brand__Link-module__Link___lvKjM
+ID: mache-297 | Parent: mache-289 | Tag: div | Role: div | Text: "Code instantly from anywhereLaunch a full, cloud-based development environmen..." | Bounds: 0.1917,3.6199,0.2833,0.0739 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionWrapper > dl.lp-Accordion > div.lp-AccordionItem
+ID: mache-298 | Parent: mache-297 | Tag: button | Role: button | Text: "Code instantly from anywhere" | Bounds: 0.1917,3.6421,0.2833,0.0285 | Path: dl.lp-Accordion > div.lp-AccordionItem > dt > button.lp-AccordionDisclosure
+ID: mache-299 | Parent: mache-298 | Tag: div | Role: div | Text: "Code instantly from anywhere" | Bounds: 0.1917,3.6421,0.2833,0.0285 | Path: div.lp-AccordionItem > dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary
+ID: mache-300 | Parent: mache-299 | Tag: h3 | Role: heading | Text: "Code instantly from anywhere" | Bounds: 0.1917,3.6421,0.1610,0.0285 | Path: dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary > h3.lp-AccordionItem-heading
+ID: mache-301 | Parent: mache-297 | Tag: div | Role: div | Text: "Launch a full, cloud-based development environment in seconds.Explore GitHub ..." | Bounds: 0.1917,3.6743,0.2833,0.0000 | Path: dl.lp-Accordion > div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content
+ID: mache-302 | Parent: mache-301 | Tag: div | Role: div | Text: "Launch a full, cloud-based development environment in seconds.Explore GitHub ..." | Bounds: 0.1917,3.6743,0.2833,0.0000 | Path: div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent
+ID: mache-303 | Parent: mache-302 | Tag: a | Role: link | Text: "Explore GitHub Codespaces" | Bounds: 0.1917,3.7399,0.1368,0.0272 | Path: dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent > a.Primer_Brand__Link-module__Link___lvKjM
+ID: mache-304 | Parent: mache-289 | Tag: div | Role: div | Text: "Keep momentum on the goManage projects and assign tasks to Copilot, all from ..." | Bounds: 0.1917,3.6938,0.2833,0.0739 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionWrapper > dl.lp-Accordion > div.lp-AccordionItem
+ID: mache-305 | Parent: mache-304 | Tag: button | Role: button | Text: "Keep momentum on the go" | Bounds: 0.1917,3.7160,0.2833,0.0285 | Path: dl.lp-Accordion > div.lp-AccordionItem > dt > button.lp-AccordionDisclosure
+ID: mache-306 | Parent: mache-305 | Tag: div | Role: div | Text: "Keep momentum on the go" | Bounds: 0.1917,3.7160,0.2833,0.0285 | Path: div.lp-AccordionItem > dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary
+ID: mache-307 | Parent: mache-306 | Tag: h3 | Role: heading | Text: "Keep momentum on the go" | Bounds: 0.1917,3.7160,0.1459,0.0285 | Path: dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary > h3.lp-AccordionItem-heading
+ID: mache-308 | Parent: mache-304 | Tag: div | Role: div | Text: "Manage projects and assign tasks to Copilot, all from your mobile device.Expl..." | Bounds: 0.1917,3.7482,0.2833,0.0000 | Path: dl.lp-Accordion > div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content
+ID: mache-309 | Parent: mache-308 | Tag: div | Role: div | Text: "Manage projects and assign tasks to Copilot, all from your mobile device.Expl..." | Bounds: 0.1917,3.7482,0.2833,0.0000 | Path: div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent
+ID: mache-310 | Parent: mache-309 | Tag: a | Role: link | Text: "Explore GitHub Mobile" | Bounds: 0.1917,3.8138,0.1103,0.0272 | Path: dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent > a.Primer_Brand__Link-module__Link___lvKjM
+ID: mache-311 | Parent: mache-289 | Tag: div | Role: div | Text: "Shape your toolchainExtend your stack with apps, actions, and AI models.Explo..." | Bounds: 0.1917,3.7677,0.2833,0.0739 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionWrapper > dl.lp-Accordion > div.lp-AccordionItem
+ID: mache-312 | Parent: mache-311 | Tag: button | Role: button | Text: "Shape your toolchain" | Bounds: 0.1917,3.7899,0.2833,0.0285 | Path: dl.lp-Accordion > div.lp-AccordionItem > dt > button.lp-AccordionDisclosure
+ID: mache-313 | Parent: mache-312 | Tag: div | Role: div | Text: "Shape your toolchain" | Bounds: 0.1917,3.7899,0.2833,0.0285 | Path: div.lp-AccordionItem > dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary
+ID: mache-314 | Parent: mache-313 | Tag: h3 | Role: heading | Text: "Shape your toolchain" | Bounds: 0.1917,3.7899,0.1145,0.0285 | Path: dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary > h3.lp-AccordionItem-heading
+ID: mache-315 | Parent: mache-311 | Tag: div | Role: div | Text: "Extend your stack with apps, actions, and AI models.Explore GitHub Marketplace" | Bounds: 0.1917,3.8221,0.2833,0.0000 | Path: dl.lp-Accordion > div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content
+ID: mache-316 | Parent: mache-315 | Tag: div | Role: div | Text: "Extend your stack with apps, actions, and AI models.Explore GitHub Marketplace" | Bounds: 0.1917,3.8221,0.2833,0.0000 | Path: div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent
+ID: mache-317 | Parent: mache-316 | Tag: a | Role: link | Text: "Explore GitHub Marketplace" | Bounds: 0.1917,3.8627,0.1365,0.0272 | Path: dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent > a.Primer_Brand__Link-module__Link___lvKjM
+ID: mache-318 | Parent: mache-203 | Tag: section | Role: region | Text: "Built-in application security where found means fixedUse AI to find and fix v..." | Bounds: 0.0000,3.9935,1.0000,1.4396 | Path: div > div > div.lp-Home > section.lp-Section
+ID: mache-319 | Parent: mache-318 | Tag: div | Role: div | Text: "Built-in application security where found means fixedUse AI to find and fix v..." | Bounds: 0.0000,3.9935,1.0000,0.9717 | Path: div > div.lp-Home > section.lp-Section > div.lp-SectionBlock
+ID: mache-320 | Parent: mache-319 | Tag: div | Role: div | Text: "Built-in application security where found means fixedUse AI to find and fix v..." | Bounds: 0.1667,3.9935,0.6667,0.9708 | Path: div.lp-Home > section.lp-Section > div.lp-SectionBlock > div.lp-SectionBlock-content
+ID: mache-321 | Parent: mache-320 | Tag: div | Role: div | Text: "Built-in application security where found means fixedUse AI to find and fix v..." | Bounds: 0.1667,3.9935,0.6667,0.4598 | Path: section.lp-Section > div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionIntro
+ID: mache-322 | Parent: mache-321 | Tag: header | Role: banner | Text: "Built-in application security where found means fixedUse AI to find and fix v..." | Bounds: 0.1667,4.2222,0.6667,0.1570 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionIntro > header.lp-SectionIntro-content
+ID: mache-323 | Parent: mache-322 | Tag: h2 | Role: heading | Text: "Built-in application security where found means fixed" | Bounds: 0.3027,4.2445,0.3947,0.0889 | Path: div.lp-SectionBlock-content > div.lp-SectionIntro > header.lp-SectionIntro-content > h2.lp-SectionIntro-heading
+ID: mache-324 | Parent: mache-320 | Tag: div | Role: div | Text: "Apply fixes in seconds. Spend less time debugging and more time building feat..." | Bounds: 0.1667,4.4533,0.6667,0.5110 | Path: section.lp-Section > div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionHero
+ID: mache-325 | Parent: mache-324 | Tag: div | Role: div | Text: "" | Bounds: 0.1667,4.4533,0.6667,0.0000 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-glow.lp-SectionHero-glow--deeperBlue
+ID: mache-326 | Parent: mache-325 | Tag: img | Role: img | Text: "" | Bounds: 0.4333,4.2228,0.2667,0.5764 | Path: div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-glow.lp-SectionHero-glow--deeperBlue > img.particles
+ID: mache-327 | Parent: mache-324 | Tag: div | Role: div | Text: "Apply fixes in seconds. Spend less time debugging and more time building feat..." | Bounds: 0.1667,4.4533,0.6667,0.5110 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hasText
+ID: mache-328 | Parent: mache-327 | Tag: div | Role: div | Text: "Apply fixes in seconds. Spend less time debugging and more time building feat..." | Bounds: 0.2000,4.5830,0.2875,0.3628 | Path: div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hasText > div.lp-SectionHero-text
+ID: mache-329 | Parent: mache-328 | Tag: h3 | Role: heading | Text: "Apply fixes in seconds." | Bounds: 0.2000,4.6941,0.2292,0.0855 | Path: div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hasText > div.lp-SectionHero-text > h3.lp-SectionHero-text-title
+ID: mache-330 | Parent: mache-328 | Tag: div | Role: div | Text: "Explore GitHub Advanced Security" | Bounds: 0.2000,4.8019,0.2292,0.0328 | Path: div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hasText > div.lp-SectionHero-text > div
+ID: mache-331 | Parent: mache-330 | Tag: a | Role: link | Text: "Explore GitHub Advanced Security" | Bounds: 0.2000,4.8026,0.1653,0.0272 | Path: div.lp-SectionHero-content.lp-SectionHero-content--hasText > div.lp-SectionHero-text > div > a.Primer_Brand__Link-module__Link___lvKjM.lp-SectionHero-text-link
+ID: mache-332 | Parent: mache-327 | Tag: div | Role: div | Text: "" | Bounds: 0.5000,4.5830,0.3000,0.3628 | Path: div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hasText > div.lp-SectionHero-visual
+ID: mache-333 | Parent: mache-332 | Tag: div | Role: div | Text: "" | Bounds: 0.5000,4.5830,0.3000,0.3628 | Path: div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hasText > div.lp-SectionHero-visual > div.lp-SectionHero-visual-frame
+ID: mache-334 | Parent: mache-333 | Tag: div | Role: div | Text: "" | Bounds: 0.5047,4.5913,0.2906,0.3471 | Path: div.lp-SectionHero-content.lp-SectionHero-content--hasText > div.lp-SectionHero-visual > div.lp-SectionHero-visual-frame > div
+ID: mache-335 | Parent: mache-334 | Tag: img | Role: img | Text: "Copilot Autofix identifies vulnerable code and provides an explanation, toget..." | Bounds: 0.5047,4.5913,0.2906,0.3471 | Path: div.lp-SectionHero-visual > div.lp-SectionHero-visual-frame > div > img.lp-SectionHero-visual-media.lp-SectionHero-visual-media--current
+ID: mache-336 | Parent: mache-318 | Tag: div | Role: div | Text: "Security debt, solved. Leverage security campaigns and Copilot Autofix to red..." | Bounds: 0.0000,4.9652,1.0000,0.4680 | Path: div > div.lp-Home > section.lp-Section > div.lp-SectionBlock
+ID: mache-337 | Parent: mache-336 | Tag: div | Role: div | Text: "Security debt, solved. Leverage security campaigns and Copilot Autofix to red..." | Bounds: 0.1667,4.9652,0.6667,0.4670 | Path: div.lp-Home > section.lp-Section > div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines
+ID: mache-338 | Parent: mache-337 | Tag: div | Role: div | Text: "Security debt, solved. Leverage security campaigns and Copilot Autofix to red..." | Bounds: 0.1672,4.9652,0.6656,0.2124 | Path: section.lp-Section > div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid
+ID: mache-339 | Parent: mache-338 | Tag: div | Role: div | Text: "Security debt, solved. Leverage security campaigns and Copilot Autofix to red..." | Bounds: 0.1672,4.9652,0.2219,0.2115 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn
+ID: mache-340 | Parent: mache-339 | Tag: div | Role: div | Text: "Security debt, solved. Leverage security campaigns and Copilot Autofix to red..." | Bounds: 0.1922,5.0430,0.1964,0.1522 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn > div.Security-grid--hiddenOnMobile
+ID: mache-341 | Parent: mache-340 | Tag: div | Role: div | Text: "Security debt, solved. Leverage security campaigns and Copilot Autofix to red..." | Bounds: 0.1922,5.0430,0.1964,0.1217 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-pillar
+ID: mache-342 | Parent: mache-341 | Tag: a | Role: link | Text: "Learn about GitHub Code Security" | Bounds: 0.1922,5.1410,0.1479,0.0244 | Path: div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-pillar > a.Primer_Brand__Link-module__Link___lvKjM.lp-SectionTemplate-content-link
+ID: mache-343 | Parent: mache-340 | Tag: div | Role: div | Text: "" | Bounds: 0.1922,5.1943,0.1964,0.0009 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-gridImageContainer
+ID: mache-344 | Parent: mache-343 | Tag: img | Role: img | Text: "A security campaign screen displays the campaign’s progress bar with 97% comp..." | Bounds: 0.1927,5.1952,0.0000,0.0000 | Path: div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-gridImageContainer > img.Security-gridImage
+ID: mache-345 | Parent: mache-338 | Tag: div | Role: div | Text: "Dependencies you can depend on. Update vulnerable dependencies with supported..." | Bounds: 0.3891,4.9652,0.2219,0.2115 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn
+ID: mache-346 | Parent: mache-345 | Tag: div | Role: div | Text: "Dependencies you can depend on. Update vulnerable dependencies with supported..." | Bounds: 0.4141,5.0430,0.1964,0.1522 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn > div.Security-grid--hiddenOnMobile
+ID: mache-347 | Parent: mache-346 | Tag: div | Role: div | Text: "Dependencies you can depend on. Update vulnerable dependencies with supported..." | Bounds: 0.4141,5.0430,0.1964,0.1217 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-pillar
+ID: mache-348 | Parent: mache-347 | Tag: a | Role: link | Text: "Learn about Dependabot" | Bounds: 0.4141,5.1410,0.1098,0.0244 | Path: div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-pillar > a.Primer_Brand__Link-module__Link___lvKjM.lp-SectionTemplate-content-link
+ID: mache-349 | Parent: mache-346 | Tag: div | Role: div | Text: "" | Bounds: 0.4141,5.1943,0.1964,0.0009 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-gridImageContainer
+ID: mache-350 | Parent: mache-349 | Tag: img | Role: img | Text: "List of dependencies defined in a requirements .txt file." | Bounds: 0.4146,5.1952,0.0000,0.0000 | Path: div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-gridImageContainer > img.Security-gridImage
+ID: mache-351 | Parent: mache-338 | Tag: div | Role: div | Text: "Your secrets, your business. Detect, prevent, and remediate leaked secrets ac..." | Bounds: 0.6109,4.9652,0.2219,0.2115 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn
+ID: mache-352 | Parent: mache-351 | Tag: div | Role: div | Text: "Your secrets, your business. Detect, prevent, and remediate leaked secrets ac..." | Bounds: 0.6359,5.0430,0.1969,0.1522 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn > div.Security-grid--hiddenOnMobile
+ID: mache-353 | Parent: mache-352 | Tag: div | Role: div | Text: "Your secrets, your business. Detect, prevent, and remediate leaked secrets ac..." | Bounds: 0.6359,5.0430,0.1969,0.1217 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-pillar
+ID: mache-354 | Parent: mache-353 | Tag: a | Role: link | Text: "Learn about GitHub Secret Protection" | Bounds: 0.6359,5.1410,0.1608,0.0244 | Path: div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-pillar > a.Primer_Brand__Link-module__Link___lvKjM.lp-SectionTemplate-content-link
+ID: mache-355 | Parent: mache-352 | Tag: div | Role: div | Text: "" | Bounds: 0.6359,5.1943,0.1969,0.0009 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-gridImageContainer
+ID: mache-356 | Parent: mache-355 | Tag: img | Role: img | Text: "GitHub push protection confirms and displays an active secret, and blocks the..." | Bounds: 0.6365,5.1952,0.0000,0.0000 | Path: div.Security-gridColumn > div.Security-grid--hiddenOnMobile > div.Security-gridImageContainer > img.Security-gridImage
+ID: mache-357 | Parent: mache-337 | Tag: div | Role: div | Text: "70% MTTR reduction with Copilot Autofix18.3M secret leaks stopped in the past..." | Bounds: 0.1672,5.1776,0.6656,0.2546 | Path: section.lp-Section > div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid
+ID: mache-358 | Parent: mache-357 | Tag: div | Role: div | Text: "70% MTTR reduction with Copilot Autofix1" | Bounds: 0.1672,5.1776,0.3328,0.2546 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn.Security-gridColumn--half
+ID: mache-359 | Parent: mache-358 | Tag: div | Role: div | Text: "70% MTTR reduction with Copilot Autofix1" | Bounds: 0.1922,5.2850,0.2004,0.0769 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn.Security-gridColumn--half > div
+ID: mache-360 | Parent: mache-359 | Tag: div | Role: div | Text: "70% MTTR reduction with Copilot Autofix1" | Bounds: 0.1922,5.2850,0.2004,0.0769 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn.Security-gridColumn--half > div > div
+ID: mache-361 | Parent: mache-360 | Tag: a | Role: link | Text: "Footnote 1" | Bounds: 0.2799,5.3369,0.0071,0.0204 | Path: span.Primer_Brand__Text-module__Text___pecHN.Security-statisticDescription > span.Primer_Brand__Text-module__Text___pecHN > sup > a
+ID: mache-362 | Parent: mache-357 | Tag: div | Role: div | Text: "8.3M secret leaks stopped in the past 12 months with push protection1" | Bounds: 0.5000,5.1776,0.3328,0.2546 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn.Security-gridColumn--half
+ID: mache-363 | Parent: mache-362 | Tag: div | Role: div | Text: "8.3M secret leaks stopped in the past 12 months with push protection1" | Bounds: 0.5250,5.2850,0.2514,0.0769 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn.Security-gridColumn--half > div
+ID: mache-364 | Parent: mache-363 | Tag: div | Role: div | Text: "8.3M secret leaks stopped in the past 12 months with push protection1" | Bounds: 0.5250,5.2850,0.2514,0.0769 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.Security-grid > div.Security-gridColumn.Security-gridColumn--half > div > div
+ID: mache-365 | Parent: mache-364 | Tag: a | Role: link | Text: "Footnote 1" | Bounds: 0.7128,5.3369,0.0071,0.0204 | Path: span.Primer_Brand__Text-module__Text___pecHN.Security-statisticDescription > span.Primer_Brand__Text-module__Text___pecHN > sup > a
+ID: mache-366 | Parent: mache-203 | Tag: section | Role: region | Text: "Work together, achieve moreFrom planning and discussion to code review, GitHu..." | Bounds: 0.0000,5.4332,1.0000,2.0393 | Path: div > div > div.lp-Home > section.lp-Section
+ID: mache-367 | Parent: mache-366 | Tag: div | Role: div | Text: "Work together, achieve moreFrom planning and discussion to code review, GitHu..." | Bounds: 0.0000,5.4332,1.0000,2.0393 | Path: div > div.lp-Home > section.lp-Section > div.lp-SectionTemplate
+ID: mache-368 | Parent: mache-367 | Tag: div | Role: div | Text: "Work together, achieve moreFrom planning and discussion to code review, GitHu..." | Bounds: 0.0000,5.4332,1.0000,1.0422 | Path: div.lp-Home > section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock
+ID: mache-369 | Parent: mache-368 | Tag: div | Role: div | Text: "Work together, achieve moreFrom planning and discussion to code review, GitHu..." | Bounds: 0.1667,5.4332,0.6667,1.0413 | Path: section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content
+ID: mache-370 | Parent: mache-369 | Tag: div | Role: div | Text: "Work together, achieve moreFrom planning and discussion to code review, GitHu..." | Bounds: 0.1667,5.4332,0.6667,0.4154 | Path: div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionIntro
+ID: mache-371 | Parent: mache-370 | Tag: header | Role: banner | Text: "Work together, achieve moreFrom planning and discussion to code review, GitHu..." | Bounds: 0.1667,5.6619,0.6667,0.1126 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionIntro > header.lp-SectionIntro-content
+ID: mache-372 | Parent: mache-371 | Tag: h2 | Role: heading | Text: "Work together, achieve more" | Bounds: 0.3629,5.6841,0.2742,0.0444 | Path: div.lp-SectionBlock-content > div.lp-SectionIntro > header.lp-SectionIntro-content > h2.lp-SectionIntro-heading
+ID: mache-373 | Parent: mache-369 | Tag: div | Role: div | Text: "" | Bounds: 0.1667,5.8485,0.6667,0.6259 | Path: div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionHero
+ID: mache-374 | Parent: mache-373 | Tag: div | Role: div | Text: "" | Bounds: 0.1667,5.8485,0.6667,0.0000 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-glow
+ID: mache-375 | Parent: mache-374 | Tag: img | Role: img | Text: "" | Bounds: 0.3667,5.6180,0.2667,0.5764 | Path: div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-glow > img.particles
+ID: mache-376 | Parent: mache-373 | Tag: div | Role: div | Text: "" | Bounds: 0.1667,5.8485,0.6667,0.6259 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hidden
+ID: mache-377 | Parent: mache-376 | Tag: div | Role: div | Text: "" | Bounds: 0.1667,5.9041,0.6667,0.6259 | Path: div.lp-SectionBlock-content > div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hidden > div.lp-SectionHero-visual
+ID: mache-378 | Parent: mache-377 | Tag: div | Role: div | Text: "" | Bounds: 0.2167,5.9634,0.5667,0.5667 | Path: div.lp-SectionHero > div.lp-SectionHero-content.lp-SectionHero-content--hidden > div.lp-SectionHero-visual > div.lp-SectionHero-visual-frame
+ID: mache-379 | Parent: mache-378 | Tag: div | Role: div | Text: "" | Bounds: 0.2214,5.9717,0.5573,0.5583 | Path: div.lp-SectionHero-content.lp-SectionHero-content--hidden > div.lp-SectionHero-visual > div.lp-SectionHero-visual-frame > div
+ID: mache-380 | Parent: mache-379 | Tag: img | Role: img | Text: "A project management dashboard showing tasks for the ‘OctoArcade Invaders’ pr..." | Bounds: 0.2214,5.9717,0.5573,0.5583 | Path: div.lp-SectionHero-visual > div.lp-SectionHero-visual-frame > div > img.lp-SectionHero-visual-media.lp-SectionHero-visual-media--current
+ID: mache-381 | Parent: mache-367 | Tag: div | Role: div | Text: "Plan with clarity. Organize everything from high-level roadmaps to everyday t..." | Bounds: 0.0000,6.4754,1.0000,0.3500 | Path: div.lp-Home > section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock
+ID: mache-382 | Parent: mache-381 | Tag: div | Role: div | Text: "Plan with clarity. Organize everything from high-level roadmaps to everyday t..." | Bounds: 0.1667,6.4754,0.6667,0.3490 | Path: section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines
+ID: mache-383 | Parent: mache-382 | Tag: div | Role: div | Text: "Plan with clarity. Organize everything from high-level roadmaps to everyday t..." | Bounds: 0.1672,6.4754,0.6656,0.3490 | Path: div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid
+ID: mache-384 | Parent: mache-383 | Tag: div | Role: div | Text: "Plan with clarity. Organize everything from high-level roadmaps to everyday t..." | Bounds: 0.1672,6.4754,0.3328,0.3490 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column
+ID: mache-385 | Parent: mache-384 | Tag: div | Role: div | Text: "Plan with clarity. Organize everything from high-level roadmaps to everyday t..." | Bounds: 0.1672,6.4939,0.3323,0.2305 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-content
+ID: mache-386 | Parent: mache-385 | Tag: h3 | Role: heading | Text: "Plan with clarity. Organize everything from high-level roadmaps to everyday t..." | Bounds: 0.1922,6.5532,0.2906,0.0570 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-content > h3
+ID: mache-387 | Parent: mache-385 | Tag: div | Role: div | Text: "Explore GitHub Projects" | Bounds: 0.1922,6.6324,0.2906,0.0328 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-content > div
+ID: mache-388 | Parent: mache-387 | Tag: a | Role: link | Text: "Explore GitHub Projects" | Bounds: 0.1922,6.6332,0.1172,0.0272 | Path: div.lp-SectionTemplate-grid-column > div.lp-SectionTemplate-content > div > a.Primer_Brand__Link-module__Link___lvKjM.lp-SectionTemplate-content-link
+ID: mache-389 | Parent: mache-367 | Tag: div | Role: div | Text: "Keep track of your tasksCreate issues and manage projects with tools that ada..." | Bounds: 0.0000,6.8253,1.0000,0.6471 | Path: div.lp-Home > section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock
+ID: mache-390 | Parent: mache-389 | Tag: div | Role: div | Text: "Keep track of your tasksCreate issues and manage projects with tools that ada..." | Bounds: 0.1667,6.8253,0.6667,0.6462 | Path: section.lp-Section > div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content
+ID: mache-391 | Parent: mache-390 | Tag: div | Role: div | Text: "Keep track of your tasksCreate issues and manage projects with tools that ada..." | Bounds: 0.1667,6.8253,0.6667,0.6462 | Path: div.lp-SectionTemplate > div.lp-SectionBlock > div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid
+ID: mache-392 | Parent: mache-391 | Tag: div | Role: div | Text: "" | Bounds: 0.5000,6.8253,0.4172,0.6462 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionVisual
+ID: mache-393 | Parent: mache-392 | Tag: img | Role: img | Text: "" | Bounds: 0.5000,6.8253,0.4167,0.6462 | Path: div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionVisual > img
+ID: mache-394 | Parent: mache-392 | Tag: img | Role: img | Text: "" | Bounds: 0.4896,6.8092,0.4375,0.6785 | Path: div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionVisual > img
+ID: mache-395 | Parent: mache-392 | Tag: img | Role: img | Text: "" | Bounds: 0.4896,6.8092,0.4375,0.6785 | Path: div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionVisual > img
+ID: mache-396 | Parent: mache-392 | Tag: img | Role: img | Text: "" | Bounds: 0.4896,6.8092,0.4375,0.6785 | Path: div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionVisual > img
+ID: mache-397 | Parent: mache-391 | Tag: div | Role: div | Text: "Keep track of your tasksCreate issues and manage projects with tools that ada..." | Bounds: 0.1667,6.8253,0.3333,0.6462 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content > div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionWrapper
+ID: mache-398 | Parent: mache-397 | Tag: div | Role: div | Text: "Keep track of your tasksCreate issues and manage projects with tools that ada..." | Bounds: 0.1917,6.9639,0.2833,0.1474 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionWrapper > dl.lp-Accordion > div.lp-AccordionItem
+ID: mache-399 | Parent: mache-398 | Tag: button | Role: button | Text: "Keep track of your tasks" | Bounds: 0.1917,6.9639,0.2833,0.0285 | Path: dl.lp-Accordion > div.lp-AccordionItem > dt > button.lp-AccordionDisclosure
+ID: mache-400 | Parent: mache-399 | Tag: div | Role: div | Text: "Keep track of your tasks" | Bounds: 0.1917,6.9639,0.2833,0.0285 | Path: div.lp-AccordionItem > dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary
+ID: mache-401 | Parent: mache-400 | Tag: h3 | Role: heading | Text: "Keep track of your tasks" | Bounds: 0.1917,6.9639,0.1298,0.0285 | Path: dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary > h3.lp-AccordionItem-heading
+ID: mache-402 | Parent: mache-398 | Tag: div | Role: div | Text: "Create issues and manage projects with tools that adapt to your code.Explore ..." | Bounds: 0.1917,6.9961,0.2833,0.0957 | Path: dl.lp-Accordion > div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content
+ID: mache-403 | Parent: mache-402 | Tag: div | Role: div | Text: "Create issues and manage projects with tools that adapt to your code.Explore ..." | Bounds: 0.1917,6.9961,0.2833,0.0957 | Path: div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent
+ID: mache-404 | Parent: mache-403 | Tag: a | Role: link | Text: "Explore GitHub Issues" | Bounds: 0.1917,7.0617,0.1088,0.0272 | Path: dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent > a.Primer_Brand__Link-module__Link___lvKjM
+ID: mache-405 | Parent: mache-397 | Tag: div | Role: div | Text: "Share ideas and ask questionsCreate space for open-ended conversations alongs..." | Bounds: 0.1917,7.1113,0.2833,0.0739 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionWrapper > dl.lp-Accordion > div.lp-AccordionItem
+ID: mache-406 | Parent: mache-405 | Tag: button | Role: button | Text: "Share ideas and ask questions" | Bounds: 0.1917,7.1335,0.2833,0.0285 | Path: dl.lp-Accordion > div.lp-AccordionItem > dt > button.lp-AccordionDisclosure
+ID: mache-407 | Parent: mache-406 | Tag: div | Role: div | Text: "Share ideas and ask questions" | Bounds: 0.1917,7.1335,0.2833,0.0285 | Path: div.lp-AccordionItem > dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary
+ID: mache-408 | Parent: mache-407 | Tag: h3 | Role: heading | Text: "Share ideas and ask questions" | Bounds: 0.1917,7.1335,0.1639,0.0285 | Path: dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary > h3.lp-AccordionItem-heading
+ID: mache-409 | Parent: mache-405 | Tag: div | Role: div | Text: "Create space for open-ended conversations alongside your project.Explore GitH..." | Bounds: 0.1917,7.1657,0.2833,0.0000 | Path: dl.lp-Accordion > div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content
+ID: mache-410 | Parent: mache-409 | Tag: div | Role: div | Text: "Create space for open-ended conversations alongside your project.Explore GitH..." | Bounds: 0.1917,7.1657,0.2833,0.0000 | Path: div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent
+ID: mache-411 | Parent: mache-410 | Tag: a | Role: link | Text: "Explore GitHub Discussions" | Bounds: 0.1917,7.2313,0.1342,0.0272 | Path: dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent > a.Primer_Brand__Link-module__Link___lvKjM
+ID: mache-412 | Parent: mache-397 | Tag: div | Role: div | Text: "Review code changes togetherAssign initial reviews to Copilot for greater spe..." | Bounds: 0.1917,7.1852,0.2833,0.0739 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionWrapper > dl.lp-Accordion > div.lp-AccordionItem
+ID: mache-413 | Parent: mache-412 | Tag: button | Role: button | Text: "Review code changes together" | Bounds: 0.1917,7.2074,0.2833,0.0285 | Path: dl.lp-Accordion > div.lp-AccordionItem > dt > button.lp-AccordionDisclosure
+ID: mache-414 | Parent: mache-413 | Tag: div | Role: div | Text: "Review code changes together" | Bounds: 0.1917,7.2074,0.2833,0.0285 | Path: div.lp-AccordionItem > dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary
+ID: mache-415 | Parent: mache-414 | Tag: h3 | Role: heading | Text: "Review code changes together" | Bounds: 0.1917,7.2074,0.1659,0.0285 | Path: dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary > h3.lp-AccordionItem-heading
+ID: mache-416 | Parent: mache-412 | Tag: div | Role: div | Text: "Assign initial reviews to Copilot for greater speed and quality.Explore code ..." | Bounds: 0.1917,7.2396,0.2833,0.0000 | Path: dl.lp-Accordion > div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content
+ID: mache-417 | Parent: mache-416 | Tag: div | Role: div | Text: "Assign initial reviews to Copilot for greater speed and quality.Explore code ..." | Bounds: 0.1917,7.2396,0.2833,0.0000 | Path: div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent
+ID: mache-418 | Parent: mache-417 | Tag: a | Role: link | Text: "Explore code review" | Bounds: 0.1917,7.2802,0.0991,0.0272 | Path: dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent > a.Primer_Brand__Link-module__Link___lvKjM
+ID: mache-419 | Parent: mache-397 | Tag: div | Role: div | Text: "Fund open source projectsBecome an open source partner and support the tools ..." | Bounds: 0.1917,7.2591,0.2833,0.0739 | Path: div.Primer_Brand__Grid-module__Grid___q48mT.lp-SectionTemplate-grid > div.lp-SectionTemplate-grid-column.lp-SectionTemplate-accordionWrapper > dl.lp-Accordion > div.lp-AccordionItem
+ID: mache-420 | Parent: mache-419 | Tag: button | Role: button | Text: "Fund open source projects" | Bounds: 0.1917,7.2813,0.2833,0.0285 | Path: dl.lp-Accordion > div.lp-AccordionItem > dt > button.lp-AccordionDisclosure
+ID: mache-421 | Parent: mache-420 | Tag: div | Role: div | Text: "Fund open source projects" | Bounds: 0.1917,7.2813,0.2833,0.0285 | Path: div.lp-AccordionItem > dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary
+ID: mache-422 | Parent: mache-421 | Tag: h3 | Role: heading | Text: "Fund open source projects" | Bounds: 0.1917,7.2813,0.1424,0.0285 | Path: dt > button.lp-AccordionDisclosure > div.lp-AccordionItem-summary > h3.lp-AccordionItem-heading
+ID: mache-423 | Parent: mache-419 | Tag: div | Role: div | Text: "Become an open source partner and support the tools and libraries that power ..." | Bounds: 0.1917,7.3135,0.2833,0.0000 | Path: dl.lp-Accordion > div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content
+ID: mache-424 | Parent: mache-423 | Tag: div | Role: div | Text: "Become an open source partner and support the tools and libraries that power ..." | Bounds: 0.1917,7.3135,0.2833,0.0000 | Path: div.lp-AccordionItem > dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent
+ID: mache-425 | Parent: mache-424 | Tag: a | Role: link | Text: "Explore GitHub Sponsors" | Bounds: 0.1917,7.3791,0.1227,0.0272 | Path: dd > div.lp-AccordionDisclosure-content > div.lp-AccordionContent > a.Primer_Brand__Link-module__Link___lvKjM
+ID: mache-426 | Parent: mache-203 | Tag: section | Role: region | Text: "From startups to enterprises, GitHub scales with teams of any size in any ind..." | Bounds: 0.0000,7.4724,1.0000,1.0633 | Path: div > div > div.lp-Home > section.lp-Section
+ID: mache-427 | Parent: mache-426 | Tag: div | Role: div | Text: "From startups to enterprises, GitHub scales with teams of any size in any ind..." | Bounds: 0.0000,7.4724,1.0000,0.9472 | Path: div > div.lp-Home > section.lp-Section > div.lp-CustomerStories-stickyContainer
+ID: mache-428 | Parent: mache-427 | Tag: div | Role: div | Text: "From startups to enterprises, GitHub scales with teams of any size in any ind..." | Bounds: 0.0000,7.4724,1.0000,0.4139 | Path: div.lp-Home > section.lp-Section > div.lp-CustomerStories-stickyContainer > div.lp-SectionBlock.lp-SectionBlock--noBorder
+ID: mache-429 | Parent: mache-428 | Tag: div | Role: div | Text: "From startups to enterprises, GitHub scales with teams of any size in any ind..." | Bounds: 0.1667,7.4724,0.6667,0.4139 | Path: section.lp-Section > div.lp-CustomerStories-stickyContainer > div.lp-SectionBlock.lp-SectionBlock--noBorder > div.lp-SectionBlock-content
+ID: mache-430 | Parent: mache-429 | Tag: div | Role: div | Text: "From startups to enterprises, GitHub scales with teams of any size in any ind..." | Bounds: 0.1667,7.4724,0.6667,0.4139 | Path: div.lp-CustomerStories-stickyContainer > div.lp-SectionBlock.lp-SectionBlock--noBorder > div.lp-SectionBlock-content > div.lp-SectionIntro
+ID: mache-431 | Parent: mache-430 | Tag: header | Role: banner | Text: "From startups to enterprises, GitHub scales with teams of any size in any ind..." | Bounds: 0.1667,7.7011,0.6667,0.1333 | Path: div.lp-SectionBlock.lp-SectionBlock--noBorder > div.lp-SectionBlock-content > div.lp-SectionIntro > header.lp-SectionIntro-content
+ID: mache-432 | Parent: mache-431 | Tag: h2 | Role: heading | Text: "From startups to enterprises, GitHub scales with teams of any size in any ind..." | Bounds: 0.3027,7.7234,0.3947,0.1333 | Path: div.lp-SectionBlock-content > div.lp-SectionIntro > header.lp-SectionIntro-content > h2.lp-SectionIntro-heading
+ID: mache-433 | Parent: mache-427 | Tag: div | Role: div | Text: "By industryBy sizeBy use caseBy industry" | Bounds: 0.0000,7.8863,1.0000,0.0537 | Path: div.lp-Home > section.lp-Section > div.lp-CustomerStories-stickyContainer > div.lp-CustomerStories-toggleWrapper
+ID: mache-434 | Parent: mache-433 | Tag: div | Role: div | Text: "By industryBy sizeBy use caseBy industry" | Bounds: 0.0000,7.8863,1.0000,0.0537 | Path: section.lp-Section > div.lp-CustomerStories-stickyContainer > div.lp-CustomerStories-toggleWrapper > div.Toggle-wrapper
+ID: mache-435 | Parent: mache-434 | Tag: div | Role: tablist | Text: "By industryBy sizeBy use case" | Bounds: 0.3917,7.8863,0.2167,0.0537 | Path: div.lp-CustomerStories-stickyContainer > div.lp-CustomerStories-toggleWrapper > div.Toggle-wrapper > div.Toggle-container.Toggle-container--background
+ID: mache-436 | Parent: mache-435 | Tag: div | Role: div | Text: "By industryBy sizeBy use case" | Bounds: 0.3922,7.8873,0.2156,0.0519 | Path: div.lp-CustomerStories-toggleWrapper > div.Toggle-wrapper > div.Toggle-container.Toggle-container--background > div.Toggle
+ID: mache-437 | Parent: mache-436 | Tag: button | Role: tab | Text: "By industry" | Bounds: 0.3964,7.8947,0.0677,0.0370 | Path: div.Toggle-wrapper > div.Toggle-container.Toggle-container--background > div.Toggle > button.Toggle-button.Toggle-button--selected
+ID: mache-438 | Parent: mache-436 | Tag: button | Role: tab | Text: "By size" | Bounds: 0.4661,7.8947,0.0677,0.0370 | Path: div.Toggle-wrapper > div.Toggle-container.Toggle-container--background > div.Toggle > button.Toggle-button
+ID: mache-439 | Parent: mache-436 | Tag: button | Role: tab | Text: "By use case" | Bounds: 0.5359,7.8947,0.0677,0.0370 | Path: div.Toggle-wrapper > div.Toggle-container.Toggle-container--background > div.Toggle > button.Toggle-button
+ID: mache-440 | Parent: mache-434 | Tag: div | Role: div | Text: "By industry" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.lp-CustomerStories-stickyContainer > div.lp-CustomerStories-toggleWrapper > div.Toggle-wrapper > div.Toggle-menu--background.Toggle-menu--isHidden
+ID: mache-441 | Parent: mache-440 | Tag: div | Role: div | Text: "By industry" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.lp-CustomerStories-toggleWrapper > div.Toggle-wrapper > div.Toggle-menu--background.Toggle-menu--isHidden > div
+ID: mache-442 | Parent: mache-441 | Tag: button | Role: button | Text: "Select a GitHub feature" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Toggle-wrapper > div.Toggle-menu--background.Toggle-menu--isHidden > div > button
+ID: mache-443 | Parent: mache-427 | Tag: div | Role: div | Text: "TechnologyFigma streamlines development and strengthens securityRead customer..." | Bounds: 0.0000,7.9928,1.0000,0.4269 | Path: div.lp-Home > section.lp-Section > div.lp-CustomerStories-stickyContainer > div.lp-SectionBlock
+ID: mache-444 | Parent: mache-443 | Tag: div | Role: div | Text: "TechnologyFigma streamlines development and strengthens securityRead customer..." | Bounds: 0.1667,7.9928,0.6667,0.4259 | Path: section.lp-Section > div.lp-CustomerStories-stickyContainer > div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines
+ID: mache-445 | Parent: mache-444 | Tag: div | Role: div | Text: "TechnologyFigma streamlines development and strengthens securityRead customer..." | Bounds: 0.1672,7.9928,0.6656,0.4259 | Path: div.lp-CustomerStories-stickyContainer > div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-CustomerStories-grid
+ID: mache-446 | Parent: mache-445 | Tag: div | Role: div | Text: "TechnologyFigma streamlines development and strengthens securityRead customer..." | Bounds: 0.1672,7.9928,0.2219,0.4259 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-CustomerStories-grid > div.lp-CustomerStories-gridColumn
+ID: mache-447 | Parent: mache-446 | Tag: a | Role: link | Text: "TechnologyFigma streamlines development and strengthens securityRead customer..." | Bounds: 0.1672,7.9928,0.2214,0.4259 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-CustomerStories-grid > div.lp-CustomerStories-gridColumn > a.lp-CustomerStories-button
+ID: mache-448 | Parent: mache-447 | Tag: div | Role: div | Text: "" | Bounds: 0.1672,7.9928,0.2214,0.4259 | Path: a.lp-CustomerStories-button > span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-backgroundContainer
+ID: mache-449 | Parent: mache-448 | Tag: img | Role: img | Text: "" | Bounds: 0.1677,8.0086,0.0000,0.0000 | Path: span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-backgroundContainer > img
+ID: mache-450 | Parent: mache-447 | Tag: div | Role: div | Text: "TechnologyFigma streamlines development and strengthens securityRead customer..." | Bounds: 0.1672,7.9928,0.2214,0.4259 | Path: a.lp-CustomerStories-button > span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-container
+ID: mache-451 | Parent: mache-450 | Tag: div | Role: div | Text: "" | Bounds: 0.1922,8.0298,0.1714,0.0378 | Path: span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-container > div.lp-CustomerStories-logoContainer
+ID: mache-452 | Parent: mache-451 | Tag: img | Role: img | Text: "" | Bounds: 0.1922,8.0298,0.0000,0.0333 | Path: span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-container > div.lp-CustomerStories-logoContainer > img.lp-CustomerStories-logo
+ID: mache-453 | Parent: mache-445 | Tag: div | Role: div | Text: "AutomotiveMercedes-Benz standardizes source code and automates onboardingRead..." | Bounds: 0.3891,7.9928,0.2219,0.4259 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-CustomerStories-grid > div.lp-CustomerStories-gridColumn
+ID: mache-454 | Parent: mache-453 | Tag: a | Role: link | Text: "AutomotiveMercedes-Benz standardizes source code and automates onboardingRead..." | Bounds: 0.3891,7.9928,0.2214,0.4259 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-CustomerStories-grid > div.lp-CustomerStories-gridColumn > a.lp-CustomerStories-button
+ID: mache-455 | Parent: mache-454 | Tag: div | Role: div | Text: "" | Bounds: 0.3891,7.9928,0.2214,0.4259 | Path: a.lp-CustomerStories-button > span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-backgroundContainer
+ID: mache-456 | Parent: mache-455 | Tag: img | Role: img | Text: "" | Bounds: 0.3896,8.0086,0.0000,0.0000 | Path: span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-backgroundContainer > img
+ID: mache-457 | Parent: mache-454 | Tag: div | Role: div | Text: "AutomotiveMercedes-Benz standardizes source code and automates onboardingRead..." | Bounds: 0.3891,7.9928,0.2214,0.4259 | Path: a.lp-CustomerStories-button > span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-container
+ID: mache-458 | Parent: mache-457 | Tag: div | Role: div | Text: "" | Bounds: 0.4141,8.0298,0.1714,0.0433 | Path: span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-container > div.lp-CustomerStories-logoContainer
+ID: mache-459 | Parent: mache-458 | Tag: img | Role: img | Text: "" | Bounds: 0.4141,8.0298,0.0000,0.0389 | Path: span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-container > div.lp-CustomerStories-logoContainer > img.lp-CustomerStories-logo
+ID: mache-460 | Parent: mache-445 | Tag: div | Role: div | Text: "Financial servicesMercado Libre cuts coding time by 50%Read customer story" | Bounds: 0.6109,7.9928,0.2219,0.4259 | Path: div.lp-SectionBlock > div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-CustomerStories-grid > div.lp-CustomerStories-gridColumn
+ID: mache-461 | Parent: mache-460 | Tag: a | Role: link | Text: "Financial servicesMercado Libre cuts coding time by 50%Read customer story" | Bounds: 0.6109,7.9928,0.2219,0.4259 | Path: div.lp-SectionBlock-content.lp-SectionBlock-content--lines > div.Primer_Brand__Grid-module__Grid___q48mT.lp-CustomerStories-grid > div.lp-CustomerStories-gridColumn > a.lp-CustomerStories-button
+ID: mache-462 | Parent: mache-461 | Tag: div | Role: div | Text: "" | Bounds: 0.6109,7.9928,0.2219,0.4259 | Path: a.lp-CustomerStories-button > span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-backgroundContainer
+ID: mache-463 | Parent: mache-462 | Tag: img | Role: img | Text: "" | Bounds: 0.6115,8.0086,0.0000,0.0000 | Path: span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-backgroundContainer > img
+ID: mache-464 | Parent: mache-461 | Tag: div | Role: div | Text: "Financial servicesMercado Libre cuts coding time by 50%Read customer story" | Bounds: 0.6109,7.9928,0.2219,0.4259 | Path: a.lp-CustomerStories-button > span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-container
+ID: mache-465 | Parent: mache-464 | Tag: div | Role: div | Text: "" | Bounds: 0.6359,8.0298,0.1719,0.0387 | Path: span > span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-container > div.lp-CustomerStories-logoContainer
+ID: mache-466 | Parent: mache-465 | Tag: img | Role: img | Text: "" | Bounds: 0.6359,8.0298,0.0000,0.0343 | Path: span.Primer_Brand__Text-module__Text___pecHN > div.lp-CustomerStories-container > div.lp-CustomerStories-logoContainer > img.lp-CustomerStories-logo
+ID: mache-467 | Parent: mache-426 | Tag: div | Role: div | Text: "Explore customer storiesView all solutions" | Bounds: 0.0000,8.4197,1.0000,0.1161 | Path: div > div.lp-Home > section.lp-Section > div.lp-SectionBlock.lp-SectionBlock--noBorder
+ID: mache-468 | Parent: mache-467 | Tag: div | Role: div | Text: "Explore customer storiesView all solutions" | Bounds: 0.1667,8.4197,0.6667,0.1161 | Path: div.lp-Home > section.lp-Section > div.lp-SectionBlock.lp-SectionBlock--noBorder > div.lp-SectionBlock-content
+ID: mache-469 | Parent: mache-468 | Tag: div | Role: div | Text: "Explore customer storiesView all solutions" | Bounds: 0.1667,8.4641,0.6667,0.0717 | Path: section.lp-Section > div.lp-SectionBlock.lp-SectionBlock--noBorder > div.lp-SectionBlock-content > div.lp-CustomerStories-links
+ID: mache-470 | Parent: mache-469 | Tag: div | Role: div | Text: "Explore customer stories" | Bounds: 0.3810,8.4641,0.1211,0.0717 | Path: div.lp-SectionBlock.lp-SectionBlock--noBorder > div.lp-SectionBlock-content > div.lp-CustomerStories-links > div
+ID: mache-471 | Parent: mache-470 | Tag: a | Role: link | Text: "Explore customer stories" | Bounds: 0.3810,8.4871,0.1211,0.0272 | Path: div.lp-SectionBlock-content > div.lp-CustomerStories-links > div > a.Primer_Brand__Link-module__Link___lvKjM.lp-CustomerStories-link
+ID: mache-472 | Parent: mache-469 | Tag: div | Role: div | Text: "View all solutions" | Bounds: 0.5318,8.4641,0.0872,0.0717 | Path: div.lp-SectionBlock.lp-SectionBlock--noBorder > div.lp-SectionBlock-content > div.lp-CustomerStories-links > div
+ID: mache-473 | Parent: mache-472 | Tag: a | Role: link | Text: "View all solutions" | Bounds: 0.5318,8.4871,0.0872,0.0272 | Path: div.lp-SectionBlock-content > div.lp-CustomerStories-links > div > a.Primer_Brand__Link-module__Link___lvKjM.lp-CustomerStories-link
+ID: mache-474 | Parent: mache-203 | Tag: section | Role: region | Text: "A subtle purple glow fades in as Mona the Octocat, Copilot, and Ducky dramati..." | Bounds: 0.0000,8.5358,1.0000,1.0117 | Path: div > div > div.lp-Home > section
+ID: mache-475 | Parent: mache-474 | Tag: div | Role: div | Text: "A subtle purple glow fades in as Mona the Octocat, Copilot, and Ducky dramati..." | Bounds: 0.1667,8.6247,0.6667,0.8340 | Path: div > div.lp-Home > section > div
+ID: mache-476 | Parent: mache-475 | Tag: section | Role: region | Text: "Millions of developers and businesses call GitHub homeWhether you’re scaling ..." | Bounds: 0.1667,9.1836,0.6667,0.2750 | Path: div.lp-Home > section > div > section.lp-Cta
+ID: mache-477 | Parent: mache-476 | Tag: div | Role: div | Text: "Millions of developers and businesses call GitHub homeWhether you’re scaling ..." | Bounds: 0.1667,9.1836,0.6667,0.2750 | Path: section > div > section.lp-Cta > div
+ID: mache-478 | Parent: mache-477 | Tag: div | Role: div | Text: "Millions of developers and businesses call GitHub homeWhether you’re scaling ..." | Bounds: 0.2448,9.1836,0.5104,0.2750 | Path: div > section.lp-Cta > div > div
+ID: mache-479 | Parent: mache-478 | Tag: h2 | Role: heading | Text: "Millions of developers and businesses call GitHub home" | Bounds: 0.2448,9.2058,0.5104,0.0889 | Path: section.lp-Cta > div > div > h2
+ID: mache-480 | Parent: mache-478 | Tag: div | Role: div | Text: "Enter your emailSign up for GitHubTry GitHub Copilot" | Bounds: 0.3179,9.4290,0.3642,0.0519 | Path: section.lp-Cta > div > div > div.CtaForm.CTAForm-footer
+ID: mache-481 | Parent: mache-480 | Tag: form | Role: form | Text: "Sign up for GitHub" | Bounds: 0.3179,9.4290,0.2491,0.0519 | Path: div > div > div.CtaForm.CTAForm-footer > form
+ID: mache-482 | Parent: mache-481 | Tag: input | Role: textbox | Text: "hidden" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > div.CtaForm.CTAForm-footer > form > input
+ID: mache-483 | Parent: mache-481 | Tag: section | Role: region | Text: "Enter your emailSign up for GitHub" | Bounds: 0.3179,9.4290,0.2491,0.0519 | Path: div > div.CtaForm.CTAForm-footer > form > section.CtaFormControl
+ID: mache-484 | Parent: mache-483 | Tag: div | Role: div | Text: "Enter your emailSign up for GitHub" | Bounds: 0.3179,9.4290,0.2491,0.0519 | Path: div.CtaForm.CTAForm-footer > form > section.CtaFormControl > div.CtaFormControl-container
+ID: mache-485 | Parent: mache-484 | Tag: div | Role: div | Text: "Enter your email" | Bounds: 0.3200,9.4327,0.1365,0.0444 | Path: form > section.CtaFormControl > div.CtaFormControl-container > div.CtaFormControl-field-wrap
+ID: mache-486 | Parent: mache-485 | Tag: input | Role: textbox | Text: "email" | Bounds: 0.3205,9.4336,0.1354,0.0426 | Path: div.CtaFormControl-container > div.CtaFormControl-field-wrap > span > input.TextInput.CtaFormControl-input
+ID: mache-487 | Parent: mache-484 | Tag: button | Role: button | Text: "Sign up for GitHub" | Bounds: 0.4585,9.4327,0.1064,0.0444 | Path: form > section.CtaFormControl > div.CtaFormControl-container > button.CtaForm-primaryAction.CtaFormControl-button
+ID: mache-488 | Parent: mache-480 | Tag: a | Role: link | Text: "Try GitHub Copilot" | Bounds: 0.5753,9.4290,0.1068,0.0519 | Path: div > div > div.CtaForm.CTAForm-footer > a.CtaForm-secondaryAction.CtaForm-nextToFormAction
+ID: mache-489 | Parent: mache-203 | Tag: div | Role: div | Text: "FootnotesGitHub internal customer data, 2025." | Bounds: 0.1667,9.5475,0.6667,0.0935 | Path: div > div > div.lp-Home > div.Primer_Brand__Grid-module__Grid___q48mT
+ID: mache-490 | Parent: mache-489 | Tag: div | Role: div | Text: "FootnotesGitHub internal customer data, 2025." | Bounds: 0.1750,9.5475,0.6500,0.0935 | Path: div > div.lp-Home > div.Primer_Brand__Grid-module__Grid___q48mT > div
+ID: mache-491 | Parent: mache-490 | Tag: h2 | Role: heading | Text: "Footnotes" | Bounds: 0.1750,9.5475,0.0005,0.0009 | Path: div.lp-Home > div.Primer_Brand__Grid-module__Grid___q48mT > div > h2.visually-hidden
+ID: mache-492 | Parent: mache-490 | Tag: ol | Role: ol | Text: "GitHub internal customer data, 2025." | Bounds: 0.1750,9.5475,0.6500,0.0935 | Path: div.lp-Home > div.Primer_Brand__Grid-module__Grid___q48mT > div > ol.pt-0
+ID: mache-493 | Parent: mache-492 | Tag: a | Role: link | Text: "Back to content" | Bounds: 0.3183,9.5484,0.0104,0.0176 | Path: ol.pt-0 > li > p.Primer_Brand__Text-module__Text___pecHN > a
+ID: mache-494 | Parent: mache-203 | Tag: div | Role: div | Text: "" | Bounds: 0.0000,0.9444,1.0000,0.0333 | Path: div > div > div.lp-Home > div.BackToTop
+ID: mache-495 | Parent: mache-494 | Tag: a | Role: link | Text: "Back to top" | Bounds: 0.9688,0.9444,0.0187,0.0333 | Path: div > div.lp-Home > div.BackToTop > a
+ID: mache-496 | Parent: mache-0 | Tag: footer | Role: contentinfo | Text: "   " | Bounds: 0.0000,9.6743,1.0000,0.5556 | Path: div.logged-out.env-production > footer.footer.tmp-pt-6
+ID: mache-497 | Parent: mache-496 | Tag: h2 | Role: heading | Text: "Site-wide Links" | Bounds: 0.0000,9.7114,0.0005,0.0009 | Path: div.logged-out.env-production > footer.footer.tmp-pt-6 > h2.sr-only
+ID: mache-498 | Parent: mache-496 | Tag: div | Role: div | Text: " " | Bounds: 0.1667,9.7114,0.6667,0.4111 | Path: div.logged-out.env-production > footer.footer.tmp-pt-6 > div.container-xl.p-responsive
+ID: mache-499 | Parent: mache-498 | Tag: div | Role: div | Text: "     " | Bounds: 0.1750,9.7114,0.6500,0.4111 | Path: div.logged-out.env-production > footer.footer.tmp-pt-6 > div.container-xl.p-responsive > div.d-flex.flex-wrap
+ID: mache-500 | Parent: mache-499 | Tag: section | Role: region | Text: "    " | Bounds: 0.1750,9.7410,0.2167,0.3222 | Path: footer.footer.tmp-pt-6 > div.container-xl.p-responsive > div.d-flex.flex-wrap > section.col-12.col-lg-4
+ID: mache-501 | Parent: mache-500 | Tag: a | Role: link | Text: "Go to GitHub homepage" | Bounds: 0.1750,9.7410,0.0667,0.0278 | Path: div.container-xl.p-responsive > div.d-flex.flex-wrap > section.col-12.col-lg-4 > a.color-fg-default.d-inline-block
+ID: mache-502 | Parent: mache-500 | Tag: h3 | Role: heading | Text: "Subscribe to our developer newsletter" | Bounds: 0.1750,9.7956,0.2042,0.0194 | Path: div.container-xl.p-responsive > div.d-flex.flex-wrap > section.col-12.col-lg-4 > h3.h5.tmp-mt-4
+ID: mache-503 | Parent: mache-500 | Tag: a | Role: link | Text: "Subscribe" | Bounds: 0.1750,9.8688,0.0669,0.0463 | Path: div.container-xl.p-responsive > div.d-flex.flex-wrap > section.col-12.col-lg-4 > a.btn-mktg.tmp-mb-4
+ID: mache-504 | Parent: mache-499 | Tag: nav | Role: navigation | Text: "  " | Bounds: 0.3917,9.7410,0.1083,0.3444 | Path: footer.footer.tmp-pt-6 > div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3
+ID: mache-505 | Parent: mache-504 | Tag: h3 | Role: heading | Text: "Platform" | Bounds: 0.4042,9.7410,0.0958,0.0194 | Path: div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3 > h3.h5.tmp-mb-3
+ID: mache-506 | Parent: mache-504 | Tag: ul | Role: ul | Text: "          " | Bounds: 0.4042,9.7753,0.0958,0.2954 | Path: div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3 > ul.list-style-none.color-fg-muted
+ID: mache-507 | Parent: mache-506 | Tag: a | Role: link | Text: "Features" | Bounds: 0.4042,9.7753,0.0293,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.color-fg-muted > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-508 | Parent: mache-506 | Tag: a | Role: link | Text: "Enterprise" | Bounds: 0.4042,9.8063,0.0344,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.color-fg-muted > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-509 | Parent: mache-506 | Tag: a | Role: link | Text: "Copilot" | Bounds: 0.4042,9.8373,0.0240,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.color-fg-muted > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-510 | Parent: mache-506 | Tag: a | Role: link | Text: "AI" | Bounds: 0.4042,9.8683,0.0067,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.color-fg-muted > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-511 | Parent: mache-506 | Tag: a | Role: link | Text: "Security" | Bounds: 0.4042,9.8993,0.0277,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.color-fg-muted > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-512 | Parent: mache-506 | Tag: a | Role: link | Text: "Pricing" | Bounds: 0.4042,9.9304,0.0232,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.color-fg-muted > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-513 | Parent: mache-506 | Tag: a | Role: link | Text: "Team" | Bounds: 0.4042,9.9614,0.0181,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.color-fg-muted > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-514 | Parent: mache-506 | Tag: a | Role: link | Text: "Resources" | Bounds: 0.4042,9.9924,0.0352,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.color-fg-muted > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-515 | Parent: mache-506 | Tag: a | Role: link | Text: "Roadmap" | Bounds: 0.4042,10.0234,0.0317,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.color-fg-muted > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-516 | Parent: mache-506 | Tag: a | Role: link | Text: "Compare GitHub" | Bounds: 0.4042,10.0544,0.0562,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.color-fg-muted > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-517 | Parent: mache-499 | Tag: nav | Role: navigation | Text: "  " | Bounds: 0.5000,9.7410,0.1083,0.3444 | Path: footer.footer.tmp-pt-6 > div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3
+ID: mache-518 | Parent: mache-517 | Tag: h3 | Role: heading | Text: "Ecosystem" | Bounds: 0.5125,9.7410,0.0958,0.0194 | Path: div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3 > h3.h5.tmp-mb-3
+ID: mache-519 | Parent: mache-517 | Tag: ul | Role: ul | Text: "        " | Bounds: 0.5125,9.7753,0.0958,0.2333 | Path: div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3 > ul.list-style-none.f5
+ID: mache-520 | Parent: mache-519 | Tag: a | Role: link | Text: "Developer API" | Bounds: 0.5125,9.7753,0.0474,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-521 | Parent: mache-519 | Tag: a | Role: link | Text: "Partners" | Bounds: 0.5125,9.8063,0.0283,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-522 | Parent: mache-519 | Tag: a | Role: link | Text: "Education" | Bounds: 0.5125,9.8373,0.0335,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-523 | Parent: mache-519 | Tag: a | Role: link | Text: "GitHub CLI" | Bounds: 0.5125,9.8683,0.0366,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-524 | Parent: mache-519 | Tag: a | Role: link | Text: "GitHub Desktop" | Bounds: 0.5125,9.8993,0.0536,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-525 | Parent: mache-519 | Tag: a | Role: link | Text: "GitHub Mobile" | Bounds: 0.5125,9.9304,0.0480,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-526 | Parent: mache-519 | Tag: a | Role: link | Text: "GitHub Marketplace" | Bounds: 0.5125,9.9614,0.0670,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-527 | Parent: mache-519 | Tag: a | Role: link | Text: "MCP Registry" | Bounds: 0.5125,9.9924,0.0456,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-528 | Parent: mache-499 | Tag: nav | Role: navigation | Text: "  " | Bounds: 0.6083,9.7410,0.1083,0.3444 | Path: footer.footer.tmp-pt-6 > div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3
+ID: mache-529 | Parent: mache-528 | Tag: h3 | Role: heading | Text: "Support" | Bounds: 0.6208,9.7410,0.0958,0.0194 | Path: div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3 > h3.h5.tmp-mb-3
+ID: mache-530 | Parent: mache-528 | Tag: ul | Role: ul | Text: "       " | Bounds: 0.6208,9.7753,0.0958,0.2023 | Path: div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3 > ul.list-style-none.f5
+ID: mache-531 | Parent: mache-530 | Tag: a | Role: link | Text: "Docs" | Bounds: 0.6208,9.7753,0.0172,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-532 | Parent: mache-530 | Tag: a | Role: link | Text: "Community Forum" | Bounds: 0.6208,9.8063,0.0619,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-533 | Parent: mache-530 | Tag: a | Role: link | Text: "Professional Services" | Bounds: 0.6208,9.8373,0.0719,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-534 | Parent: mache-530 | Tag: a | Role: link | Text: "Premium Support" | Bounds: 0.6208,9.8683,0.0587,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-535 | Parent: mache-530 | Tag: a | Role: link | Text: "Skills" | Bounds: 0.6208,9.8993,0.0174,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-536 | Parent: mache-530 | Tag: a | Role: link | Text: "Status" | Bounds: 0.6208,9.9304,0.0216,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-537 | Parent: mache-530 | Tag: a | Role: link | Text: "Contact GitHub" | Bounds: 0.6208,9.9614,0.0523,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-538 | Parent: mache-499 | Tag: nav | Role: navigation | Text: "  " | Bounds: 0.7167,9.7410,0.1083,0.3444 | Path: footer.footer.tmp-pt-6 > div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3
+ID: mache-539 | Parent: mache-538 | Tag: h3 | Role: heading | Text: "Company" | Bounds: 0.7292,9.7410,0.0958,0.0194 | Path: div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3 > h3.h5.tmp-mb-3
+ID: mache-540 | Parent: mache-538 | Tag: ul | Role: ul | Text: "          " | Bounds: 0.7292,9.7753,0.0958,0.2954 | Path: div.container-xl.p-responsive > div.d-flex.flex-wrap > nav.col-6.col-sm-3 > ul.list-style-none.f5
+ID: mache-541 | Parent: mache-540 | Tag: a | Role: link | Text: "About" | Bounds: 0.7292,9.7753,0.0202,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-542 | Parent: mache-540 | Tag: a | Role: link | Text: "Why GitHub" | Bounds: 0.7292,9.8063,0.0405,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-543 | Parent: mache-540 | Tag: a | Role: link | Text: "Customer stories" | Bounds: 0.7292,9.8373,0.0575,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-544 | Parent: mache-540 | Tag: a | Role: link | Text: "Blog" | Bounds: 0.7292,9.8683,0.0151,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-545 | Parent: mache-540 | Tag: a | Role: link | Text: "The ReadME Project" | Bounds: 0.7292,9.8993,0.0682,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-546 | Parent: mache-540 | Tag: a | Role: link | Text: "Careers" | Bounds: 0.7292,9.9304,0.0262,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-547 | Parent: mache-540 | Tag: a | Role: link | Text: "Newsroom" | Bounds: 0.7292,9.9614,0.0359,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-548 | Parent: mache-540 | Tag: a | Role: link | Text: "Inclusion" | Bounds: 0.7292,9.9924,0.0299,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-549 | Parent: mache-540 | Tag: a | Role: link | Text: "Social Impact" | Bounds: 0.7292,10.0234,0.0453,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-550 | Parent: mache-540 | Tag: a | Role: link | Text: "Shop" | Bounds: 0.7292,10.0544,0.0174,0.0157 | Path: nav.col-6.col-sm-3 > ul.list-style-none.f5 > li.lh-condensed.tmp-mb-3 > a.Link--secondary
+ID: mache-551 | Parent: mache-496 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,10.1521,1.0000,0.0778 | Path: div.logged-out.env-production > footer.footer.tmp-pt-6 > div.color-bg-subtle
+ID: mache-552 | Parent: mache-551 | Tag: div | Role: div | Text: "  " | Bounds: 0.1667,10.1521,0.6667,0.0778 | Path: div.logged-out.env-production > footer.footer.tmp-pt-6 > div.color-bg-subtle > div.container-xl.p-responsive
+ID: mache-553 | Parent: mache-552 | Tag: nav | Role: navigation | Text: "Legal and Resource Links" | Bounds: 0.1750,10.1743,0.4021,0.0333 | Path: footer.footer.tmp-pt-6 > div.color-bg-subtle > div.container-xl.p-responsive > nav
+ID: mache-554 | Parent: mache-553 | Tag: ul | Role: ul | Text: "       " | Bounds: 0.1750,10.1743,0.4021,0.0333 | Path: div.color-bg-subtle > div.container-xl.p-responsive > nav > ul.list-style-none.d-flex
+ID: mache-555 | Parent: mache-554 | Tag: a | Role: link | Text: "Terms" | Bounds: 0.2427,10.1753,0.0181,0.0139 | Path: nav > ul.list-style-none.d-flex > li > a.Link--secondary
+ID: mache-556 | Parent: mache-554 | Tag: a | Role: link | Text: "Privacy" | Bounds: 0.2691,10.1753,0.0215,0.0139 | Path: nav > ul.list-style-none.d-flex > li > a.Link--secondary
+ID: mache-557 | Parent: mache-554 | Tag: a | Role: link | Text: "(Updated 02/2024)" | Bounds: 0.2924,10.1753,0.0569,0.0139 | Path: nav > ul.list-style-none.d-flex > li > a.Link--secondary
+ID: mache-558 | Parent: mache-554 | Tag: a | Role: link | Text: "Sitemap" | Bounds: 0.3576,10.1753,0.0240,0.0139 | Path: nav > ul.list-style-none.d-flex > li > a.Link--secondary
+ID: mache-559 | Parent: mache-554 | Tag: a | Role: link | Text: "What is Git?" | Bounds: 0.3900,10.1753,0.0355,0.0139 | Path: nav > ul.list-style-none.d-flex > li > a.Link--secondary
+ID: mache-560 | Parent: mache-554 | Tag: button | Role: button | Text: "Manage cookies" | Bounds: 0.4338,10.1743,0.0478,0.0167 | Path: ul.list-style-none.d-flex > li > cookie-consent-link > button.Link--secondary.underline-on-hover
+ID: mache-561 | Parent: mache-554 | Tag: button | Role: button | Text: "Do not share my personal information" | Bounds: 0.1750,10.1910,0.1104,0.0167 | Path: ul.list-style-none.d-flex > li > cookie-consent-link > button.Link--secondary.underline-on-hover
+ID: mache-562 | Parent: mache-552 | Tag: nav | Role: navigation | Text: "GitHub's Social Media Links" | Bounds: 0.5854,10.1762,0.2396,0.0296 | Path: footer.footer.tmp-pt-6 > div.color-bg-subtle > div.container-xl.p-responsive > nav.footer-social.tmp-mt-3
+ID: mache-563 | Parent: mache-562 | Tag: ul | Role: ul | Text: "       " | Bounds: 0.6389,10.1818,0.1187,0.0185 | Path: div.color-bg-subtle > div.container-xl.p-responsive > nav.footer-social.tmp-mt-3 > ul.list-style-none.d-flex
+ID: mache-564 | Parent: mache-563 | Tag: a | Role: link | Text: "  " | Bounds: 0.6389,10.1827,0.0099,0.0167 | Path: nav.footer-social.tmp-mt-3 > ul.list-style-none.d-flex > li > a.footer-social-icon.d-block
+ID: mache-565 | Parent: mache-563 | Tag: a | Role: link | Text: "  " | Bounds: 0.6571,10.1827,0.0094,0.0167 | Path: nav.footer-social.tmp-mt-3 > ul.list-style-none.d-flex > li > a.footer-social-icon.d-block
+ID: mache-566 | Parent: mache-563 | Tag: a | Role: link | Text: "  " | Bounds: 0.6749,10.1836,0.0120,0.0148 | Path: nav.footer-social.tmp-mt-3 > ul.list-style-none.d-flex > li > a.footer-social-icon.d-block
+ID: mache-567 | Parent: mache-563 | Tag: a | Role: link | Text: "  " | Bounds: 0.6952,10.1836,0.0083,0.0148 | Path: nav.footer-social.tmp-mt-3 > ul.list-style-none.d-flex > li > a.footer-social-icon.d-block
+ID: mache-568 | Parent: mache-563 | Tag: a | Role: link | Text: "  " | Bounds: 0.7118,10.1827,0.0094,0.0167 | Path: nav.footer-social.tmp-mt-3 > ul.list-style-none.d-flex > li > a.footer-social-icon.d-block
+ID: mache-569 | Parent: mache-563 | Tag: a | Role: link | Text: "  " | Bounds: 0.7295,10.1827,0.0094,0.0167 | Path: nav.footer-social.tmp-mt-3 > ul.list-style-none.d-flex > li > a.footer-social-icon.d-block
+ID: mache-570 | Parent: mache-563 | Tag: a | Role: link | Text: "  " | Bounds: 0.7472,10.1818,0.0104,0.0185 | Path: nav.footer-social.tmp-mt-3 > ul.list-style-none.d-flex > li > a.footer-social-icon.d-block
+ID: mache-571 | Parent: mache-562 | Tag: button | Role: button | Text: "English - Select language" | Bounds: 0.7785,10.1762,0.0465,0.0296 | Path: nav.footer-social.tmp-mt-3 > locale-selector > experimental-action-menu.footer-social-icon > button.d-flex.flex-items-center
+ID: mache-572 | Parent: mache-562 | Tag: div | Role: div | Text: " " | Bounds: 0.7785,10.2058,0.0000,0.0000 | Path: nav.footer-social.tmp-mt-3 > locale-selector > experimental-action-menu.footer-social-icon > div.Overlay-backdrop--anchor
+ID: mache-573 | Parent: mache-572 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: locale-selector > experimental-action-menu.footer-social-icon > div.Overlay-backdrop--anchor > div.Overlay.Overlay-whenNarrow
+ID: mache-574 | Parent: mache-573 | Tag: div | Role: div | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: experimental-action-menu.footer-social-icon > div.Overlay-backdrop--anchor > div.Overlay.Overlay-whenNarrow > div.Overlay-body.Overlay-body--paddingNone
+ID: mache-575 | Parent: mache-574 | Tag: ul | Role: menu | Text: "       " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-backdrop--anchor > div.Overlay.Overlay-whenNarrow > div.Overlay-body.Overlay-body--paddingNone > ul.ActionList
+ID: mache-576 | Parent: mache-575 | Tag: a | Role: menuitem | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body.Overlay-body--paddingNone > ul.ActionList > li.ActionList-item > a.footer-social-locale.ActionList-content
+ID: mache-577 | Parent: mache-575 | Tag: a | Role: menuitem | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body.Overlay-body--paddingNone > ul.ActionList > li.ActionList-item > a.footer-social-locale.ActionList-content
+ID: mache-578 | Parent: mache-575 | Tag: a | Role: menuitem | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body.Overlay-body--paddingNone > ul.ActionList > li.ActionList-item > a.footer-social-locale.ActionList-content
+ID: mache-579 | Parent: mache-575 | Tag: a | Role: menuitem | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body.Overlay-body--paddingNone > ul.ActionList > li.ActionList-item > a.footer-social-locale.ActionList-content
+ID: mache-580 | Parent: mache-575 | Tag: a | Role: menuitem | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body.Overlay-body--paddingNone > ul.ActionList > li.ActionList-item > a.footer-social-locale.ActionList-content
+ID: mache-581 | Parent: mache-575 | Tag: a | Role: menuitem | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body.Overlay-body--paddingNone > ul.ActionList > li.ActionList-item > a.footer-social-locale.ActionList-content
+ID: mache-582 | Parent: mache-575 | Tag: a | Role: menuitem | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.Overlay-body.Overlay-body--paddingNone > ul.ActionList > li.ActionList-item > a.footer-social-locale.ActionList-content
+ID: mache-583 | Parent: mache-0 | Tag: div | Role: div | Text: "  You can’t perform that action at this time." | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.logged-out.env-production > div.ajax-error-message.flash
+ID: mache-584 | Parent: mache-583 | Tag: button | Role: button | Text: "Dismiss error" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.logged-out.env-production > div.ajax-error-message.flash > button.flash-close.js-ajax-error-dismiss

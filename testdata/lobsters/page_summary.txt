@@ -1,300 +1,492 @@
 Interactive Elements:
-ID: mache-0 | Tag: a | Text: ""
-ID: mache-1 | Tag: a | Text: "Active"
-ID: mache-2 | Tag: a | Text: "Recent"
-ID: mache-3 | Tag: a | Text: "Comments"
-ID: mache-4 | Tag: a | Text: "Search"
-ID: mache-5 | Tag: a | Text: "Login"
-ID: mache-6 | Tag: a | Text: "Login"
-ID: mache-7 | Tag: a | Text: "296"
-ID: mache-8 | Tag: a | Text: "Proposal: add "AI generated" as a flag reason"
-ID: mache-9 | Tag: a | Text: "☶"
-ID: mache-10 | Tag: a | Text: "meta"
-ID: mache-11 | Tag: a | Text: ""
-ID: mache-12 | Tag: a | Text: "danderson"
-ID: mache-13 | Tag: a | Text: "109 comments"
-ID: mache-14 | Tag: a | Text: "109"
-ID: mache-15 | Tag: a | Text: "39"
-ID: mache-16 | Tag: a | Text: "You are not left behind"
-ID: mache-17 | Tag: a | Text: "practices"
-ID: mache-18 | Tag: a | Text: "vibecoding"
-ID: mache-19 | Tag: a | Text: "ufried.com"
-ID: mache-20 | Tag: a | Text: ""
-ID: mache-21 | Tag: a | Text: "BinaryIgor"
-ID: mache-22 | Tag: input | Text: "input"
-ID: mache-23 | Tag: a | Text: "Archive.org"
-ID: mache-24 | Tag: a | Text: "Ghostarchive"
-ID: mache-25 | Tag: a | Text: "25 comments"
-ID: mache-26 | Tag: a | Text: "25"
-ID: mache-27 | Tag: a | Text: "17"
-ID: mache-28 | Tag: a | Text: "Drowse: Nix dynamic derivations made easy"
-ID: mache-29 | Tag: a | Text: "nix"
-ID: mache-30 | Tag: a | Text: "github.com/figsoda"
-ID: mache-31 | Tag: a | Text: ""
-ID: mache-32 | Tag: a | Text: "figsoda"
-ID: mache-33 | Tag: input | Text: "input"
-ID: mache-34 | Tag: a | Text: "Archive.org"
-ID: mache-35 | Tag: a | Text: "Ghostarchive"
-ID: mache-36 | Tag: a | Text: "1 comment"
-ID: mache-37 | Tag: a | Text: "1"
-ID: mache-38 | Tag: a | Text: "54"
-ID: mache-39 | Tag: a | Text: "Fix your tools"
-ID: mache-40 | Tag: a | Text: "debugging"
-ID: mache-41 | Tag: a | Text: "programming"
-ID: mache-42 | Tag: a | Text: "ochagavia.nl"
-ID: mache-43 | Tag: a | Text: ""
-ID: mache-44 | Tag: a | Text: "wofo"
-ID: mache-45 | Tag: input | Text: "input"
-ID: mache-46 | Tag: a | Text: "Archive.org"
-ID: mache-47 | Tag: a | Text: "Ghostarchive"
-ID: mache-48 | Tag: a | Text: "1 comment"
-ID: mache-49 | Tag: a | Text: "1"
-ID: mache-50 | Tag: a | Text: "17"
-ID: mache-51 | Tag: a | Text: "Parse, Don’t Validate AKA Some C Safety Tips"
-ID: mache-52 | Tag: a | Text: "c"
-ID: mache-53 | Tag: a | Text: "lelanthran.com"
-ID: mache-54 | Tag: a | Text: ""
-ID: mache-55 | Tag: a | Text: "telemachus"
-ID: mache-56 | Tag: input | Text: "input"
-ID: mache-57 | Tag: a | Text: "Archive.org"
-ID: mache-58 | Tag: a | Text: "Ghostarchive"
-ID: mache-59 | Tag: a | Text: "1 comment"
-ID: mache-60 | Tag: a | Text: "1"
-ID: mache-61 | Tag: a | Text: "8"
-ID: mache-62 | Tag: a | Text: "The Tears of Donald Knuth"
-ID: mache-63 | Tag: a | Text: "historical"
-ID: mache-64 | Tag: a | Text: "cacm.acm.org"
-ID: mache-65 | Tag: a | Text: ""
-ID: mache-66 | Tag: a | Text: "GeoffWozniak"
-ID: mache-67 | Tag: input | Text: "input"
-ID: mache-68 | Tag: a | Text: "Archive.org"
-ID: mache-69 | Tag: a | Text: "Ghostarchive"
-ID: mache-70 | Tag: a | Text: "no comments"
-ID: mache-71 | Tag: a | Text: "0"
-ID: mache-72 | Tag: a | Text: "7"
-ID: mache-73 | Tag: a | Text: "confusables.txt and NFKC disagree on 31 characters"
-ID: mache-74 | Tag: a | Text: "programming"
-ID: mache-75 | Tag: a | Text: "paultendo.github.io"
-ID: mache-76 | Tag: a | Text: ""
-ID: mache-77 | Tag: a | Text: "susam"
-ID: mache-78 | Tag: input | Text: "input"
-ID: mache-79 | Tag: a | Text: "Archive.org"
-ID: mache-80 | Tag: a | Text: "Ghostarchive"
-ID: mache-81 | Tag: a | Text: "no comments"
-ID: mache-82 | Tag: a | Text: "0"
-ID: mache-83 | Tag: a | Text: "143"
-ID: mache-84 | Tag: a | Text: "lobste.rs migrates from MariaDB to SQLite"
-ID: mache-85 | Tag: a | Text: "☶"
-ID: mache-86 | Tag: a | Text: "databases"
-ID: mache-87 | Tag: a | Text: "meta"
-ID: mache-88 | Tag: a | Text: ""
-ID: mache-89 | Tag: a | Text: "mort"
-ID: mache-90 | Tag: a | Text: "49 comments"
-ID: mache-91 | Tag: a | Text: "49"
-ID: mache-92 | Tag: a | Text: "20"
-ID: mache-93 | Tag: a | Text: "Cosmologically Unique IDs"
-ID: mache-94 | Tag: a | Text: "distributed"
-ID: mache-95 | Tag: a | Text: "jasonfantl.com"
-ID: mache-96 | Tag: a | Text: ""
-ID: mache-97 | Tag: a | Text: "hongminhee"
-ID: mache-98 | Tag: input | Text: "input"
-ID: mache-99 | Tag: a | Text: "Archive.org"
-ID: mache-100 | Tag: a | Text: "Ghostarchive"
-ID: mache-101 | Tag: a | Text: "2 comments"
-ID: mache-102 | Tag: a | Text: "2"
-ID: mache-103 | Tag: a | Text: "8"
-ID: mache-104 | Tag: a | Text: "Back to FreeBSD: Part 1"
-ID: mache-105 | Tag: a | Text: "freebsd"
-ID: mache-106 | Tag: a | Text: "hypha.pub"
-ID: mache-107 | Tag: a | Text: ""
-ID: mache-108 | Tag: a | Text: "bernhard"
-ID: mache-109 | Tag: input | Text: "input"
-ID: mache-110 | Tag: a | Text: "Archive.org"
-ID: mache-111 | Tag: a | Text: "Ghostarchive"
-ID: mache-112 | Tag: a | Text: "1 comment"
-ID: mache-113 | Tag: a | Text: "1"
-ID: mache-114 | Tag: a | Text: "6"
-ID: mache-115 | Tag: a | Text: "Read Locks Are Not Your Friends"
-ID: mache-116 | Tag: a | Text: "performance"
-ID: mache-117 | Tag: a | Text: "rust"
-ID: mache-118 | Tag: a | Text: "eventual-consistency.vercel.app"
-ID: mache-119 | Tag: a | Text: ""
-ID: mache-120 | Tag: a | Text: "emschwartz"
-ID: mache-121 | Tag: input | Text: "input"
-ID: mache-122 | Tag: a | Text: "Archive.org"
-ID: mache-123 | Tag: a | Text: "Ghostarchive"
-ID: mache-124 | Tag: a | Text: "no comments"
-ID: mache-125 | Tag: a | Text: "0"
-ID: mache-126 | Tag: a | Text: "8"
-ID: mache-127 | Tag: a | Text: "The Four-Color Theorem 1852–1976"
-ID: mache-128 | Tag: a | Text: "historical"
-ID: mache-129 | Tag: a | Text: "math"
-ID: mache-130 | Tag: a | Text: "ams.org"
-ID: mache-131 | Tag: a | Text: ""
-ID: mache-132 | Tag: a | Text: "fanf"
-ID: mache-133 | Tag: input | Text: "input"
-ID: mache-134 | Tag: a | Text: "Archive.org"
-ID: mache-135 | Tag: a | Text: "Ghostarchive"
-ID: mache-136 | Tag: a | Text: "no comments"
-ID: mache-137 | Tag: a | Text: "0"
-ID: mache-138 | Tag: a | Text: "5"
-ID: mache-139 | Tag: a | Text: "Documentary about Mozilla Firefox at pwn2own (part 1)"
-ID: mache-140 | Tag: a | Text: "video"
-ID: mache-141 | Tag: a | Text: "browsers"
-ID: mache-142 | Tag: a | Text: "security"
-ID: mache-143 | Tag: a | Text: "youtube.com"
-ID: mache-144 | Tag: a | Text: ""
-ID: mache-145 | Tag: a | Text: "freddyb"
-ID: mache-146 | Tag: input | Text: "input"
-ID: mache-147 | Tag: a | Text: "Archive.org"
-ID: mache-148 | Tag: a | Text: "Ghostarchive"
-ID: mache-149 | Tag: a | Text: "1 comment"
-ID: mache-150 | Tag: a | Text: "1"
-ID: mache-151 | Tag: a | Text: "7"
-ID: mache-152 | Tag: a | Text: "We hid backdoors in ~40MB binaries and asked AI + Ghidra to "
-ID: mache-153 | Tag: a | Text: "vibecoding"
-ID: mache-154 | Tag: a | Text: "quesma.com"
-ID: mache-155 | Tag: a | Text: ""
-ID: mache-156 | Tag: a | Text: "hoistbypetard"
-ID: mache-157 | Tag: input | Text: "input"
-ID: mache-158 | Tag: a | Text: "Archive.org"
-ID: mache-159 | Tag: a | Text: "Ghostarchive"
-ID: mache-160 | Tag: a | Text: "1 comment"
-ID: mache-161 | Tag: a | Text: "1"
-ID: mache-162 | Tag: a | Text: "15"
-ID: mache-163 | Tag: a | Text: "cl-kawa: A Turducken of Programming Languages"
-ID: mache-164 | Tag: a | Text: "java"
-ID: mache-165 | Tag: a | Text: "lisp"
-ID: mache-166 | Tag: a | Text: "vibecoding"
-ID: mache-167 | Tag: a | Text: "atgreen.github.io"
-ID: mache-168 | Tag: a | Text: ""
-ID: mache-169 | Tag: a | Text: "atgreen"
-ID: mache-170 | Tag: input | Text: "input"
-ID: mache-171 | Tag: a | Text: "Archive.org"
-ID: mache-172 | Tag: a | Text: "Ghostarchive"
-ID: mache-173 | Tag: a | Text: "2 comments"
-ID: mache-174 | Tag: a | Text: "2"
-ID: mache-175 | Tag: a | Text: "79"
-ID: mache-176 | Tag: a | Text: "The Fastest Way to Board an Airplane"
-ID: mache-177 | Tag: a | Text: "visualization"
-ID: mache-178 | Tag: a | Text: "navendu.me"
-ID: mache-179 | Tag: a | Text: ""
-ID: mache-180 | Tag: a | Text: "abhin4v"
-ID: mache-181 | Tag: input | Text: "input"
-ID: mache-182 | Tag: a | Text: "Archive.org"
-ID: mache-183 | Tag: a | Text: "Ghostarchive"
-ID: mache-184 | Tag: a | Text: "12 comments"
-ID: mache-185 | Tag: a | Text: "12"
-ID: mache-186 | Tag: a | Text: "13"
-ID: mache-187 | Tag: a | Text: "How and Why Local LLMs Perform On Framework 13 AMD Strix Poi"
-ID: mache-188 | Tag: a | Text: "hardware"
-ID: mache-189 | Tag: a | Text: "testing"
-ID: mache-190 | Tag: a | Text: "vibecoding"
-ID: mache-191 | Tag: a | Text: "msf.github.io"
-ID: mache-192 | Tag: a | Text: ""
-ID: mache-193 | Tag: a | Text: "msf"
-ID: mache-194 | Tag: input | Text: "input"
-ID: mache-195 | Tag: a | Text: "Archive.org"
-ID: mache-196 | Tag: a | Text: "Ghostarchive"
-ID: mache-197 | Tag: a | Text: "6 comments"
-ID: mache-198 | Tag: a | Text: "6"
-ID: mache-199 | Tag: a | Text: "3"
-ID: mache-200 | Tag: a | Text: "CSLib: The Lean Computer Science Library"
-ID: mache-201 | Tag: a | Text: "formalmethods"
-ID: mache-202 | Tag: a | Text: "arxiv.org"
-ID: mache-203 | Tag: a | Text: ""
-ID: mache-204 | Tag: a | Text: "avsm"
-ID: mache-205 | Tag: input | Text: "input"
-ID: mache-206 | Tag: a | Text: "Archive.org"
-ID: mache-207 | Tag: a | Text: "Ghostarchive"
-ID: mache-208 | Tag: a | Text: "no comments"
-ID: mache-209 | Tag: a | Text: "0"
-ID: mache-210 | Tag: a | Text: "2"
-ID: mache-211 | Tag: a | Text: "Swift Import Declarations (2019)"
-ID: mache-212 | Tag: a | Text: "swift"
-ID: mache-213 | Tag: a | Text: "nshipster.com"
-ID: mache-214 | Tag: a | Text: ""
-ID: mache-215 | Tag: a | Text: "BD103"
-ID: mache-216 | Tag: input | Text: "input"
-ID: mache-217 | Tag: a | Text: "Archive.org"
-ID: mache-218 | Tag: a | Text: "Ghostarchive"
-ID: mache-219 | Tag: a | Text: "no comments"
-ID: mache-220 | Tag: a | Text: "0"
-ID: mache-221 | Tag: a | Text: "2"
-ID: mache-222 | Tag: a | Text: "Bit-fields"
-ID: mache-223 | Tag: a | Text: "c"
-ID: mache-224 | Tag: a | Text: "mocelik.com"
-ID: mache-225 | Tag: a | Text: ""
-ID: mache-226 | Tag: a | Text: "MaskRay"
-ID: mache-227 | Tag: input | Text: "input"
-ID: mache-228 | Tag: a | Text: "Archive.org"
-ID: mache-229 | Tag: a | Text: "Ghostarchive"
-ID: mache-230 | Tag: a | Text: "no comments"
-ID: mache-231 | Tag: a | Text: "0"
-ID: mache-232 | Tag: a | Text: "1"
-ID: mache-233 | Tag: a | Text: "Comparing C/C++ unity build with regular build on a large co"
-ID: mache-234 | Tag: a | Text: "c"
-ID: mache-235 | Tag: a | Text: "c++"
-ID: mache-236 | Tag: a | Text: "performance"
-ID: mache-237 | Tag: a | Text: "hereket.com"
-ID: mache-238 | Tag: a | Text: ""
-ID: mache-239 | Tag: a | Text: "Aks"
-ID: mache-240 | Tag: input | Text: "input"
-ID: mache-241 | Tag: a | Text: "Archive.org"
-ID: mache-242 | Tag: a | Text: "Ghostarchive"
-ID: mache-243 | Tag: a | Text: "no comments"
-ID: mache-244 | Tag: a | Text: "0"
-ID: mache-245 | Tag: a | Text: "1"
-ID: mache-246 | Tag: a | Text: "Are Compilers Deterministic?"
-ID: mache-247 | Tag: a | Text: "compilers"
-ID: mache-248 | Tag: a | Text: "vibecoding"
-ID: mache-249 | Tag: a | Text: "blog.onepatchdown.net"
-ID: mache-250 | Tag: a | Text: ""
-ID: mache-251 | Tag: a | Text: "susam"
-ID: mache-252 | Tag: input | Text: "input"
-ID: mache-253 | Tag: a | Text: "Archive.org"
-ID: mache-254 | Tag: a | Text: "Ghostarchive"
-ID: mache-255 | Tag: a | Text: "1 comment"
-ID: mache-256 | Tag: a | Text: "1"
-ID: mache-257 | Tag: a | Text: "4"
-ID: mache-258 | Tag: a | Text: "Running RISC-V in a VM to test my snaps"
-ID: mache-259 | Tag: a | Text: "virtualization"
-ID: mache-260 | Tag: a | Text: "blog.popey.com"
-ID: mache-261 | Tag: a | Text: ""
-ID: mache-262 | Tag: a | Text: "raymii"
-ID: mache-263 | Tag: input | Text: "input"
-ID: mache-264 | Tag: a | Text: "Archive.org"
-ID: mache-265 | Tag: a | Text: "Ghostarchive"
-ID: mache-266 | Tag: a | Text: "no comments"
-ID: mache-267 | Tag: a | Text: "0"
-ID: mache-268 | Tag: a | Text: "100"
-ID: mache-269 | Tag: a | Text: "Lobsters Interview with steveklabnik"
-ID: mache-270 | Tag: a | Text: "☶"
-ID: mache-271 | Tag: a | Text: "interview"
-ID: mache-272 | Tag: a | Text: "person"
-ID: mache-273 | Tag: a | Text: "vibecoding"
-ID: mache-274 | Tag: a | Text: "alexalejandre.com"
-ID: mache-275 | Tag: a | Text: ""
-ID: mache-276 | Tag: a | Text: "veqq"
-ID: mache-277 | Tag: input | Text: "input"
-ID: mache-278 | Tag: a | Text: "Archive.org"
-ID: mache-279 | Tag: a | Text: "Ghostarchive"
-ID: mache-280 | Tag: a | Text: "17 comments"
-ID: mache-281 | Tag: a | Text: "17"
-ID: mache-282 | Tag: a | Text: "5"
-ID: mache-283 | Tag: a | Text: "Accessibility Is Civil Rights. AI Must Stop Shipping Barrier"
-ID: mache-284 | Tag: a | Text: "a11y"
-ID: mache-285 | Tag: a | Text: "vibecoding"
-ID: mache-286 | Tag: a | Text: "conesible.de"
-ID: mache-287 | Tag: a | Text: ""
-ID: mache-288 | Tag: a | Text: "dbushell"
-ID: mache-289 | Tag: input | Text: "input"
-ID: mache-290 | Tag: a | Text: "Archive.org"
-ID: mache-291 | Tag: a | Text: "Ghostarchive"
-ID: mache-292 | Tag: a | Text: "no comments"
-ID: mache-293 | Tag: a | Text: "0"
-ID: mache-294 | Tag: a | Text: "Page 2"
-ID: mache-295 | Tag: a | Text: "About"
-ID: mache-296 | Tag: a | Text: "Tags"
-ID: mache-297 | Tag: a | Text: "Filter"
-ID: mache-298 | Tag: a | Text: "Moderation Log"
+ID: mache-0 | Parent: none | Tag: header | Role: banner | Text: "   " | Bounds: 0.2500,0.0148,0.5000,0.0259 | Path: header
+ID: mache-1 | Parent: mache-0 | Tag: a | Role: link | Text: "" | Bounds: 0.2552,0.0194,0.0094,0.0167 | Path: header > a
+ID: mache-2 | Parent: mache-0 | Tag: div | Role: div | Text: " " | Bounds: 0.2667,0.0194,0.4781,0.0167 | Path: header > div.navholder
+ID: mache-3 | Parent: mache-2 | Tag: nav | Role: navigation | Text: "     " | Bounds: 0.2667,0.0194,0.4781,0.0167 | Path: header > div.navholder > nav.links
+ID: mache-4 | Parent: mache-3 | Tag: a | Role: link | Text: "Active" | Bounds: 0.2687,0.0194,0.0247,0.0167 | Path: header > div.navholder > nav.links > a
+ID: mache-5 | Parent: mache-3 | Tag: a | Role: link | Text: "Recent" | Bounds: 0.2976,0.0194,0.0282,0.0167 | Path: header > div.navholder > nav.links > a
+ID: mache-6 | Parent: mache-3 | Tag: a | Role: link | Text: "Comments" | Bounds: 0.3300,0.0194,0.0435,0.0167 | Path: header > div.navholder > nav.links > a
+ID: mache-7 | Parent: mache-3 | Tag: a | Role: link | Text: "Search" | Bounds: 0.3777,0.0194,0.0278,0.0167 | Path: header > div.navholder > nav.links > a
+ID: mache-8 | Parent: mache-3 | Tag: a | Role: link | Text: "Login" | Bounds: 0.7226,0.0194,0.0222,0.0167 | Path: header > div.navholder > nav.links > a.corner
+ID: mache-9 | Parent: mache-0 | Tag: nav | Role: navigation | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: header > nav.corner
+ID: mache-10 | Parent: mache-9 | Tag: a | Role: link | Text: "Login" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: header > nav.corner > a.corner
+ID: mache-11 | Parent: none | Tag: div | Role: div | Text: "  " | Bounds: 0.2687,0.0481,0.4760,1.4427 | Path: div
+ID: mache-12 | Parent: mache-11 | Tag: ol | Role: ol | Text: "                         " | Bounds: 0.2521,0.0481,0.4927,1.4427 | Path: div > ol.stories.list
+ID: mache-13 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.0481,0.4927,0.0576 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-14 | Parent: mache-13 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.0556,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-15 | Parent: mache-14 | Tag: a | Role: link | Text: "24" | Bounds: 0.2553,0.0556,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-16 | Parent: mache-13 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.0556,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-17 | Parent: mache-16 | Tag: a | Role: link | Text: "Email is crazy" | Bounds: 0.2687,0.0600,0.0548,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-18 | Parent: mache-16 | Tag: a | Role: link | Text: "email" | Bounds: 0.3272,0.0619,0.0185,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_email
+ID: mache-19 | Parent: mache-16 | Tag: a | Role: link | Text: "networking" | Bounds: 0.3494,0.0619,0.0326,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_networking
+ID: mache-20 | Parent: mache-16 | Tag: a | Role: link | Text: "security" | Bounds: 0.3857,0.0619,0.0247,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_security
+ID: mache-21 | Parent: mache-16 | Tag: a | Role: link | Text: "samkhawase.com" | Bounds: 0.4148,0.0600,0.0662,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-22 | Parent: mache-16 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.0806,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-23 | Parent: mache-22 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.0825,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-24 | Parent: mache-23 | Tag: img | Role: img | Text: "FlyingSnake avatar" | Bounds: 0.2687,0.0842,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-25 | Parent: mache-22 | Tag: a | Role: link | Text: "FlyingSnake" | Bounds: 0.3274,0.0825,0.0454,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-26 | Parent: mache-22 | Tag: label | Role: label | Text: "caches" | Bounds: 0.4259,0.0825,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-27 | Parent: mache-22 | Tag: a | Role: heading | Text: "5 comments" | Bounds: 0.4591,0.0825,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-28 | Parent: mache-16 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-29 | Parent: mache-16 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-30 | Parent: mache-29 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-31 | Parent: mache-29 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-32 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-33 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.1058,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-34 | Parent: mache-33 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.1095,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-35 | Parent: mache-34 | Tag: a | Role: link | Text: "62" | Bounds: 0.2553,0.1095,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-36 | Parent: mache-33 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.1095,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-37 | Parent: mache-36 | Tag: a | Role: link | Text: "Niri v26.04" | Bounds: 0.2687,0.1140,0.0412,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-38 | Parent: mache-36 | Tag: a | Role: link | Text: "linux" | Bounds: 0.3137,0.1158,0.0168,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_linux
+ID: mache-39 | Parent: mache-36 | Tag: a | Role: link | Text: "release" | Bounds: 0.3342,0.1158,0.0230,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_release
+ID: mache-40 | Parent: mache-36 | Tag: a | Role: link | Text: "rust" | Bounds: 0.3608,0.1158,0.0148,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_rust
+ID: mache-41 | Parent: mache-36 | Tag: a | Role: link | Text: "github.com/niri-wm" | Bounds: 0.3800,0.1140,0.0727,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-42 | Parent: mache-36 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.1345,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-43 | Parent: mache-42 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.1364,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-44 | Parent: mache-43 | Tag: img | Role: img | Text: "ana_glz avatar" | Bounds: 0.2687,0.1381,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-45 | Parent: mache-42 | Tag: a | Role: link | Text: "ana_glz" | Bounds: 0.2933,0.1364,0.0284,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-46 | Parent: mache-42 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3747,0.1364,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-47 | Parent: mache-42 | Tag: a | Role: heading | Text: "6 comments" | Bounds: 0.4079,0.1364,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-48 | Parent: mache-36 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-49 | Parent: mache-36 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-50 | Parent: mache-49 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-51 | Parent: mache-49 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-52 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-53 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.1597,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-54 | Parent: mache-53 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.1634,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-55 | Parent: mache-54 | Tag: a | Role: link | Text: "40" | Bounds: 0.2553,0.1634,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-56 | Parent: mache-53 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.1634,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-57 | Parent: mache-56 | Tag: a | Role: link | Text: "Wasm is not quite a stack machine" | Bounds: 0.2687,0.1679,0.1382,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-58 | Parent: mache-56 | Tag: a | Role: link | Text: "plt" | Bounds: 0.4107,0.1698,0.0117,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_plt
+ID: mache-59 | Parent: mache-56 | Tag: a | Role: link | Text: "wasm" | Bounds: 0.4260,0.1698,0.0200,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_wasm
+ID: mache-60 | Parent: mache-56 | Tag: a | Role: link | Text: "purplesyringa.moe" | Bounds: 0.4504,0.1679,0.0687,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-61 | Parent: mache-56 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.1885,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-62 | Parent: mache-61 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.1903,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-63 | Parent: mache-62 | Tag: img | Role: img | Text: "LesleyLai avatar" | Bounds: 0.2687,0.1920,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-64 | Parent: mache-61 | Tag: a | Role: link | Text: "LesleyLai" | Bounds: 0.2933,0.1903,0.0347,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-65 | Parent: mache-61 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3857,0.1903,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-66 | Parent: mache-61 | Tag: a | Role: heading | Text: "17 comments" | Bounds: 0.4189,0.1903,0.0510,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-67 | Parent: mache-56 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-68 | Parent: mache-56 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-69 | Parent: mache-68 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-70 | Parent: mache-68 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-71 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-72 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.2137,0.4927,0.0766 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-73 | Parent: mache-72 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.2174,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-74 | Parent: mache-73 | Tag: a | Role: link | Text: "43" | Bounds: 0.2553,0.2174,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-75 | Parent: mache-72 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.2174,0.4760,0.0692 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-76 | Parent: mache-75 | Tag: a | Role: link | Text: "From Milliseconds to 26 Nanoseconds: How a $20 eBay SFP Module Beat My Entire..." | Bounds: 0.2687,0.2218,0.3750,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-77 | Parent: mache-75 | Tag: a | Role: link | Text: "hardware" | Bounds: 0.6475,0.2237,0.0283,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_hardware
+ID: mache-78 | Parent: mache-75 | Tag: a | Role: link | Text: "austinsnerdythings.com" | Bounds: 0.2687,0.2445,0.0880,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-79 | Parent: mache-75 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.2650,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-80 | Parent: mache-79 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.2669,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-81 | Parent: mache-80 | Tag: img | Role: img | Text: "varesa avatar" | Bounds: 0.2687,0.2686,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-82 | Parent: mache-79 | Tag: a | Role: link | Text: "varesa" | Bounds: 0.2933,0.2669,0.0244,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-83 | Parent: mache-79 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3754,0.2669,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-84 | Parent: mache-79 | Tag: a | Role: heading | Text: "4 comments" | Bounds: 0.4086,0.2669,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-85 | Parent: mache-75 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-86 | Parent: mache-75 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-87 | Parent: mache-86 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-88 | Parent: mache-86 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-89 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-90 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.2902,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-91 | Parent: mache-90 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.2939,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-92 | Parent: mache-91 | Tag: a | Role: link | Text: "90" | Bounds: 0.2553,0.2939,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-93 | Parent: mache-90 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.2939,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-94 | Parent: mache-93 | Tag: a | Role: link | Text: "Lua can be a really cool HTML templating engine" | Bounds: 0.2687,0.2984,0.1936,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-95 | Parent: mache-93 | Tag: a | Role: link | Text: "lua" | Bounds: 0.4661,0.3003,0.0127,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_lua
+ID: mache-96 | Parent: mache-93 | Tag: a | Role: link | Text: "web" | Bounds: 0.4824,0.3003,0.0158,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_web
+ID: mache-97 | Parent: mache-93 | Tag: a | Role: link | Text: "riki.house" | Bounds: 0.5027,0.2984,0.0353,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-98 | Parent: mache-93 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.3190,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-99 | Parent: mache-98 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.3208,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-100 | Parent: mache-99 | Tag: img | Role: img | Text: "riki avatar" | Bounds: 0.2687,0.3226,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-101 | Parent: mache-98 | Tag: a | Role: link | Text: "riki" | Bounds: 0.3274,0.3208,0.0108,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-102 | Parent: mache-98 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3959,0.3208,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-103 | Parent: mache-98 | Tag: a | Role: heading | Text: "57 comments" | Bounds: 0.4291,0.3208,0.0510,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-104 | Parent: mache-93 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-105 | Parent: mache-93 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-106 | Parent: mache-105 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-107 | Parent: mache-105 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-108 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-109 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.3442,0.4927,0.0766 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-110 | Parent: mache-109 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.3479,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-111 | Parent: mache-110 | Tag: a | Role: link | Text: "8" | Bounds: 0.2562,0.3479,0.0074,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-112 | Parent: mache-109 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.3479,0.4760,0.0692 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-113 | Parent: mache-112 | Tag: a | Role: link | Text: "I won my FOIA against Twelve South to open up the electrical information for ..." | Bounds: 0.2687,0.3524,0.3793,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-114 | Parent: mache-112 | Tag: a | Role: link | Text: "pdf" | Bounds: 0.6517,0.3542,0.0136,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_pdf
+ID: mache-115 | Parent: mache-112 | Tag: a | Role: link | Text: "hardware" | Bounds: 0.6690,0.3542,0.0283,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_hardware
+ID: mache-116 | Parent: mache-112 | Tag: a | Role: link | Text: "reversing" | Bounds: 0.7009,0.3542,0.0278,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_reversing
+ID: mache-117 | Parent: mache-112 | Tag: a | Role: link | Text: "archive.org" | Bounds: 0.2687,0.3750,0.0408,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-118 | Parent: mache-112 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.3956,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-119 | Parent: mache-118 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.3974,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-120 | Parent: mache-119 | Tag: img | Role: img | Text: "reesericci avatar" | Bounds: 0.2687,0.3991,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-121 | Parent: mache-118 | Tag: a | Role: link | Text: "reesericci" | Bounds: 0.3274,0.3974,0.0356,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-122 | Parent: mache-118 | Tag: label | Role: label | Text: "caches" | Bounds: 0.4161,0.3974,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-123 | Parent: mache-118 | Tag: a | Role: heading | Text: "1 comment" | Bounds: 0.4493,0.3974,0.0422,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-124 | Parent: mache-112 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-125 | Parent: mache-112 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-126 | Parent: mache-125 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-127 | Parent: mache-125 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-128 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-129 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.4207,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-130 | Parent: mache-129 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.4245,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-131 | Parent: mache-130 | Tag: a | Role: link | Text: "47" | Bounds: 0.2553,0.4245,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-132 | Parent: mache-129 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.4245,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-133 | Parent: mache-132 | Tag: a | Role: link | Text: "Smolwebifying my site" | Bounds: 0.2687,0.4289,0.0891,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-134 | Parent: mache-132 | Tag: a | Role: link | Text: "web" | Bounds: 0.3616,0.4308,0.0158,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_web
+ID: mache-135 | Parent: mache-132 | Tag: a | Role: link | Text: "akselmo.dev" | Bounds: 0.3818,0.4289,0.0463,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-136 | Parent: mache-132 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.4495,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-137 | Parent: mache-136 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.4513,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-138 | Parent: mache-137 | Tag: img | Role: img | Text: "Aks avatar" | Bounds: 0.2687,0.4531,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-139 | Parent: mache-136 | Tag: a | Role: link | Text: "Aks" | Bounds: 0.3274,0.4513,0.0139,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-140 | Parent: mache-136 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3990,0.4513,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-141 | Parent: mache-136 | Tag: a | Role: heading | Text: "27 comments" | Bounds: 0.4322,0.4513,0.0510,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-142 | Parent: mache-132 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-143 | Parent: mache-132 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-144 | Parent: mache-143 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-145 | Parent: mache-143 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-146 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-147 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.4747,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-148 | Parent: mache-147 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.4784,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-149 | Parent: mache-148 | Tag: a | Role: link | Text: "13" | Bounds: 0.2553,0.4784,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-150 | Parent: mache-147 | Tag: div | Role: div | Text: "    " | Bounds: 0.2687,0.4784,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-151 | Parent: mache-150 | Tag: a | Role: link | Text: "What are you doing this week?" | Bounds: 0.2687,0.4829,0.1218,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-152 | Parent: mache-150 | Tag: a | Role: link | Text: "Description text for: What are you doing this week?" | Bounds: 0.3928,0.4829,0.0097,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.description_present
+ID: mache-153 | Parent: mache-150 | Tag: a | Role: link | Text: "ask" | Bounds: 0.4062,0.4847,0.0140,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_ask
+ID: mache-154 | Parent: mache-150 | Tag: a | Role: link | Text: "programming" | Bounds: 0.4239,0.4847,0.0384,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_programming
+ID: mache-155 | Parent: mache-150 | Tag: div | Role: div | Text: "     " | Bounds: 0.2687,0.5034,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-156 | Parent: mache-155 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.5053,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-157 | Parent: mache-156 | Tag: img | Role: img | Text: "caius avatar" | Bounds: 0.2687,0.5070,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-158 | Parent: mache-155 | Tag: a | Role: link | Text: "caius" | Bounds: 0.3274,0.5053,0.0196,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-159 | Parent: mache-155 | Tag: a | Role: heading | Text: "19 comments" | Bounds: 0.4001,0.5053,0.0510,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-160 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-161 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.5286,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-162 | Parent: mache-161 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.5323,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-163 | Parent: mache-162 | Tag: a | Role: link | Text: "12" | Bounds: 0.2553,0.5323,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-164 | Parent: mache-161 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.5323,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-165 | Parent: mache-164 | Tag: a | Role: link | Text: ""Why not just use Lean?"" | Bounds: 0.2687,0.5368,0.1000,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-166 | Parent: mache-164 | Tag: a | Role: link | Text: "formalmethods" | Bounds: 0.3725,0.5387,0.0425,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_formalmethods
+ID: mache-167 | Parent: mache-164 | Tag: a | Role: link | Text: "lawrencecpaulson.github.io" | Bounds: 0.4194,0.5368,0.1016,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-168 | Parent: mache-164 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.5574,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-169 | Parent: mache-168 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.5592,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-170 | Parent: mache-169 | Tag: img | Role: img | Text: "priime avatar" | Bounds: 0.2687,0.5609,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-171 | Parent: mache-168 | Tag: a | Role: link | Text: "priime" | Bounds: 0.2933,0.5592,0.0230,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-172 | Parent: mache-168 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3694,0.5592,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-173 | Parent: mache-168 | Tag: a | Role: heading | Text: "no comments" | Bounds: 0.4026,0.5592,0.0511,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-174 | Parent: mache-164 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-175 | Parent: mache-164 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-176 | Parent: mache-175 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-177 | Parent: mache-175 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-178 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments.zero
+ID: mache-179 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.5826,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-180 | Parent: mache-179 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.5863,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-181 | Parent: mache-180 | Tag: a | Role: link | Text: "27" | Bounds: 0.2553,0.5863,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-182 | Parent: mache-179 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.5863,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-183 | Parent: mache-182 | Tag: a | Role: link | Text: "HardenedBSD Is Now Officially on Radicle" | Bounds: 0.2687,0.5907,0.1668,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-184 | Parent: mache-182 | Tag: a | Role: link | Text: "freebsd" | Bounds: 0.4393,0.5926,0.0240,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_freebsd
+ID: mache-185 | Parent: mache-182 | Tag: a | Role: link | Text: "vcs" | Bounds: 0.4669,0.5926,0.0139,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_vcs
+ID: mache-186 | Parent: mache-182 | Tag: a | Role: link | Text: "hardenedbsd.org" | Bounds: 0.4852,0.5907,0.0634,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-187 | Parent: mache-182 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.6113,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-188 | Parent: mache-187 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.6132,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-189 | Parent: mache-188 | Tag: img | Role: img | Text: "lattera avatar" | Bounds: 0.2687,0.6149,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-190 | Parent: mache-187 | Tag: a | Role: link | Text: "lattera" | Bounds: 0.3274,0.6132,0.0233,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-191 | Parent: mache-187 | Tag: label | Role: label | Text: "caches" | Bounds: 0.4084,0.6132,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-192 | Parent: mache-187 | Tag: a | Role: heading | Text: "7 comments" | Bounds: 0.4416,0.6132,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-193 | Parent: mache-182 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-194 | Parent: mache-182 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-195 | Parent: mache-194 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-196 | Parent: mache-194 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-197 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-198 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.6365,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-199 | Parent: mache-198 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.6402,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-200 | Parent: mache-199 | Tag: a | Role: link | Text: "15" | Bounds: 0.2553,0.6402,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-201 | Parent: mache-198 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.6402,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-202 | Parent: mache-201 | Tag: a | Role: link | Text: "httpxyz one month in" | Bounds: 0.2687,0.6447,0.0833,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-203 | Parent: mache-201 | Tag: a | Role: link | Text: "python" | Bounds: 0.3558,0.6465,0.0225,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_python
+ID: mache-204 | Parent: mache-201 | Tag: a | Role: link | Text: "tildeweb.nl" | Bounds: 0.3826,0.6447,0.0403,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-205 | Parent: mache-201 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.6652,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-206 | Parent: mache-205 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.6671,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-207 | Parent: mache-206 | Tag: img | Role: img | Text: "knl avatar" | Bounds: 0.2687,0.6688,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-208 | Parent: mache-205 | Tag: a | Role: link | Text: "knl" | Bounds: 0.2933,0.6671,0.0108,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-209 | Parent: mache-205 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3572,0.6671,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-210 | Parent: mache-205 | Tag: a | Role: heading | Text: "2 comments" | Bounds: 0.3904,0.6671,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-211 | Parent: mache-201 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-212 | Parent: mache-201 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-213 | Parent: mache-212 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-214 | Parent: mache-212 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-215 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-216 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.6904,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-217 | Parent: mache-216 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.6941,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-218 | Parent: mache-217 | Tag: a | Role: link | Text: "61" | Bounds: 0.2553,0.6941,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-219 | Parent: mache-216 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.6941,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-220 | Parent: mache-219 | Tag: a | Role: link | Text: "Dillo release 3.3.0" | Bounds: 0.2687,0.6986,0.0697,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-221 | Parent: mache-219 | Tag: a | Role: link | Text: "browsers" | Bounds: 0.3422,0.7005,0.0280,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_browsers
+ID: mache-222 | Parent: mache-219 | Tag: a | Role: link | Text: "release" | Bounds: 0.3739,0.7005,0.0230,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_release
+ID: mache-223 | Parent: mache-219 | Tag: a | Role: link | Text: "dillo-browser.org" | Bounds: 0.4013,0.6986,0.0621,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-224 | Parent: mache-219 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.7192,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-225 | Parent: mache-224 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.7210,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-226 | Parent: mache-225 | Tag: img | Role: img | Text: "rdg avatar" | Bounds: 0.2687,0.7227,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-227 | Parent: mache-224 | Tag: a | Role: link | Text: "rdg" | Bounds: 0.3274,0.7210,0.0124,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-228 | Parent: mache-224 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3975,0.7210,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-229 | Parent: mache-224 | Tag: a | Role: heading | Text: "3 comments" | Bounds: 0.4307,0.7210,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-230 | Parent: mache-219 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-231 | Parent: mache-219 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-232 | Parent: mache-231 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-233 | Parent: mache-231 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-234 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-235 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.7444,0.4927,0.0766 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-236 | Parent: mache-235 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.7481,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-237 | Parent: mache-236 | Tag: a | Role: link | Text: "15" | Bounds: 0.2553,0.7481,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-238 | Parent: mache-235 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.7481,0.4760,0.0692 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-239 | Parent: mache-238 | Tag: a | Role: link | Text: "The gold standard of optimization: A look under the hood of RollerCoaster Tycoon" | Bounds: 0.2687,0.7525,0.3245,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-240 | Parent: mache-238 | Tag: a | Role: link | Text: "games" | Bounds: 0.5969,0.7544,0.0219,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_games
+ID: mache-241 | Parent: mache-238 | Tag: a | Role: link | Text: "performance" | Bounds: 0.6226,0.7544,0.0367,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_performance
+ID: mache-242 | Parent: mache-238 | Tag: a | Role: link | Text: "programming" | Bounds: 0.6630,0.7544,0.0384,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_programming
+ID: mache-243 | Parent: mache-238 | Tag: a | Role: link | Text: "larstofus.com" | Bounds: 0.2687,0.7752,0.0502,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-244 | Parent: mache-238 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.7957,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-245 | Parent: mache-244 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.7976,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-246 | Parent: mache-245 | Tag: img | Role: img | Text: "topicpartition avatar" | Bounds: 0.2687,0.7993,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-247 | Parent: mache-244 | Tag: a | Role: link | Text: "topicpartition" | Bounds: 0.2933,0.7976,0.0492,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-248 | Parent: mache-244 | Tag: label | Role: label | Text: "caches" | Bounds: 0.4002,0.7976,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-249 | Parent: mache-244 | Tag: a | Role: heading | Text: "4 comments" | Bounds: 0.4334,0.7976,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-250 | Parent: mache-238 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-251 | Parent: mache-238 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-252 | Parent: mache-251 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-253 | Parent: mache-251 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-254 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-255 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.8209,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-256 | Parent: mache-255 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.8246,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-257 | Parent: mache-256 | Tag: a | Role: link | Text: "11" | Bounds: 0.2553,0.8246,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-258 | Parent: mache-255 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.8246,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-259 | Parent: mache-258 | Tag: a | Role: link | Text: "HTML written only using the C preprocessor" | Bounds: 0.2687,0.8291,0.1755,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-260 | Parent: mache-258 | Tag: a | Role: link | Text: "Description text for: HTML written only using the C preprocessor" | Bounds: 0.4465,0.8291,0.0097,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.description_present
+ID: mache-261 | Parent: mache-258 | Tag: a | Role: link | Text: "c" | Bounds: 0.4599,0.8310,0.0084,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_c
+ID: mache-262 | Parent: mache-258 | Tag: a | Role: link | Text: "chaos.social" | Bounds: 0.4727,0.8291,0.0458,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-263 | Parent: mache-258 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.8497,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-264 | Parent: mache-263 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.8515,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-265 | Parent: mache-264 | Tag: img | Role: img | Text: "hugoarnal avatar" | Bounds: 0.2687,0.8533,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-266 | Parent: mache-263 | Tag: a | Role: link | Text: "hugoarnal" | Bounds: 0.2933,0.8515,0.0372,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-267 | Parent: mache-263 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3836,0.8515,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-268 | Parent: mache-263 | Tag: a | Role: heading | Text: "no comments" | Bounds: 0.4167,0.8515,0.0511,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-269 | Parent: mache-258 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-270 | Parent: mache-258 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-271 | Parent: mache-270 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-272 | Parent: mache-270 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-273 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments.zero
+ID: mache-274 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.8749,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-275 | Parent: mache-274 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.8786,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-276 | Parent: mache-275 | Tag: a | Role: link | Text: "8" | Bounds: 0.2562,0.8786,0.0074,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-277 | Parent: mache-274 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.8786,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-278 | Parent: mache-277 | Tag: a | Role: link | Text: "Let's Build the Terminal Pt. 1" | Bounds: 0.2687,0.8831,0.1131,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-279 | Parent: mache-277 | Tag: a | Role: link | Text: "c" | Bounds: 0.3855,0.8849,0.0084,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_c
+ID: mache-280 | Parent: mache-277 | Tag: a | Role: link | Text: "chauhankiran.blogspot.com" | Bounds: 0.3983,0.8831,0.1030,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-281 | Parent: mache-277 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.9036,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-282 | Parent: mache-281 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.9055,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-283 | Parent: mache-282 | Tag: img | Role: img | Text: "chauhankiran avatar" | Bounds: 0.2687,0.9072,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-284 | Parent: mache-281 | Tag: a | Role: link | Text: "chauhankiran" | Bounds: 0.3274,0.9055,0.0500,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-285 | Parent: mache-281 | Tag: label | Role: label | Text: "caches" | Bounds: 0.4351,0.9055,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-286 | Parent: mache-281 | Tag: a | Role: heading | Text: "3 comments" | Bounds: 0.4683,0.9055,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-287 | Parent: mache-277 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-288 | Parent: mache-277 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-289 | Parent: mache-288 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-290 | Parent: mache-288 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-291 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-292 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.9288,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-293 | Parent: mache-292 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.9325,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-294 | Parent: mache-293 | Tag: a | Role: link | Text: "9" | Bounds: 0.2562,0.9325,0.0074,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-295 | Parent: mache-292 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.9325,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-296 | Parent: mache-295 | Tag: a | Role: link | Text: "voice modems" | Bounds: 0.2687,0.9370,0.0580,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-297 | Parent: mache-295 | Tag: a | Role: link | Text: "historical" | Bounds: 0.3304,0.9388,0.0275,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_historical
+ID: mache-298 | Parent: mache-295 | Tag: a | Role: link | Text: "computer.rip" | Bounds: 0.3624,0.9370,0.0469,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-299 | Parent: mache-295 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,0.9576,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-300 | Parent: mache-299 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,0.9594,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-301 | Parent: mache-300 | Tag: img | Role: img | Text: "binjip978 avatar" | Bounds: 0.2687,0.9611,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-302 | Parent: mache-299 | Tag: a | Role: link | Text: "binjip978" | Bounds: 0.2933,0.9594,0.0340,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-303 | Parent: mache-299 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3803,0.9594,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-304 | Parent: mache-299 | Tag: a | Role: heading | Text: "no comments" | Bounds: 0.4135,0.9594,0.0511,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-305 | Parent: mache-295 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-306 | Parent: mache-295 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-307 | Parent: mache-306 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-308 | Parent: mache-306 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-309 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments.zero
+ID: mache-310 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,0.9827,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-311 | Parent: mache-310 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,0.9864,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-312 | Parent: mache-311 | Tag: a | Role: link | Text: "6" | Bounds: 0.2562,0.9864,0.0074,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-313 | Parent: mache-310 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,0.9864,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-314 | Parent: mache-313 | Tag: a | Role: link | Text: "How Rust Compiles (2025)" | Bounds: 0.2687,0.9909,0.1043,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-315 | Parent: mache-313 | Tag: a | Role: link | Text: "video" | Bounds: 0.3767,0.9928,0.0188,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_video
+ID: mache-316 | Parent: mache-313 | Tag: a | Role: link | Text: "compilers" | Bounds: 0.3992,0.9928,0.0295,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_compilers
+ID: mache-317 | Parent: mache-313 | Tag: a | Role: link | Text: "rust" | Bounds: 0.4324,0.9928,0.0148,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_rust
+ID: mache-318 | Parent: mache-313 | Tag: a | Role: link | Text: "youtube.com" | Bounds: 0.4516,0.9909,0.0488,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-319 | Parent: mache-313 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,1.0115,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-320 | Parent: mache-319 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,1.0133,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-321 | Parent: mache-320 | Tag: img | Role: img | Text: "Arch avatar" | Bounds: 0.2687,1.0151,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-322 | Parent: mache-319 | Tag: a | Role: link | Text: "Arch" | Bounds: 0.2933,1.0133,0.0171,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-323 | Parent: mache-319 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3635,1.0133,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-324 | Parent: mache-319 | Tag: a | Role: heading | Text: "no comments" | Bounds: 0.3967,1.0133,0.0511,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-325 | Parent: mache-313 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-326 | Parent: mache-313 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-327 | Parent: mache-326 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-328 | Parent: mache-326 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-329 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments.zero
+ID: mache-330 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,1.0367,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-331 | Parent: mache-330 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,1.0404,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-332 | Parent: mache-331 | Tag: a | Role: link | Text: "9" | Bounds: 0.2562,1.0404,0.0074,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-333 | Parent: mache-330 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,1.0404,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-334 | Parent: mache-333 | Tag: a | Role: link | Text: "FreeBSD Device Driver Book" | Bounds: 0.2687,1.0449,0.1138,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-335 | Parent: mache-333 | Tag: a | Role: link | Text: "book" | Bounds: 0.3862,1.0467,0.0179,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_book
+ID: mache-336 | Parent: mache-333 | Tag: a | Role: link | Text: "c" | Bounds: 0.4078,1.0467,0.0084,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_c
+ID: mache-337 | Parent: mache-333 | Tag: a | Role: link | Text: "freebsd" | Bounds: 0.4198,1.0467,0.0240,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_freebsd
+ID: mache-338 | Parent: mache-333 | Tag: a | Role: link | Text: "github.com/ebrandi" | Bounds: 0.4482,1.0449,0.0729,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-339 | Parent: mache-333 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,1.0654,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-340 | Parent: mache-339 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,1.0673,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-341 | Parent: mache-340 | Tag: img | Role: img | Text: "jturner avatar" | Bounds: 0.2687,1.0690,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-342 | Parent: mache-339 | Tag: a | Role: link | Text: "jturner" | Bounds: 0.2933,1.0673,0.0239,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-343 | Parent: mache-339 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3703,1.0673,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-344 | Parent: mache-339 | Tag: a | Role: heading | Text: "no comments" | Bounds: 0.4035,1.0673,0.0511,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-345 | Parent: mache-333 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-346 | Parent: mache-333 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-347 | Parent: mache-346 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-348 | Parent: mache-346 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-349 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments.zero
+ID: mache-350 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,1.0906,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-351 | Parent: mache-350 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,1.0943,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-352 | Parent: mache-351 | Tag: a | Role: link | Text: "5" | Bounds: 0.2562,1.0943,0.0074,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-353 | Parent: mache-350 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,1.0943,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-354 | Parent: mache-353 | Tag: a | Role: link | Text: "Running the Gauntlet: a tiny nodejs test runner" | Bounds: 0.2687,1.0988,0.1851,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-355 | Parent: mache-353 | Tag: a | Role: link | Text: "show" | Bounds: 0.4575,1.1007,0.0186,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_show
+ID: mache-356 | Parent: mache-353 | Tag: a | Role: link | Text: "nodejs" | Bounds: 0.4798,1.1007,0.0218,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_nodejs
+ID: mache-357 | Parent: mache-353 | Tag: a | Role: link | Text: "testing" | Bounds: 0.5053,1.1007,0.0220,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_testing
+ID: mache-358 | Parent: mache-353 | Tag: a | Role: link | Text: "robey.lag.net" | Bounds: 0.5317,1.0988,0.0475,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-359 | Parent: mache-353 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,1.1194,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-360 | Parent: mache-359 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,1.1212,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-361 | Parent: mache-360 | Tag: img | Role: img | Text: "robey avatar" | Bounds: 0.2687,1.1229,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-362 | Parent: mache-359 | Tag: a | Role: link | Text: "robey" | Bounds: 0.3274,1.1212,0.0210,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-363 | Parent: mache-359 | Tag: label | Role: label | Text: "caches" | Bounds: 0.4061,1.1212,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-364 | Parent: mache-359 | Tag: a | Role: heading | Text: "2 comments" | Bounds: 0.4393,1.1212,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-365 | Parent: mache-353 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-366 | Parent: mache-353 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-367 | Parent: mache-366 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-368 | Parent: mache-366 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-369 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-370 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,1.1445,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-371 | Parent: mache-370 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,1.1482,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-372 | Parent: mache-371 | Tag: a | Role: link | Text: "4" | Bounds: 0.2562,1.1482,0.0074,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-373 | Parent: mache-370 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,1.1482,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-374 | Parent: mache-373 | Tag: a | Role: link | Text: "Hacking the last Z80 computer ever, the Cidco Mailstation" | Bounds: 0.2687,1.1527,0.2299,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-375 | Parent: mache-373 | Tag: a | Role: link | Text: "video" | Bounds: 0.5024,1.1546,0.0188,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_video
+ID: mache-376 | Parent: mache-373 | Tag: a | Role: link | Text: "retrocomputing" | Bounds: 0.5248,1.1546,0.0430,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_retrocomputing
+ID: mache-377 | Parent: mache-373 | Tag: a | Role: link | Text: "fosdem.org" | Bounds: 0.5723,1.1527,0.0422,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-378 | Parent: mache-373 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,1.1733,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-379 | Parent: mache-378 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,1.1751,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-380 | Parent: mache-379 | Tag: img | Role: img | Text: "lproven avatar" | Bounds: 0.2687,1.1769,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-381 | Parent: mache-378 | Tag: a | Role: link | Text: "lproven" | Bounds: 0.2933,1.1751,0.0275,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-382 | Parent: mache-378 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3738,1.1751,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-383 | Parent: mache-378 | Tag: a | Role: heading | Text: "no comments" | Bounds: 0.4070,1.1751,0.0511,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-384 | Parent: mache-373 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-385 | Parent: mache-373 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-386 | Parent: mache-385 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-387 | Parent: mache-385 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-388 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments.zero
+ID: mache-389 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,1.1985,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-390 | Parent: mache-389 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,1.2022,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-391 | Parent: mache-390 | Tag: a | Role: link | Text: "21" | Bounds: 0.2553,1.2022,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-392 | Parent: mache-389 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,1.2022,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-393 | Parent: mache-392 | Tag: a | Role: link | Text: "(Cryptographic) Registries Considered Harmful (2020)" | Bounds: 0.2687,1.2067,0.2120,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-394 | Parent: mache-392 | Tag: a | Role: link | Text: "cryptography" | Bounds: 0.4844,1.2085,0.0381,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_cryptography
+ID: mache-395 | Parent: mache-392 | Tag: a | Role: link | Text: "words.filippo.io" | Bounds: 0.5270,1.2067,0.0566,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-396 | Parent: mache-392 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,1.2272,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-397 | Parent: mache-396 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,1.2291,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-398 | Parent: mache-397 | Tag: img | Role: img | Text: "runxiyu avatar" | Bounds: 0.2687,1.2308,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-399 | Parent: mache-396 | Tag: a | Role: link | Text: "runxiyu" | Bounds: 0.2933,1.2291,0.0270,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-400 | Parent: mache-396 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3780,1.2291,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-401 | Parent: mache-396 | Tag: a | Role: heading | Text: "no comments" | Bounds: 0.4112,1.2291,0.0511,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-402 | Parent: mache-392 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-403 | Parent: mache-392 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-404 | Parent: mache-403 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-405 | Parent: mache-403 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-406 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments.zero
+ID: mache-407 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,1.2524,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-408 | Parent: mache-407 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,1.2561,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-409 | Parent: mache-408 | Tag: a | Role: link | Text: "45" | Bounds: 0.2553,1.2561,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-410 | Parent: mache-407 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,1.2561,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-411 | Parent: mache-410 | Tag: a | Role: link | Text: "The fastest Linux timestamps" | Bounds: 0.2687,1.2606,0.1171,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-412 | Parent: mache-410 | Tag: a | Role: link | Text: "linux" | Bounds: 0.3895,1.2625,0.0168,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_linux
+ID: mache-413 | Parent: mache-410 | Tag: a | Role: link | Text: "performance" | Bounds: 0.4101,1.2625,0.0367,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_performance
+ID: mache-414 | Parent: mache-410 | Tag: a | Role: link | Text: "hmpcabral.com" | Bounds: 0.4512,1.2606,0.0580,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-415 | Parent: mache-410 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,1.2812,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-416 | Parent: mache-415 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,1.2830,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-417 | Parent: mache-416 | Tag: img | Role: img | Text: "hmpc avatar" | Bounds: 0.2687,1.2847,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-418 | Parent: mache-415 | Tag: a | Role: link | Text: "hmpc - New user" | Bounds: 0.3274,1.2830,0.0212,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-419 | Parent: mache-415 | Tag: label | Role: label | Text: "caches" | Bounds: 0.4063,1.2830,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-420 | Parent: mache-415 | Tag: a | Role: heading | Text: "2 comments" | Bounds: 0.4395,1.2830,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-421 | Parent: mache-410 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-422 | Parent: mache-410 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-423 | Parent: mache-422 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-424 | Parent: mache-422 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-425 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-426 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,1.3064,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-427 | Parent: mache-426 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,1.3101,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-428 | Parent: mache-427 | Tag: a | Role: link | Text: "77" | Bounds: 0.2553,1.3101,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-429 | Parent: mache-426 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,1.3101,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-430 | Parent: mache-429 | Tag: a | Role: link | Text: "Asahi Linux Progress Report: Linux 7.0" | Bounds: 0.2687,1.3145,0.1533,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-431 | Parent: mache-429 | Tag: a | Role: link | Text: "linux" | Bounds: 0.4257,1.3164,0.0168,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_linux
+ID: mache-432 | Parent: mache-429 | Tag: a | Role: link | Text: "release" | Bounds: 0.4462,1.3164,0.0230,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_release
+ID: mache-433 | Parent: mache-429 | Tag: a | Role: link | Text: "asahilinux.org" | Bounds: 0.4736,1.3145,0.0505,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-434 | Parent: mache-429 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,1.3351,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-435 | Parent: mache-434 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,1.3370,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-436 | Parent: mache-435 | Tag: img | Role: img | Text: "polywolf avatar" | Bounds: 0.2687,1.3387,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-437 | Parent: mache-434 | Tag: a | Role: link | Text: "polywolf" | Bounds: 0.2933,1.3370,0.0312,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-438 | Parent: mache-434 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3822,1.3370,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-439 | Parent: mache-434 | Tag: a | Role: heading | Text: "3 comments" | Bounds: 0.4153,1.3370,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-440 | Parent: mache-429 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-441 | Parent: mache-429 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-442 | Parent: mache-441 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-443 | Parent: mache-441 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-444 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-445 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,1.3603,0.4927,0.0766 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-446 | Parent: mache-445 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,1.3640,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-447 | Parent: mache-446 | Tag: a | Role: link | Text: "58" | Bounds: 0.2553,1.3640,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-448 | Parent: mache-445 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,1.3640,0.4760,0.0692 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-449 | Parent: mache-448 | Tag: a | Role: link | Text: "I Left Port 22 Open on the Internet for 54 Days. Here's Who Showed Up" | Bounds: 0.2687,1.3685,0.2809,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-450 | Parent: mache-448 | Tag: a | Role: link | Text: "networking" | Bounds: 0.5534,1.3703,0.0326,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_networking
+ID: mache-451 | Parent: mache-448 | Tag: a | Role: link | Text: "security" | Bounds: 0.5897,1.3703,0.0247,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_security
+ID: mache-452 | Parent: mache-448 | Tag: a | Role: link | Text: "vibecoding" | Bounds: 0.6181,1.3703,0.0324,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_vibecoding
+ID: mache-453 | Parent: mache-448 | Tag: a | Role: link | Text: "arman-bd.hashnode.dev" | Bounds: 0.2687,1.3685,0.4126,0.0393 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-454 | Parent: mache-448 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,1.4117,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-455 | Parent: mache-454 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,1.4135,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-456 | Parent: mache-455 | Tag: img | Role: img | Text: "freddyb avatar" | Bounds: 0.2687,1.4152,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-457 | Parent: mache-454 | Tag: a | Role: link | Text: "freddyb" | Bounds: 0.2933,1.4135,0.0286,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-458 | Parent: mache-454 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3796,1.4135,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-459 | Parent: mache-454 | Tag: a | Role: heading | Text: "18 comments" | Bounds: 0.4127,1.4135,0.0510,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-460 | Parent: mache-448 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-461 | Parent: mache-448 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-462 | Parent: mache-461 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-463 | Parent: mache-461 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-464 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-465 | Parent: mache-12 | Tag: div | Role: div | Text: "  " | Bounds: 0.2521,1.4369,0.4927,0.0539 | Path: div > ol.stories.list > li.story > div.story_liner.h-entry
+ID: mache-466 | Parent: mache-465 | Tag: div | Role: div | Text: " " | Bounds: 0.2521,1.4406,0.0156,0.0430 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.voters
+ID: mache-467 | Parent: mache-466 | Tag: a | Role: link | Text: "21" | Bounds: 0.2553,1.4406,0.0093,0.0430 | Path: li.story > div.story_liner.h-entry > div.voters > a.upvoter
+ID: mache-468 | Parent: mache-465 | Tag: div | Role: div | Text: "      " | Bounds: 0.2687,1.4406,0.4760,0.0465 | Path: ol.stories.list > li.story > div.story_liner.h-entry > div.details
+ID: mache-469 | Parent: mache-468 | Tag: a | Role: link | Text: "Why the Future Doesn't Need Us (Bill Joy, 2000)" | Bounds: 0.2687,1.4451,0.1877,0.0176 | Path: div.story_liner.h-entry > div.details > span.link.h-cite > a.u-url
+ID: mache-470 | Parent: mache-468 | Tag: a | Role: link | Text: "philosophy" | Bounds: 0.4601,1.4469,0.0323,0.0139 | Path: div.story_liner.h-entry > div.details > span.tags > a.tag.tag_philosophy
+ID: mache-471 | Parent: mache-468 | Tag: a | Role: link | Text: "web.archive.org" | Bounds: 0.4969,1.4451,0.0589,0.0167 | Path: li.story > div.story_liner.h-entry > div.details > a.domain
+ID: mache-472 | Parent: mache-468 | Tag: div | Role: div | Text: "       " | Bounds: 0.2687,1.4656,0.4760,0.0215 | Path: li.story > div.story_liner.h-entry > div.details > div.byline
+ID: mache-473 | Parent: mache-472 | Tag: a | Role: link | Text: "" | Bounds: 0.2687,1.4675,0.0094,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a
+ID: mache-474 | Parent: mache-473 | Tag: img | Role: img | Text: "orib avatar" | Bounds: 0.2687,1.4692,0.0083,0.0148 | Path: div.details > div.byline > a > img.avatar
+ID: mache-475 | Parent: mache-472 | Tag: a | Role: link | Text: "orib" | Bounds: 0.2933,1.4675,0.0144,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > a.u-author.h-card
+ID: mache-476 | Parent: mache-472 | Tag: label | Role: label | Text: "caches" | Bounds: 0.3653,1.4675,0.0267,0.0167 | Path: div.story_liner.h-entry > div.details > div.byline > label.caches
+ID: mache-477 | Parent: mache-472 | Tag: a | Role: heading | Text: "5 comments" | Bounds: 0.3985,1.4675,0.0463,0.0167 | Path: div.details > div.byline > span.comments_label > a
+ID: mache-478 | Parent: mache-468 | Tag: input | Role: textbox | Text: "checkbox" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > input.caches_button
+ID: mache-479 | Parent: mache-468 | Tag: div | Role: div | Text: "   " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: li.story > div.story_liner.h-entry > div.details > div.caches-dropdown
+ID: mache-480 | Parent: mache-479 | Tag: a | Role: link | Text: "Archive.org" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-481 | Parent: mache-479 | Tag: a | Role: link | Text: "Ghostarchive" | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div.story_liner.h-entry > div.details > div.caches-dropdown > a
+ID: mache-482 | Parent: mache-12 | Tag: a | Role: link | Text: " " | Bounds: 0.0000,0.0000,0.0000,0.0000 | Path: div > ol.stories.list > li.story > a.mobile_comments
+ID: mache-483 | Parent: mache-11 | Tag: nav | Role: navigation | Text: " " | Bounds: 0.2687,1.5130,0.0395,0.0224 | Path: div > nav.morelink
+ID: mache-484 | Parent: mache-483 | Tag: a | Role: link | Text: "Page 2" | Bounds: 0.2687,1.5149,0.0395,0.0176 | Path: div > nav.morelink > a
+ID: mache-485 | Parent: none | Tag: footer | Role: contentinfo | Text: "  " | Bounds: 0.2500,1.5354,0.5000,0.0807 | Path: footer
+ID: mache-486 | Parent: mache-485 | Tag: nav | Role: navigation | Text: "    " | Bounds: 0.5967,1.5651,0.1491,0.0215 | Path: footer > nav
+ID: mache-487 | Parent: mache-486 | Tag: a | Role: link | Text: "About" | Bounds: 0.5967,1.5669,0.0286,0.0167 | Path: footer > nav > a
+ID: mache-488 | Parent: mache-486 | Tag: a | Role: link | Text: "Tags" | Bounds: 0.6277,1.5669,0.0235,0.0167 | Path: footer > nav > a
+ID: mache-489 | Parent: mache-486 | Tag: a | Role: link | Text: "Filter" | Bounds: 0.6535,1.5669,0.0246,0.0167 | Path: footer > nav > a
+ID: mache-490 | Parent: mache-486 | Tag: a | Role: link | Text: "Moderation Log" | Bounds: 0.6805,1.5669,0.0654,0.0167 | Path: footer > nav > a

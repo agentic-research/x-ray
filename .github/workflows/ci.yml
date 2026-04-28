@@ -12,14 +12,16 @@ permissions:
 
 jobs:
   test:
+    permissions:
+      contents: read
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
 
@@ -30,11 +32,13 @@ jobs:
         run: go test -race -v -run TestBug_ ./...
 
   lint:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
 
@@ -47,6 +51,8 @@ jobs:
       #     version: v2.1.6
 
   bench:
+    permissions:
+      contents: read
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     strategy:
       matrix:
@@ -56,15 +62,12 @@ jobs:
           - runner: ubuntu-24.04-arm
             arch: arm64
     runs-on: ${{ matrix.runner }}
-    env:
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
 
       - name: Navigation benchmark (${{ matrix.arch }})
-        if: env.GEMINI_API_KEY != ''
         run: go run ./cmd/bench

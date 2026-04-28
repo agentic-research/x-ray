@@ -57,6 +57,8 @@ type Agent struct {
 	sectionMu    sync.RWMutex
 	sectionHints string
 
+	systemPromptOverride string // if set, replaces NavigatorSystemPrompt
+
 	screenshotMu   sync.RWMutex
 	screenshotData []byte // overlay screenshot (with mache-ID boxes)
 	screenshotMIME string // "image/png" or "image/jpeg"
@@ -268,6 +270,12 @@ func (a *Agent) SetRefValidateFunc(fn func(path string) string) {
 	a.actTool.refValidateFn = fn
 }
 
+// OverrideSystemPrompt replaces NavigatorSystemPrompt with a custom prompt.
+// Use for DOM-only mode where the full 3000-token prompt is unnecessary.
+func (a *Agent) OverrideSystemPrompt(prompt string) {
+	a.systemPromptOverride = prompt
+}
+
 // SetSectionHints stores pre-computed section hints to be injected into the
 // next HandleIntent tree dump. Thread-safe; cleared after each HandleIntent call.
 func (a *Agent) SetSectionHints(hints string) {
@@ -316,9 +324,14 @@ func (a *Agent) HandleIntent(ctx context.Context, intent string, readOnly bool) 
 		tools = a.registry.DefinitionsExcluding("ls", "cat", "stat")
 	}
 
+	sysPrompt := NavigatorSystemPrompt
+	if a.systemPromptOverride != "" {
+		sysPrompt = a.systemPromptOverride
+	}
+
 	config := &genai.GenerateContentConfig{
 		SystemInstruction: &genai.Content{
-			Parts: []*genai.Part{{Text: NavigatorSystemPrompt}},
+			Parts: []*genai.Part{{Text: sysPrompt}},
 		},
 		Tools:       tools,
 		Temperature: genai.Ptr(float32(1.0)),

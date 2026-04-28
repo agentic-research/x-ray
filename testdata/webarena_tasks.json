@@ -1,0 +1,2262 @@
+[
+    {
+        "sites": [
+            "shopping_admin"
+        ],
+        "task_id": 0,
+        "intent_template_id": 279,
+        "start_urls": [
+            "__SHOPPING_ADMIN__"
+        ],
+        "intent": "Get the top-1 best-selling product name(s) in 2022"
+    },
+    {
+        "sites": [
+            "shopping_admin"
+        ],
+        "task_id": 1,
+        "intent_template_id": 279,
+        "start_urls": [
+            "__SHOPPING_ADMIN__"
+        ],
+        "intent": "Get the top-1 best-selling brand name(s) in Quarter 1 2022"
+    },
+    {
+        "sites": [
+            "shopping_admin"
+        ],
+        "task_id": 2,
+        "intent_template_id": 279,
+        "start_urls": [
+            "__SHOPPING_ADMIN__"
+        ],
+        "intent": "Get the top-1 best-selling product type name(s) in Quarter 1 2022"
+    },
+    {
+        "sites": [
+            "map"
+        ],
+        "task_id": 7,
+        "intent_template_id": 79,
+        "start_urls": [
+            "__MAP__"
+        ],
+        "intent": "Get the name, state, and zip code of all international airports that are within a driving distance of 50 km to Carnegie Mellon University. Return a list of objects with keys \"name\", \"state\", and \"postcode\". (Use the OSRM direction service.)"
+    },
+    {
+        "sites": [
+            "map"
+        ],
+        "task_id": 8,
+        "intent_template_id": 79,
+        "start_urls": [
+            "__MAP__"
+        ],
+        "intent": "Get the name, state, and zip code of all international airports that are within a driving distance of 5 km to Carnegie Mellon University. Return a list of objects with keys \"name\", \"state\", and \"postcode\". (Use the OSRM direction service.)"
+    },
+    {
+        "sites": [
+            "map"
+        ],
+        "task_id": 9,
+        "intent_template_id": 79,
+        "start_urls": [
+            "__MAP__"
+        ],
+        "intent": "Get the name, state, and zip code of all international airports that are within a driving distance of 30 km to Carnegie Art Museum. Return a list of objects with keys \"name\", \"state\", and \"postcode\". (Use the OSRM direction service.)"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 21,
+        "intent_template_id": 222,
+        "start_urls": [
+            "__SHOPPING__/6s-wireless-headphones-over-ear-noise-canceling-hi-fi-bass-foldable-stereo-wireless-kid-headsets-earbuds-with-built-in-mic-micro-sd-tf-fm-for-iphone-samsung-ipad-pc-black-gold.html"
+        ],
+        "intent": "Get name(s) of reviewer(s) who mention ear cups being small for the product on the current page"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 22,
+        "intent_template_id": 222,
+        "start_urls": [
+            "__SHOPPING__/fujifilm-finepix-z200fd-10mp-digital-camera-with-5x-optical-dual-image-stabilized-zoom-black.html"
+        ],
+        "intent": "Get name(s) of reviewer(s) who mention under water photo for the product on the current page"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 23,
+        "intent_template_id": 222,
+        "start_urls": [
+            "__SHOPPING__/3-pack-samsung-galaxy-s6-screen-protector-nearpow-tempered-glass-screen-protector-with-9h-hardness-crystal-clear-easy-bubble-free-installation-scratch-resist.html"
+        ],
+        "intent": "Get name(s) of reviewer(s) who mention good fingerprint resistant for the product on the current page"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 24,
+        "intent_template_id": 222,
+        "start_urls": [
+            "__SHOPPING__/haflinger-men-s-wool-felt-open-back-slippers-beige-550-peat-us-7.html"
+        ],
+        "intent": "Get name(s) of reviewer(s) who mention price being unfair for the product on the current page"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 25,
+        "intent_template_id": 222,
+        "start_urls": [
+            "__SHOPPING__/epson-workforce-wf-3620-wifi-direct-all-in-one-color-inkjet-printer-copier-scanner-amazon-dash-replenishment-ready.html"
+        ],
+        "intent": "Get name(s) of reviewer(s) who mention print quality explicitly with a rating of 3 or less stars for the product on the current page"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 26,
+        "intent_template_id": 222,
+        "start_urls": [
+            "__SHOPPING__/epson-workforce-wf-3620-wifi-direct-all-in-one-color-inkjet-printer-copier-scanner-amazon-dash-replenishment-ready.html"
+        ],
+        "intent": "Get name(s) of reviewer(s) who mention complain of the customer service for the product on the current page"
+    },
+    {
+        "sites": [
+            "reddit"
+        ],
+        "task_id": 27,
+        "intent_template_id": 33,
+        "start_urls": [
+            "__REDDIT__"
+        ],
+        "intent": "In the personal finances forum, get the username and post title of the most recent post, and count the number of comments on that post that are not from the author and have more downvotes than upvotes. Return a list of objects with keys \"username\", \"post_title\", and \"count\"."
+    },
+    {
+        "sites": [
+            "reddit"
+        ],
+        "task_id": 28,
+        "intent_template_id": 33,
+        "start_urls": [
+            "__REDDIT__"
+        ],
+        "intent": "In the Worcester forum, get the username and post title of the most recent post, and count the number of comments on that post that are not from the author and have more downvotes than upvotes. Return a list of objects with keys \"username\", \"post_title\", and \"count\"."
+    },
+    {
+        "sites": [
+            "reddit"
+        ],
+        "task_id": 29,
+        "intent_template_id": 33,
+        "start_urls": [
+            "__REDDIT__"
+        ],
+        "intent": "In the DIY forum, get the username and post title of the most recent post, and count the number of comments on that post that are not from the author and have more downvotes than upvotes. Return a list of objects with keys \"username\", \"post_title\", and \"count\"."
+    },
+    {
+        "sites": [
+            "gitlab"
+        ],
+        "task_id": 44,
+        "intent_template_id": 303,
+        "start_urls": [
+            "__GITLAB__"
+        ],
+        "intent": "Open my todos page"
+    },
+    {
+        "sites": [
+            "gitlab"
+        ],
+        "task_id": 45,
+        "intent_template_id": 300,
+        "start_urls": [
+            "__GITLAB__/a11yproject/a11yproject.com"
+        ],
+        "intent": "Open the issues page for the current project filtered to the most recent open issues"
+    },
+    {
+        "sites": [
+            "gitlab"
+        ],
+        "task_id": 46,
+        "intent_template_id": 300,
+        "start_urls": [
+            "__GITLAB__/primer/design"
+        ],
+        "intent": "Open the issues page for the current project filtered to the most recent open issues"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 47,
+        "intent_template_id": 197,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Today is June 12, 2023. Get how many complete orders I have over the past months, and the total amount of money I spent (including shipping and handling fees). Return an object with keys \"order_count\" (as integer) and \"amount\" (as number, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 48,
+        "intent_template_id": 197,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Today is June 12, 2023. Get how many complete orders I have over the past three days, and the total amount of money I spent (including shipping and handling fees). Return an object with keys \"order_count\" (as integer) and \"amount\" (as number, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 49,
+        "intent_template_id": 197,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Today is June 12, 2023. Get how many complete orders I have over the past four months, and the total amount of money I spent (including shipping and handling fees). Return an object with keys \"order_count\" (as integer) and \"amount\" (as number, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 50,
+        "intent_template_id": 197,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Today is June 12, 2023. Get how many complete orders I have over the past year, and the total amount of money I spent (including shipping and handling fees). Return an object with keys \"order_count\" (as integer) and \"amount\" (as number, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 51,
+        "intent_template_id": 197,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Today is June 12, 2023. Get how many complete orders I have over the past six months, and the total amount of money I spent (including shipping and handling fees). Return an object with keys \"order_count\" (as integer) and \"amount\" (as number, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 96,
+        "intent_template_id": 193,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the status of my latest order and when will it arrive. Return a list of objects with keys \"status\" and \"arrival_date\" (YYYY-MM-DD format or null if not available), without any additional details."
+    },
+    {
+        "sites": [
+            "map",
+            "wikipedia"
+        ],
+        "task_id": 97,
+        "intent_template_id": 120,
+        "start_urls": [
+            "__MAP__",
+            "__WIKIPEDIA__"
+        ],
+        "intent": "Get the driving distance from Carnegie Mellon University to the 3rd ranked university worldwide by SCImago Institutions Rankings in 2019. Return the value as a string (numeric value with unit km or m, e.g., 2.4km, 500m) only, without any additional details. (Use the OSRM direction service and the provided wiki site to look up any needed information.)"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 117,
+        "intent_template_id": 161,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the date when I made my first purchase on this site. Return the date in YYYY-MM-DD format or null if not available, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 118,
+        "intent_template_id": 151,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I have a jaw bruxism problem, go to the product page for something that could alleviate the problem."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 124,
+        "intent_template_id": 159,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "What is the price range of wireless earphone in the One Stop Market?. Return an object with keys \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 125,
+        "intent_template_id": 159,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "What is the price range of teeth grinding mouth guard in the One Stop Market?. Return an object with keys \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 126,
+        "intent_template_id": 159,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "What is the price range of Canon photo printer in the One Stop Market?. Return an object with keys \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 141,
+        "intent_template_id": 162,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return how much I spent on food-related shopping during March 2023 without considering shipping and handling fee. Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 142,
+        "intent_template_id": 162,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return how much I spent on hair care and hair style shopping during Jan 2023 without considering shipping and handling fee. Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 143,
+        "intent_template_id": 162,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return how much I spent on home decoration shopping during January 29, 2023 without considering shipping and handling fee. Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 144,
+        "intent_template_id": 162,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return how much I spent on food shopping from January 15 to January 31 2023 without considering shipping and handling fee. "
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 145,
+        "intent_template_id": 162,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return how much I spent on cooking and food shopping during March 2022 without considering shipping and handling fee. Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 146,
+        "intent_template_id": 155,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the size of the picture frame I bought in Sep 2022. Return a list of objects with keys \"width\" and \"height\"."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 147,
+        "intent_template_id": 155,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the size of the picture frame I bought in 2022. Return a list of objects with keys \"width\" and \"height\"."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 148,
+        "intent_template_id": 155,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the color of the picture frame I bought Sep 2022."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 149,
+        "intent_template_id": 155,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the color of the artifical plants I bought Feb 2023."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 150,
+        "intent_template_id": 155,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the price of the fake tree I bought Jan 2023.Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 158,
+        "intent_template_id": 171,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Go to the product page of the best storage option that fits 11 Nintendo Switch game cards"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 159,
+        "intent_template_id": 171,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Go to the product page of the best storage option that fits 31 Nintendo Switch game cards"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 160,
+        "intent_template_id": 171,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Go to the product page of the best storage option that fits 6 Nintendo Switch game cards"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 161,
+        "intent_template_id": 171,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Go to the product page of the best storage option that fits 23 Nintendo Switch game cards"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 162,
+        "intent_template_id": 171,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Go to the product page of the best storage option that fits 40 Nintendo Switch game cards"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 163,
+        "intent_template_id": 136,
+        "start_urls": [
+            "__SHOPPING__/ostent-16gb-memory-card-stick-storage-for-sony-ps-vita-psv1000-2000-pch-z081-z161-z321-z641.html"
+        ],
+        "intent": "Get all review titles with 2 stars or below for the product on the current page."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 164,
+        "intent_template_id": 136,
+        "start_urls": [
+            "__SHOPPING__/mineralogie-all-natural-lip-gloss-ruby-rose.html"
+        ],
+        "intent": "Get all review titles with 2 stars or below for the product on the current page."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 165,
+        "intent_template_id": 136,
+        "start_urls": [
+            "__SHOPPING__/sandgrens-swedish-handmade-wooden-clog-sandal-copenhagen.html"
+        ],
+        "intent": "Get all review titles with 2 stars or below for the product on the current page."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 166,
+        "intent_template_id": 136,
+        "start_urls": [
+            "__SHOPPING__/sensodyne-repair-protect-whitening-toothpaste-with-fluoride-3-4-oz-pack-of-3.html"
+        ],
+        "intent": "Get all review titles with 2 stars or below for the product on the current page."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 167,
+        "intent_template_id": 136,
+        "start_urls": [
+            "__SHOPPING__/photosmart-plus-b209-clr-inkjetfb-p-s-c-usb-wrls-1.html"
+        ],
+        "intent": "Get all review titles with 2 stars or below for the product on the current page."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 188,
+        "intent_template_id": 214,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the total cost of my latest order marked as \"cancelled\". Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 189,
+        "intent_template_id": 214,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the total cost of my latest order marked as \"pending\". Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 190,
+        "intent_template_id": 214,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the total cost of my latest order marked as \"complete\". Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 191,
+        "intent_template_id": 214,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the total cost of my latest order marked as \"processing\". "
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 192,
+        "intent_template_id": 214,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the total cost of my latest order that is not cancelled. Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 225,
+        "intent_template_id": 135,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the titles for reviews with 3 stars or below for brush from sephora"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 226,
+        "intent_template_id": 370,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "What is the price range for products from Amazon basic?. Return an object with keys \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 227,
+        "intent_template_id": 370,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "What is the price range for products from EYZUTAK?. Return an object with keys \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 228,
+        "intent_template_id": 370,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "What is the price range for products from sephora?. Return an object with keys \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 229,
+        "intent_template_id": 370,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "What is the price range for products from ugreen?. Return an object with keys \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 230,
+        "intent_template_id": 370,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "What is the price range for products from Perricone MD?. Return an object with keys \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 231,
+        "intent_template_id": 213,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the order number of my most recent cancelled order"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 232,
+        "intent_template_id": 213,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the order number of my most recent pending order"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 233,
+        "intent_template_id": 213,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the order number of my most recent complete order"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 234,
+        "intent_template_id": 213,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the order number of my most recent on hold order"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 235,
+        "intent_template_id": 213,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the order number of my most recent under delivery order"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 238,
+        "intent_template_id": 138,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I am doing a market survey for one stop market, go to the product page for the most expensive PS4 accessories"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 239,
+        "intent_template_id": 138,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I am doing a market survey for one stop market, go to the product page for the most expensive nutrition bars and drinks"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 240,
+        "intent_template_id": 138,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I am doing a market survey for one stop market, go to the product page for the most expensive men's Uniforms, Work & Safety"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 241,
+        "intent_template_id": 138,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I am doing a market survey for one stop market, go to the product page for the most expensive skin care"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 242,
+        "intent_template_id": 138,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I am doing a market survey for one stop market, go to the product page for the most expensive Household Supplies"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 260,
+        "intent_template_id": 211,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the Video Game category page to browse products"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 261,
+        "intent_template_id": 211,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the Headphones category page to browse products"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 262,
+        "intent_template_id": 211,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the Men shoes category page to browse products"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 263,
+        "intent_template_id": 211,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the Woman clothing category page to browse products"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 264,
+        "intent_template_id": 211,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the Cabinets, Racks & Shelves category page to browse products"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 269,
+        "intent_template_id": 139,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the \"women shoes\" category page filtered to under $25"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 270,
+        "intent_template_id": 139,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the \"men shoes\" category page filtered to under $30"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 271,
+        "intent_template_id": 139,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the \"makeup remover\" category page filtered to under $46.99"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 272,
+        "intent_template_id": 139,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the \"children dental care\" category page filtered to under $78"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 273,
+        "intent_template_id": 139,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the \"furniture with accent\" category page filtered to under $199"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 274,
+        "intent_template_id": 212,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the search results for \"usb wifi\""
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 275,
+        "intent_template_id": 212,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the search results for \"xbox\""
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 276,
+        "intent_template_id": 212,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the search results for \"switch accessories\""
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 277,
+        "intent_template_id": 212,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the search results for \"batteries for iphone 13\""
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 278,
+        "intent_template_id": 212,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the search results for \"green tea bag for weight loss\""
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 279,
+        "intent_template_id": 204,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Provide me with the full names of Bluetooth headphones from Sony, and also share the price range for the available models. Return an object with keys \"names\" (list of product names), \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 280,
+        "intent_template_id": 204,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Provide me with the full names of chargers from Anker, and also share the price range for the available models. Return an object with keys \"names\" (list of product names), \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 281,
+        "intent_template_id": 204,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Provide me with the full names of Oral B brush heads designed for children, and also share the price range for the available models. Return an object with keys \"names\" (list of product names), \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 282,
+        "intent_template_id": 204,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Provide me with the full names of slide slippers from Nike, and also share the price range for the available models. Return an object with keys \"names\" (list of product names), \"min\" and \"max\" (as numbers, e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 283,
+        "intent_template_id": 210,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the page showing the most recent Xbox controller models released between 2020-2021"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 284,
+        "intent_template_id": 207,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "View the product page for the least expensive shoe storage with a minimum storage capacity of 12 pairs."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 285,
+        "intent_template_id": 207,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "View the product page for the least expensive switch card holder with a minimum storage capacity of 15 cards."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 286,
+        "intent_template_id": 207,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "View the product page for the least expensive ssd hard drive with a minimum storage capacity of 1TB."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 298,
+        "intent_template_id": 180,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the order details page for the most recent completed order"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 299,
+        "intent_template_id": 180,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the order details page for the most recent cancelled order"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 300,
+        "intent_template_id": 180,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the order details page for the most recent pending order"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 301,
+        "intent_template_id": 180,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the order details page for the most recent processing order"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 302,
+        "intent_template_id": 180,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Open the order details page for the most recent out of delivery order"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 313,
+        "intent_template_id": 134,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the customer service phone number"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 319,
+        "intent_template_id": 160,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "How much refund should I expect from my orders canceled, if any, in April 2022, including shipping fee.. Return the value as a number (e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 320,
+        "intent_template_id": 160,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "How much refund should I expect from my orders canceled, if any, in Feb 2023, including shipping fee.. Return the value as a number (e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 321,
+        "intent_template_id": 160,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "How much refund should I expect from my orders canceled, if any, in 2022, including shipping fee.. Return the value as a number (e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 322,
+        "intent_template_id": 160,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "How much refund should I expect from my orders canceled, if any, in May 2023 if I cannot get the shipping fee refunded?. Return the value as a number (e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 323,
+        "intent_template_id": 160,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "How much refund should I expect from my orders canceled, if any, in March 2022? I only kept the AC-DC Adapter and the shop told me that I cannot get the shipping fee back.. Return the value as a number (e.g., 10.99) only, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 324,
+        "intent_template_id": 208,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Pull up the page with all \"chairs\" listings sorted by ascending price."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 325,
+        "intent_template_id": 208,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Pull up the page with all \"mouth night guard\" listings sorted by descending price."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 326,
+        "intent_template_id": 208,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Pull up the page with all \"Canon photo printer\" listings sorted by search relevance, from most to least."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 327,
+        "intent_template_id": 208,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Pull up the page with all \"iphone 12 phone case\" listings sorted by name alphabetically."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 328,
+        "intent_template_id": 208,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Pull up the page with all \"iphone 12 phone case\" listings sorted by price."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 329,
+        "intent_template_id": 147,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the total amount I spent on shopping at One Stop Market on April 19, 2023, excluding shipping. Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 330,
+        "intent_template_id": 147,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the total amount I spent on shopping at One Stop Market in March 2023, excluding shipping. Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 331,
+        "intent_template_id": 147,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the total amount I spent on shopping at One Stop Market in July 2022, excluding shipping. Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 332,
+        "intent_template_id": 147,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the total amount I spent on shopping at One Stop Market each month from Jan to the March 31, 2023, excluding shipping. Return a list of objects with keys \"month\" (month name) and \"total\" (as a number, e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 333,
+        "intent_template_id": 147,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the total amount I spent on shopping at One Stop Market in November 2022, excluding shipping. Return the value as a number (e.g., 10.99) only, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 334,
+        "intent_template_id": 169,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the date I last ordered my muffin cornbread mix. Return the date in YYYY-MM-DD format or null if not available, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 335,
+        "intent_template_id": 169,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the date I last ordered my body butter. Return the date in YYYY-MM-DD format or null if not available, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 336,
+        "intent_template_id": 169,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the date I last ordered my conditioner. Return the date in YYYY-MM-DD format or null if not available, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 337,
+        "intent_template_id": 169,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the date I last ordered my olive bread. Return the date in YYYY-MM-DD format or null if not available, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 338,
+        "intent_template_id": 169,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the date I last ordered my toothpaste. Return the date in YYYY-MM-DD format or null if not available, without any additional details."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 351,
+        "intent_template_id": 137,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Go to the page showing PS4 accessories products sorted by ascending price"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 352,
+        "intent_template_id": 137,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Go to the page showing nutrition bars and drinks products sorted by ascending price"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 353,
+        "intent_template_id": 137,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Go to the page showing competitive swimwear products sorted by ascending price"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 354,
+        "intent_template_id": 137,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Go to the page showing living room furniture products sorted by descending price"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 355,
+        "intent_template_id": 137,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Go to the page showing kids\" bedding products sorted by descending price"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 358,
+        "intent_template_id": 206,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the shipping method for order number 187."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 359,
+        "intent_template_id": 206,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the order date for order number 148.Return the date in YYYY-MM-DD format or null if not available, without any additional details"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 360,
+        "intent_template_id": 206,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the product names for order number 148."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 361,
+        "intent_template_id": 206,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the order statuses for order number 170 and 189. Return a list of objects with keys \"order_number\" and \"status\"."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 362,
+        "intent_template_id": 206,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Get the billing address for order number 00178. Return a list of objects with keys \"house_number\", \"street\", \"city\", \"state\", \"postcode\", and \"country\"."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 368,
+        "intent_template_id": 188,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Return the list of discounted (sale) items available on the site."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 376,
+        "intent_template_id": 182,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Summarize customer reviews for Amazon Echo Dot 3rd generation."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 384,
+        "intent_template_id": 666,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "List the customer names who complain about the quality of EYZUTAK phone cases"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 385,
+        "intent_template_id": 666,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "List the customer names who thinks EYZUTAK phone cases are of good looking"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 386,
+        "intent_template_id": 1355,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "What is the rating of Ugreen lightning to 3.5mm cable?"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 387,
+        "intent_template_id": 1356,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Who gave 4 or 5 stars for phone cases from EYZUTAK"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 388,
+        "intent_template_id": 1356,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Who gave 1 or 2 stars for phone cases from EYZUTAK"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 431,
+        "intent_template_id": 145,
+        "start_urls": [
+            "__SHOPPING__/tall-pink-taper-candles-4-piece-orange-colored-tapered-candles-gradient-candles-10-6-inches-tall-tie-dye-candle-set-large-dripless-long-burning-candlesticks-two-color-taper-candles-candlesticks.html",
+            "__SHOPPING__/spaas-white-taper-candles-4-pack-10-inch-tall-candles-scent-free-premium-wax-candle-sticks-8-hour-long-burning-white-candlesticks-for-home-decoration-wedding-holiday-and-parties.html",
+            "__SHOPPING__/white-starfish-wall-candle-sconces-set-of-2-beach-decor-ocean-themed-wall-mount-candleholders-nautical-style-beach-bathroom-decor-coastal-farmhouse-seashell-candle-holders.html"
+        ],
+        "intent": "Add the product with the lowest per unit price from my open tabs to the shopping cart"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 432,
+        "intent_template_id": 145,
+        "start_urls": [
+            "__SHOPPING__/ciclon-energy-drink-regular-24-cans-8-3oz.html",
+            "__SHOPPING__/v8-energy-healthy-energy-drink-steady-energy-from-black-and-green-tea-pomegranate-blueberry-8-ounce-can-pack-of-24.html"
+        ],
+        "intent": "Add the product with the lowest per unit price from my open tabs to the shopping cart"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 433,
+        "intent_template_id": 145,
+        "start_urls": [
+            "__SHOPPING__/tazrigo-5pcs-white-dental-resin-brush-pens-dental-shaping-silicone-tooth-tool.html",
+            "__SHOPPING__/stylus-pens-for-touch-screens-2-pcs-universal-stylus-2-in-1-2022-updated-touch-screen-pens-for-all-touch-screens-cell-phones-tablets-laptops-with-6-replacement-tips-4-discstips-2-fiber-tips.html"
+        ],
+        "intent": "Add the product with the lowest per unit price from my open tabs to the shopping cart"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 434,
+        "intent_template_id": 145,
+        "start_urls": [
+            "__SHOPPING__/3-pairs-ruffle-socks-lace-ankle-socks-for-girls-frilly-socks-women-decorative.html",
+            "__SHOPPING__/viviki-women-glitter-socks-ultrathin-transparent-tulle-lace-socks-no-show-ankle-crew-socks-3-pack.html"
+        ],
+        "intent": "Add the product with the lowest per unit price from my open tabs to the shopping cart"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 435,
+        "intent_template_id": 145,
+        "start_urls": [
+            "__SHOPPING__/35-ft-hdmi-cable-gearit-pro-series-hdmi-cable-35-feet-high-speed-ethernet-4k-resolution-3d-video-and-arc-audio-return-channel-hdmi-cable-white.html",
+            "__SHOPPING__/dp-to-hdmi-cable-6ft-2-pack-fosmon-gold-plated-displayport-to-hdmi-cable-1080p-full-hd-for-pcs-to-hdtv-monitor-projector-with-hdmi-port.html"
+        ],
+        "intent": "Add the product with the lowest per unit price from my open tabs to the shopping cart"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 436,
+        "intent_template_id": 156,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I previously ordered a mattress foundation around Feb or March 2023 and later cancelled. Can you reorder it for me?"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 437,
+        "intent_template_id": 156,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I previously ordered a table lamp in May 2023 and later cancelled. Can you reorder it for me?"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 438,
+        "intent_template_id": 156,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I previously ordered a TV stand sometime around sep 2022 and later cancelled. Can you reorder it for me?"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 439,
+        "intent_template_id": 156,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I previously ordered a cat t-shirt during 2022 and later cancelled. Can you reorder it for me?"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 440,
+        "intent_template_id": 156,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I previously ordered a make up removal kit during summer 2022 and later cancelled. Can you reorder it for me?"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 465,
+        "intent_template_id": 186,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Add Tide PODS Spring Meadow Scent HE Turbo Laundry Detergent Pacs, 81 Count to my wish list"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 466,
+        "intent_template_id": 186,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Add 2 Hawaiian Bamboo Orchid Roots #zc50 - by Discount Hawaiian Gifts to my wish list"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 467,
+        "intent_template_id": 186,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Add HONGJ Hawaiian Beach Outfits Set for Mens, Summer Tropical Tree Printed Relaxed-fit Hawaii Shirts Shorts 2 Piece Suits to my wish list"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 468,
+        "intent_template_id": 186,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Add DkRgVNY Lace Spcling Lingerie Womens Sexy Hollow Out Underwear Bodysuit One Piece Snap Crotch Clubwear Teddy Bodysuit to my wish list"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 469,
+        "intent_template_id": 186,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Add Light Blue Simple Summer New Low Heels Slippers for Women Fashion Chunky Heels Pointed Toe Wine Glasses Sandals Comfortable Walking Shoes Ladies All-Match Sexy Party Shoes to my wish list"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 506,
+        "intent_template_id": 172,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Buy the highest rated product from the meat substitute category within a budget between 100 and 200. Discard any items in your cart if it is not empty."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 507,
+        "intent_template_id": 172,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Buy the highest rated product from the Ceiling light category within a budget above 1000. Discard any items in your cart if it is not empty."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 508,
+        "intent_template_id": 172,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Buy the highest rated product from the NS switch category within a budget under 60. Discard any items in your cart if it is not empty."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 509,
+        "intent_template_id": 216,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Buy the best rating product from \"Men\"s shoe\" category with at least 5 reviews and the product is least expensive. Choose any available variant."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 510,
+        "intent_template_id": 216,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Buy the best rating product from \"Home Audio Speaker\" category with at least 5 reviews and the product is least expensive. Choose any available variant."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 511,
+        "intent_template_id": 189,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Add a laundry detergent to my wish list."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 512,
+        "intent_template_id": 189,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Add a toothpaste to my wish list."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 513,
+        "intent_template_id": 189,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Add a chair to my wish list."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 514,
+        "intent_template_id": 189,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Add a white desk to my wish list."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 515,
+        "intent_template_id": 189,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Add a white computer desk to my wish list."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 516,
+        "intent_template_id": 196,
+        "start_urls": [
+            "__SHOPPING__/elmwood-inn-fine-teas-orange-vanilla-caffeine-free-fruit-infusion-16-ounce-pouch.html"
+        ],
+        "intent": "Add the product on the current page to my wishlist"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 517,
+        "intent_template_id": 196,
+        "start_urls": [
+            "__SHOPPING__/skinit-decal-gaming-skin-compatible-with-xbox-one-s-console-and-controller-bundle-officially-licensed-nfl-baltimore-ravens-design.html"
+        ],
+        "intent": "Add the product on the current page to my wishlist"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 518,
+        "intent_template_id": 196,
+        "start_urls": [
+            "__SHOPPING__/sceptre-e195bd-srr-19-inch-720p-led-tv-true-black-2017.html"
+        ],
+        "intent": "Add the product on the current page to my wishlist"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 519,
+        "intent_template_id": 196,
+        "start_urls": [
+            "__SHOPPING__/iphone-13-pro-max-case-neon-turtle-iphone-13-pro-max-cases-tempered-glass-back-soft-silicone-tpu-shock-protective-case-for-apple-iphone-13-pro-max.html"
+        ],
+        "intent": "Add the product on the current page to my wishlist"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 520,
+        "intent_template_id": 196,
+        "start_urls": [
+            "__SHOPPING__/magnetic-metal-stainless-steel-d-pads-kits-directional-pad-replacement-parts-for-xbox-one-elite-controller-elite-series-2-xbox-one-xbox-one-s-x-controller.html"
+        ],
+        "intent": "Add the product on the current page to my wishlist"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 521,
+        "intent_template_id": 199,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Subscribe to the newsletter of OneStopMarket"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 528,
+        "intent_template_id": 154,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Fill out the contact us form with this refund message for the phone screen protector bought March 2023: \"I need a refund. Order: <order_id>. Amount: <amount>. Reason: It broke after three days of use.\" Leave the filled form ready for review and do not submit it."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 529,
+        "intent_template_id": 154,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Fill out the contact us form with this refund message for the Stereo Sound System bought Feb 2023: \"I need a refund. Order: <order_id>. Amount: <amount>. Reason: It broke after three days of use.\" Leave the filled form ready for review and do not submit it."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 530,
+        "intent_template_id": 154,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Fill out the contact us form with this refund message for the kitchen organizer bought around Feb 2023: \"I need a refund. Order: <order_id>. Amount: <amount>. Reason: It broke after three days of use.\" Leave the filled form ready for review and do not submit it."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 531,
+        "intent_template_id": 154,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Fill out the contact us form with this refund message for the phone case bought March 2023: \"I need a refund. Order: <order_id>. Amount: <amount>. Reason: It broke after three days of use.\" Leave the filled form ready for review and do not submit it."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 532,
+        "intent_template_id": 154,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Fill out the contact us form with this refund message for the PS3 remote controller bought early 2023: \"I need a refund. Order: <order_id>. Amount: <amount>. Reason: It broke after three days of use.\" Leave the filled form ready for review and do not submit it."
+    },
+    {
+        "sites": [
+            "gitlab",
+            "reddit"
+        ],
+        "task_id": 552,
+        "intent_template_id": 84,
+        "start_urls": [
+            "__GITLAB__",
+            "__REDDIT__"
+        ],
+        "intent": "Use the Web IDE to create a folder named real_space in gimmiethat.space repo. Within it, create a file named urls.json that contains the full URLs of the 5 most recent posts from the space forum on the discussion forum as a JSON object with a \"urls\" array. Write them in order from newest to oldest. Commit the changes to the default branch."
+    },
+    {
+        "sites": [
+            "gitlab",
+            "wikipedia"
+        ],
+        "task_id": 556,
+        "intent_template_id": 87,
+        "start_urls": [
+            "__GITLAB__",
+            "__WIKIPEDIA__"
+        ],
+        "intent": "Create a repository named nolan_honest_fans with a README file containing only Christopher Nolan's theatrically released feature-length films (use the provided wiki site to look up any needed information). Use the Web IDE to create the README. Structure it with the repository name as the main heading and a bulleted list of the film titles. Commit to the default branch."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 571,
+        "intent_template_id": 165,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I recently moved, my address is 231 Willow Way, Suite 100, Chicago, IL, 60601, update my information on OneStopShopping accordingly"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 572,
+        "intent_template_id": 165,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I recently moved, my address is 654 Aspen Road, House #3, Boston, MA, 02110, update my information on OneStopShopping accordingly"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 573,
+        "intent_template_id": 165,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I recently moved, my address is 987 Sycamore Circle, Philadelphia, PA, 19102, update my information on OneStopShopping accordingly"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 574,
+        "intent_template_id": 165,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I recently moved, my address is 111 Magnolia Path, Atlanta, GA, 30303, update my information on OneStopShopping accordingly"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 575,
+        "intent_template_id": 165,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "I recently moved, my address is 222 Redwood Rise, Suite 300, Seattle, WA, 98101, update my information on OneStopShopping accordingly"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 585,
+        "intent_template_id": 194,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Rate my recently purchased floor lamp with 5 stars using my nickname Emma Lopez, with the summary \"Good purchase\" and review \"I like it\""
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 586,
+        "intent_template_id": 194,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Rate my recently purchased Jiffy Mix with 4 stars using my nickname ShoppingEmma, with the summary \"Good purchase\" and review \"I like it\""
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 587,
+        "intent_template_id": 194,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Rate my recently purchased PS3 accessory with 3 stars using my nickname GamingEmma, with the summary \"Ok I guess\" and review \"Does the job\""
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 588,
+        "intent_template_id": 194,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Rate my recently purchased Foundation For Mattress With Frame Set with 1 stars using my nickname ShoppingEmma, with the summary \"Very bad\" and review \"I hated it\""
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 589,
+        "intent_template_id": 194,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Rate my recently purchased Mini Wireless Bluetooth Speaker with 2 stars using my nickname SimpleEmma, with the summary \"Very bad\" and review \"I hated it\""
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 653,
+        "intent_template_id": 153,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Fill the \"contact us\" form in the site for a refund on the phone screen protector I bought, stating that \"it broke after just three days of use\". Also, ensure to include the order number #000000180 and the product SKU. Don\"t submit yet, I will check."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 654,
+        "intent_template_id": 153,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Fill the \"contact us\" form in the site for a refund on the bluetooth speaker I bought, stating that \"it broke after just three days of use\". Also, ensure to include the order number #161 and the product SKU. Don\"t submit yet, I will check."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 655,
+        "intent_template_id": 153,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Fill the \"contact us\" form in the site for a refund on the iphone case I bought, stating that \"it broke after just three days of use\". Also, ensure to include the order number #180 and the product SKU. Don\"t submit yet, I will check."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 656,
+        "intent_template_id": 153,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Fill the \"contact us\" form in the site for a refund on the console skin I bought, stating that \"it broke after just three days of use\". Also, ensure to include the order number #180 and the product SKU. Don\"t submit yet, I will check."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 657,
+        "intent_template_id": 153,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Fill the \"contact us\" form in the site for a refund on the speaker I bought, stating that \"it broke after just three days of use\". Also, ensure to include the order number #148 and the product SKU. Don\"t submit yet, I will check."
+    },
+    {
+        "sites": [
+            "shopping",
+            "reddit"
+        ],
+        "task_id": 671,
+        "intent_template_id": 101,
+        "start_urls": [
+            "__SHOPPING__",
+            "__REDDIT__"
+        ],
+        "intent": "Create a post in the game related discussion forum about Sony Computer Entertainment VR to report customer reviews with 2 stars and less rating from the OneStopShop with the post title \"real user feedback on Sony Computer Entertainment VR\". Format the post body as a bullet point list in the same order they appear (md format: - \"<review title>\")."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 689,
+        "intent_template_id": 163,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Prepare a coupon request in the shop's contact form with the reason: \"I am a loyal customer, give me a coupon\". Keep it ready for review."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 690,
+        "intent_template_id": 163,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Prepare a coupon request in the shop's contact form with the reason: \"they promised me a coupon last time\". Keep it ready for review."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 691,
+        "intent_template_id": 163,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Prepare a coupon request in the shop's contact form with the reason: \"I plan to make a bulk purchase\". Keep it ready for review."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 692,
+        "intent_template_id": 163,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Prepare a coupon request in the shop's contact form with the reason: \"I am a student\". Keep it ready for review."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 693,
+        "intent_template_id": 163,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Prepare a coupon request in the shop's contact form with the reason: \"my refund is supposed to be replaced by a coupon\". Keep it ready for review."
+    },
+    {
+        "sites": [
+            "map",
+            "shopping_admin"
+        ],
+        "task_id": 759,
+        "intent_template_id": 42,
+        "start_urls": [
+            "__MAP__",
+            "__SHOPPING_ADMIN__"
+        ],
+        "intent": "Show on the map the route and driving time from the city where my E-commerce customer Sophia Young lives to New York City. (Use the OSRM direction service.)"
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 792,
+        "intent_template_id": 172,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Buy the highest rated product from the Beauty & Personal Care category within a budget under 20. Discard any items in your cart if it is not empty."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 793,
+        "intent_template_id": 172,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Buy the highest rated product from the Men clothing category within a budget above 50 but under 129.99. Discard any items in your cart if it is not empty."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 794,
+        "intent_template_id": 191,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Change the delivery address for my most recent non canceled order to 4000 Forbes Ave, Pittsburgh, PA."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 795,
+        "intent_template_id": 191,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Change the delivery address for my second most recent order to 6726 McPherson Blvd, Pittsburgh, PA."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 796,
+        "intent_template_id": 191,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Change the delivery address for my oldest order in 2023 to 155 5th Street, San Francisco, CA."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 797,
+        "intent_template_id": 191,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Change the delivery address for my first order ever to 3 Oxford St, Cambridge, MA."
+    },
+    {
+        "sites": [
+            "shopping"
+        ],
+        "task_id": 798,
+        "intent_template_id": 191,
+        "start_urls": [
+            "__SHOPPING__"
+        ],
+        "intent": "Change the delivery address for my most recent non canceled order to 77 Massachusetts Ave, Cambridge, MA."
+    }
+]

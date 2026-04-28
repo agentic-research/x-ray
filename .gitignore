@@ -99,3 +99,7 @@ scripts/__pycache__/
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+.playwright-mcp/
+results/album/
+results/bench_local/
+node_modules/
