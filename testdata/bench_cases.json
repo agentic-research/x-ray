@@ -44,21 +44,21 @@
   {
     "site": "github",
     "intent": "click GitHub Copilot",
-    "expect_mache_id": "mache-15",
+    "expect_mache_id": "mache-24",
     "expect_text": "GitHub Copilot",
     "difficulty": "simple"
   },
   {
     "site": "github",
     "intent": "click the Actions link",
-    "expect_mache_id": "mache-28",
+    "expect_mache_id": "mache-30",
     "expect_text": "Actions",
     "difficulty": "simple"
   },
   {
     "site": "github",
     "intent": "click Sign in",
-    "expect_mache_id": "mache-12",
+    "expect_mache_id": "mache-191",
     "expect_text": "Sign in",
     "difficulty": "simple"
   },
@@ -100,14 +100,14 @@
   {
     "site": "ecommerce",
     "intent": "click Sign in",
-    "expect_mache_id": "mache-50",
+    "expect_mache_id": "mache-85",
     "expect_text": "Sign in",
     "difficulty": "simple"
   },
   {
     "site": "ecommerce",
     "intent": "click Sell",
-    "expect_mache_id": "mache-80",
+    "expect_mache_id": "mache-115",
     "expect_text": "Sell",
     "difficulty": "simple"
   },
@@ -170,7 +170,7 @@
   {
     "site": "youtube",
     "intent": "click the Search button",
-    "expect_mache_id": "mache-20",
+    "expect_mache_id": "mache-21",
     "expect_text": "Search",
     "difficulty": "simple"
   },
@@ -184,7 +184,7 @@
   {
     "site": "youtube",
     "intent": "click the Create button",
-    "expect_mache_id": "mache-273",
+    "expect_mache_id": "mache-283",
     "expect_text": "Create",
     "difficulty": "simple"
   },

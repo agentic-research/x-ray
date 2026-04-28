@@ -219,12 +219,41 @@ func TestE2E_Fast(t *testing.T) {
 				interactiveElems = interactiveElems[:40]
 			}
 
-			var listing strings.Builder
+			// Build listing with position context for disambiguation.
+			// Group by vertical region: header (y<0.15), main (0.15-0.85), footer (>0.85)
+			var headerElems, mainElems, footerElems []elem
 			for _, e := range interactiveElems {
-				fmt.Fprintf(&listing, "[%s] %s: %q\n", e.id, e.tag, e.text)
+				switch {
+				case e.y < 0.15:
+					headerElems = append(headerElems, e)
+				case e.y > 0.85:
+					footerElems = append(footerElems, e)
+				default:
+					mainElems = append(mainElems, e)
+				}
 			}
 
-			sysPrompt := "You navigate web pages. Call act(element, action) to click elements. The element must be a mache-ID from the list."
+			var listing strings.Builder
+			if len(headerElems) > 0 {
+				listing.WriteString("HEADER (top of page):\n")
+				for _, e := range headerElems {
+					fmt.Fprintf(&listing, "  [%s] %s: %q\n", e.id, e.tag, e.text)
+				}
+			}
+			if len(mainElems) > 0 {
+				listing.WriteString("MAIN CONTENT:\n")
+				for _, e := range mainElems {
+					fmt.Fprintf(&listing, "  [%s] %s: %q\n", e.id, e.tag, e.text)
+				}
+			}
+			if len(footerElems) > 0 {
+				listing.WriteString("FOOTER (bottom of page):\n")
+				for _, e := range footerElems {
+					fmt.Fprintf(&listing, "  [%s] %s: %q\n", e.id, e.tag, e.text)
+				}
+			}
+
+			sysPrompt := "You navigate web pages. Call act(element, action) to click elements. The element must be a mache-ID from the list. Elements are grouped by page region (HEADER/MAIN/FOOTER). Pick the most prominent match."
 			userMsg := tc.Intent + "\n\nInteractive elements on this page:\n" + listing.String()
 
 			history := []*genai.Content{

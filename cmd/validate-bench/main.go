@@ -120,6 +120,15 @@ func findByText(lines []string, text string) string {
 		return ""
 	}
 	lower := strings.ToLower(text)
+	// Prefer interactive elements (a, button, input) over containers (div, section).
+	// Prefer visible elements (non-zero bounds) over hidden ones.
+	type candidate struct {
+		id          string
+		tag         string
+		hasNonZero  bool
+		interactive bool
+	}
+	var candidates []candidate
 	for _, line := range lines {
 		if !strings.Contains(line, "ID: ") {
 			continue
@@ -131,14 +140,48 @@ func findByText(lines []string, text string) string {
 				lineText = rest[:ei]
 			}
 		}
-		if lineText != "" && strings.Contains(strings.ToLower(lineText), lower) {
-			// Extract mache-ID
-			idStart := strings.Index(line, "ID: ") + 4
-			idEnd := strings.Index(line[idStart:], " ")
-			if idEnd > 0 {
-				return line[idStart : idStart+idEnd]
+		if lineText == "" || !strings.Contains(strings.ToLower(lineText), lower) {
+			continue
+		}
+		// Extract ID
+		idStart := strings.Index(line, "ID: ") + 4
+		idEnd := strings.Index(line[idStart:], " ")
+		if idEnd <= 0 {
+			continue
+		}
+		id := line[idStart : idStart+idEnd]
+		// Extract tag
+		tag := ""
+		if ti := strings.Index(line, "Tag: "); ti >= 0 {
+			rest := line[ti+5:]
+			if si := strings.Index(rest, " "); si > 0 {
+				tag = rest[:si]
 			}
 		}
+		// Check bounds
+		hasNonZero := !strings.Contains(line, "Bounds: 0.0000,0.0000,0.0000,0.0000")
+		interactive := tag == "a" || tag == "button" || tag == "input" || tag == "select"
+
+		candidates = append(candidates, candidate{id, tag, hasNonZero, interactive})
+	}
+	// Sort: interactive+visible > interactive+hidden > container+visible > container+hidden
+	for _, c := range candidates {
+		if c.interactive && c.hasNonZero {
+			return c.id
+		}
+	}
+	for _, c := range candidates {
+		if c.interactive {
+			return c.id
+		}
+	}
+	for _, c := range candidates {
+		if c.hasNonZero {
+			return c.id
+		}
+	}
+	if len(candidates) > 0 {
+		return candidates[0].id
 	}
 	return ""
 }
