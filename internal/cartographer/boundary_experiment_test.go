@@ -1,3 +1,5 @@
+//go:build experiments
+
 // boundary_experiment_test.go — Empirical validation of boundary detection claims.
 //
 // Three experiments testing whether transport-magnitude boundary detection

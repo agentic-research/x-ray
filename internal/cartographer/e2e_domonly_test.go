@@ -1,3 +1,5 @@
+//go:build e2e
+
 // e2e_domonly_test.go — Prove DOM-only parse + local LLM = correct navigation in <1s
 //
 // This is the falsifiable end-to-end test: no screenshot, no visual features,

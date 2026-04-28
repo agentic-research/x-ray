@@ -1,3 +1,5 @@
+//go:build e2e
+
 // e2e_fast_test.go — Prove DOM-only + minimal prompt + Gemma 4 = sub-second navigation.
 //
 // Requires: llama-server on localhost:8000 with --reasoning off
