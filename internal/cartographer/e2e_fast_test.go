@@ -139,68 +139,66 @@ func TestE2E_Fast(t *testing.T) {
 			composite := graph.NewCompositeGraph()
 			composite.Mount("browser", engine)
 
-			// Call LLM directly — flat element list with mache-IDs.
-			// This is what the curl test used at 0.89s with correct results.
-			// Build a compact flat listing: [mache-ID] role: "text"
-			var flatListing strings.Builder
-			for _, pi := range proj.AllPaths() {
-				if pi.Action == "none" || pi.Action == "" {
-					continue // skip non-interactive
-				}
-				macheID := proj.MacheID(pi.Path)
-				if macheID == "" {
-					continue
-				}
-				text := pi.Text
-				if len(text) > 50 {
-					text = text[:47] + "..."
-				}
-				if text != "" {
-					fmt.Fprintf(&flatListing, "[%s] %s: %q (%s)\n", macheID, pi.Role, text, pi.Path)
-				}
+			// Compact approach: zone overview + only interactive elements, capped at 40.
+			// Parse summary for interactive elements only (links, buttons, inputs).
+			type elem struct {
+				id, tag, text string
 			}
-			// Also add elements from the text_index (which has ALL elements)
-			// Parse the summary directly for a flat element list
+			var interactiveElems []elem
 			for _, line := range strings.Split(string(summary), "\n") {
-				if !strings.Contains(line, "ID: ") || !strings.Contains(line, "Text: ") {
+				if !strings.Contains(line, "ID: ") {
 					continue
 				}
-				// Extract ID and Text
+				// Extract fields
 				idStart := strings.Index(line, "ID: ") + 4
 				idEnd := strings.Index(line[idStart:], " ")
 				if idEnd < 0 {
 					continue
 				}
-				macheID := line[idStart : idStart+idEnd]
-				textStart := strings.Index(line, "Text: \"")
-				if textStart < 0 {
-					continue
-				}
-				textStart += 7
-				textEnd := strings.Index(line[textStart:], "\"")
-				if textEnd < 0 {
-					continue
-				}
-				text := line[textStart : textStart+textEnd]
-				if text == "" || len(text) < 2 {
-					continue
-				}
-				// Get tag
-				tagStr := ""
+				id := line[idStart : idStart+idEnd]
+
+				tag := ""
 				if ti := strings.Index(line, "Tag: "); ti >= 0 {
 					rest := line[ti+5:]
 					if si := strings.Index(rest, " "); si > 0 {
-						tagStr = rest[:si]
+						tag = rest[:si]
 					}
+				}
+				// Only interactive tags
+				switch tag {
+				case "a", "button", "input", "select", "textarea":
+				default:
+					continue
+				}
+
+				text := ""
+				if ti := strings.Index(line, "Text: \""); ti >= 0 {
+					rest := line[ti+7:]
+					if ei := strings.Index(rest, "\""); ei > 0 {
+						text = rest[:ei]
+					}
+				}
+				if text == "" || len(text) < 2 {
+					continue
 				}
 				if len(text) > 50 {
 					text = text[:47] + "..."
 				}
-				fmt.Fprintf(&flatListing, "[%s] %s: %q\n", macheID, tagStr, text)
+				interactiveElems = append(interactiveElems, elem{id, tag, text})
 			}
 
-			sysPrompt := "You navigate web pages. The page elements are listed below. Call act(element, action) to interact."
-			userMsg := tc.Intent + "\n\nPage elements:\n" + flatListing.String()
+			// Cap at 40 elements
+			if len(interactiveElems) > 40 {
+				interactiveElems = interactiveElems[:40]
+			}
+
+			var listing strings.Builder
+			for _, e := range interactiveElems {
+				fmt.Fprintf(&listing, "[%s] %s: %q\n", e.id, e.tag, e.text)
+			}
+
+			sysPrompt := "You navigate web pages. Call act(element, action) to click elements. The element must be a mache-ID from the list."
+			userMsg := tc.Intent + "\n\nInteractive elements on this page:\n" + listing.String()
 
 			history := []*genai.Content{
 				{Role: "user", Parts: []*genai.Part{{Text: userMsg}}},
@@ -226,7 +224,7 @@ func TestE2E_Fast(t *testing.T) {
 									"element": {Type: genai.TypeString, Description: "Element mache-ID from the page listing (e.g. mache-11)"},
 									"action":  {Type: genai.TypeString, Description: "click, type, or focus", Enum: []string{"click", "type", "focus"}},
 								},
-								Required: []string{"path", "action"},
+								Required: []string{"element", "action"},
 							},
 						},
 						{
