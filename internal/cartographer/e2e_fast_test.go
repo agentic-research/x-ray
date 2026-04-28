@@ -40,7 +40,9 @@ func TestE2E_Fast(t *testing.T) {
 		Difficulty    string `json:"difficulty"`
 	}
 	var allCases []bc
-	json.Unmarshal(casesData, &allCases)
+	if err := json.Unmarshal(casesData, &allCases); err != nil {
+		t.Fatalf("parse bench_cases.json: %v", err)
+	}
 
 	// Navigator with MINIMAL prompt
 	var navGen navigator.ContentGenerator
@@ -143,6 +145,7 @@ func TestE2E_Fast(t *testing.T) {
 			// Parse summary for interactive elements only (links, buttons, inputs).
 			type elem struct {
 				id, tag, text string
+				y             float64
 			}
 			var interactiveElems []elem
 			for _, line := range strings.Split(string(summary), "\n") {
@@ -171,6 +174,14 @@ func TestE2E_Fast(t *testing.T) {
 					continue
 				}
 
+				// Filter zero-bounds elements (hidden/offscreen)
+				if bi := strings.Index(line, "Bounds: "); bi >= 0 {
+					boundsStr := line[bi+8:]
+					if strings.HasPrefix(boundsStr, "0.0000,0.0000,0.0000,0.0000") {
+						continue // hidden element
+					}
+				}
+
 				text := ""
 				if ti := strings.Index(line, "Text: \""); ti >= 0 {
 					rest := line[ti+7:]
@@ -184,8 +195,24 @@ func TestE2E_Fast(t *testing.T) {
 				if len(text) > 50 {
 					text = text[:47] + "..."
 				}
-				interactiveElems = append(interactiveElems, elem{id, tag, text})
+
+				// Extract Y position for visual-salience sorting
+				yPos := 0.0
+				if bi := strings.Index(line, "Bounds: "); bi >= 0 {
+					boundsStr := line[bi+8:]
+					parts := strings.SplitN(boundsStr, ",", 3)
+					if len(parts) >= 2 {
+						fmt.Sscanf(parts[1], "%f", &yPos)
+					}
+				}
+
+				interactiveElems = append(interactiveElems, elem{id: id, tag: tag, text: text, y: yPos})
 			}
+
+			// Sort by visual position (top-to-bottom) before capping
+			sort.Slice(interactiveElems, func(i, j int) bool {
+				return interactiveElems[i].y < interactiveElems[j].y
+			})
 
 			// Cap at 40 elements
 			if len(interactiveElems) > 40 {
@@ -203,12 +230,6 @@ func TestE2E_Fast(t *testing.T) {
 			history := []*genai.Content{
 				{Role: "user", Parts: []*genai.Part{{Text: userMsg}}},
 			}
-			// Build enum of valid paths for the act tool
-			var validPaths []string
-			for _, pi := range proj.AllPaths() {
-				validPaths = append(validPaths, pi.Path)
-			}
-
 			llmConfig := &genai.GenerateContentConfig{
 				SystemInstruction: &genai.Content{
 					Parts: []*genai.Part{{Text: sysPrompt}},
@@ -315,12 +336,13 @@ func TestE2E_Fast(t *testing.T) {
 	t.Logf("Config: DOM-only, minimal prompt (~150 tokens), no screenshot")
 	t.Logf("Model: %s via llama-server (--reasoning off)", model)
 
-	if pct >= 80 && p50 < 3 {
-		t.Logf("✅ PASS: ≥80%% accuracy, p50 < 3s — DOM-only fast navigation works")
-	} else if pct >= 60 && p50 < 5 {
-		t.Logf("⚠️ PARTIAL: accuracy %.0f%%, p50 %.1fs — close but needs tuning", pct, p50)
+	if total == 0 {
+		t.Fatalf("no test cases ran — check bench_cases.json and testdata")
+	}
+	if pct >= 70 && p50 < 5 {
+		t.Logf("✅ PASS: %.0f%% accuracy (≥70%%), p50 %.1fs (<5s)", pct, p50)
 	} else {
-		t.Logf("❌ FAIL: accuracy %.0f%%, p50 %.1fs", pct, p50)
+		t.Errorf("❌ FAIL: accuracy %.0f%% (want ≥70%%), p50 %.1fs (want <5s)", pct, p50)
 	}
 }
 
